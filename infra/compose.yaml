@@ -1,0 +1,352 @@
+name: socially-woke-local
+
+services:
+  postgres:
+    image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-socially_woke}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+      POSTGRES_USER: ${POSTGRES_USER:-socially_woke}
+    ports:
+      - 127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" -h 127.0.0.1']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    tmpfs:
+      - /var/run/postgresql
+
+  redis:
+    image: redis:8.8.1-alpine3.23@sha256:8096655e437712b07503796fb64d81359256cfcff0ab29d95a7da72863786efb
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        exec redis-server --appendonly yes --save 60 1
+        --requirepass "$${REDIS_PASSWORD}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-local-development-only}
+    ports:
+      - 127.0.0.1:${REDIS_HOST_PORT:-6379}:6379
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$${REDIS_PASSWORD}" redis-cli ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+    tmpfs:
+      - /tmp
+
+  ipfs:
+    image: ipfs/kubo:v0.42.0@sha256:8907cb0cc1ad5798f6bb1bb1341a800990c268e021cedfa317e8aa1a33864214
+    environment:
+      IPFS_PROFILE: server
+      IPFS_TELEMETRY: 'off'
+    ports:
+      - 127.0.0.1:${IPFS_SWARM_HOST_PORT:-4001}:4001
+      - 127.0.0.1:${IPFS_SWARM_HOST_PORT:-4001}:4001/udp
+      - 127.0.0.1:${IPFS_API_HOST_PORT:-5001}:5001
+      - 127.0.0.1:${IPFS_GATEWAY_HOST_PORT:-8080}:8080
+    volumes:
+      - ipfs-data:/data/ipfs
+    healthcheck:
+      test: ['CMD', 'ipfs', 'id']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    tmpfs:
+      - /tmp
+
+  auth-service:
+    profiles:
+      - services
+    image: socially-woke-auth-service:local
+    build:
+      context: ..
+      dockerfile: apps/auth-service/Dockerfile
+    environment:
+      AUTH_HOST: 0.0.0.0
+      AUTH_PORT: 4300
+      AUTH_RP_NAME: ${AUTH_RP_NAME:-Socially Woke}
+      AUTH_RP_ID: ${AUTH_RP_ID:-localhost}
+      AUTH_ORIGIN: ${AUTH_ORIGIN:-http://localhost:3000}
+      AUTH_DATABASE_URL: postgresql://${POSTGRES_USER:-socially_woke}:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/${POSTGRES_DB:-socially_woke}
+      AUTH_DANGEROUSLY_USE_MEMORY_STORE: 0
+      AUTH_CLEANUP_INTERVAL_MS: ${AUTH_CLEANUP_INTERVAL_MS:-60000}
+      AUTH_PENDING_ACCOUNT_RETENTION_MS: ${AUTH_PENDING_ACCOUNT_RETENTION_MS:-3600000}
+      AUTH_CEREMONY_RETENTION_MS: ${AUTH_CEREMONY_RETENTION_MS:-86400000}
+      AUTH_SESSION_RETENTION_MS: ${AUTH_SESSION_RETENTION_MS:-604800000}
+      AUTH_CLEANUP_BATCH_SIZE: ${AUTH_CLEANUP_BATCH_SIZE:-500}
+    ports:
+      - 127.0.0.1:${AUTH_PORT:-4300}:4300
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4300/readyz')
+          .then(response => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    read_only: true
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    tmpfs:
+      - /tmp
+
+  feed-service:
+    profiles:
+      - services
+    image: socially-woke-feed-service:local
+    build:
+      context: ..
+      dockerfile: apps/feed-service/Dockerfile
+    environment:
+      FEED_SERVICE_HOST: 0.0.0.0
+      FEED_SERVICE_PORT: 4100
+      FEED_SERVICE_CORS_ORIGINS: ${FEED_SERVICE_CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      - 127.0.0.1:${FEED_SERVICE_PORT:-4100}:4100
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4100/readyz')
+          .then(response => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    read_only: true
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+    tmpfs:
+      - /tmp
+
+  relay:
+    profiles:
+      - locked-services
+    image: socially-woke-relay:local
+    build:
+      context: ..
+      dockerfile: apps/relay/Dockerfile
+    environment:
+      RELAY_HOST: 0.0.0.0
+      RELAY_PORT: 4200
+      RELAY_ID: ${RELAY_ID:-socially-woke-local}
+      RELAY_ALLOWED_ORIGINS: ${RELAY_ALLOWED_ORIGINS:-http://localhost:3000}
+      RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: ${RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE:-0}
+    ports:
+      - 127.0.0.1:${RELAY_PORT:-4200}:4200
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4200/healthz')
+          .then(response => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    read_only: true
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+    tmpfs:
+      - /tmp
+
+  moderation-service:
+    profiles:
+      - locked-services
+    image: socially-woke-moderation-service:local
+    build:
+      context: ..
+      dockerfile: apps/moderation-service/Dockerfile
+    environment:
+      MODERATION_HOST: 0.0.0.0
+      MODERATION_PORT: 4400
+      MODERATION_ALLOWED_ORIGINS: ${MODERATION_ALLOWED_ORIGINS:-http://localhost:3000}
+      MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: ${MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE:-0}
+    ports:
+      - 127.0.0.1:${MODERATION_PORT:-4400}:4400
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4400/healthz')
+          .then(response => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    read_only: true
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+    tmpfs:
+      - /tmp
+
+  clamav:
+    profiles:
+      - media
+    image: socially-woke-clamav:local
+    build:
+      context: ..
+      dockerfile: infra/clamav/Dockerfile
+    environment:
+      FRESHCLAM_CHECKS: ${CLAMAV_FRESHCLAM_CHECKS:-24}
+      TZ: Etc/UTC
+    networks:
+      - media-private
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ['CMD-SHELL', 'clamdcheck.sh']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    user: 1000:1000
+    read_only: true
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+      - /var/log/clamav:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=0750
+
+  media-worker:
+    profiles:
+      - media
+    image: socially-woke-media-worker:local
+    build:
+      context: ..
+      dockerfile: apps/media-worker/Dockerfile
+    environment:
+      MEDIA_WORKER_HOST: 0.0.0.0
+      MEDIA_WORKER_PORT: 4500
+      MEDIA_WORKER_ALLOWED_ORIGINS: ${MEDIA_WORKER_ALLOWED_ORIGINS:-http://localhost:3000}
+      MEDIA_WORKER_CLAMD_HOST: clamav
+      MEDIA_WORKER_CLAMD_PORT: 3310
+      MEDIA_WORKER_CLAMD_CONNECT_TIMEOUT_MS: ${MEDIA_WORKER_CLAMD_CONNECT_TIMEOUT_MS:-5000}
+      MEDIA_WORKER_CLAMD_SCAN_TIMEOUT_MS: ${MEDIA_WORKER_CLAMD_SCAN_TIMEOUT_MS:-120000}
+      MEDIA_WORKER_CLAMD_STREAM_MAX_BYTES: 100000000
+      MEDIA_WORKER_CLAMD_MAX_DATABASE_AGE_MS: ${MEDIA_WORKER_CLAMD_MAX_DATABASE_AGE_MS:-259200000}
+      MEDIA_WORKER_STATIC_BEARER_TOKEN: ${MEDIA_WORKER_STATIC_BEARER_TOKEN:?Set a canonical base64url media-worker token}
+      MEDIA_WORKER_STAGING_ROOT: /var/lib/socially-woke/staging
+      MEDIA_WORKER_TEMPORARY_ROOT: /var/lib/socially-woke/temporary
+      MEDIA_WORKER_STORAGE_ROOT: /var/lib/socially-woke/cas
+      MEDIA_WORKER_CLEANUP_INTERVAL_MS: ${MEDIA_WORKER_CLEANUP_INTERVAL_MS:-900000}
+      TZ: Etc/UTC
+    ports:
+      - 127.0.0.1:${MEDIA_WORKER_PORT:-4500}:4500
+    networks:
+      - media-private
+    volumes:
+      - media-staging:/var/lib/socially-woke/staging
+      - media-temporary:/var/lib/socially-woke/temporary
+      - media-cas:/var/lib/socially-woke/cas
+    depends_on:
+      clamav:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4500/readyz')
+          .then(response => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    user: 1000:1000
+    read_only: true
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+
+volumes:
+  clamav-data:
+  ipfs-data:
+  media-cas:
+  media-staging:
+  media-temporary:
+  postgres-data:
+  redis-data:
+
+networks:
+  media-private:

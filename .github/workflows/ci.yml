@@ -1,0 +1,272 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  TURBO_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: TypeScript quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          run_install: false
+          version: 11.2.2
+
+      - name: Install Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify workspace and pinned dependencies
+        run: pnpm workspace:check
+
+      - name: Verify pinned native Firedancer fork
+        run: |
+          woke_source_root="$(mktemp -d)/firedancer"
+          pnpm network:woke:materialize -- "$woke_source_root"
+
+      - name: Run quality, tests, and build
+        run: pnpm verify
+
+      - name: Detect browser tests
+        id: e2e
+        shell: bash
+        run: |
+          if node scripts/run-workspace-script.mjs test:e2e --check; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No workspace browser test suite exists yet."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install browser test runtime
+        if: steps.e2e.outputs.present == 'true'
+        run: pnpm test:e2e:install
+
+      - name: Run browser tests
+        if: steps.e2e.outputs.present == 'true'
+        run: pnpm test:e2e
+
+  local-infrastructure:
+    name: Local infrastructure and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          run_install: false
+          version: 11.2.2
+
+      - name: Install Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Compose
+        run: >-
+          docker compose
+          --env-file .env.example
+          --project-name socially-woke-ci
+          --file infra/compose.yaml
+          config --quiet
+
+      - name: Start dependencies and wait for health
+        run: >-
+          docker compose
+          --env-file .env.example
+          --project-name socially-woke-ci
+          --file infra/compose.yaml
+          up --detach --wait
+
+      - name: Verify dependency commands
+        run: |
+          docker compose --project-name socially-woke-ci --file infra/compose.yaml exec -T postgres \
+            pg_isready -U socially_woke -d socially_woke
+          docker compose --project-name socially-woke-ci --file infra/compose.yaml exec -T redis \
+            /bin/sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping'
+          docker compose --project-name socially-woke-ci --file infra/compose.yaml exec -T ipfs \
+            ipfs id
+
+      - name: Build integration dependencies
+        run: pnpm build
+
+      - name: Run PostgreSQL and Kubo integration tests
+        run: pnpm test:integration
+
+      - name: Build and smoke-test service images
+        run: |
+          docker compose \
+            --env-file .env.example \
+            --project-name socially-woke-ci \
+            --file infra/compose.yaml \
+            --profile services \
+            build auth-service feed-service
+          docker compose \
+            --env-file .env.example \
+            --project-name socially-woke-ci \
+            --file infra/compose.yaml \
+            --profile services \
+            up --detach --no-build --wait auth-service feed-service
+          curl --fail --silent --show-error http://127.0.0.1:4300/healthz
+          curl --fail --silent --show-error http://127.0.0.1:4300/readyz
+          curl --fail --silent --show-error http://127.0.0.1:4100/healthz
+          curl --fail --silent --show-error http://127.0.0.1:4100/readyz
+          test "$(
+            docker inspect socially-woke-ci-auth-service-1 \
+              --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
+          )" = '10001:10001 true healthy'
+          test "$(
+            docker inspect socially-woke-ci-feed-service-1 \
+              --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
+          )" = '10002:10002 true healthy'
+
+      - name: Verify locked relay and moderation images fail closed
+        run: |
+          docker compose \
+            --env-file .env.example \
+            --project-name socially-woke-ci \
+            --file infra/compose.yaml \
+            --profile locked-services \
+            build relay moderation-service
+          docker compose \
+            --env-file .env.example \
+            --project-name socially-woke-ci \
+            --file infra/compose.yaml \
+            --profile locked-services \
+            up --detach --no-build --wait relay moderation-service
+          curl --fail --silent --show-error http://127.0.0.1:4200/healthz
+          curl --fail --silent --show-error http://127.0.0.1:4400/healthz
+          test "$(
+            curl --silent --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:4200/readyz
+          )" = '503'
+          test "$(
+            curl --silent --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:4400/readyz
+          )" = '503'
+          test "$(
+            docker inspect socially-woke-ci-relay-1 \
+              --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
+          )" = '10003:10003 true healthy'
+          test "$(
+            docker inspect socially-woke-ci-moderation-service-1 \
+              --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
+          )" = '10004:10004 true healthy'
+
+      - name: Build and smoke-test private media services
+        run: |
+          docker compose \
+            --env-file .env.example \
+            --project-name socially-woke-ci \
+            --file infra/compose.yaml \
+            --profile media \
+            build clamav media-worker
+          docker compose \
+            --env-file .env.example \
+            --project-name socially-woke-ci \
+            --file infra/compose.yaml \
+            --profile media \
+            up --detach --no-build --wait clamav media-worker
+          curl --fail --silent --show-error http://127.0.0.1:4500/healthz
+          curl --fail --silent --show-error http://127.0.0.1:4500/readyz
+          docker exec socially-woke-ci-media-worker-1 \
+            node scripts/verify-clamd.mjs
+          test -z "$(docker port socially-woke-ci-clamav-1 3310/tcp)"
+          test "$(
+            docker inspect socially-woke-ci-clamav-1 \
+              --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
+          )" = '1000:1000 true healthy'
+          test "$(
+            docker inspect socially-woke-ci-media-worker-1 \
+              --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
+          )" = '1000:1000 true healthy'
+
+      - name: Capture dependency logs
+        if: failure()
+        run: >-
+          docker compose
+          --project-name socially-woke-ci
+          --file infra/compose.yaml
+          --profile services
+          --profile locked-services
+          --profile media
+          logs --no-color
+
+      - name: Stop dependencies
+        if: always()
+        run: >-
+          docker compose
+          --project-name socially-woke-ci
+          --file infra/compose.yaml
+          --profile services
+          --profile locked-services
+          --profile media
+          down --remove-orphans
+
+  solana-program:
+    name: Anchor and connected vertical-slice tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          run_install: false
+          version: 11.2.2
+
+      - name: Install Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install checksum-pinned chain toolchain
+        run: pnpm toolchain:install
+
+      - name: Run native local-validator suite
+        run: pnpm test:programs
+
+      - name: Run connected validator-to-browser vertical slice
+        run: pnpm test:vertical-slice

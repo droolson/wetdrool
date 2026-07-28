@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+@import '../styles/shell.css';
+@import '../styles/marketing.css';
+@import '../styles/editorial.css';
+@import '../styles/application.css';
+@import '../styles/product.css';
+@import '../styles/extended-product.css';
+
+@source "../../../packages/ui/src";

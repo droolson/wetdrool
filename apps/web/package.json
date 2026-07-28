@@ -1,0 +1,38 @@
+{
+  "name": "@socially-woke/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "measure:performance": "node scripts/measure-performance.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@noble/curves": "2.2.0",
+    "@socially-woke/crypto": "workspace:*",
+    "@socially-woke/ui": "workspace:*",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.62.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.20.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.12",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

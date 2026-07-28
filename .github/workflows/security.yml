@@ -1,0 +1,69 @@
+name: Security
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  TURBO_TELEMETRY_DISABLED: '1'
+
+jobs:
+  dependency-audit:
+    name: Production dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          run_install: false
+          version: 11.2.2
+
+      - name: Install Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit dependency graph
+        run: pnpm security:audit
+
+      - name: Scan source and Git history for secrets
+        run: pnpm security:secrets
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@3b0bd1d116c0bde30213346b22d4f634d96a2fb0 # v3
+        with:
+          build-mode: none
+          languages: javascript-typescript
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@3b0bd1d116c0bde30213346b22d4f634d96a2fb0 # v3

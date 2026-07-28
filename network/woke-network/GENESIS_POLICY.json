@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "networkName": "Woke Network",
+  "nativeCurrency": {
+    "name": "WOKE",
+    "ticker": "WOKE",
+    "decimals": 9,
+    "wireBaseUnit": "lamport",
+    "baseUnitsPerWoke": "1000000000",
+    "isSPLToken": false
+  },
+  "localnet": {
+    "disposable": true,
+    "creationTimeUnixSeconds": "1785196800",
+    "faucetLamports": "10000000000000000",
+    "bootstrapIdentityLamports": "100000000000000",
+    "bootstrapStakeLamports": "1000000000000000",
+    "wellKnownFundedAccountCount": 0
+  },
+  "production": {
+    "genesisApproved": false,
+    "supplyApproved": false,
+    "inflationApproved": false,
+    "allocationApproved": false,
+    "publicSaleConfigured": false,
+    "legalReviewComplete": false
+  }
+}

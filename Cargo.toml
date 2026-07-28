@@ -1,0 +1,32 @@
+[workspace]
+members = ["programs/social_protocol"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+# Agave 2.3's SBF compiler is Rust 1.84.1-dev. Developers use the newer
+# pinned host toolchain, while deployable program crates retain this MSRV.
+rust-version = "1.84.0"
+
+[workspace.dependencies]
+anchor-lang = { version = "=0.32.1", features = ["init-if-needed"] }
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+overflow-checks = true
+
+[profile.release.build-override]
+codegen-units = 1
+opt-level = 3
+incremental = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"

@@ -1,0 +1,28 @@
+{
+  "name": "@socially-woke/feed-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Replaceable, explainable Socially Woke feed-ranking service",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "dev": "tsx watch src/server.ts",
+    "lint": "eslint src test",
+    "start": "node dist/src/server.js",
+    "test": "vitest run --exclude 'dist/**'",
+    "test:coverage": "vitest run --coverage --exclude 'dist/**'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.3.0",
+    "@fastify/rate-limit": "11.1.0",
+    "fastify": "5.10.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "tsx": "4.23.1",
+    "vitest": "4.1.10"
+  }
+}

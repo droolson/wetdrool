@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible non-security defect.
+title: 'bug: '
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities, private keys, credentials, or private user content here.
+        Follow SECURITY.md for security reporting status.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest safe reproduction using synthetic data.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Revision or version
+      placeholder: Commit SHA, release, or branch
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Local validator
+        - CI
+        - Devnet
+        - Staging
+        - Production
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted diagnostics
+      description: Remove credentials, wallet secrets, private content, personal data, and identifying addresses.
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed secrets, private content, and personal data.
+          required: true
+        - label: This is not a vulnerability report.
+          required: true

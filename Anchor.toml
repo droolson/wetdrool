@@ -1,0 +1,29 @@
+[toolchain]
+anchor_version = "0.32.1"
+solana_version = "2.3.0"
+package_manager = "pnpm"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+social_protocol = "9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD"
+
+[provider]
+cluster = "Localnet"
+wallet = ".local/solana/deployer.json"
+
+[scripts]
+test = "pnpm exec mocha --import=tsx -t 1000000 \"tests/programs/**/*.ts\""
+
+[test]
+startup_wait = 10000
+upgradeable = true
+
+[test.validator]
+bind_address = "127.0.0.1"
+gossip_host = "127.0.0.1"
+gossip_port = 18000
+dynamic_port_range = "18001-18099"
+faucet_port = 19900

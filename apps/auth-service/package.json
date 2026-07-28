@@ -1,0 +1,37 @@
+{
+  "name": "@socially-woke/auth-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Replaceable WebAuthn authentication and encrypted key-bundle sync service",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-static.mjs",
+    "clean": "rm -rf dist coverage",
+    "dev": "tsx watch src/server.ts",
+    "lint": "eslint scripts src test",
+    "migrate": "tsx src/migrate.ts",
+    "setup:local": "tsx src/migrate.ts",
+    "start": "node dist/src/server.js",
+    "test": "vitest run --exclude 'dist/**' --exclude 'test/**/*.integration.test.ts' --exclude 'test/**/*.e2e.test.ts'",
+    "test:e2e": "vitest run test/browser.e2e.test.ts",
+    "test:integration": "vitest run --no-file-parallelism test/postgres.integration.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cookie": "11.1.2",
+    "@fastify/cors": "11.3.0",
+    "@fastify/rate-limit": "11.1.0",
+    "@simplewebauthn/server": "13.3.2",
+    "@socially-woke/crypto": "workspace:*",
+    "fastify": "5.10.0",
+    "postgres": "3.4.9",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.0",
+    "@types/node": "22.20.1",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

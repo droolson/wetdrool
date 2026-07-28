@@ -1,0 +1,43 @@
+{
+  "name": "@socially-woke/protocol",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Canonical Socially Woke protocol schemas, identifiers, hashing, and signatures",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./schema/v1": "./schemas/socially-woke-signed-envelope-v1.schema.json"
+  },
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "pnpm schema:check && tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "lint": "eslint scripts src test",
+    "schema:check": "tsx scripts/generate-json-schema.ts --check",
+    "schema:generate": "tsx scripts/generate-json-schema.ts --write",
+    "test": "pnpm schema:check && vitest run --exclude 'dist/**'",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@noble/curves": "2.2.0",
+    "@noble/hashes": "2.2.0",
+    "bs58": "6.0.0",
+    "json-canonicalize": "2.0.0",
+    "multiformats": "14.0.5",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "prettier": "3.9.6",
+    "tsx": "4.23.1",
+    "vitest": "4.1.10"
+  }
+}

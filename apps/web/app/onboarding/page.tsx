@@ -1,0 +1,115 @@
+import type { Metadata } from 'next';
+import { ButtonLink, InfoCard, StatusBadge } from '@socially-woke/ui';
+
+import { AppPageHeader } from '@/components/app-page-header';
+import { PasskeyAuthPanel } from '@/components/passkey-auth-panel';
+
+export const metadata: Metadata = {
+  title: 'Onboarding',
+  description: 'Create a replaceable authentication-service account with a passkey.',
+};
+
+export const dynamic = 'force-dynamic';
+
+const STEPS = [
+  {
+    copy: 'Create a user-verifying service account and a credential-bound encrypted Ed25519 seed without publishing an email, legal name, or secret.',
+    eyebrow: 'Step 01',
+    footer: 'Passkey service path available',
+    title: 'Create private key access',
+    tone: 'plum' as const,
+  },
+  {
+    copy: 'Add a chosen name, handle, pronouns, languages, and profile details with visibility controls for each field.',
+    eyebrow: 'Step 02',
+    footer: 'Signed profile storage required',
+    title: 'Introduce yourself',
+    tone: 'coral' as const,
+  },
+  {
+    copy: 'Select feeds, safety defaults, storage providers, and a recovery plan before joining the public conversation.',
+    eyebrow: 'Step 03',
+    footer: 'Preferences remain portable',
+    title: 'Set your boundaries',
+    tone: 'sky' as const,
+  },
+] as const;
+
+export default function OnboardingPage() {
+  const authServiceUrl =
+    process.env['SOCIALLY_WOKE_AUTH_URL'] ??
+    process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
+    'http://localhost:4300';
+
+  return (
+    <div className="product-page page-shell">
+      <AppPageHeader
+        actions={<StatusBadge tone="pending">Service account path</StatusBadge>}
+        eyebrow="Begin with context"
+        title="Your identity should start with consent."
+      >
+        <p>
+          Passkey approval can now create an authentication-service account and synchronize only an
+          encrypted key wrapper. Profile publication, recovery, and protocol identity creation are
+          still unavailable.
+        </p>
+      </AppPageHeader>
+
+      <section className="onboarding-ledger" aria-labelledby="onboarding-ledger-title">
+        <div>
+          <p className="section-kicker">Before you begin</p>
+          <h2 id="onboarding-ledger-title">Only the passkey action changes account state.</h2>
+        </div>
+        <dl>
+          <div>
+            <dt>Service account</dt>
+            <dd>Created only after passkey approval</dd>
+          </div>
+          <div>
+            <dt>Private key</dt>
+            <dd>Generated only with PRF support</dd>
+          </div>
+          <div>
+            <dt>Protocol write</dt>
+            <dd>Not attempted</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="product-card-grid" aria-label="Onboarding steps">
+        {STEPS.map((step) => (
+          <InfoCard
+            eyebrow={step.eyebrow}
+            footer={step.footer}
+            key={step.title}
+            title={step.title}
+            tone={step.tone}
+          >
+            <p>{step.copy}</p>
+          </InfoCard>
+        ))}
+      </section>
+
+      <section className="product-cta product-cta--auth" aria-labelledby="create-account-title">
+        <div>
+          <p className="section-kicker">Replaceable authentication</p>
+          <h2 id="create-account-title">Create a service account with your passkey.</h2>
+          <p>
+            The browser asks for a discoverable, user-verifying credential. If its PRF extension is
+            available, a new Ed25519 seed is encrypted locally and only the ciphertext bundle is
+            synchronized. No protocol identity is created.
+          </p>
+          <div className="product-cta__actions">
+            <ButtonLink href="/signin" variant="secondary">
+              Use an existing passkey
+            </ButtonLink>
+            <ButtonLink href="/settings/providers" variant="quiet">
+              Review providers
+            </ButtonLink>
+          </div>
+        </div>
+        <PasskeyAuthPanel authServiceUrl={authServiceUrl} mode="register" />
+      </section>
+    </div>
+  );
+}

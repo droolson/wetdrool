@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "upstreamCommit": "60c3d2e381a6607f63adc818481e2f31472ae681",
+  "productionReady": false,
+  "nativeValidator": {
+    "binary": "firedancer",
+    "usesAgaveRuntime": false,
+    "upstreamReleaseAvailable": false
+  },
+  "nativeRpc": {
+    "binary": "firedancer",
+    "evidenceClassification": "source-observation-not-conformance",
+    "directNativeCTestCoverage": ["getMultipleAccounts"],
+    "implementedRequiredReads": [
+      "getAccountInfo",
+      "getBalance",
+      "getGenesisHash",
+      "getLatestBlockhash",
+      "getMultipleAccounts",
+      "getSlot"
+    ],
+    "missingRequiredMethods": [
+      "getProgramAccounts",
+      "getSignaturesForAddress",
+      "getSignatureStatuses",
+      "getTransaction",
+      "sendTransaction",
+      "simulateTransaction"
+    ]
+  },
+  "activationPolicy": {
+    "allowProductionTraffic": false,
+    "allowMainNetworkGenesis": false,
+    "reason": "Native Firedancer has no production release and lacks write, simulation, confirmation, and indexer RPC methods required by woke.social."
+  }
+}

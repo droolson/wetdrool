@@ -1,0 +1,20 @@
+.anchor/
+.local/
+.next/
+.turbo/
+coverage/
+dist/
+node_modules/
+playwright-report/
+target/
+test-results/
+pnpm-lock.yaml
+**/next-env.d.ts
+
+# Documentation is maintained independently and is not rewritten by code formatting.
+README.md
+TASKS.md
+docs/
+
+# Cargo formatting owns Rust sources.
+programs/

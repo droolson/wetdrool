@@ -1,0 +1,56 @@
+name = "woke-local"
+telemetry = false
+
+[paths]
+    base = "/var/lib/woke-network/localnet"
+
+[gossip]
+    entrypoints = []
+
+[snapshots]
+    genesis_download = false
+
+    [snapshots.sources]
+        servers = []
+
+        [snapshots.sources.gossip]
+            allow_any = false
+            allow_list = []
+            block_list = []
+
+[consensus]
+    expected_genesis_hash = ""
+    expected_shred_version = 0
+    wait_for_vote_to_start_leader = false
+
+[tiles.gui]
+    enabled = false
+
+[tiles.rpc]
+    enabled = true
+    rpc_listen_address = "127.0.0.1"
+    rpc_listen_port = 8899
+    max_http_connections = 128
+    max_websocket_connections = 32
+    max_http_request_length = 8192
+    send_buffer_size_mb = 256
+
+[development]
+    sandbox = true
+    no_agave = true
+
+    [development.gossip]
+        allow_private_address = true
+
+    [development.genesis]
+        validate_genesis_hash = false
+        creation_time_unix_seconds = 1785196800
+        faucet_balance_lamports = 10000000000000000
+        identity_balance_lamports = 100000000000000
+        hashes_per_tick = 1
+        target_tick_duration_micros = 6250
+        ticks_per_slot = 64
+        fund_initial_accounts = 0
+        fund_initial_amount_lamports = 0
+        vote_account_stake_lamports = 1000000000000000
+        warmup_epochs = false

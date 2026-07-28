@@ -1,0 +1,46 @@
+import type { Metadata } from 'next';
+import { InfoCard, StatusBadge } from '@socially-woke/ui';
+
+import { AppPageHeader } from '@/components/app-page-header';
+import { LocalPreferenceEditor } from '@/components/local-preference-editor';
+import { SettingsNav } from '@/components/settings-nav';
+
+export const metadata: Metadata = {
+  title: 'Privacy settings',
+  description: 'Device-local privacy defaults with honest persistence boundaries.',
+};
+
+export default function PrivacySettingsPage() {
+  return (
+    <div className="product-page page-shell">
+      <AppPageHeader
+        actions={<StatusBadge tone="neutral">Local controls available</StatusBadge>}
+        eyebrow="Privacy settings"
+        title="Share less by default."
+      >
+        <p>
+          These controls save preference intent only in this browser. Relays, messages, and
+          discovery providers cannot honor them until their signed contracts are integrated.
+        </p>
+      </AppPageHeader>
+      <SettingsNav />
+      <LocalPreferenceEditor kind="privacy" />
+      <section className="product-card-grid" aria-label="Privacy setting boundaries">
+        <InfoCard eyebrow="Local" title="This browser remembers" tone="plum">
+          <p>
+            Saved switches remain on this device and can be exported or cleared with browser data.
+          </p>
+        </InfoCard>
+        <InfoCard eyebrow="Portable" title="Account policy comes later" tone="coral">
+          <p>A signed portable preference requires authenticated identity and conflict handling.</p>
+        </InfoCard>
+        <InfoCard eyebrow="Service" title="Providers need enforcement" tone="sky">
+          <p>
+            A preference is not a privacy guarantee until each connected service demonstrably honors
+            it.
+          </p>
+        </InfoCard>
+      </section>
+    </div>
+  );
+}

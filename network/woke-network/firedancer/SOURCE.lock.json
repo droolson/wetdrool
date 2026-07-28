@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "upstream": {
+    "repository": "https://github.com/firedancer-io/firedancer.git",
+    "branch": "main",
+    "commit": "60c3d2e381a6607f63adc818481e2f31472ae681",
+    "commitTimestamp": "2026-07-28T19:19:33+08:00",
+    "license": "Apache-2.0"
+  },
+  "buildDependencies": {
+    "openssl": {
+      "repository": "https://github.com/openssl/openssl",
+      "tag": "openssl-3.6.2",
+      "commit": "fe686e15d84334b284f883118ed92f64b409b3aa"
+    }
+  },
+  "downstream": {
+    "name": "Woke Network Firedancer",
+    "versionMarker": "Woke Network Firedancer downstream-v1",
+    "validatorBinary": "firedancer",
+    "developmentBinary": "firedancer-dev",
+    "forbiddenRuntimeBinaries": ["agave-validator", "fdctl", "fddev", "solana-test-validator"],
+    "patches": [
+      {
+        "path": "patches/0001-explicit-sovereign-genesis-allocations.patch",
+        "sha256": "ad9c538b5679460ff602f000c7d9c7f7bcc18a8796b3b5404a1dae655855130b"
+      }
+    ]
+  }
+}

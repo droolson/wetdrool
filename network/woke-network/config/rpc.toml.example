@@ -1,0 +1,61 @@
+name = "woke-rpc-01"
+telemetry = false
+
+[paths]
+    base = "/srv/woke-network/rpc-01"
+    identity_key = "/run/woke-network-secrets/rpc-identity.json"
+    genesis = "/srv/woke-network/network/genesis.bin"
+    snapshots = "/srv/woke-network/snapshots"
+    accounts = "/srv/woke-network/accounts.db"
+    shredb = "/srv/woke-network/shreds.db"
+
+[gossip]
+    entrypoints = ["entrypoint-01.network.woke.social:8001", "entrypoint-02.network.woke.social:8001"]
+    port = 8101
+
+[snapshots]
+    genesis_download = false
+
+    [snapshots.sources]
+        servers = ["https://snapshot-01.network.woke.social:443"]
+
+        [snapshots.sources.gossip]
+            allow_any = false
+            allow_list = ["REPLACE_WITH_TRUSTED_SNAPSHOT_VALIDATOR_PUBLIC_KEY"]
+            block_list = []
+
+[consensus]
+    expected_genesis_hash = "REPLACE_WITH_CEREMONY_GENESIS_HASH"
+    expected_shred_version = "REPLACE_WITH_CEREMONY_SHRED_VERSION"
+    wait_for_vote_to_start_leader = false
+
+[tiles.gui]
+    enabled = false
+
+[tiles.rpc]
+    enabled = true
+    rpc_listen_address = "127.0.0.1"
+    rpc_listen_port = 8899
+    max_http_connections = 1024
+    max_websocket_connections = 128
+    max_http_request_length = 8192
+    send_buffer_size_mb = 1024
+
+[development]
+    no_agave = true
+
+    [development.gossip]
+        allow_private_address = false
+
+    [development.genesis]
+        validate_genesis_hash = false
+        creation_time_unix_seconds = 1785196800
+        faucet_balance_lamports = 1
+        identity_balance_lamports = 1
+        hashes_per_tick = 62500
+        target_tick_duration_micros = 6250
+        ticks_per_slot = 64
+        fund_initial_accounts = 0
+        fund_initial_amount_lamports = 0
+        vote_account_stake_lamports = 1
+        warmup_epochs = false

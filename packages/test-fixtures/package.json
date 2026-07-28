@@ -1,0 +1,30 @@
+{
+  "name": "@socially-woke/test-fixtures",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic, public test identities and canonical protocol manifests",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "lint": "eslint src test",
+    "test": "vitest run --exclude 'dist/**'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@socially-woke/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}

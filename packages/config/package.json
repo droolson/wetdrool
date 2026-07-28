@@ -1,0 +1,38 @@
+{
+  "name": "@socially-woke/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "import": "./dist/env.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "tsc -b tsconfig.build.json --clean",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "env:check": "node --env-file-if-exists=../../.env --experimental-strip-types src/cli.ts",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

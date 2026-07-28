@@ -1,0 +1,27 @@
+{
+  "name": "@socially-woke/crypto",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Dependency-free WebCrypto primitives with Socially Woke domain separation",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "lint": "eslint src test",
+    "test": "vitest run --exclude 'dist/**'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@socially-woke/media-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Resumable, bounded, non-custodial media processing and publication worker",
+  "files": [
+    "dist",
+    "README.md",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "dev": "tsx watch src/server.ts",
+    "lint": "eslint scripts src test",
+    "start": "node dist/src/server.js",
+    "test": "vitest run --exclude 'dist/**' --exclude 'test/**/*.integration.test.ts'",
+    "test:integration": "vitest run test/processors.integration.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.3.0",
+    "@fastify/rate-limit": "11.1.0",
+    "@socially-woke/protocol": "workspace:*",
+    "@socially-woke/storage": "workspace:*",
+    "fastify": "5.10.0",
+    "file-type": "22.0.1",
+    "sharp": "0.35.3",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "tsx": "4.23.1",
+    "vitest": "4.1.10"
+  }
+}

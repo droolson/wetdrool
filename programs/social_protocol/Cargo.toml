@@ -1,0 +1,43 @@
+[package]
+name = "social_protocol"
+version = "0.1.0"
+description = "Woke Network identity, social graph, content reference, and native-payment protocol"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "social_protocol"
+
+[features]
+default = []
+anchor-debug = []
+cpi = ["no-entrypoint"]
+custom-heap = []
+custom-panic = []
+idl-build = ["anchor-lang/idl-build"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+
+[dependencies]
+anchor-lang.workspace = true
+solana-sha256-hasher = "=2.3.0"
+# Solana 2.3.0 platform-tools embeds Cargo 1.84. Newer zeroize manifests use
+# edition 2024, so keep the latest compatible 1.8 release until tools advance.
+zeroize = { version = "=1.8.1", default-features = false }
+
+[build-dependencies]
+# Solana 2.3.0 platform-tools uses Cargo 1.84. Pinning avoids the edition-2024
+# TOML dependency selected by proc-macro-crate 3.5 while remaining Anchor-compatible.
+indexmap = "=2.13.0"
+proc-macro-crate = "=3.4.0"
+toml_datetime = "=0.7.2"
+toml_edit = "=0.23.2"
+toml_parser = "=1.0.4"
+toml_writer = "=1.0.4"
+unicode-segmentation = "=1.12.0"
+
+[lints]
+workspace = true

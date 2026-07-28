@@ -1,0 +1,21 @@
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.avif binary
+*.gif binary
+*.ico binary
+*.jpeg binary
+*.jpg binary
+*.mp3 binary
+*.mp4 binary
+*.pdf binary
+*.png binary
+*.webm binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+
+pnpm-lock.yaml linguist-generated=true

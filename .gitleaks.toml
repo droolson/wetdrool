@@ -1,0 +1,19 @@
+title = "Socially Woke secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated, ignored local-development artifacts"
+paths = [
+  '''(^|/)\.local/''',
+  '''(^|/)target/''',
+  '''(^|/)\.anchor/''',
+  '''(^|/)\.next/''',
+  '''(^|/)\.turbo/''',
+  '''(^|/)coverage/''',
+  '''(^|/)dist/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)playwright-report/''',
+  '''(^|/)test-results/''',
+]

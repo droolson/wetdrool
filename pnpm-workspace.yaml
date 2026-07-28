@@ -1,0 +1,51 @@
+packages:
+  - apps/*
+  - packages/*
+
+autoInstallPeers: false
+blockExoticSubdeps: true
+engineStrict: true
+linkWorkspacePackages: true
+minimumReleaseAge: 1440
+minimumReleaseAgeIgnoreMissingTime: false
+minimumReleaseAgeStrict: true
+nodeVersion: 22.23.1
+pmOnFail: error
+preferWorkspacePackages: true
+savePrefix: ''
+sharedWorkspaceLockfile: true
+shellEmulator: true
+strictDepBuilds: true
+strictPeerDependencies: true
+trustLockfile: false
+updateNotifier: false
+verifyDepsBeforeRun: error
+verifyStoreIntegrity: true
+
+overrides:
+  # Next 16.2.12 still requests vulnerable ranges. These patched releases are
+  # enforced workspace-wide until its dependency ranges catch up.
+  brace-expansion: 5.0.8
+  diff: 8.0.3
+  postcss: 8.5.23
+  serialize-javascript: 7.0.7
+  sharp: 0.35.3
+  uuid: 11.1.1
+
+patchedDependencies:
+  # minimatch 3 expects brace-expansion's legacy callable CommonJS export.
+  # The security-fixed brace-expansion 5 export is named, so adapt that one
+  # import while retaining minimatch's established API for ESLint.
+  minimatch@3.1.5: patches/minimatch@3.1.5.patch
+
+allowBuilds:
+  bufferutil: false
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+  utf-8-validate: false
+
+peerDependencyRules:
+  allowedVersions:
+    # ws 7 declares the same optional N-API validator more narrowly than ws 8.
+    'ws@7.5.13>utf-8-validate': 6.0.6

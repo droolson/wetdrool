@@ -1,0 +1,49 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env.example", "tsconfig.base.json"],
+  "globalEnv": [
+    "APP_ENV",
+    "NEXT_PUBLIC_WOKE_NETWORK",
+    "NEXT_PUBLIC_WOKE_RPC_URL",
+    "NEXT_TELEMETRY_DISABLED",
+    "NODE_ENV",
+    "TURBO_TELEMETRY_DISABLED",
+    "WOKE_COMMITMENT",
+    "WOKE_RPC_URLS",
+    "WOKE_WS_URLS"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "outputs": ["playwright-report/**", "test-results/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    }
+  }
+}

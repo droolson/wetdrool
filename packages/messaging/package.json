@@ -1,0 +1,38 @@
+{
+  "name": "@socially-woke/messaging",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Fail-closed pairwise E2EE adapter for Woke Social devices",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "lint": "eslint src test",
+    "test": "vitest run --exclude 'dist/**'",
+    "test:integration": "vitest run test/real-wasm.integration.test.ts --exclude 'dist/**'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@matrix-org/matrix-sdk-crypto-wasm": "18.4.0",
+    "@noble/curves": "2.2.0",
+    "json-canonicalize": "2.0.0"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}

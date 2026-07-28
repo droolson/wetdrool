@@ -1,0 +1,887 @@
+import bs58 from 'bs58';
+import { describe, expect, it } from 'vitest';
+
+import { encodeMultibaseBase64Url, type NetworkId } from '@socially-woke/protocol';
+import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+
+import {
+  AnchorEventDecodingError,
+  buildIndexerApp,
+  decodeAnchorEventLog,
+  deriveCommunityMembershipAddress,
+  deriveGovernanceProposalAddress,
+  deriveGovernanceVoteAddress,
+  GOVERNANCE_APPROVAL_BPS,
+  GOVERNANCE_QUORUM_BPS,
+  GOVERNANCE_STRATEGY_HASH,
+  ManifestVerifier,
+  MemoryProjectionStore,
+  OpenIndexer,
+  SOCIAL_PROTOCOL_EVENT_LAYOUT,
+  SolanaEventMaterializer,
+  type ProjectionError,
+  type ProposalCreatedEvent,
+  type ProposalFinalizedEvent,
+  type ProtocolEvent,
+  type SolanaEventMaterializationError,
+  type VoteCastEvent,
+} from '../src/index.js';
+
+const strategyBytes = Uint8Array.from([
+  194, 111, 47, 125, 12, 76, 238, 214, 100, 126, 189, 3, 102, 193, 39, 21, 92, 90, 225, 152, 44, 32,
+  248, 60, 14, 192, 167, 251, 22, 215, 252, 112,
+]);
+const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
+const networkId = `woke:v1:${publicKey(1)}:${programId}` as NetworkId;
+const configAddress = publicKey(2);
+const creatorAddress = publicKey(3);
+const voterAddress = publicKey(4);
+const creatorIdentityId = `swid:v1:${networkId}:${creatorAddress}`;
+const voterIdentityId = `swid:v1:${networkId}:${voterAddress}`;
+const creatorAuthority = publicKey(5);
+const voterAuthority = publicKey(6);
+const communityAddress = publicKey(7);
+const creatorMembershipAddress = await deriveCommunityMembershipAddress(
+  programId,
+  communityAddress,
+  creatorAddress,
+);
+const voterMembershipAddress = await deriveCommunityMembershipAddress(
+  programId,
+  communityAddress,
+  voterAddress,
+);
+const proposalManifestHash = digest(30);
+const proposalAddress = await deriveGovernanceProposalAddress(
+  programId,
+  communityAddress,
+  proposalManifestHash,
+);
+const voteAddress = await deriveGovernanceVoteAddress(programId, proposalAddress, voterAddress);
+
+describe('governance Anchor events', () => {
+  it('strictly decodes and materializes all three final IDL layouts', async () => {
+    const projection = new MemoryProjectionStore();
+    const materializer = new SolanaEventMaterializer(
+      new MemoryContentAddressedStorage(),
+      projection,
+    );
+    const encodedProposal = proposalAnchorEvent();
+    const encodedVote = voteAnchorEvent();
+    const encodedFinalized = finalizedAnchorEvent();
+
+    const decodedProposal = decodeAnchorEventLog(encodedProposal);
+    const decodedVote = decodeAnchorEventLog(encodedVote);
+    const decodedFinalized = decodeAnchorEventLog(encodedFinalized);
+
+    expect(decodedProposal).toMatchObject({
+      kind: 'proposal-created',
+      proposal: proposalAddress,
+      proposerIdentity: creatorAddress,
+      proposerSequence: 4n,
+      previousCommunitySequence: 3n,
+      governanceVersion: 1,
+      votingModel: 'one-active-member-one-vote',
+      eligibleMemberCount: 2n,
+      quorumBps: GOVERNANCE_QUORUM_BPS,
+      approvalBps: GOVERNANCE_APPROVAL_BPS,
+    });
+    expect(decodedVote).toMatchObject({
+      kind: 'vote-cast',
+      vote: voteAddress,
+      voterIdentity: voterAddress,
+      choice: 'yes',
+      yesVotes: 1n,
+      noVotes: 0n,
+      abstainVotes: 0n,
+    });
+    expect(decodedFinalized).toMatchObject({
+      kind: 'proposal-finalized',
+      finalizer: creatorAuthority,
+      participatingVotes: 1n,
+      decisiveVotes: 1n,
+      quorumMet: true,
+      approvalMet: true,
+      outcome: 'accepted',
+    });
+
+    await expect(materializer.materialize(decodedProposal, context(7n, 71))).resolves.toMatchObject(
+      {
+        type: 'proposal-created',
+        communityAddress,
+        proposalAddress,
+        proposerIdentityId: creatorIdentityId,
+        manifestHash: proposalManifestHash,
+        governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
+        manifestUri: 'local://proposal-one',
+      },
+    );
+    await expect(materializer.materialize(decodedVote, context(8n, 72))).resolves.toMatchObject({
+      type: 'vote-cast',
+      proposalAddress,
+      voteAddress,
+      voterIdentityId,
+      membershipAddress: voterMembershipAddress,
+    });
+    await expect(
+      materializer.materialize(decodedFinalized, context(12n, 73)),
+    ).resolves.toMatchObject({
+      type: 'proposal-finalized',
+      proposalAddress,
+      outcome: 'accepted',
+    });
+  });
+
+  it('rejects unknown enums, trailing bytes, unsupported versions, slot drift, and invalid constants', async () => {
+    const invalidModel = proposalAnchorEvent({ votingModel: 9 });
+    expect(() => decodeAnchorEventLog(invalidModel)).toThrow(AnchorEventDecodingError);
+
+    const trailing = Buffer.concat([
+      Buffer.from(proposalAnchorEvent(), 'base64'),
+      Buffer.from([0]),
+    ]).toString('base64');
+    expect(() => decodeAnchorEventLog(trailing)).toThrow(/trailing bytes/u);
+
+    const projection = new MemoryProjectionStore();
+    const materializer = new SolanaEventMaterializer(
+      new MemoryContentAddressedStorage(),
+      projection,
+    );
+    await expect(
+      materializer.materialize(
+        decodeAnchorEventLog(proposalAnchorEvent({ eventVersion: 2 })),
+        context(7n, 74),
+      ),
+    ).rejects.toMatchObject({
+      code: 'unsupported-version',
+    } satisfies Partial<SolanaEventMaterializationError>);
+    await expect(
+      materializer.materialize(decodeAnchorEventLog(proposalAnchorEvent()), context(8n, 75)),
+    ).rejects.toMatchObject({
+      code: 'slot-mismatch',
+    } satisfies Partial<SolanaEventMaterializationError>);
+    await expect(
+      materializer.materialize(
+        decodeAnchorEventLog(proposalAnchorEvent({ quorumBps: 4_999 })),
+        context(7n, 76),
+      ),
+    ).rejects.toMatchObject({
+      code: 'event-invalid',
+    } satisfies Partial<SolanaEventMaterializationError>);
+    await expect(
+      materializer.materialize(
+        decodeAnchorEventLog(finalizedAnchorEvent({ outcome: 0 })),
+        context(12n, 77),
+      ),
+    ).rejects.toMatchObject({
+      code: 'event-invalid',
+    } satisfies Partial<SolanaEventMaterializationError>);
+    await expect(
+      materializer.materialize(
+        decodeAnchorEventLog(proposalAnchorEvent({ proposalAddress: publicKey(78) })),
+        context(7n, 78),
+      ),
+    ).rejects.toMatchObject({
+      code: 'account-mismatch',
+    } satisfies Partial<SolanaEventMaterializationError>);
+    await projection.apply(governanceEvents()[0] as ProtocolEvent);
+    await expect(
+      materializer.materialize(
+        decodeAnchorEventLog(proposalAnchorEvent({ configAddress: publicKey(79) })),
+        context(7n, 79),
+      ),
+    ).rejects.toMatchObject({
+      code: 'account-mismatch',
+    } satisfies Partial<SolanaEventMaterializationError>);
+  });
+});
+
+describe('governance projection', () => {
+  it('isolates identical identity, community, proposal, membership, and vote addresses by network', async () => {
+    const secondNetworkId = `woke:v1:${publicKey(140)}:${programId}` as NetworkId;
+    const projection = new MemoryProjectionStore();
+    const indexer = new OpenIndexer(
+      projection,
+      new ManifestVerifier(new MemoryContentAddressedStorage(), {
+        authorize: () => Promise.resolve(false),
+      }),
+    );
+    const firstNetworkEvents = governanceEvents();
+    const secondNetworkEvents = firstNetworkEvents.map((event) =>
+      moveEventToNetwork(event, secondNetworkId),
+    );
+
+    for (const event of [...firstNetworkEvents, ...secondNetworkEvents]) {
+      await expect(indexer.ingest(event)).resolves.toMatchObject({ applied: true });
+    }
+
+    const secondCreatorIdentityId = creatorIdentityId.replace(networkId, secondNetworkId);
+    await expect(projection.getIdentity(creatorIdentityId)).resolves.toMatchObject({
+      networkId,
+      identityAddress: creatorAddress,
+    });
+    await expect(projection.getIdentity(secondCreatorIdentityId)).resolves.toMatchObject({
+      networkId: secondNetworkId,
+      identityAddress: creatorAddress,
+    });
+    await expect(projection.getCommunity(networkId, communityAddress)).resolves.toMatchObject({
+      networkId,
+      communityAddress,
+    });
+    await expect(projection.getCommunity(secondNetworkId, communityAddress)).resolves.toMatchObject(
+      {
+        networkId: secondNetworkId,
+        communityAddress,
+      },
+    );
+    await expect(
+      projection.getCommunityMemberships(networkId, communityAddress),
+    ).resolves.toHaveLength(2);
+    await expect(
+      projection.getCommunityMemberships(secondNetworkId, communityAddress),
+    ).resolves.toHaveLength(2);
+    await expect(
+      projection.getGovernanceProposal(networkId, proposalAddress),
+    ).resolves.toMatchObject({ networkId, proposalAddress });
+    await expect(
+      projection.getGovernanceProposal(secondNetworkId, proposalAddress),
+    ).resolves.toMatchObject({ networkId: secondNetworkId, proposalAddress });
+    await expect(projection.getGovernanceVote(networkId, voteAddress)).resolves.toMatchObject({
+      networkId,
+      voteAddress,
+    });
+    await expect(projection.getGovernanceVote(secondNetworkId, voteAddress)).resolves.toMatchObject(
+      { networkId: secondNetworkId, voteAddress },
+    );
+  });
+
+  it('projects a lifecycle idempotently, serves lookups, and rebuilds deterministically', async () => {
+    const fixture = await fixtureThrough(9);
+    const proposal = await fixture.projection.getGovernanceProposal(networkId, proposalAddress);
+    const vote = await fixture.projection.getGovernanceVote(networkId, voteAddress);
+    expect(proposal).toMatchObject({
+      proposalAddress,
+      communityAddress,
+      proposerIdentityId: creatorIdentityId,
+      manifestVerified: false,
+      yesVotes: 1n,
+      noVotes: 0n,
+      abstainVotes: 0n,
+      stateSequence: 3n,
+      outcome: 'accepted',
+      participatingVotes: 1n,
+      decisiveVotes: 1n,
+      quorumMet: true,
+      approvalMet: true,
+      finalizedSlot: 12n,
+    });
+    expect(vote).toMatchObject({
+      voteAddress,
+      voterIdentityId,
+      proposalStateSequence: 2n,
+      choice: 'yes',
+      castSlot: 8n,
+    });
+    await expect(fixture.indexer.ingest(fixture.events[8] as ProtocolEvent)).resolves.toMatchObject(
+      { applied: false },
+    );
+
+    const app = await buildIndexerApp({ projection: fixture.projection, logger: false });
+    try {
+      const proposalResponse = await app.inject({
+        method: 'GET',
+        url: `/v1/governance/proposals/${proposalAddress}?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(proposalResponse.statusCode).toBe(200);
+      expect(proposalResponse.json()).toMatchObject({
+        canonical: false,
+        proposal: {
+          proposalAddress,
+          eligibleMemberCount: '2',
+          yesVotes: '1',
+          stateSequence: '3',
+          outcome: 'accepted',
+        },
+      });
+      const votesResponse = await app.inject({
+        method: 'GET',
+        url: `/v1/governance/proposals/${proposalAddress}/votes?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(votesResponse.statusCode).toBe(200);
+      expect(votesResponse.json()).toMatchObject({
+        canonical: false,
+        proposalAddress,
+        votes: [{ voteAddress, voterSequence: '1', proposalStateSequence: '2' }],
+      });
+      const voteResponse = await app.inject({
+        method: 'GET',
+        url: `/v1/governance/votes/${voteAddress}?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(voteResponse.statusCode).toBe(200);
+      const listResponse = await app.inject({
+        method: 'GET',
+        url: `/v1/communities/${communityAddress}/proposals?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(listResponse.statusCode).toBe(200);
+      expect(listResponse.json()).toMatchObject({
+        canonical: false,
+        proposals: [{ proposalAddress }],
+      });
+      const invalid = await app.inject({
+        method: 'GET',
+        url: `/v1/governance/proposals/not_base58!?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(invalid.statusCode).toBe(400);
+      const missingNetwork = await app.inject({
+        method: 'GET',
+        url: `/v1/governance/proposals/${proposalAddress}`,
+      });
+      expect(missingNetwork.statusCode).toBe(400);
+      const shortBase58 = await app.inject({
+        method: 'GET',
+        url: `/v1/governance/proposals/abc?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(shortBase58.statusCode).toBe(400);
+    } finally {
+      await app.close();
+    }
+
+    const before = stableJson({
+      proposal,
+      vote,
+      checkpoint: await fixture.projection.checkpoint(networkId),
+    });
+    const rebuilt = await fixture.indexer.rebuild(networkId, [...fixture.events].reverse());
+    expect(rebuilt).toHaveLength(9);
+    const after = stableJson({
+      proposal: await fixture.projection.getGovernanceProposal(networkId, proposalAddress),
+      vote: await fixture.projection.getGovernanceVote(networkId, voteAddress),
+      checkpoint: await fixture.projection.checkpoint(networkId),
+    });
+    expect(after).toBe(before);
+  });
+
+  it('rejects proposal count, sequence, identity, strategy, address, and manifest substitutions', async () => {
+    const fixture = await fixtureThrough(6);
+    const proposal = fixture.events[6] as ProposalCreatedEvent;
+    const variants: readonly ProposalCreatedEvent[] = [
+      {
+        ...proposal,
+        transactionSignature: signature(80),
+        eligibleMemberCount: 1n,
+      },
+      {
+        ...proposal,
+        transactionSignature: signature(81),
+        previousCommunitySequence: 2n,
+      },
+      {
+        ...proposal,
+        transactionSignature: signature(82),
+        proposerIdentityId: voterIdentityId,
+      },
+      {
+        ...proposal,
+        transactionSignature: signature(83),
+        governanceVersion: 2,
+      },
+      {
+        ...proposal,
+        transactionSignature: signature(84),
+        governanceStrategyHash: digest(84),
+      },
+      {
+        ...proposal,
+        transactionSignature: signature(85),
+        communityAddress: publicKey(85),
+      },
+      {
+        ...proposal,
+        transactionSignature: signature(86),
+        proposalAddress: publicKey(86),
+      },
+    ];
+    for (const variant of variants) {
+      await expect(fixture.indexer.ingest(variant)).rejects.toBeInstanceOf(Error);
+      await expect(
+        fixture.projection.getGovernanceProposal(networkId, proposalAddress),
+      ).resolves.toBeUndefined();
+      await expect(fixture.projection.checkpoint(networkId)).resolves.toBe(6n);
+    }
+
+    await expect(fixture.indexer.ingest(proposal)).resolves.toMatchObject({ applied: true });
+    const duplicateManifest: ProposalCreatedEvent = {
+      ...proposal,
+      transactionSignature: signature(87),
+      slot: 9n,
+      blockTime: blockTime(9n),
+      proposerSequence: 5n,
+      previousCommunitySequence: 4n,
+      opensAtSlot: 10n,
+      closesAtSlot: 14n,
+    };
+    await expect(fixture.indexer.ingest(duplicateManifest)).rejects.toMatchObject({
+      code: 'stale-event',
+    } satisfies Partial<ProjectionError>);
+  });
+
+  it('rolls back duplicate votes and every relationship, timing, sequence, and tally substitution', async () => {
+    const fixture = await fixtureThrough(7);
+    const vote = fixture.events[7] as VoteCastEvent;
+    const invalidVotes: readonly VoteCastEvent[] = [
+      {
+        ...vote,
+        transactionSignature: signature(90),
+        proposalAddress: publicKey(90),
+      },
+      {
+        ...vote,
+        transactionSignature: signature(91),
+        communityAddress: publicKey(91),
+      },
+      {
+        ...vote,
+        transactionSignature: signature(92),
+        voterIdentityId: creatorIdentityId,
+      },
+      {
+        ...vote,
+        transactionSignature: signature(93),
+        membershipAddress: creatorMembershipAddress,
+      },
+      {
+        ...vote,
+        transactionSignature: signature(94),
+        membershipStateSequence: 2n,
+      },
+      {
+        ...vote,
+        transactionSignature: signature(95),
+        proposalStateSequence: 3n,
+      },
+      {
+        ...vote,
+        transactionSignature: signature(96),
+        choice: 'no',
+      },
+      {
+        ...vote,
+        transactionSignature: signature(97),
+        noVotes: 1n,
+      },
+      {
+        ...vote,
+        transactionSignature: signature(98),
+        voteAddress: publicKey(98),
+      },
+      {
+        ...vote,
+        transactionSignature: signature(99),
+        slot: 12n,
+        blockTime: blockTime(12n),
+      },
+    ];
+    for (const invalidVote of invalidVotes) {
+      await expect(fixture.indexer.ingest(invalidVote)).rejects.toBeInstanceOf(Error);
+      await expect(
+        fixture.projection.getGovernanceVote(networkId, invalidVote.voteAddress),
+      ).resolves.toBeUndefined();
+      await expect(
+        fixture.projection.getGovernanceProposal(networkId, proposalAddress),
+      ).resolves.toMatchObject({
+        yesVotes: 0n,
+        noVotes: 0n,
+        abstainVotes: 0n,
+        stateSequence: 1n,
+      });
+      await expect(fixture.projection.checkpoint(networkId)).resolves.toBe(7n);
+    }
+
+    await expect(fixture.indexer.ingest(vote)).resolves.toMatchObject({ applied: true });
+    const duplicateVote: VoteCastEvent = {
+      ...vote,
+      transactionSignature: signature(100),
+      voterSequence: 2n,
+      proposalStateSequence: 3n,
+      noVotes: 1n,
+    };
+    await expect(fixture.indexer.ingest(duplicateVote)).rejects.toMatchObject({
+      code: 'stale-event',
+    } satisfies Partial<ProjectionError>);
+    await expect(
+      fixture.projection.getGovernanceVotesByProposal(networkId, proposalAddress),
+    ).resolves.toHaveLength(1);
+  });
+
+  it('rejects early, stale, substituted, arithmetically invalid, and duplicate finalization', async () => {
+    const fixture = await fixtureThrough(8);
+    const finalized = fixture.events[8] as ProposalFinalizedEvent;
+    const invalidFinalizations: readonly ProposalFinalizedEvent[] = [
+      {
+        ...finalized,
+        transactionSignature: signature(110),
+        slot: 11n,
+        blockTime: blockTime(11n),
+      },
+      {
+        ...finalized,
+        transactionSignature: signature(111),
+        proposalStateSequence: 4n,
+      },
+      {
+        ...finalized,
+        transactionSignature: signature(112),
+        communityAddress: publicKey(102),
+      },
+      {
+        ...finalized,
+        transactionSignature: signature(113),
+        eligibleMemberCount: 1n,
+      },
+      {
+        ...finalized,
+        transactionSignature: signature(114),
+        yesVotes: 0n,
+      },
+      {
+        ...finalized,
+        transactionSignature: signature(115),
+        quorumMet: false,
+      },
+      {
+        ...finalized,
+        transactionSignature: signature(116),
+        outcome: 'rejected',
+      },
+    ];
+    for (const invalidFinalization of invalidFinalizations) {
+      await expect(fixture.indexer.ingest(invalidFinalization)).rejects.toBeInstanceOf(Error);
+      await expect(
+        fixture.projection.getGovernanceProposal(networkId, proposalAddress),
+      ).resolves.toMatchObject({
+        stateSequence: 2n,
+        outcome: 'pending',
+      });
+      await expect(fixture.projection.checkpoint(networkId)).resolves.toBe(8n);
+    }
+
+    await expect(fixture.indexer.ingest(finalized)).resolves.toMatchObject({ applied: true });
+    await expect(
+      fixture.indexer.ingest({
+        ...finalized,
+        transactionSignature: signature(117),
+      }),
+    ).rejects.toMatchObject({
+      code: 'stale-event',
+    } satisfies Partial<ProjectionError>);
+  });
+});
+
+async function fixtureThrough(eventCount: number) {
+  const projection = new MemoryProjectionStore();
+  const indexer = new OpenIndexer(
+    projection,
+    new ManifestVerifier(new MemoryContentAddressedStorage(), {
+      authorize: () => Promise.resolve(false),
+    }),
+  );
+  const events = governanceEvents();
+  for (const event of events.slice(0, eventCount)) {
+    await indexer.ingest(event);
+  }
+  return { projection, indexer, events };
+}
+
+function governanceEvents(): readonly ProtocolEvent[] {
+  return [
+    {
+      ...base(1n, 1),
+      type: 'protocol-initialized',
+      configAddress,
+    },
+    {
+      ...base(2n, 2),
+      type: 'identity-created',
+      identityId: creatorIdentityId,
+      identityAddress: creatorAddress,
+      rootAuthority: creatorAuthority,
+    },
+    {
+      ...base(3n, 3),
+      type: 'identity-created',
+      identityId: voterIdentityId,
+      identityAddress: voterAddress,
+      rootAuthority: voterAuthority,
+    },
+    {
+      ...base(4n, 4),
+      type: 'community-created',
+      communityAddress,
+      creatorIdentityId,
+      authority: creatorAuthority,
+      creatorSequence: 1n,
+      manifestCid: fakeCid(),
+      manifestHash: digest(20),
+      governanceVersion: 1,
+      governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
+    },
+    {
+      ...base(5n, 5),
+      type: 'community-membership-changed',
+      communityAddress,
+      membershipAddress: creatorMembershipAddress,
+      memberIdentityId: creatorIdentityId,
+      assignedByIdentityId: creatorIdentityId,
+      authority: creatorAuthority,
+      authoritySequence: 2n,
+      membershipStateSequence: 1n,
+      roles: 1,
+      active: true,
+    },
+    {
+      ...base(6n, 6),
+      type: 'community-membership-changed',
+      communityAddress,
+      membershipAddress: voterMembershipAddress,
+      memberIdentityId: voterIdentityId,
+      assignedByIdentityId: creatorIdentityId,
+      authority: creatorAuthority,
+      authoritySequence: 3n,
+      membershipStateSequence: 1n,
+      roles: 1,
+      active: true,
+    },
+    {
+      ...base(7n, 7),
+      type: 'proposal-created',
+      communityAddress,
+      proposalAddress,
+      proposerIdentityId: creatorIdentityId,
+      authority: creatorAuthority,
+      proposerSequence: 4n,
+      previousCommunitySequence: 3n,
+      manifestHash: proposalManifestHash,
+      manifestUri: 'local://proposal-one',
+      governanceVersion: 1,
+      governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
+      votingModel: 'one-active-member-one-vote',
+      eligibleMemberCount: 2n,
+      opensAtSlot: 8n,
+      closesAtSlot: 12n,
+      quorumBps: GOVERNANCE_QUORUM_BPS,
+      approvalBps: GOVERNANCE_APPROVAL_BPS,
+      proposalStateSequence: 1n,
+    },
+    {
+      ...base(8n, 8),
+      type: 'vote-cast',
+      communityAddress,
+      proposalAddress,
+      voteAddress,
+      voterIdentityId,
+      membershipAddress: voterMembershipAddress,
+      authority: voterAuthority,
+      voterSequence: 1n,
+      membershipStateSequence: 1n,
+      proposalStateSequence: 2n,
+      choice: 'yes',
+      yesVotes: 1n,
+      noVotes: 0n,
+      abstainVotes: 0n,
+    },
+    {
+      ...base(12n, 9),
+      type: 'proposal-finalized',
+      communityAddress,
+      proposalAddress,
+      finalizer: creatorAuthority,
+      proposalStateSequence: 3n,
+      eligibleMemberCount: 2n,
+      yesVotes: 1n,
+      noVotes: 0n,
+      abstainVotes: 0n,
+      participatingVotes: 1n,
+      decisiveVotes: 1n,
+      quorumBps: GOVERNANCE_QUORUM_BPS,
+      approvalBps: GOVERNANCE_APPROVAL_BPS,
+      quorumMet: true,
+      approvalMet: true,
+      outcome: 'accepted',
+    },
+  ];
+}
+
+function moveEventToNetwork(event: ProtocolEvent, targetNetworkId: NetworkId): ProtocolEvent {
+  return Object.fromEntries(
+    Object.entries(event).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? value.replace(networkId, targetNetworkId) : value,
+    ]),
+  ) as unknown as ProtocolEvent;
+}
+
+function base(slot: bigint, seed: number) {
+  return {
+    networkId,
+    programId,
+    transactionSignature: signature(seed),
+    transactionIndex: seed,
+    slot,
+    logIndex: 0,
+    blockTime: blockTime(slot),
+    finalized: true as const,
+  };
+}
+
+function blockTime(slot: bigint): string {
+  return new Date(Date.UTC(2026, 6, 28, 16, 0, Number(slot))).toISOString();
+}
+
+function context(slot: bigint, seed: number) {
+  return {
+    networkId,
+    programId,
+    transactionSignature: signature(seed),
+    transactionIndex: seed,
+    slot,
+    logIndex: 0,
+    blockTime: Date.parse(blockTime(slot)) / 1_000,
+  };
+}
+
+function proposalAnchorEvent(
+  overrides: {
+    readonly eventVersion?: number;
+    readonly votingModel?: number;
+    readonly quorumBps?: number;
+    readonly configAddress?: string;
+    readonly proposalAddress?: string;
+  } = {},
+): string {
+  return eventData(
+    SOCIAL_PROTOCOL_EVENT_LAYOUT.events.ProposalCreated,
+    u16(overrides.eventVersion ?? 1),
+    pubkey(overrides.configAddress ?? configAddress),
+    pubkey(communityAddress),
+    pubkey(overrides.proposalAddress ?? proposalAddress),
+    pubkey(creatorAddress),
+    pubkey(creatorAuthority),
+    u64(4n),
+    u64(3n),
+    bytes(32, 30),
+    borshString('local://proposal-one'),
+    u16(1),
+    strategyBytes,
+    Uint8Array.of(overrides.votingModel ?? 0),
+    u64(2n),
+    u64(8n),
+    u64(12n),
+    u16(overrides.quorumBps ?? GOVERNANCE_QUORUM_BPS),
+    u16(GOVERNANCE_APPROVAL_BPS),
+    u64(1n),
+    u64(7n),
+  );
+}
+
+function voteAnchorEvent(): string {
+  return eventData(
+    SOCIAL_PROTOCOL_EVENT_LAYOUT.events.VoteCast,
+    u16(1),
+    pubkey(configAddress),
+    pubkey(communityAddress),
+    pubkey(proposalAddress),
+    pubkey(voteAddress),
+    pubkey(voterAddress),
+    pubkey(voterMembershipAddress),
+    pubkey(voterAuthority),
+    u64(1n),
+    u64(1n),
+    u64(2n),
+    Uint8Array.of(0),
+    u64(1n),
+    u64(0n),
+    u64(0n),
+    u64(8n),
+  );
+}
+
+function finalizedAnchorEvent(overrides: { readonly outcome?: number } = {}): string {
+  return eventData(
+    SOCIAL_PROTOCOL_EVENT_LAYOUT.events.ProposalFinalized,
+    u16(1),
+    pubkey(configAddress),
+    pubkey(communityAddress),
+    pubkey(proposalAddress),
+    pubkey(creatorAuthority),
+    u64(3n),
+    u64(2n),
+    u64(1n),
+    u64(0n),
+    u64(0n),
+    u64(1n),
+    u64(1n),
+    u16(GOVERNANCE_QUORUM_BPS),
+    u16(GOVERNANCE_APPROVAL_BPS),
+    Uint8Array.of(1),
+    Uint8Array.of(1),
+    Uint8Array.of(overrides.outcome ?? 1),
+    u64(12n),
+  );
+}
+
+function eventData(discriminator: readonly number[], ...fields: readonly Uint8Array[]): string {
+  return Buffer.concat([
+    Buffer.from(discriminator),
+    ...fields.map((field) => Buffer.from(field)),
+  ]).toString('base64');
+}
+
+function u16(value: number): Uint8Array {
+  const result = new Uint8Array(2);
+  new DataView(result.buffer).setUint16(0, value, true);
+  return result;
+}
+
+function u64(value: bigint): Uint8Array {
+  const result = new Uint8Array(8);
+  new DataView(result.buffer).setBigUint64(0, value, true);
+  return result;
+}
+
+function borshString(value: string): Uint8Array {
+  const encoded = Buffer.from(value, 'utf8');
+  const result = new Uint8Array(4 + encoded.byteLength);
+  new DataView(result.buffer).setUint32(0, encoded.byteLength, true);
+  result.set(encoded, 4);
+  return result;
+}
+
+function pubkey(value: string): Uint8Array {
+  return bs58.decode(value);
+}
+
+function signature(seed: number): string {
+  return bs58.encode(bytes(64, seed));
+}
+
+function publicKey(seed: number): string {
+  return bs58.encode(bytes(32, seed));
+}
+
+function digest(seed: number): string {
+  return encodeMultibaseBase64Url(bytes(32, seed));
+}
+
+function bytes(length: number, seed: number): Uint8Array {
+  return Uint8Array.from({ length }, (_, index) => (seed + index) % 256);
+}
+
+function fakeCid(): string {
+  return `b${'a'.repeat(58)}`;
+}
+
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    typeof item === 'bigint' ? item.toString() : item,
+  );
+}
