@@ -2,7 +2,7 @@
 
 ## Our commitment
 
-Socially Woke is explicitly LGBTQ+ affirming and open to anyone who follows its community and
+WokeSocial is explicitly LGBTQ+ affirming and open to anyone who follows its community and
 safety standards. We are committed to a harassment-free experience regardless of gender
 identity or expression, sexual orientation, sex characteristics, race, ethnicity, disability,
 age, body size, religion, nationality, caste, pregnancy, family structure, socioeconomic

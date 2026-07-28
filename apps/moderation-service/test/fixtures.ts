@@ -6,22 +6,22 @@ import {
   type ModerationSubject,
   type ObjectReference,
   type SignedEnvelope,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 import {
   createProtocolFixtureSet,
   FIXTURE_CREATED_AT,
   type FixtureParticipant,
-} from '@socially-woke/test-fixtures';
+} from '@wokesocial/test-fixtures';
 
 const fixtures = createProtocolFixtureSet();
 export const alice = fixtures.participants.alice;
 export const bob = fixtures.participants.bob;
 export const postReference: ObjectReference = { id: fixtures.manifests.alicePost.objectId };
 export const alternatePostReference: ObjectReference = {
-  id: `swobj:v1:post:u${'B'.repeat(43)}`,
+  id: `wokesocialobj:v1:post:u${'B'.repeat(43)}`,
 };
 export const policyReference: ObjectReference = {
-  id: `swobj:v1:community-rule-set:u${'C'.repeat(43)}`,
+  id: `wokesocialobj:v1:community-rule-set:u${'C'.repeat(43)}`,
 };
 export const postSubject: ModerationSubject = {
   kind: 'object',

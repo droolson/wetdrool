@@ -1,10 +1,10 @@
 export const authOpenApiDocument = {
   openapi: '3.1.0',
   info: {
-    title: 'Socially Woke Replaceable Authentication API',
+    title: 'WokeSocial Replaceable Authentication API',
     version: '0.1.0',
     description:
-      'Passkey account authentication and opaque encrypted key-bundle synchronization. This service never becomes a Socially Woke protocol identity or signing authority.',
+      'Passkey account authentication and atomic opaque key-wrapper custody. This service never becomes a WokeSocial protocol identity or signing authority.',
   },
   paths: {
     '/healthz': {
@@ -27,8 +27,13 @@ export const authOpenApiDocument = {
     },
     '/v1/csrf': {
       get: {
-        summary: 'Issue a host-bound double-submit CSRF token',
-        responses: { '200': { description: 'CSRF token and Strict host-only cookie' } },
+        summary: 'Issue or recover a host-bound double-submit CSRF token',
+        responses: {
+          '200': {
+            description:
+              'Existing session-bound token, or a bootstrap token with a Strict host-only cookie',
+          },
+        },
       },
     },
     '/v1/registration/options': {
@@ -39,9 +44,14 @@ export const authOpenApiDocument = {
     },
     '/v1/registration/verify': {
       post: {
-        summary: 'Consume and verify a new-account registration ceremony',
+        summary: 'Atomically verify a new passkey and its encrypted root wrapper',
+        description:
+          'The required ciphertext wrapper is credential-bound and commits in the same transaction as the verified credential. PRF output and plaintext keys are forbidden.',
         responses: {
-          '201': { description: 'Credential registered and authenticated session issued' },
+          '201': {
+            description:
+              'Credential and ciphertext root wrapper committed; authenticated session issued',
+          },
           '400': { description: 'Invalid or failed one-time ceremony' },
           '409': { description: 'Credential ID already registered' },
         },
@@ -97,9 +107,12 @@ export const authOpenApiDocument = {
     },
     '/v1/credentials/registration/verify': {
       post: {
-        summary: 'Verify and add another passkey after fresh step-up',
+        summary: 'Atomically add a passkey wrapping the existing account root',
+        description:
+          'The required credential-bound ciphertext wrapper must declare the same root public key as the account’s existing active passkey wrappers.',
         responses: {
-          '201': { description: 'Additional credential registered' },
+          '201': { description: 'Additional credential and matching root wrapper committed' },
+          '400': { description: 'Malformed, misbound, or mismatched root wrapper' },
           '409': { description: 'Duplicate credential ID' },
         },
       },
@@ -122,20 +135,6 @@ export const authOpenApiDocument = {
       get: {
         summary: 'List opaque encrypted key bundles after authentication',
         responses: { '200': { description: 'Ciphertext bundles only' } },
-      },
-    },
-    '/v1/key-bundles/{credentialId}': {
-      put: {
-        summary: 'Synchronize one credential-bound ciphertext bundle',
-        description:
-          'PRF results, plaintext seeds, and private keys are rejected. The server validates only the opaque @socially-woke/crypto bundle.',
-        parameters: [
-          { name: 'credentialId', in: 'path', required: true, schema: { type: 'string' } },
-        ],
-        responses: {
-          '200': { description: 'Ciphertext synchronized' },
-          '400': { description: 'Malformed or misbound bundle' },
-        },
       },
     },
     '/v1/session': {

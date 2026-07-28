@@ -7,7 +7,8 @@
 ## Context
 
 The canonical public domain changed from `sociallywoke.com` to `woke.social`
-before any native Woke public network, public account, or production WebAuthn deployment.
+before any native WokeNet public network, public account, or production
+WebAuthn deployment.
 The prior hostname appeared not only in web metadata but also in portable-object
 and relay cryptographic domain separators. Treating the two names as
 interchangeable would create ambiguous signatures, topics, cookies, and relying
@@ -15,11 +16,11 @@ party authority.
 
 ## Decision
 
-`https://woke.social` is the sole canonical flagship origin. The bare and `www`
-forms of `sociallywoke.com` are discovery redirects only. They issue a permanent,
-path/query-preserving redirect to `https://woke.social` and never serve a second
-application, establish sessions, set application cookies, or act as WebAuthn
-origins.
+`https://woke.social` is the sole canonical flagship origin.
+`sociallywoke.com` and `www.sociallywoke.com` are discovery redirects only. They
+issue a permanent, path/query-preserving redirect to `https://woke.social` and
+never serve a second application, establish sessions, set application cookies,
+or act as WebAuthn origins.
 
 The application proxy compares an exact, syntactically bounded HTTP `Host`
 value because a production Next.js server can normalize `request.nextUrl` to
@@ -32,17 +33,23 @@ Production WebAuthn uses RP ID `woke.social` and exact expected origin
 hosts remain separate deployments and are never silently rewritten to the
 flagship origin.
 
-The pre-release cryptographic namespaces move in the same change:
+WokeSocial and WokeNet are prelaunch names, not old-brand exceptions frozen
+into the wire protocol. Platform and chain identifiers move in the same change:
 
+- portable objects declare protocol `wokesocial`;
+- network identifiers use `wokenet:v1:<genesis-hash>:<program-id>`;
 - portable signed objects use `woke.social/protocol/signed-object`;
 - the v1 JSON Schema identifier is hosted below `https://woke.social/`;
 - relay topics use `woke.social/relay/topic/v1`; and
 - relay signed envelopes use `woke.social/relay/signed-envelope`.
 
-There is no compatibility alias for the old separators. Objects signed under
-the experimental old domain are rejected and regenerated because accepting two
-domains under one version would weaken domain separation. This is permissible
-only because no public release or durable public deployment exists.
+There is no compatibility alias for superseded prelaunch identifiers or
+separators. Objects signed under the experimental superseded domain are
+rejected and regenerated because accepting two domains under one version would
+weaken domain separation. This is permissible only because no public release
+or durable public deployment exists. The two redirect hostnames are the only
+retained legacy names; neither is a protocol, package, network, command, or
+environment namespace.
 
 ## Consequences
 
@@ -61,8 +68,9 @@ only because no public release or durable public deployment exists.
 
 ## Rejected alternatives
 
-- **Keep old cryptographic namespaces indefinitely:** contradicts the canonical
-  product identity before first release and creates permanent legacy surface.
+- **Keep superseded cryptographic namespaces indefinitely:** contradicts the
+  canonical product identity before first release and creates permanent legacy
+  surface.
 - **Accept both domains in v1 verification:** introduces signature ambiguity and
   downgrade behavior.
 - **Serve the application on both domains:** splits cookies, CSP/CORS policy,

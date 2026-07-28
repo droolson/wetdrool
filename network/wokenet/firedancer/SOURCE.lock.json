@@ -15,15 +15,15 @@
     }
   },
   "downstream": {
-    "name": "Woke Network Firedancer",
-    "versionMarker": "Woke Network Firedancer downstream-v1",
+    "name": "WokeNet Firedancer",
+    "versionMarker": "WokeNet Firedancer downstream-v1",
     "validatorBinary": "firedancer",
     "developmentBinary": "firedancer-dev",
     "forbiddenRuntimeBinaries": ["agave-validator", "fdctl", "fddev", "solana-test-validator"],
     "patches": [
       {
         "path": "patches/0001-explicit-sovereign-genesis-allocations.patch",
-        "sha256": "ad9c538b5679460ff602f000c7d9c7f7bcc18a8796b3b5404a1dae655855130b"
+        "sha256": "7d1f6419c7325cdfbe777df740a0f5708f1de510d3b4e650a4e9483982767806"
       }
     ]
   }

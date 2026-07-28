@@ -1,13 +1,13 @@
 # Open indexer
 
-The indexer is a replaceable, non-canonical projection of finalized Woke
-Network Solana-format events. It validates the configured genesis hash and
+The indexer is a replaceable, non-canonical projection of finalized WokeNet
+Solana-format events. It validates the configured genesis hash and
 program, decodes the generated Anchor IDL event surface, verifies portable
 manifests, and stores deterministic query models in PostgreSQL.
 
 ## Event compatibility
 
-`pnpm --filter @socially-woke/indexer check:anchor-events` compares the checked-in production
+`pnpm --filter @wokesocial/indexer check:anchor-events` compares the checked-in production
 decoder with `target/idl/social_protocol.json`. The check is exhaustive: the event-name set,
 all 32 discriminators, every field in order, and enum variants must match. A new, removed, or
 changed event fails the check. The six recovery event layouts and `RecoveryRequestState` variants
@@ -71,7 +71,7 @@ remain the replay source.
 
 Recovery rows are convenience views, never authorization decisions. In particular, projected
 `pending` means only that no terminal event has been observed; it does not mean the request is
-currently executable. Clients must read the Woke Network identity, policy, and
+currently executable. Clients must read the WokeNet identity, policy, and
 request accounts before signing or submitting recovery transactions.
 
 Migration `0008_network_scoped_solana_addresses.sql` upgrades every projection
@@ -82,7 +82,7 @@ address on networks with different genesis hashes without colliding. Legacy
 rows receive their network from their owning identity or community during the
 forward migration. Raw-address API lookups require both an exact 32-byte base58
 public key and an explicit canonical
-`woke:v1:{genesis}:{program}` network identifier.
+`wokenet:v1:{genesis}:{program}` network identifier.
 
 Migration `0009_network_scoped_identity_references.sql` binds each identity ID to its network and
 address and replaces projection-table identity references with composite `(network_id, identity_id)`
@@ -138,5 +138,5 @@ In addition to verified feed and post routes, the service exposes replaceable pr
 - `GET /v1/payments/receipts/{receiptAddress}?network=...`
 - `GET /v1/payments/entitlements/{entitlementAddress}?network=...`
 
-Every response is convenience state. Woke Network accounts, signed portable
+Every response is convenience state. WokeNet accounts, signed portable
 objects, and finalized receipts remain the independently verifiable sources.

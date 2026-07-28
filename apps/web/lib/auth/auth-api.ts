@@ -1,8 +1,9 @@
-import type { PasskeyWrappedKeyBundle } from '@socially-woke/crypto';
+import type { PasskeyWrappedKeyBundle } from '@wokesocial/crypto';
 
-import type {
-  AuthenticationResponseForServer,
-  RegistrationResponseForServer,
+import {
+  decodeBase64Url,
+  type AuthenticationResponseForServer,
+  type RegistrationResponseForServer,
 } from './passkey-codec';
 import { BrowserAuthError } from './errors';
 
@@ -12,6 +13,15 @@ const CEREMONY_ID_PATTERN = /^cer_[A-Za-z0-9_-]{22}$/u;
 const CREDENTIAL_ID_PATTERN = /^[A-Za-z0-9_-]{2,1364}$/u;
 const LEGACY_REDIRECT_HOSTS = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{22,86}$/u;
+const AUTHENTICATOR_TRANSPORTS = new Set([
+  'ble',
+  'cable',
+  'hybrid',
+  'internal',
+  'nfc',
+  'smart-card',
+  'usb',
+]);
 
 export interface TokenStorage {
   getItem(key: string): string | null;
@@ -30,9 +40,24 @@ export interface AuthenticationOptionsResult {
   readonly options: PublicKeyCredentialRequestOptionsJSON;
 }
 
+export interface AdditionalRegistrationOptionsResult {
+  readonly ceremonyId: string;
+  readonly options: PublicKeyCredentialCreationOptionsJSON;
+}
+
 export interface VerifiedSessionResult {
   readonly accountId: string;
   readonly credentialId: string;
+}
+
+export interface PasskeyCredentialView {
+  readonly credentialId: string;
+  readonly transports: readonly string[];
+  readonly deviceType: 'multiDevice' | 'singleDevice';
+  readonly backedUp: boolean;
+  readonly createdAt: string;
+  readonly lastUsedAt?: string;
+  readonly revokedAt?: string;
 }
 
 export interface AuthSessionView {
@@ -59,14 +84,20 @@ export class AuthApiClient {
   readonly #fetch: typeof globalThis.fetch;
   readonly #storage: TokenStorage;
   readonly #storageKey: string;
+  #accountId: string | undefined;
   #csrfToken: string | undefined;
 
   constructor(options: AuthApiClientOptions) {
     this.baseUrl = normalizeBaseUrl(options.baseUrl);
     this.#fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.#storage = options.tokenStorage ?? browserSessionStorage();
-    this.#storageKey = `socially-woke.auth.csrf.${CSRF_STORAGE_VERSION}:${encodeURIComponent(this.baseUrl)}`;
-    const stored = this.#storage.getItem(this.#storageKey);
+    this.#storageKey = `wokesocial.auth.csrf.${CSRF_STORAGE_VERSION}:${encodeURIComponent(this.baseUrl)}`;
+    let stored: string | null = null;
+    try {
+      stored = this.#storage.getItem(this.#storageKey);
+    } catch {
+      // Web Storage can be denied even when passkeys and cookies remain usable.
+    }
     this.#csrfToken = stored !== null && TOKEN_PATTERN.test(stored) ? stored : undefined;
   }
 
@@ -89,11 +120,13 @@ export class AuthApiClient {
     readonly accountId: string;
     readonly ceremonyId: string;
     readonly response: RegistrationResponseForServer;
+    readonly bundle: PasskeyWrappedKeyBundle;
   }): Promise<VerifiedSessionResult> {
     const value = await this.#mutationJson('/v1/registration/verify', {
       accountId: input.accountId,
       ceremonyId: input.ceremonyId,
       response: input.response,
+      bundle: ciphertextBundle(input.bundle),
     });
     return this.#verifiedSession(value);
   }
@@ -123,16 +156,104 @@ export class AuthApiClient {
     return this.#verifiedSession(value);
   }
 
+  async stepUpOptions(): Promise<AuthenticationOptionsResult> {
+    const value = await this.#mutationJson('/v1/step-up/options', {});
+    const record = objectValue(value);
+    return {
+      ceremonyId: stringValue(record['ceremonyId'], CEREMONY_ID_PATTERN),
+      options: requestOptionsValue(record['options']),
+    };
+  }
+
+  async verifyStepUp(input: {
+    readonly ceremonyId: string;
+    readonly response: AuthenticationResponseForServer;
+  }): Promise<PasskeyCredentialView> {
+    const value = await this.#mutationJson('/v1/step-up/verify', {
+      ceremonyId: input.ceremonyId,
+      response: input.response,
+    });
+    const record = objectValue(value);
+    if (record['stepUp'] !== 'verified') {
+      throw new BrowserAuthError('server-invalid');
+    }
+    const credential = credentialValue(record['credential']);
+    this.#setCsrf(stringValue(record['csrfToken'], TOKEN_PATTERN));
+    return credential;
+  }
+
+  async credentials(): Promise<readonly PasskeyCredentialView[]> {
+    const value = await this.#json('/v1/credentials', { method: 'GET' });
+    const record = objectValue(value);
+    this.#rememberAccount(stringValue(record['accountId'], ACCOUNT_ID_PATTERN));
+    if (!Array.isArray(record['credentials'])) {
+      throw new BrowserAuthError('server-invalid');
+    }
+    return record['credentials'].map(credentialValue);
+  }
+
+  async additionalRegistrationOptions(): Promise<AdditionalRegistrationOptionsResult> {
+    const value = await this.#mutationJson('/v1/credentials/registration/options', {});
+    const record = objectValue(value);
+    return {
+      ceremonyId: stringValue(record['ceremonyId'], CEREMONY_ID_PATTERN),
+      options: creationOptionsValue(record['options']),
+    };
+  }
+
+  async verifyAdditionalRegistration(input: {
+    readonly ceremonyId: string;
+    readonly response: RegistrationResponseForServer;
+    readonly bundle: PasskeyWrappedKeyBundle;
+  }): Promise<PasskeyCredentialView> {
+    const value = await this.#mutationJson('/v1/credentials/registration/verify', {
+      ceremonyId: input.ceremonyId,
+      response: input.response,
+      bundle: ciphertextBundle(input.bundle),
+    });
+    return credentialValue(objectValue(value)['credential']);
+  }
+
+  async revokeCredential(credentialId: string): Promise<PasskeyCredentialView> {
+    if (!CREDENTIAL_ID_PATTERN.test(credentialId)) {
+      throw new BrowserAuthError('credential-invalid');
+    }
+    const value = await this.#mutationJson(
+      `/v1/credentials/${encodeURIComponent(credentialId)}`,
+      undefined,
+      'DELETE',
+    );
+    const record = objectValue(value);
+    if (
+      record['synchronizedWrappersDeleted'] !== true ||
+      record['sessionsRevoked'] !== true ||
+      record['onchainDelegationRevocationRequiredSeparately'] !== true
+    ) {
+      throw new BrowserAuthError('server-invalid');
+    }
+    const credential = credentialValue(record['credential']);
+    if (credential.credentialId !== credentialId || credential.revokedAt === undefined) {
+      throw new BrowserAuthError('server-invalid');
+    }
+    this.#clearCsrf();
+    return credential;
+  }
+
   async session(): Promise<AuthSessionView | undefined> {
     const response = await this.#request('/v1/session', { method: 'GET' });
-    if (response.status === 401) return undefined;
+    if (response.status === 401) {
+      this.#accountId = undefined;
+      return undefined;
+    }
     const value = await responseJson(response);
     if (!response.ok) throw serviceError();
     const record = objectValue(value);
     const session = objectValue(record['session']);
     const stepUpAt = optionalDateString(session['stepUpAt']);
+    const accountId = stringValue(record['accountId'], ACCOUNT_ID_PATTERN);
+    this.#rememberAccount(accountId);
     return {
-      accountId: stringValue(record['accountId'], ACCOUNT_ID_PATTERN),
+      accountId,
       expiresAt: dateString(session['expiresAt']),
       lastAuthenticatedAt: dateString(session['lastAuthenticatedAt']),
       ...(stepUpAt === undefined ? {} : { stepUpAt }),
@@ -140,7 +261,7 @@ export class AuthApiClient {
   }
 
   async logout(): Promise<void> {
-    const csrfToken = this.#requiredCsrf();
+    const csrfToken = await this.#csrfForMutation();
     const response = await this.#request('/v1/logout', {
       method: 'POST',
       headers: mutationHeaders(csrfToken),
@@ -153,29 +274,10 @@ export class AuthApiClient {
     this.#clearCsrf();
   }
 
-  async synchronizeBundle(credentialId: string, bundle: PasskeyWrappedKeyBundle): Promise<void> {
-    if (!CREDENTIAL_ID_PATTERN.test(credentialId)) {
-      throw new BrowserAuthError('credential-invalid');
-    }
-    const value = await this.#mutationJson(
-      `/v1/key-bundles/${encodeURIComponent(credentialId)}`,
-      { bundle: ciphertextBundle(bundle) },
-      'PUT',
-    );
-    const record = objectValue(value);
-    if (
-      record['credentialId'] !== credentialId ||
-      record['ciphertextOnly'] !== true ||
-      record['keyKind'] !== bundle.keyKind ||
-      record['publicKey'] !== bundle.publicKey
-    ) {
-      throw new BrowserAuthError('server-invalid');
-    }
-  }
-
   async bundles(): Promise<readonly SynchronizedBundle[]> {
     const value = await this.#json('/v1/key-bundles', { method: 'GET' });
     const record = objectValue(value);
+    this.#rememberAccount(stringValue(record['accountId'], ACCOUNT_ID_PATTERN));
     if (record['ciphertextOnly'] !== true || !Array.isArray(record['bundles'])) {
       throw new BrowserAuthError('server-invalid');
     }
@@ -191,12 +293,17 @@ export class AuthApiClient {
 
   #verifiedSession(value: unknown): VerifiedSessionResult {
     const record = objectValue(value);
-    const credential = objectValue(record['credential']);
+    const credential = credentialValue(record['credential']);
+    if (credential.revokedAt !== undefined) {
+      throw new BrowserAuthError('server-invalid');
+    }
     const csrfToken = stringValue(record['csrfToken'], TOKEN_PATTERN);
     this.#setCsrf(csrfToken);
+    const accountId = stringValue(record['accountId'], ACCOUNT_ID_PATTERN);
+    this.#rememberAccount(accountId);
     return {
-      accountId: stringValue(record['accountId'], ACCOUNT_ID_PATTERN),
-      credentialId: stringValue(credential['credentialId'], CREDENTIAL_ID_PATTERN),
+      accountId,
+      credentialId: credential.credentialId,
     };
   }
 
@@ -210,12 +317,12 @@ export class AuthApiClient {
   async #mutationJson(
     path: string,
     body: unknown,
-    method: 'POST' | 'PUT' = 'POST',
+    method: 'DELETE' | 'POST' = 'POST',
   ): Promise<unknown> {
     return this.#json(path, {
       method,
-      headers: mutationHeaders(this.#requiredCsrf()),
-      body: JSON.stringify(body),
+      headers: mutationHeaders(await this.#csrfForMutation()),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   }
 
@@ -241,21 +348,34 @@ export class AuthApiClient {
     }
   }
 
-  #requiredCsrf(): string {
-    if (this.#csrfToken === undefined) {
-      throw new BrowserAuthError('csrf-unavailable');
-    }
-    return this.#csrfToken;
+  async #csrfForMutation(): Promise<string> {
+    return this.#csrfToken ?? this.#bootstrapCsrf();
   }
 
   #setCsrf(token: string): void {
     this.#csrfToken = token;
-    this.#storage.setItem(this.#storageKey, token);
+    try {
+      this.#storage.setItem(this.#storageKey, token);
+    } catch {
+      // In-memory CSRF state remains authoritative for this page lifetime.
+    }
   }
 
   #clearCsrf(): void {
     this.#csrfToken = undefined;
-    this.#storage.removeItem(this.#storageKey);
+    this.#accountId = undefined;
+    try {
+      this.#storage.removeItem(this.#storageKey);
+    } catch {
+      // Revocation/logout already completed; storage denial must not mask it.
+    }
+  }
+
+  #rememberAccount(accountId: string): void {
+    if (this.#accountId !== undefined && this.#accountId !== accountId) {
+      throw new BrowserAuthError('server-invalid');
+    }
+    this.#accountId = accountId;
   }
 }
 
@@ -320,13 +440,24 @@ function creationOptionsValue(value: unknown): PublicKeyCredentialCreationOption
   const record = objectValue(value);
   const user = objectValue(record['user']);
   const relyingParty = objectValue(record['rp']);
+  const selection = objectValue(record['authenticatorSelection']);
+  const parameters = record['pubKeyCredParams'];
   if (
-    typeof record['challenge'] !== 'string' ||
-    typeof user['id'] !== 'string' ||
-    typeof user['name'] !== 'string' ||
-    typeof user['displayName'] !== 'string' ||
-    typeof relyingParty['name'] !== 'string' ||
-    !Array.isArray(record['pubKeyCredParams'])
+    !canonicalBase64Url(record['challenge'], 1_024) ||
+    !canonicalBase64Url(user['id'], 64) ||
+    !nonEmptyString(user['name'], 256) ||
+    !nonEmptyString(user['displayName'], 256) ||
+    !nonEmptyString(relyingParty['name'], 256) ||
+    !nonEmptyString(relyingParty['id'], 253) ||
+    record['attestation'] !== 'none' ||
+    selection['residentKey'] !== 'required' ||
+    selection['requireResidentKey'] !== true ||
+    selection['userVerification'] !== 'required' ||
+    !Array.isArray(parameters) ||
+    parameters.length === 0 ||
+    !parameters.every(validPublicKeyParameter) ||
+    !validCredentialDescriptors(record['excludeCredentials']) ||
+    !validTimeout(record['timeout'])
   ) {
     throw new BrowserAuthError('server-invalid');
   }
@@ -336,8 +467,11 @@ function creationOptionsValue(value: unknown): PublicKeyCredentialCreationOption
 function requestOptionsValue(value: unknown): PublicKeyCredentialRequestOptionsJSON {
   const record = objectValue(value);
   if (
-    typeof record['challenge'] !== 'string' ||
-    (record['allowCredentials'] !== undefined && !Array.isArray(record['allowCredentials']))
+    !canonicalBase64Url(record['challenge'], 1_024) ||
+    !nonEmptyString(record['rpId'], 253) ||
+    record['userVerification'] !== 'required' ||
+    !validCredentialDescriptors(record['allowCredentials']) ||
+    !validTimeout(record['timeout'])
   ) {
     throw new BrowserAuthError('server-invalid');
   }
@@ -359,7 +493,11 @@ function stringValue(value: unknown, pattern: RegExp): string {
 }
 
 function dateString(value: unknown): string {
-  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
+  if (
+    typeof value !== 'string' ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
     throw new BrowserAuthError('server-invalid');
   }
   return value;
@@ -367,6 +505,88 @@ function dateString(value: unknown): string {
 
 function optionalDateString(value: unknown): string | undefined {
   return value === null || value === undefined ? undefined : dateString(value);
+}
+
+function credentialValue(value: unknown): PasskeyCredentialView {
+  const credential = objectValue(value);
+  const transports = credential['transports'];
+  const deviceType = credential['deviceType'];
+  if (
+    !Array.isArray(transports) ||
+    !transports.every(
+      (transport) => typeof transport === 'string' && AUTHENTICATOR_TRANSPORTS.has(transport),
+    ) ||
+    new Set(transports).size !== transports.length ||
+    (deviceType !== 'multiDevice' && deviceType !== 'singleDevice') ||
+    typeof credential['backedUp'] !== 'boolean'
+  ) {
+    throw new BrowserAuthError('server-invalid');
+  }
+  const lastUsedAt = optionalDateString(credential['lastUsedAt']);
+  const revokedAt = optionalDateString(credential['revokedAt']);
+  return {
+    credentialId: stringValue(credential['credentialId'], CREDENTIAL_ID_PATTERN),
+    transports,
+    deviceType,
+    backedUp: credential['backedUp'],
+    createdAt: dateString(credential['createdAt']),
+    ...(lastUsedAt === undefined ? {} : { lastUsedAt }),
+    ...(revokedAt === undefined ? {} : { revokedAt }),
+  };
+}
+
+function canonicalBase64Url(value: unknown, maximumBytes: number): boolean {
+  if (typeof value !== 'string') return false;
+  try {
+    decodeBase64Url(value, maximumBytes);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function nonEmptyString(value: unknown, maximumLength: number): boolean {
+  return typeof value === 'string' && value.length > 0 && value.length <= maximumLength;
+}
+
+function validTimeout(value: unknown): boolean {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 300_000;
+}
+
+function validPublicKeyParameter(value: unknown): boolean {
+  const parameter = objectValue(value);
+  return (
+    parameter['type'] === 'public-key' &&
+    typeof parameter['alg'] === 'number' &&
+    Number.isInteger(parameter['alg'])
+  );
+}
+
+function validCredentialDescriptors(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length > 256) return false;
+  const identifiers = new Set<string>();
+  for (const item of value) {
+    const descriptor = objectValue(item);
+    const id = descriptor['id'];
+    const transports = descriptor['transports'];
+    if (
+      descriptor['type'] !== 'public-key' ||
+      typeof id !== 'string' ||
+      !canonicalBase64Url(id, 1_023) ||
+      identifiers.has(id) ||
+      (transports !== undefined &&
+        (!Array.isArray(transports) ||
+          transports.some(
+            (transport) =>
+              typeof transport !== 'string' || !AUTHENTICATOR_TRANSPORTS.has(transport),
+          ) ||
+          new Set(transports).size !== transports.length))
+    ) {
+      return false;
+    }
+    identifiers.add(id);
+  }
+  return true;
 }
 
 async function responseJson(response: Response): Promise<unknown> {

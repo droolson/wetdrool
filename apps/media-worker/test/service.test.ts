@@ -1,14 +1,14 @@
 import { access, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { getContentCid, mediaManifestContentSchema } from '@socially-woke/protocol';
+import { getContentCid, mediaManifestContentSchema } from '@wokesocial/protocol';
 import {
   MemoryContentAddressedStorage,
   MultiProviderStorage,
   type ContentAddressedStorage,
   type StorageHealth,
   type StorageReceipt,
-} from '@socially-woke/storage';
+} from '@wokesocial/storage';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { digestBytes } from '../src/digests.js';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { StatusBadge } from '@socially-woke/ui';
+import { StatusBadge } from '@wokesocial/ui';
 
 import {
   addLocalSafetyEntry,

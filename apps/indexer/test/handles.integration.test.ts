@@ -3,8 +3,8 @@ import { createHash, randomBytes } from 'node:crypto';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   ManifestVerifier,
@@ -18,18 +18,18 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke';
+  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL handle projection integration', () => {
   it('rolls back invalid claims, releases exactly, and rebuilds a reclaim', async () => {
     await migrate(databaseUrl);
 
     const networkId =
-      `woke:v1:${bs58.encode(randomBytes(32))}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
+      `wokenet:v1:${bs58.encode(randomBytes(32))}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
     const firstAddress = publicKey(101);
     const secondAddress = publicKey(102);
-    const firstIdentityId = `swid:v1:${networkId}:${firstAddress}`;
-    const secondIdentityId = `swid:v1:${networkId}:${secondAddress}`;
+    const firstIdentityId = `wokesocialid:v1:${networkId}:${firstAddress}`;
+    const secondIdentityId = `wokesocialid:v1:${networkId}:${secondAddress}`;
     const firstAuthority = publicKey(103);
     const secondAuthority = publicKey(104);
     const handleClaimAddress = publicKey(105);

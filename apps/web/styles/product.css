@@ -17,7 +17,7 @@
 .product-page-header h1 {
   max-width: 13ch;
   margin: 0.55rem 0 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: clamp(2.8rem, 6vw, 5.2rem);
   font-weight: 650;
   letter-spacing: -0.06em;
@@ -25,7 +25,7 @@
 }
 
 .product-page-header__context {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   line-height: 1.7;
 }
 
@@ -34,7 +34,7 @@
 }
 
 .product-page-header__context code {
-  color: var(--sw-ink);
+  color: var(--wokesocial-ink);
 }
 
 .product-page-header__actions {
@@ -65,18 +65,22 @@
   align-items: end;
   gap: 2rem;
   padding: clamp(1.25rem, 4vw, 2.25rem);
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
   background:
-    linear-gradient(120deg, color-mix(in srgb, var(--sw-citron) 15%, transparent), transparent 50%),
-    var(--sw-surface);
-  box-shadow: var(--sw-shadow-sm);
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--wokesocial-citron) 15%, transparent),
+      transparent 50%
+    ),
+    var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
 }
 
 .onboarding-ledger h2 {
   max-width: 15ch;
   margin: 0.45rem 0 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: clamp(1.65rem, 3vw, 2.5rem);
   letter-spacing: -0.04em;
   line-height: 1.05;
@@ -88,20 +92,20 @@
   gap: 1px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-md);
-  background: var(--sw-line);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: var(--wokesocial-line);
 }
 
 .onboarding-ledger dl div {
   display: grid;
   gap: 0.3rem;
   padding: 1rem;
-  background: var(--sw-canvas-raised);
+  background: var(--wokesocial-canvas-raised);
 }
 
 .onboarding-ledger dt {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -120,21 +124,21 @@
   align-items: end;
   gap: 2rem;
   padding: clamp(1.5rem, 5vw, 3.5rem);
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
   background:
     radial-gradient(
       circle at 90% 15%,
-      color-mix(in srgb, var(--sw-coral) 22%, transparent),
+      color-mix(in srgb, var(--wokesocial-coral) 22%, transparent),
       transparent 16rem
     ),
-    var(--sw-canvas-raised);
+    var(--wokesocial-canvas-raised);
 }
 
 .product-cta h2 {
   max-width: 21ch;
   margin: 0.5rem 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: clamp(1.8rem, 4vw, 3rem);
   letter-spacing: -0.045em;
   line-height: 1.03;
@@ -143,7 +147,7 @@
 .product-cta p:last-child {
   max-width: 49rem;
   margin-block-end: 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   line-height: 1.65;
 }
 
@@ -176,16 +180,16 @@
   display: grid;
   gap: 1rem;
   padding: clamp(1.4rem, 4vw, 2.5rem);
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
-  background: var(--sw-surface);
-  box-shadow: var(--sw-shadow-sm);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
 }
 
 .auth-panel h2,
 .auth-assurance h2 {
   margin: 0.45rem 0 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: clamp(1.7rem, 3vw, 2.5rem);
   letter-spacing: -0.04em;
   line-height: 1.05;
@@ -199,10 +203,10 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-md);
-  color: var(--sw-ink);
-  background: var(--sw-canvas-raised);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  color: var(--wokesocial-ink);
+  background: var(--wokesocial-canvas-raised);
   text-align: start;
 }
 
@@ -213,8 +217,8 @@
 
 .auth-method-unavailable > span:first-child,
 .passkey-auth__method > span:first-child {
-  color: var(--sw-plum);
-  font-family: var(--sw-font-display);
+  color: var(--wokesocial-plum);
+  font-family: var(--wokesocial-font-display);
   font-size: 1.4rem;
 }
 
@@ -228,7 +232,7 @@
 .passkey-auth__method p,
 .auth-panel__note,
 .auth-assurance > p {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   line-height: 1.55;
 }
 
@@ -250,10 +254,10 @@
 
 .product-cta--auth > .passkey-auth {
   padding: clamp(1rem, 3vw, 1.5rem);
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
-  background: var(--sw-surface);
-  box-shadow: var(--sw-shadow-sm);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
 }
 
 .passkey-auth__method p,
@@ -272,22 +276,22 @@
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1rem;
-  border-radius: var(--sw-radius-pill);
+  border-radius: var(--wokesocial-radius-pill);
   font: inherit;
   font-weight: 760;
   cursor: pointer;
 }
 
 .passkey-auth__primary {
-  color: var(--sw-canvas-raised);
-  border: 1px solid var(--sw-plum-deep);
-  background: var(--sw-plum-deep);
+  color: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wokesocial-plum-deep);
+  background: var(--wokesocial-plum-deep);
 }
 
 .passkey-auth__secondary {
-  color: var(--sw-ink);
-  border: 1px solid var(--sw-line-strong);
-  background: var(--sw-surface-strong);
+  color: var(--wokesocial-ink);
+  border: 1px solid var(--wokesocial-line-strong);
+  background: var(--wokesocial-surface-strong);
 }
 
 .passkey-auth__primary:hover:not(:disabled),
@@ -307,9 +311,9 @@
   gap: 1px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-md);
-  background: var(--sw-line);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: var(--wokesocial-line);
 }
 
 .passkey-auth__session {
@@ -322,12 +326,12 @@
   min-width: 0;
   gap: 0.25rem;
   padding: 0.75rem;
-  background: var(--sw-canvas-raised);
+  background: var(--wokesocial-canvas-raised);
 }
 
 .passkey-auth__session dt,
 .passkey-auth__outcome dt {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.07em;
@@ -343,15 +347,15 @@
 }
 
 .passkey-auth__status {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
 }
 
 .passkey-auth__error {
   padding: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--sw-danger) 38%, var(--sw-line));
-  border-radius: var(--sw-radius-sm);
-  color: var(--sw-danger);
-  background: color-mix(in srgb, var(--sw-danger) 7%, var(--sw-surface));
+  border: 1px solid color-mix(in srgb, var(--wokesocial-danger) 38%, var(--wokesocial-line));
+  border-radius: var(--wokesocial-radius-sm);
+  color: var(--wokesocial-danger);
+  background: color-mix(in srgb, var(--wokesocial-danger) 7%, var(--wokesocial-surface));
   font-weight: 680;
 }
 
@@ -359,30 +363,30 @@
   display: grid;
   gap: 0.7rem;
   padding: 1rem;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-md);
-  background: var(--sw-canvas-raised);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: var(--wokesocial-canvas-raised);
 }
 
 .passkey-auth__outcome--ready {
-  border-color: color-mix(in srgb, var(--sw-success) 42%, var(--sw-line));
-  background: color-mix(in srgb, var(--sw-success) 5%, var(--sw-canvas-raised));
+  border-color: color-mix(in srgb, var(--wokesocial-success) 42%, var(--wokesocial-line));
+  background: color-mix(in srgb, var(--wokesocial-success) 5%, var(--wokesocial-canvas-raised));
 }
 
 .passkey-auth__outcome--fallback {
-  border-color: color-mix(in srgb, var(--sw-warning) 45%, var(--sw-line));
-  background: color-mix(in srgb, var(--sw-warning) 6%, var(--sw-canvas-raised));
+  border-color: color-mix(in srgb, var(--wokesocial-warning) 45%, var(--wokesocial-line));
+  background: color-mix(in srgb, var(--wokesocial-warning) 6%, var(--wokesocial-canvas-raised));
 }
 
 .passkey-auth__outcome h3 {
   margin: 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: 1.35rem;
   letter-spacing: -0.025em;
 }
 
 .passkey-auth__outcome > p:not(.section-kicker) {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
 }
 
 .passkey-auth__links {
@@ -391,10 +395,155 @@
   gap: 0.6rem;
 }
 
+.passkey-access-shell {
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
+}
+
+.passkey-access,
+.passkey-access__empty {
+  display: grid;
+  gap: 1rem;
+}
+
+.passkey-access__heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+}
+
+.passkey-access__heading > div {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.passkey-access__heading h2,
+.passkey-access__confirmation p,
+.passkey-access__empty p {
+  margin: 0;
+}
+
+.passkey-access__heading h2 {
+  font-family: var(--wokesocial-font-display);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  letter-spacing: -0.035em;
+}
+
+.passkey-access__list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.passkey-access__list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: var(--wokesocial-canvas-raised);
+}
+
+.passkey-access__credential,
+.passkey-access__credential > div:first-child,
+.passkey-access__credential > div:first-child > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.passkey-access__credential > div:first-child {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.passkey-access__credential > div:first-child > div {
+  min-width: 0;
+}
+
+.passkey-access__ordinal {
+  color: var(--wokesocial-plum);
+  font-family: var(--wokesocial-font-display);
+  font-size: 1.25rem;
+}
+
+.passkey-access__credential dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0.4rem 0 0;
+}
+
+.passkey-access__credential dl > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.passkey-access__credential dt {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.passkey-access__credential dd {
+  margin: 0;
+  font-size: 0.76rem;
+}
+
+.passkey-access__confirmation {
+  display: grid;
+  max-width: 27rem;
+  gap: 0.65rem;
+}
+
+.passkey-access__confirmation p,
+.passkey-access__empty p {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.passkey-access__confirmation > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.passkey-access__danger {
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--wokesocial-danger);
+  border-radius: var(--wokesocial-radius-pill);
+  color: var(--wokesocial-canvas-raised);
+  background: var(--wokesocial-danger);
+  font: inherit;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.passkey-access__danger:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
 .auth-assurance {
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--sw-plum) 8%, transparent), transparent 70%),
-    var(--sw-canvas-raised);
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--wokesocial-plum) 8%, transparent),
+      transparent 70%
+    ),
+    var(--wokesocial-canvas-raised);
 }
 
 .auth-assurance ol {
@@ -410,19 +559,19 @@
   display: grid;
   gap: 0.25rem;
   padding-block: 1rem;
-  border-block-end: 1px solid var(--sw-line);
+  border-block-end: 1px solid var(--wokesocial-line);
   counter-increment: assurance;
 }
 
 .auth-assurance li strong::before {
   margin-inline-end: 0.6rem;
-  color: var(--sw-plum);
+  color: var(--wokesocial-plum);
   content: '0' counter(assurance);
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
 }
 
 .auth-assurance li span {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.82rem;
   line-height: 1.5;
 }
@@ -431,14 +580,14 @@
   display: grid;
   gap: 0.65rem;
   padding: clamp(1.25rem, 4vw, 2rem);
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
-  background: var(--sw-surface);
-  box-shadow: var(--sw-shadow-sm);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
 }
 
 .search-bar > label {
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: 1.25rem;
   font-weight: 700;
 }
@@ -452,35 +601,35 @@
 .search-bar input,
 .search-bar button {
   min-height: 3.25rem;
-  border: 1px solid var(--sw-line-strong);
-  border-radius: var(--sw-radius-pill);
+  border: 1px solid var(--wokesocial-line-strong);
+  border-radius: var(--wokesocial-radius-pill);
 }
 
 .search-bar input {
   min-width: 0;
   padding-inline: 1rem;
-  color: var(--sw-ink);
-  background: var(--sw-canvas-raised);
+  color: var(--wokesocial-ink);
+  background: var(--wokesocial-canvas-raised);
 }
 
 .search-bar button {
   padding-inline: 1.2rem;
   color: #fff;
-  background: var(--sw-plum-deep);
+  background: var(--wokesocial-plum-deep);
   font-weight: 750;
   cursor: pointer;
 }
 
 .search-bar > p {
   margin: 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.75rem;
 }
 
 .filter-strip,
 .feed-tabs {
   overflow-x: auto;
-  border-block: 1px solid var(--sw-line);
+  border-block: 1px solid var(--wokesocial-line);
   scrollbar-width: thin;
 }
 
@@ -496,8 +645,8 @@
   min-height: 2.75rem;
   align-items: center;
   padding-inline: 1rem;
-  border-radius: var(--sw-radius-pill);
-  color: var(--sw-ink-muted);
+  border-radius: var(--wokesocial-radius-pill);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.82rem;
   font-weight: 750;
   text-decoration: none;
@@ -507,7 +656,7 @@
 .filter-strip a[aria-current='page'],
 .feed-tabs a[aria-current='page'] {
   color: #fff;
-  background: var(--sw-plum-deep);
+  background: var(--wokesocial-plum-deep);
 }
 
 .feed-tabs ul {
@@ -529,7 +678,7 @@
 .composer__invitation p {
   max-width: 42rem;
   margin: 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   line-height: 1.6;
 }
 
@@ -543,10 +692,10 @@
 .compose-preparing {
   min-height: 22rem;
   padding: 2rem;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
-  color: var(--sw-ink-muted);
-  background: var(--sw-surface);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  color: var(--wokesocial-ink-muted);
+  background: var(--wokesocial-surface);
 }
 
 .compose-form {
@@ -561,14 +710,14 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.65rem 0.85rem;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-md);
-  background: var(--sw-surface);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: var(--wokesocial-surface);
 }
 
 .compose-form__status p {
   margin: 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.75rem;
   line-height: 1.4;
   text-align: end;
@@ -578,10 +727,10 @@
   display: grid;
   gap: 1.25rem;
   padding: clamp(1.25rem, 4vw, 2rem);
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
-  background: var(--sw-surface);
-  box-shadow: var(--sw-shadow-sm);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
 }
 
 .compose-section__heading {
@@ -589,25 +738,25 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 0.8rem;
   padding-block-end: 1rem;
-  border-block-end: 1px solid var(--sw-line);
+  border-block-end: 1px solid var(--wokesocial-line);
 }
 
 .compose-section__heading > span {
-  color: var(--sw-plum);
-  font-family: var(--sw-font-display);
+  color: var(--wokesocial-plum);
+  font-family: var(--wokesocial-font-display);
   font-size: 1.2rem;
 }
 
 .compose-section__heading h2 {
   margin: 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: 1.65rem;
   letter-spacing: -0.04em;
 }
 
 .compose-section__heading p {
   margin: 0.2rem 0 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.8rem;
   line-height: 1.5;
 }
@@ -620,13 +769,13 @@
 }
 
 .field-stack label {
-  color: var(--sw-ink);
+  color: var(--wokesocial-ink);
   font-size: 0.78rem;
   font-weight: 780;
 }
 
 .field-stack label span {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-weight: 520;
 }
 
@@ -636,10 +785,10 @@
   width: 100%;
   min-height: 3rem;
   padding: 0.75rem 0.85rem;
-  border: 1px solid var(--sw-line-strong);
-  border-radius: var(--sw-radius-sm);
-  color: var(--sw-ink);
-  background: var(--sw-canvas-raised);
+  border: 1px solid var(--wokesocial-line-strong);
+  border-radius: var(--wokesocial-radius-sm);
+  color: var(--wokesocial-ink);
+  background: var(--wokesocial-canvas-raised);
   line-height: 1.5;
 }
 
@@ -648,8 +797,8 @@
 }
 
 .field-stack [aria-invalid='true'] {
-  border-color: var(--sw-danger);
-  box-shadow: 0 0 0 1px var(--sw-danger);
+  border-color: var(--wokesocial-danger);
+  box-shadow: 0 0 0 1px var(--wokesocial-danger);
 }
 
 .field-grid {
@@ -674,7 +823,7 @@
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.7rem;
 }
 
@@ -686,11 +835,11 @@
 }
 
 .field-help {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
 }
 
 .field-error {
-  color: var(--sw-danger);
+  color: var(--wokesocial-danger);
   font-weight: 680;
 }
 
@@ -703,24 +852,24 @@
 }
 
 .native-action--quiet {
-  color: var(--sw-ink);
-  border-color: var(--sw-line-strong);
-  background: var(--sw-surface-strong);
+  color: var(--wokesocial-ink);
+  border-color: var(--wokesocial-line-strong);
+  background: var(--wokesocial-surface-strong);
 }
 
 .text-action {
   min-height: 2.75rem;
   padding: 0.5rem 0.75rem;
   border: 0;
-  border-radius: var(--sw-radius-pill);
-  color: var(--sw-plum);
+  border-radius: var(--wokesocial-radius-pill);
+  color: var(--wokesocial-plum);
   background: transparent;
   font-weight: 750;
   cursor: pointer;
 }
 
 .text-action--danger {
-  color: var(--sw-danger);
+  color: var(--wokesocial-danger);
 }
 
 .discard-confirmation {
@@ -728,7 +877,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.75rem;
 }
 
@@ -748,7 +897,7 @@
 
 .compose-preview__heading h2 {
   margin: 0.35rem 0 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: 1.5rem;
   letter-spacing: -0.04em;
 }
@@ -758,10 +907,10 @@
   display: grid;
   gap: 1rem;
   padding: clamp(1.25rem, 3vw, 1.75rem);
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-lg);
-  background: var(--sw-surface);
-  box-shadow: var(--sw-shadow-sm);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
 }
 
 .preview-post > header {
@@ -776,7 +925,7 @@
 }
 
 .preview-post > header span {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.72rem;
 }
 
@@ -787,15 +936,15 @@
   place-items: center;
   border-radius: 40% 60% 55% 45% / 48% 42% 58% 52%;
   color: #17131d !important;
-  background: linear-gradient(145deg, var(--sw-coral), var(--sw-citron));
-  font-family: var(--sw-font-display);
+  background: linear-gradient(145deg, var(--wokesocial-coral), var(--wokesocial-citron));
+  font-family: var(--wokesocial-font-display);
   font-size: 1.15rem !important;
   font-weight: 800;
 }
 
 .preview-post__body {
   margin: 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: clamp(1.2rem, 2.4vw, 1.5rem);
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -803,21 +952,21 @@
 }
 
 .preview-post__body.is-empty {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-style: italic;
 }
 
 .preview-content-warning,
 .preview-media {
   padding: 0.85rem;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-sm);
-  background: var(--sw-canvas-raised);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-sm);
+  background: var(--wokesocial-canvas-raised);
 }
 
 .preview-content-warning strong,
 .preview-media > span {
-  color: var(--sw-plum);
+  color: var(--wokesocial-plum);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -827,7 +976,7 @@
 .preview-content-warning p,
 .preview-media p {
   margin: 0.35rem 0 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.8rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -845,19 +994,19 @@
   gap: 1px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--sw-line);
-  border-radius: var(--sw-radius-sm);
-  background: var(--sw-line);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-sm);
+  background: var(--wokesocial-line);
 }
 
 .preview-post dl div {
   min-width: 0;
   padding: 0.75rem;
-  background: var(--sw-canvas-raised);
+  background: var(--wokesocial-canvas-raised);
 }
 
 .preview-post dt {
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.63rem;
   font-weight: 780;
   letter-spacing: 0.08em;
@@ -872,15 +1021,19 @@
 }
 
 .publication-lock {
-  border-color: color-mix(in srgb, var(--sw-warning) 45%, var(--sw-line));
+  border-color: color-mix(in srgb, var(--wokesocial-warning) 45%, var(--wokesocial-line));
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--sw-warning) 8%, transparent), transparent),
-    var(--sw-surface);
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--wokesocial-warning) 8%, transparent),
+      transparent
+    ),
+    var(--wokesocial-surface);
 }
 
 .publication-lock h3 {
   margin: 0.35rem 0 0;
-  font-family: var(--sw-font-display);
+  font-family: var(--wokesocial-font-display);
   font-size: 1.35rem;
   letter-spacing: -0.03em;
 }
@@ -890,22 +1043,22 @@
   gap: 0.45rem;
   padding-inline-start: 1.4rem;
   margin: 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.78rem;
 }
 
 .publication-lock button {
   min-height: 3rem;
-  border: 1px solid var(--sw-line-strong);
-  border-radius: var(--sw-radius-pill);
-  color: var(--sw-ink-muted);
-  background: var(--sw-canvas-raised);
+  border: 1px solid var(--wokesocial-line-strong);
+  border-radius: var(--wokesocial-radius-pill);
+  color: var(--wokesocial-ink-muted);
+  background: var(--wokesocial-canvas-raised);
   font-weight: 760;
 }
 
 .publication-lock > p {
   margin: 0;
-  color: var(--sw-ink-muted);
+  color: var(--wokesocial-ink-muted);
   font-size: 0.7rem;
   line-height: 1.45;
 }
@@ -993,10 +1146,10 @@
     inset-inline: 0.5rem;
     display: block;
     padding: 0.35rem;
-    border: 1px solid var(--sw-line-strong);
+    border: 1px solid var(--wokesocial-line-strong);
     border-radius: 1.4rem;
-    background: color-mix(in srgb, var(--sw-surface-strong) 94%, transparent);
-    box-shadow: var(--sw-shadow-lg);
+    background: color-mix(in srgb, var(--wokesocial-surface-strong) 94%, transparent);
+    box-shadow: var(--wokesocial-shadow-lg);
     backdrop-filter: blur(18px);
   }
 
@@ -1015,7 +1168,7 @@
     align-content: center;
     gap: 0.1rem;
     border-radius: 1rem;
-    color: var(--sw-ink-muted);
+    color: var(--wokesocial-ink-muted);
     font-size: 0.62rem;
     font-weight: 730;
     text-decoration: none;
@@ -1026,23 +1179,23 @@
     width: 1.35rem;
     height: 1.35rem;
     place-items: center;
-    border: 1px solid var(--sw-line);
+    border: 1px solid var(--wokesocial-line);
     border-radius: 50%;
-    color: var(--sw-ink);
-    font-family: var(--sw-font-display);
+    color: var(--wokesocial-ink);
+    font-family: var(--wokesocial-font-display);
     font-size: 0.75rem;
   }
 
   .mobile-dock .mobile-dock__primary {
-    color: var(--sw-ink);
+    color: var(--wokesocial-ink);
     font-weight: 800;
   }
 
   .mobile-dock .mobile-dock__primary > span {
     color: #17131d;
     border-color: transparent;
-    background: var(--sw-citron);
-    font-family: var(--sw-font-sans);
+    background: var(--wokesocial-citron);
+    font-family: var(--wokesocial-font-sans);
     font-size: 1rem;
   }
 
@@ -1078,12 +1231,19 @@
 
   .product-cta__actions,
   .passkey-auth__links,
+  .passkey-access__confirmation > div,
   .composer__invitation,
   .compose-form__status,
   .compose-preview__heading,
   .compose-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .passkey-access__heading,
+  .passkey-access__list > li {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
   }
 
   .composer__invitation {

@@ -1,8 +1,8 @@
 import { FEED_POLICY_VERSION } from './policy.js';
 
-export const FEED_PROVIDER_PROTOCOL = 'socially-woke-feed-provider' as const;
+export const FEED_PROVIDER_PROTOCOL = 'wokesocial-feed-provider' as const;
 export const FEED_PROVIDER_PROTOCOL_VERSION = 1 as const;
-export const REFERENCE_FEED_PROVIDER_ID = 'org.sociallywoke.reference-feed' as const;
+export const REFERENCE_FEED_PROVIDER_ID = 'org.wokesocial.reference-feed' as const;
 
 export const feedProviderDescriptor = {
   protocol: FEED_PROVIDER_PROTOCOL,

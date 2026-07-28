@@ -1,12 +1,12 @@
-# `@socially-woke/protocol`
+# `@wokesocial/protocol`
 
-This package is the portable, implementation-independent Socially Woke signed-object layer. It provides strict v1 Zod schemas, typed builders, canonical serialization, stable object IDs, Ed25519 envelopes, authorization requirements, and immutable transition validation.
+This package is the portable, implementation-independent WokeSocial signed-object layer. It provides strict v1 Zod schemas, typed builders, canonical serialization, stable object IDs, Ed25519 envelopes, authorization requirements, and immutable transition validation.
 
-The package validates claims. It does not turn a signed claim into authoritative network state. Indexers and clients must still reconcile the claim with finalized Woke Network state, community policy, and content-addressed storage.
+The package validates claims. It does not turn a signed claim into authoritative network state. Indexers and clients must still reconcile the claim with finalized WokeNet state, community policy, and content-addressed storage.
 
 The distributable Draft 2020-12 signed-envelope schema is available at
-`@socially-woke/protocol/schema/v1` and checked in under
-`schemas/socially-woke-signed-envelope-v1.schema.json`. `schema:check` derives
+`@wokesocial/protocol/schema/v1` and checked in under
+`schemas/wokesocial-signed-envelope-v1.schema.json`. `schema:check` derives
 it from the canonical Zod registry and fails on drift.
 
 JSON Schema covers transport structure. It cannot replace RFC 8785
@@ -19,11 +19,11 @@ protocol verifier for those boundaries.
 
 Every payload carries:
 
-- `protocol: "socially-woke"`
+- `protocol: "wokesocial"`
 - `protocolVersion: "1.0"`
 - `schemaVersion: 1`
-- a canonical Woke Network ID,
-  `woke:v1:<genesis-hash-base58-32>:<program-id-base58-32>`
+- a canonical WokeNet ID,
+  `wokenet:v1:<genesis-hash-base58-32>:<program-id-base58-32>`
 - an author identity bound to that network
 - a root or delegated signing-key ID bound to that author
 - an exact-millisecond UTC creation time
@@ -34,13 +34,13 @@ Every payload carries:
 `canonicalizePayload` uses RFC 8785-style JSON canonicalization after rejecting non-JSON values, unsafe numbers, non-NFC strings, cycles, unsupported critical extensions, and unknown fields. `getObjectId` is:
 
 ```text
-swobj:v1:<type>:<multibase-base64url-sha256(canonical-payload)>
+wokesocialobj:v1:<type>:<multibase-base64url-sha256(canonical-payload)>
 ```
 
 The signature covers a canonical, domain-separated proof descriptor containing the protocol signature domain, proof version, algorithm, key ID, network, object type, and payload hash. The envelope CID is the CIDv1/raw SHA-256 CID of the canonical envelope bytes.
 
 The `profile`, `post`, and `tombstone` schemas, builders, and type names remain
-stable. The canonical Woke Network namespace has a newly pinned v1 post golden
+stable. The canonical WokeNet namespace has a newly pinned v1 post golden
 vector; objects produced with the pre-migration `solana:` namespace are
 intentionally incompatible and rejected.
 
@@ -103,8 +103,8 @@ An indexer must resolve forks using finalized protocol state and documented poli
   protection: {
     kind: 'encrypted',
     encryptionFormat: 'an independently specified format',
-    keyEnvelope: { id: 'swobj:v1:...' },
-    accessPolicy: { id: 'swobj:v1:...' }
+    keyEnvelope: { id: 'wokesocialobj:v1:...' },
+    accessPolicy: { id: 'wokesocialobj:v1:...' }
   }
 }
 ```
@@ -119,7 +119,7 @@ Community objects support public, unlisted, private, and restricted visibility. 
 - explicit quorum and simple-majority, bounded-supermajority, or consensus thresholds;
 - required cap/policy/council metadata for the corresponding model;
 - bounded cross-network federation allow/block lists and an optional policy document;
-- an optional Woke Network treasury account using the Solana-compatible 32-byte public-key representation, policy reference, and bounded asset allow-list.
+- an optional WokeNet treasury account using the Solana-compatible 32-byte public-key representation, policy reference, and bounded asset allow-list.
 
 These fields are portable policy declarations. This package cannot verify membership snapshots, reputation, delegated voting chains, council composition, treasury ownership, federation behavior, quorum, or proposal execution. Those checks belong to finalized onchain state and independently operated indexers/clients.
 
@@ -130,9 +130,9 @@ All known objects and nested records are strict. Unknown protocol/schema version
 Notable representation limits include:
 
 - canonical network IDs:
-  `woke:v1:<genesis-hash-base58-32>:<program-id-base58-32>`;
+  `wokenet:v1:<genesis-hash-base58-32>:<program-id-base58-32>`;
 - canonical identity IDs:
-  `swid:v1:<network-id>:<identity-address-base58-32>`;
+  `wokesocialid:v1:<network-id>:<identity-address-base58-32>`;
 - legacy `solana:` network, identity, and signing-key namespaces are rejected;
 - decoded Solana-compatible public keys: exactly 32 bytes;
 - decoded Solana-compatible transaction signatures: exactly 64 bytes;
@@ -149,10 +149,10 @@ Adding a field to a v1 strict object is a breaking schema change. New optional s
 ## Commands
 
 ```bash
-pnpm --filter @socially-woke/protocol lint
-pnpm --filter @socially-woke/protocol typecheck
-pnpm --filter @socially-woke/protocol test
-pnpm --filter @socially-woke/protocol build
+pnpm --filter @wokesocial/protocol lint
+pnpm --filter @wokesocial/protocol typecheck
+pnpm --filter @wokesocial/protocol test
+pnpm --filter @wokesocial/protocol build
 ```
 
-The test suite covers every declared object type through real canonical signing and verification, whole-surface tamper rejection, strict/forward-compatibility failures, authorization context, root-only delegation, encrypted references, revision/deletion rules, numeric and Solana-compatible wire-width boundaries, and a pinned Woke Network compatibility vector.
+The test suite covers every declared object type through real canonical signing and verification, whole-surface tamper rejection, strict/forward-compatibility failures, authorization context, root-only delegation, encrypted references, revision/deletion rules, numeric and Solana-compatible wire-width boundaries, and a pinned WokeNet compatibility vector.

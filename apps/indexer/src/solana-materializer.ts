@@ -3,7 +3,7 @@ import {
   decodeCanonicalEnvelope,
   encodeMultibaseBase64Url,
   getObjectId,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 
 import type { DecodedAnchorEvent } from './anchor-events.js';
 import { protocolEventSchema, type ProtocolEvent } from './events.js';
@@ -815,7 +815,7 @@ export class SolanaEventMaterializer {
 }
 
 function identityId(networkId: string, identityAddress: string): string {
-  return `swid:v1:${networkId}:${identityAddress}`;
+  return `wokesocialid:v1:${networkId}:${identityAddress}`;
 }
 
 function manifestCid(manifestUri: string): string {

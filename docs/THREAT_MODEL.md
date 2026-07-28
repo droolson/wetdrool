@@ -4,7 +4,7 @@ Last reviewed: 2026-07-28
 
 ## Status and method
 
-This is the initial design threat model for woke.social and Woke Network. The repository now
+This is the initial design threat model for WokeSocial and WokeNet. The repository now
 contains a narrow experimental foundation with selected protocol, storage,
 program, indexer, container, and web tests. Those tests provide partial evidence
 for integrity, authorization, and availability mitigations, but the threat model
@@ -37,7 +37,7 @@ The model MUST be updated when:
 - Native Firedancer source and patch queue, validator/RPC binaries,
   `genesis.bin`, feature set, shred version, snapshots, validator/vote/stake
   identities, and build/ceremony attestations.
-- Woke Network social-program binaries, program data accounts, upgrade
+- WokeNet social-program binaries, program data accounts, upgrade
   authority, program IDs, protocol configuration, and deployment slot.
 - Payment recipients, supported mint allowlists, entitlement state, sponsor keys,
   and sponsor budgets.
@@ -104,8 +104,8 @@ flowchart LR
     S["Replaceable services"]
     DB["PostgreSQL projection"]
     R["Redis cache / queue"]
-    RPC["One or more Woke Network RPCs"]
-    WN["Woke Network program and ledger"]
+    RPC["One or more WokeNet RPCs"]
+    WN["WokeNet program and ledger"]
     ST["Content-addressed storage providers"]
     REL["Replaceable relays"]
     OP["Operator control plane"]
@@ -164,7 +164,7 @@ Residual risk: a fully compromised device can act within active delegation scope
 until revocation is observed. The UI must show this honestly and make scope,
 expiry, and revocation accessible.
 
-## Woke Network validator, program, RPC, and transaction threats
+## WokeNet validator, program, RPC, and transaction threats
 
 All mitigations below are **Planned**.
 
@@ -173,7 +173,7 @@ All mitigations below are **Planned**.
 | WN-01 | Malicious prompt drains funds or grants unintended authority | Decode allowlisted instructions, show recipients/assets/amounts/fees, reject unknown programs | Golden transaction summaries and adversarial substitution tests |
 | WN-02 | Transaction changes after simulation | Compare the exact compiled message, accounts, instructions, and blockhash immediately before signing | Message mutation and wallet-adapter integration tests |
 | WN-03 | RPC lies about account state, simulation, or confirmation | Multiple configurable RPCs, exact genesis/program-ID checks, finality policy, cross-provider reconciliation | Fault-injected RPC and failover tests |
-| WN-04 | Wrong genesis or lookalike program receives a transaction | Genesis-bound `woke:v1` namespace, pinned program IDs, visible network indicator | Wrong-genesis and program-substitution tests |
+| WN-04 | Wrong genesis or lookalike program receives a transaction | Genesis-bound `wokenet:v1` namespace, pinned program IDs, visible network indicator | Wrong-genesis and program-substitution tests |
 | WN-05 | PDA/account substitution bypasses authority | Domain-separated seeds, ownership/signer/has-one constraints, explicit relationships | Account substitution and seed-collision tests |
 | WN-06 | Duplicate initialization or replay creates duplicate effects | Nonces/idempotency state, uniqueness constraints, checked state transitions | Duplicate, stale, and reordered transaction tests |
 | WN-07 | Overflow, underflow, account growth, or compute exhaustion corrupts state | Checked arithmetic, bounded strings/vectors, fixed sizing, compute and transaction-size analysis | Boundary, fuzz/property, and compute-budget tests |
@@ -189,7 +189,7 @@ All mitigations below are **Planned**.
 | WN-17 | Consensus, repair, snapshot, or restart bugs split or corrupt the sovereign network | Independent validators, byzantine/failover rehearsals, finality invariants, halt-before-corruption policy | Multi-validator partition, restart, repair, snapshot, and equivocation exercises |
 | WN-18 | Economic or authority capture harms users or network availability | Public supply/inflation/fee/reward policy, diverse validators, timelocked multisig, monitoring, legal/economic review | Capture simulations, authority tabletop, concentration and liveness review |
 
-Residual risk: transaction finality and availability depend on Woke Network’s
+Residual risk: transaction finality and availability depend on WokeNet’s
 native Firedancer validator set. No production finality assumption is accepted
 at the current upstream maturity level. Clients must expose
 pending/finalized/degraded states and never claim success early.
@@ -309,7 +309,7 @@ The following decisions cannot be silently delegated to implementation:
 
 1. The specific reviewed protocols and libraries for one-to-one and group
    messaging.
-2. Production Woke Network validator, genesis, program-upgrade, treasury, and
+2. Production WokeNet validator, genesis, program-upgrade, treasury, and
    emergency-authority quorums, signer organizations, delays, and immutability
    criteria.
 3. Recovery guardian model, delay ranges, notification channels, and risk

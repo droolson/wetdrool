@@ -29,7 +29,9 @@ const rawArguments = process.argv.slice(2);
 const arguments_ = rawArguments[0] === '--' ? rawArguments.slice(1) : rawArguments;
 const [pathArgument, expectedHash] = arguments_;
 if (pathArgument === undefined || expectedHash === undefined || arguments_.length !== 2) {
-  console.error('usage: node scripts/verify-woke-genesis.mjs <genesis.bin> <expected-base58-hash>');
+  console.error(
+    'usage: node scripts/verify-wokenet-genesis.mjs <genesis.bin> <expected-base58-hash>',
+  );
   process.exit(2);
 }
 
@@ -41,7 +43,7 @@ let bytesRead = 0;
 try {
   const metadata = await handle.stat();
   if (!metadata.isFile() || metadata.size < 32 || metadata.size > maximumGenesisBytes) {
-    console.error(`woke-genesis: unexpected genesis size ${metadata.size} bytes`);
+    console.error(`wokenet-genesis: unexpected genesis size ${metadata.size} bytes`);
     process.exitCode = 1;
   } else {
     while (true) {
@@ -49,7 +51,9 @@ try {
       if (result.bytesRead === 0) break;
       bytesRead += result.bytesRead;
       if (bytesRead > maximumGenesisBytes) {
-        console.error(`woke-genesis: genesis exceeded ${maximumGenesisBytes} bytes while reading`);
+        console.error(
+          `wokenet-genesis: genesis exceeded ${maximumGenesisBytes} bytes while reading`,
+        );
         process.exitCode = 1;
         break;
       }
@@ -61,14 +65,14 @@ try {
 }
 if (process.exitCode !== undefined) process.exit(process.exitCode);
 if (bytesRead < 32) {
-  console.error(`woke-genesis: unexpected genesis size ${bytesRead} bytes`);
+  console.error(`wokenet-genesis: unexpected genesis size ${bytesRead} bytes`);
   process.exit(1);
 }
 
 const digest = hash.digest();
 const genesisHash = encodeBase58(digest);
 if (expectedHash !== genesisHash) {
-  console.error(`woke-genesis: expected ${expectedHash}, received ${genesisHash}`);
+  console.error(`wokenet-genesis: expected ${expectedHash}, received ${genesisHash}`);
   process.exit(1);
 }
 
@@ -82,7 +86,7 @@ process.stdout.write(
       bytes: bytesRead,
       sha256Hex: digest.toString('hex'),
       genesisHash,
-      canonicalNetworkIdTemplate: `woke:v1:${genesisHash}:<program-id>`,
+      canonicalNetworkIdTemplate: `wokenet:v1:${genesisHash}:<program-id>`,
     },
     null,
     2,

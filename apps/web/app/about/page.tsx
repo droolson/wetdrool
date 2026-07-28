@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { ButtonLink, SectionHeading } from '@socially-woke/ui';
+import { ButtonLink, SectionHeading } from '@wokesocial/ui';
 
 export const metadata: Metadata = {
   title: 'About',
-  description: 'The values, inclusion commitments, and product posture behind Socially Woke.',
+  description: 'The values, inclusion commitments, and product posture behind WokeSocial.',
 };
 
 const INCLUSION_COMMITMENTS = [
@@ -19,15 +19,15 @@ export default function AboutPage() {
   return (
     <article className="editorial-page">
       <header className="editorial-hero page-shell">
-        <p className="section-kicker">About Socially Woke</p>
+        <p className="section-kicker">About WokeSocial</p>
         <h1>
           A place to be fully seen—
           <em>without being fully exposed.</em>
         </h1>
         <p>
-          Socially Woke is a trans-owned, LGBTQ+ affirming social network in development. Its
-          ambition is simple to say and hard to fake: make a beautiful public square whose people
-          can leave with their identity, relationships, and choices intact.
+          WokeSocial is a trans-owned, LGBTQ+ affirming social network in development. Its ambition
+          is simple to say and hard to fake: make a beautiful public square whose people can leave
+          with their identity, relationships, and choices intact.
         </p>
       </header>
 
@@ -44,7 +44,7 @@ export default function AboutPage() {
           </p>
           <p>
             Decentralization alone does not solve harassment, exclusion, or confusing technology.
-            Socially Woke pairs portable protocol state with layered moderation, consent controls,
+            WokeSocial pairs portable protocol state with layered moderation, consent controls,
             clear recovery, and an interface that does not turn ordinary people into blockchain
             operators.
           </p>

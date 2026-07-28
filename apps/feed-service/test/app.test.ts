@@ -20,7 +20,7 @@ describe('feed-service HTTP contract', () => {
       expect(readiness.statusCode).toBe(200);
       expect(openapi.json()).toMatchObject({
         openapi: '3.1.0',
-        'x-socially-woke-policy': {
+        'x-wokesocial-policy': {
           canonicalAuthority: false,
           verifiesProjectionSignatures: false,
           infersSensitiveTraits: false,
@@ -36,7 +36,7 @@ describe('feed-service HTTP contract', () => {
       expect(policy.headers['content-security-policy']).toContain("default-src 'none'");
       expect(provider.statusCode).toBe(200);
       expect(provider.json()).toMatchObject({
-        protocol: 'socially-woke-feed-provider',
+        protocol: 'wokesocial-feed-provider',
         protocolVersion: 1,
         canonical: false,
         assurance: { clientMustReapplySafetyControls: true },

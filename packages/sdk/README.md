@@ -1,22 +1,22 @@
-# Socially Woke SDK
+# WokeSocial SDK
 
-`@socially-woke/sdk` contains provider-neutral client operations that do not
+`@wokesocial/sdk` contains provider-neutral client operations that do not
 silently trust the flagship service. The implemented subset includes:
 
 - recoverable signed-manifest publication through replaceable storage and
   transaction adapters;
 - ordered provider health/failover selection;
 - portable payment planning for native WOKE and exact future SPL assets; and
-- a Woke Network-native payment client for protocol configuration, offerings,
+- a WokeNet-native payment client for protocol configuration, offerings,
   tips, weekly subscription settlement, simulation checks, and finalized
   account proofs.
 
-## Woke Network binding
+## WokeNet binding
 
-Every native operation requires an injected `WokeNetworkContext` with an
+Every native operation requires an injected `WokeNetContext` with an
 `endpoint`, `genesisHash`, and `programAddress`. The SDK has no mainnet,
 testnet, or localnet default and does not accept a legacy `solana:` network
-identifier. `createWokeNetworkContext` validates and normalizes that binding;
+identifier. `createWokeNetContext` validates and normalizes that binding;
 the simulation and finalized-account verifiers require the same three values.
 
 The PDA helpers implement the program's exact versioned seeds for protocol and
@@ -33,7 +33,7 @@ The seven Anchor builders match the checked-in program IDL:
 - `buildSendWokeTipInstruction`
 - `buildSettleWokeSubscriptionInstruction`
 
-Builders return Solana Kit-compatible instruction objects containing the Woke
+Builders return Solana Kit-compatible instruction objects containing the WokeSocial
 program address, exact ordered account metadata, and Anchor/Borsh instruction
 data. They do not hold keys, sign, broadcast, or silently select an RPC.
 
@@ -73,8 +73,8 @@ discriminator is `{ kind: 'woke' }`; `{ kind: 'sol' }` is retired and rejected.
 Exact SPL metadata remains explicitly allowlisted for future protocol support.
 
 ```sh
-pnpm --filter @socially-woke/sdk lint
-pnpm --filter @socially-woke/sdk typecheck
-pnpm --filter @socially-woke/sdk test
-pnpm --filter @socially-woke/sdk build
+pnpm --filter @wokesocial/sdk lint
+pnpm --filter @wokesocial/sdk typecheck
+pnpm --filter @wokesocial/sdk test
+pnpm --filter @wokesocial/sdk build
 ```

@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 import sharp from 'sharp';
 import { afterEach, describe, expect, it } from 'vitest';
 

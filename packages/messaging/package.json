@@ -1,9 +1,9 @@
 {
-  "name": "@socially-woke/messaging",
+  "name": "@wokesocial/messaging",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Fail-closed pairwise E2EE adapter for Woke Social devices",
+  "description": "Fail-closed pairwise E2EE adapter for WokeSocial devices",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20.19.0"

@@ -18,10 +18,12 @@ export function SectionHeading({
   const Heading = level === 1 ? 'h1' : 'h2';
 
   return (
-    <header className={`sw-section-heading sw-section-heading--${align}`}>
-      {eyebrow ? <p className="sw-eyebrow">{eyebrow}</p> : null}
+    <header className={`wokesocial-section-heading wokesocial-section-heading--${align}`}>
+      {eyebrow ? <p className="wokesocial-eyebrow">{eyebrow}</p> : null}
       <Heading>{title}</Heading>
-      {description ? <div className="sw-section-heading__description">{description}</div> : null}
+      {description ? (
+        <div className="wokesocial-section-heading__description">{description}</div>
+      ) : null}
     </header>
   );
 }

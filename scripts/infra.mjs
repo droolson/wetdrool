@@ -21,7 +21,7 @@ const baseArgs = [
   '--env-file',
   envFile,
   '--project-name',
-  'socially-woke-local',
+  'wokesocial-local',
   '--file',
   composeFile,
 ];

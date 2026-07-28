@@ -1,6 +1,6 @@
 'use client';
 
-import { ButtonLink, StatePanel } from '@socially-woke/ui';
+import { ButtonLink, StatePanel } from '@wokesocial/ui';
 
 export default function HomeError({
   reset,

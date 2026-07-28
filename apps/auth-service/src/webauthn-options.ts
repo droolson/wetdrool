@@ -4,7 +4,7 @@ import {
   type PublicKeyCredentialCreationOptionsJSON,
   type PublicKeyCredentialRequestOptionsJSON,
 } from '@simplewebauthn/server';
-import { secureRandomBytes } from '@socially-woke/crypto';
+import { secureRandomBytes } from '@wokesocial/crypto';
 
 import type { AccountRecord, CredentialRecord } from './models.js';
 
@@ -23,7 +23,7 @@ export function newAccountRegistrationOptions(
     rpName: relyingParty.rpName,
     rpID: relyingParty.rpId,
     userName: accountId,
-    userDisplayName: 'Socially Woke account',
+    userDisplayName: 'WokeSocial account',
     userID: Uint8Array.from(userHandle),
     challenge: randomChallenge(),
     attestationType: 'none',
@@ -70,7 +70,7 @@ export function additionalCredentialOptions(
     rpName: relyingParty.rpName,
     rpID: relyingParty.rpId,
     userName: account.accountId,
-    userDisplayName: 'Socially Woke account',
+    userDisplayName: 'WokeSocial account',
     userID: Uint8Array.from(account.webauthnUserHandle),
     challenge: randomChallenge(),
     attestationType: 'none',

@@ -22,7 +22,7 @@ const NONCE_BYTES = 16;
 const HASH_BYTES = 32;
 const MAX_MANIFEST_URI_BYTES = 200;
 
-const PDA_PREFIX = Uint8Array.of(0x73, 0x77);
+const PDA_PREFIX = ascii('wokesocial');
 const PDA_VERSION = Uint8Array.of(ACCOUNT_VERSION);
 const CONFIG_SEED = ascii('config');
 const IDENTITY_SEED = ascii('identity');
@@ -31,11 +31,11 @@ const SUBSCRIPTION_OFFERING_SEED = ascii('subscription_offering');
 const PAYMENT_RECEIPT_SEED = ascii('payment_receipt');
 const SUBSCRIPTION_ENTITLEMENT_SEED = ascii('subscription_entitlement');
 
-export const WOKE_SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111';
-export const WOKE_UPGRADEABLE_LOADER_ADDRESS = 'BPFLoaderUpgradeab1e11111111111111111111111';
+export const WOKENET_SYSTEM_PROGRAM_ADDRESS = '11111111111111111111111111111111';
+export const WOKENET_UPGRADEABLE_LOADER_ADDRESS = 'BPFLoaderUpgradeab1e11111111111111111111111';
 
-const SYSTEM_PROGRAM_ADDRESS = address(WOKE_SYSTEM_PROGRAM_ADDRESS);
-const UPGRADEABLE_LOADER_ADDRESS = address(WOKE_UPGRADEABLE_LOADER_ADDRESS);
+const SYSTEM_PROGRAM_ADDRESS = address(WOKENET_SYSTEM_PROGRAM_ADDRESS);
+const UPGRADEABLE_LOADER_ADDRESS = address(WOKENET_UPGRADEABLE_LOADER_ADDRESS);
 const ADDRESS_ENCODER = getAddressEncoder();
 
 const INITIALIZE_PAYMENT_CONFIG_DISCRIMINATOR = Uint8Array.of(38, 187, 7, 244, 201, 111, 164, 182);
@@ -95,24 +95,24 @@ export class WokePaymentError extends Error {
  * Every WOKE operation is explicitly bound to one RPC endpoint, one genesis
  * hash, and one deployed program. There are intentionally no cluster defaults.
  */
-export interface WokeNetworkContext {
+export interface WokeNetContext {
   readonly endpoint: string;
   readonly genesisHash: string;
   readonly programAddress: string;
 }
 
-export interface ValidatedWokeNetworkContext extends WokeNetworkContext {
+export interface ValidatedWokeNetContext extends WokeNetContext {
   readonly endpoint: string;
   readonly genesisHash: string;
   readonly programAddress: string;
 }
 
-export function createWokeNetworkContext(input: WokeNetworkContext): ValidatedWokeNetworkContext {
+export function createWokeNetContext(input: WokeNetContext): ValidatedWokeNetContext {
   let endpoint: URL;
   try {
     endpoint = new URL(input.endpoint);
   } catch (error) {
-    throw new WokePaymentError('invalid-context', 'The Woke Network RPC endpoint is invalid.', {
+    throw new WokePaymentError('invalid-context', 'The WokeNet RPC endpoint is invalid.', {
       cause: error,
     });
   }
@@ -124,20 +124,20 @@ export function createWokeNetworkContext(input: WokeNetworkContext): ValidatedWo
   ) {
     throw new WokePaymentError(
       'invalid-context',
-      'The Woke Network RPC endpoint must be an HTTP(S) URL without credentials or a fragment.',
+      'The WokeNet RPC endpoint must be an HTTP(S) URL without credentials or a fragment.',
     );
   }
 
-  const genesisHash = parseAddress(input.genesisHash, 'Woke Network genesis hash');
-  const programAddress = parseAddress(input.programAddress, 'Woke protocol program');
+  const genesisHash = parseAddress(input.genesisHash, 'WokeNet genesis hash');
+  const programAddress = parseAddress(input.programAddress, 'WokeSocial protocol program');
   if (
-    genesisHash === WOKE_SYSTEM_PROGRAM_ADDRESS ||
-    programAddress === WOKE_SYSTEM_PROGRAM_ADDRESS ||
-    programAddress === WOKE_UPGRADEABLE_LOADER_ADDRESS
+    genesisHash === WOKENET_SYSTEM_PROGRAM_ADDRESS ||
+    programAddress === WOKENET_SYSTEM_PROGRAM_ADDRESS ||
+    programAddress === WOKENET_UPGRADEABLE_LOADER_ADDRESS
   ) {
     throw new WokePaymentError(
       'invalid-context',
-      'The Woke Network genesis hash and program address must be non-default values.',
+      'The WokeNet genesis hash and program address must be non-default values.',
     );
   }
   return Object.freeze({
@@ -154,7 +154,7 @@ export interface WokeRecipientSplitInput {
 }
 
 export interface WokeNativePaymentInput {
-  readonly context: WokeNetworkContext;
+  readonly context: WokeNetContext;
   readonly payerIdentity: string;
   readonly payerAuthority: string;
   readonly feeDestination: string;
@@ -180,7 +180,7 @@ export interface WokeNativeTransfer {
 
 export interface WokeNativePaymentPlan {
   readonly asset: 'WOKE';
-  readonly context: ValidatedWokeNetworkContext;
+  readonly context: ValidatedWokeNetContext;
   readonly payerIdentity: string;
   readonly payerAuthority: string;
   readonly feeDestination: string;
@@ -194,13 +194,13 @@ export interface WokeNativePaymentPlan {
 }
 
 /**
- * Mirrors `calculate_native_payment_allocation` in the Woke protocol program.
+ * Mirrors `calculate_native_payment_allocation` in the WokeSocial protocol program.
  * All arithmetic is checked in the same unsigned-128 intermediate domain.
  */
 export function calculateWokeNativePaymentPlan(
   input: WokeNativePaymentInput,
 ): WokeNativePaymentPlan {
-  const context = createWokeNetworkContext(input.context);
+  const context = createWokeNetContext(input.context);
   const payerIdentity = parseAddress(input.payerIdentity, 'payer identity');
   const payerAuthority = parseAddress(input.payerAuthority, 'payer authority');
   const feeDestination = parseAddress(input.feeDestination, 'fee destination');
@@ -311,18 +311,16 @@ export function calculateWokeNativePaymentPlan(
   };
 }
 
-export async function deriveWokeProtocolConfigAddress(
-  context: WokeNetworkContext,
-): Promise<string> {
+export async function deriveWokeProtocolConfigAddress(context: WokeNetContext): Promise<string> {
   return (await derivePda(context, [PDA_PREFIX, PDA_VERSION, CONFIG_SEED])).address;
 }
 
-export async function deriveWokePaymentConfigAddress(context: WokeNetworkContext): Promise<string> {
+export async function deriveWokePaymentConfigAddress(context: WokeNetContext): Promise<string> {
   return (await derivePda(context, [PDA_PREFIX, PDA_VERSION, PAYMENT_CONFIG_SEED])).address;
 }
 
 export async function deriveWokeIdentityAddress(
-  context: WokeNetworkContext,
+  context: WokeNetContext,
   originAuthority: string,
   identityNonce: Uint8Array,
 ): Promise<string> {
@@ -340,7 +338,7 @@ export async function deriveWokeIdentityAddress(
 }
 
 export async function deriveWokeSubscriptionOfferingAddress(
-  context: WokeNetworkContext,
+  context: WokeNetContext,
   creatorIdentity: string,
   offeringNonce: Uint8Array,
 ): Promise<string> {
@@ -358,7 +356,7 @@ export async function deriveWokeSubscriptionOfferingAddress(
 }
 
 export async function deriveWokePaymentReceiptAddress(
-  context: WokeNetworkContext,
+  context: WokeNetContext,
   payerIdentity: string,
   receiptNonce: Uint8Array,
 ): Promise<string> {
@@ -366,15 +364,15 @@ export async function deriveWokePaymentReceiptAddress(
 }
 
 export async function deriveWokeSubscriptionEntitlementAddress(
-  context: WokeNetworkContext,
+  context: WokeNetContext,
   offeringAddress: string,
   beneficiaryIdentity: string,
 ): Promise<string> {
   return (await deriveEntitlementPda(context, offeringAddress, beneficiaryIdentity)).address;
 }
 
-export async function deriveWokeProgramDataAddress(context: WokeNetworkContext): Promise<string> {
-  const parsed = createWokeNetworkContext(context);
+export async function deriveWokeProgramDataAddress(context: WokeNetContext): Promise<string> {
+  const parsed = createWokeNetContext(context);
   const [programData] = await getProgramDerivedAddress({
     programAddress: UPGRADEABLE_LOADER_ADDRESS,
     seeds: [addressBytes(parsed.programAddress)],
@@ -396,10 +394,10 @@ export interface InitializeWokePaymentConfigInput {
 }
 
 export async function buildInitializeWokePaymentConfigInstruction(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   input: InitializeWokePaymentConfigInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const upgradeAuthority = parseAddress(input.upgradeAuthority, 'upgrade authority');
   const paymentAuthority = parseAddress(input.paymentAuthority, 'payment authority');
   const feeDestination = parseAddress(input.feeDestination, 'fee destination');
@@ -436,10 +434,10 @@ export interface UpdateWokePaymentConfigInput {
 }
 
 export async function buildUpdateWokePaymentConfigInstruction(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   input: UpdateWokePaymentConfigInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const authority = parseAddress(input.authority, 'payment authority');
   const feeDestination = parseAddress(input.feeDestination, 'fee destination');
   const policySequence = parseIncrementableU64(
@@ -477,10 +475,10 @@ export interface RotateWokePaymentAuthorityInput {
 }
 
 export async function buildRotateWokePaymentAuthorityInstruction(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   input: RotateWokePaymentAuthorityInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const currentAuthority = parseAddress(input.currentAuthority, 'current payment authority');
   const newAuthority = parseAddress(input.newAuthority, 'new payment authority');
   if (currentAuthority === newAuthority) {
@@ -530,10 +528,10 @@ export interface BuiltWokeSubscriptionOfferingInstruction {
 }
 
 export async function buildCreateWokeSubscriptionOfferingInstruction(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   input: CreateWokeSubscriptionOfferingInput,
 ): Promise<BuiltWokeSubscriptionOfferingInstruction> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const creatorIdentity = parseAddress(input.creatorIdentity, 'creator identity');
   const rootAuthority = parseAddress(input.rootAuthority, 'creator root authority');
   const payer = parseAddress(input.payer, 'offering rent payer');
@@ -620,10 +618,10 @@ export interface RetireWokeSubscriptionOfferingInput {
 }
 
 export async function buildRetireWokeSubscriptionOfferingInstruction(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   input: RetireWokeSubscriptionOfferingInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const creatorIdentity = parseAddress(input.creatorIdentity, 'creator identity');
   const rootAuthority = parseAddress(input.rootAuthority, 'creator root authority');
   const nonce = parseNonce(input.offeringNonce, 'offering nonce');
@@ -669,7 +667,7 @@ export interface SendWokeTipInput {
 }
 
 interface WokeSettlementBase {
-  readonly context: ValidatedWokeNetworkContext;
+  readonly context: ValidatedWokeNetContext;
   readonly instruction: WokeInstruction;
   readonly plan: WokeNativePaymentPlan;
   readonly configAddress: string;
@@ -688,10 +686,10 @@ export interface BuiltWokeTipInstruction extends WokeSettlementBase {
 }
 
 export async function buildSendWokeTipInstruction(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   input: SendWokeTipInput,
 ): Promise<BuiltWokeTipInstruction> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const receiptNonce = parseNonce(input.receiptNonce, 'receipt nonce');
   const rentPayer = parseAddress(input.rentPayer, 'receipt rent payer');
   const paymentPolicySequence = parseU64(
@@ -814,10 +812,10 @@ export interface BuiltWokeSubscriptionSettlementInstruction extends WokeSettleme
 }
 
 export async function buildSettleWokeSubscriptionInstruction(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   input: SettleWokeSubscriptionInput,
 ): Promise<BuiltWokeSubscriptionSettlementInstruction> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const creatorIdentity = parseAddress(input.creatorIdentity, 'creator identity');
   const creatorDestination = parseAddress(input.creatorDestination, 'creator destination');
   const offeringNonce = parseNonce(input.offeringNonce, 'offering nonce');
@@ -1007,7 +1005,7 @@ export type WokeSettlementEvent = WokeTipSettledEvent | WokeSubscriptionSettledE
 /**
  * A deliberately simulation-only shape. Callers must parse every System
  * Program `Transfer` opcode from `simulateTransaction` and every payment event
- * emitted by the Woke program. System account-creation opcodes are not
+ * emitted by the WokeSocial program. System account-creation opcodes are not
  * transfers and must not be included.
  */
 export interface WokePaymentSimulation {
@@ -1035,7 +1033,7 @@ export function assertWokePaymentSimulationMatches(
   ) {
     throw new WokePaymentError(
       'context-mismatch',
-      'The simulation is not bound to the approved Woke Network endpoint, genesis, and program.',
+      'The simulation is not bound to the approved WokeNet endpoint, genesis, and program.',
     );
   }
   if (simulation.error !== null) {
@@ -1053,7 +1051,7 @@ export function assertWokePaymentSimulationMatches(
     const observed = simulation.transfers[index];
     if (
       observed === undefined ||
-      observed.programAddress !== WOKE_SYSTEM_PROGRAM_ADDRESS ||
+      observed.programAddress !== WOKENET_SYSTEM_PROGRAM_ADDRESS ||
       observed.source !== expected.source ||
       observed.destination !== expected.destination ||
       observed.lamports !== expected.lamports
@@ -1428,7 +1426,7 @@ function assertFinalizedEnvelope<T>(
   ) {
     throw new WokePaymentError(
       'context-mismatch',
-      'The finalized account proof is not bound to the approved Woke Network context.',
+      'The finalized account proof is not bound to the approved WokeNet context.',
     );
   }
   parseU64(account.slot, 'finalized account slot');
@@ -1609,7 +1607,7 @@ function parseEntitlementSnapshot(snapshot: WokeEntitlementSnapshot): {
 }
 
 async function deriveReceiptPda(
-  context: WokeNetworkContext,
+  context: WokeNetContext,
   payerIdentity: string,
   receiptNonce: Uint8Array,
 ): Promise<{ address: string; bump: number }> {
@@ -1625,7 +1623,7 @@ async function deriveReceiptPda(
 }
 
 async function deriveEntitlementPda(
-  context: WokeNetworkContext,
+  context: WokeNetContext,
   offeringAddress: string,
   beneficiaryIdentity: string,
 ): Promise<{ address: string; bump: number }> {
@@ -1641,10 +1639,10 @@ async function deriveEntitlementPda(
 }
 
 async function derivePda(
-  contextInput: WokeNetworkContext,
+  contextInput: WokeNetContext,
   seeds: readonly Uint8Array[],
 ): Promise<{ address: string; bump: number }> {
-  const context = createWokeNetworkContext(contextInput);
+  const context = createWokeNetContext(contextInput);
   const [derivedAddress, bump] = await getProgramDerivedAddress({
     programAddress: address(context.programAddress),
     seeds: [...seeds],
@@ -1653,7 +1651,7 @@ async function derivePda(
 }
 
 function instruction(
-  context: ValidatedWokeNetworkContext,
+  context: ValidatedWokeNetContext,
   accounts: readonly AccountMeta[],
   data: Uint8Array,
 ): WokeInstruction {
@@ -1671,7 +1669,7 @@ function meta(value: string | Address, role: AccountRole): AccountMeta {
 function parseAddress(value: string, label: string): string {
   try {
     const parsed = address(value);
-    if (parsed === WOKE_SYSTEM_PROGRAM_ADDRESS) {
+    if (parsed === WOKENET_SYSTEM_PROGRAM_ADDRESS) {
       throw new Error('default address');
     }
     return parsed;
@@ -1710,7 +1708,7 @@ function parseU64(value: bigint, label: string): bigint {
   if (typeof value !== 'bigint' || value < 0n || value > U64_MAX) {
     throw new WokePaymentError(
       'amount-out-of-range',
-      `The ${label} must fit Woke Network's unsigned 64-bit range.`,
+      `The ${label} must fit WokeNet's unsigned 64-bit range.`,
     );
   }
   return value;
@@ -1721,7 +1719,7 @@ function parseIncrementableU64(value: bigint, label: string): bigint {
   if (parsed === U64_MAX) {
     throw new WokePaymentError(
       'amount-out-of-range',
-      `The ${label} cannot be incremented in the Woke program.`,
+      `The ${label} cannot be incremented in the WokeSocial program.`,
     );
   }
   return parsed;
@@ -1741,7 +1739,7 @@ function checkedU128(value: bigint, label: string): bigint {
   if (value < 0n || value > U128_MAX) {
     throw new WokePaymentError(
       'amount-out-of-range',
-      `The ${label} exceeds the Woke program's unsigned 128-bit arithmetic domain.`,
+      `The ${label} exceeds the WokeSocial program's unsigned 128-bit arithmetic domain.`,
     );
   }
   return value;
@@ -1795,7 +1793,7 @@ function parseManifestUri(value: string): string {
   ) {
     throw new WokePaymentError(
       'invalid-wire-value',
-      'The manifest URI does not satisfy the Woke protocol URI policy.',
+      'The manifest URI does not satisfy the WokeSocial protocol URI policy.',
     );
   }
   return value;

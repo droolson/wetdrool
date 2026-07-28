@@ -13,7 +13,7 @@ import {
   solanaPublicKeySchema,
   timestampSchema,
   transactionSignatureSchema,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 
 import {
   calculatePaymentAllocation,
@@ -970,7 +970,7 @@ function assertNetworkBindings(
     });
   }
 
-  const identityPrefix = `swid:v1:${event.networkId}:`;
+  const identityPrefix = `wokesocialid:v1:${event.networkId}:`;
   for (const [field, value] of Object.entries(event)) {
     if (
       typeof value === 'string' &&

@@ -1,4 +1,4 @@
-# Socially Woke Moderation and Safety Model
+# WokeSocial Moderation and Safety Model
 
 **Status:** Active specification with an implemented provider subset  
 **Last updated:** 2026-07-28
@@ -24,11 +24,11 @@ community product controls, specialist escalation, transparency exports, and
 independent policy-provider selection remain incomplete. Signed tombstones and
 the indexer’s deletion suppression are separately tested protocol controls.
 
-The protocol runtime in this document is the sovereign Woke Network, forked
+The protocol runtime in this document is the sovereign WokeNet, forked
 from Solana. Native validator and RPC operation is Firedancer only and remains
 **Experimental**; Agave/Solana tooling is an explicitly labeled compatibility
 oracle and cannot establish native or production evidence; production
-activation remains blocked. Onchain moderation references use Woke Network
+activation remains blocked. Onchain moderation references use WokeNet
 state. WOKE is the native 9-decimal asset, while `lamports` may remain only as
 its Solana-compatible wire/base-unit identifier
 (`1 WOKE = 1,000,000,000 lamports`). The canonical public origin is
@@ -355,7 +355,7 @@ Crisis-resource hooks are supportive and optional. They do not infer a diagnosis
 
 A valid signed public object may exist in several places:
 
-- A Woke Network reference or tombstone
+- A WokeNet reference or tombstone
 - A deletion-compatible content provider
 - An intentionally permanent provider
 - Operator caches and search indexes

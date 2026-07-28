@@ -38,7 +38,7 @@ export function parseAuthConfig(input: NodeJS.ProcessEnv = process.env) {
     .object({
       AUTH_HOST: z.string().min(1).default('127.0.0.1'),
       AUTH_PORT: z.coerce.number().int().min(1).max(65_535).default(4300),
-      AUTH_RP_NAME: z.string().trim().min(1).max(120).default('Socially Woke'),
+      AUTH_RP_NAME: z.string().trim().min(1).max(120).default('WokeSocial'),
       AUTH_RP_ID: rpIdSchema.default('localhost'),
       AUTH_ORIGIN: originSchema.default('http://localhost:4300'),
       AUTH_DATABASE_URL: databaseUrlSchema.optional(),

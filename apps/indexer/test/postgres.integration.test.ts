@@ -23,8 +23,8 @@ import {
   type ProfileContent,
   type SignedEnvelope,
   type TombstoneContent,
-} from '@socially-woke/protocol';
-import { LocalContentAddressedStorage, type StorageReceipt } from '@socially-woke/storage';
+} from '@wokesocial/protocol';
+import { LocalContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
 
 import {
   ManifestVerifier,
@@ -37,13 +37,13 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke';
+  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 const programId = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 
 describe('PostgreSQL indexer integration', () => {
   it('distinguishes exact duplicates from conflicting immutable event coordinates', async () => {
     await migrate(databaseUrl);
-    const networkId = `woke:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identity = makeIdentity(networkId, 81);
     const projection = new PostgresProjectionStore(databaseUrl);
     const inspection = postgres(databaseUrl, { max: 1 });
@@ -107,7 +107,7 @@ describe('PostgreSQL indexer integration', () => {
 
   it('serializes rebuild before a queued live apply without orphaning raw state', async () => {
     await migrate(databaseUrl);
-    const networkId = `woke:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identity = makeIdentity(networkId, 82);
     const projection = new PostgresProjectionStore(databaseUrl);
     const blocker = postgres(databaseUrl, { max: 1 });
@@ -162,8 +162,8 @@ describe('PostgreSQL indexer integration', () => {
 
   it('allows mutations for different networks to proceed concurrently', async () => {
     await migrate(databaseUrl);
-    const networkA = `woke:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
-    const networkB = `woke:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkA = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkB = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const projection = new PostgresProjectionStore(databaseUrl);
     const blocker = postgres(databaseUrl, { max: 1 });
     const inspection = postgres(databaseUrl, { max: 1 });
@@ -224,9 +224,9 @@ describe('PostgreSQL indexer integration', () => {
   it('projects verified manifests idempotently and rebuilds from finalized events', async () => {
     await migrate(databaseUrl);
 
-    const contentRoot = await mkdtemp(join(tmpdir(), 'socially-woke-indexer-integration-'));
+    const contentRoot = await mkdtemp(join(tmpdir(), 'wokesocial-indexer-integration-'));
     const genesis = bs58.encode(randomBytes(32));
-    const networkId = `woke:v1:${genesis}:${programId}` as NetworkId;
+    const networkId = `wokenet:v1:${genesis}:${programId}` as NetworkId;
     const viewer = makeIdentity(networkId, 17);
     const author = makeIdentity(networkId, 29);
     const storage = new LocalContentAddressedStorage({
@@ -654,7 +654,7 @@ function makeIdentity(networkId: NetworkId, keySeed: number): TestIdentity {
   const privateKey = Uint8Array.from({ length: 32 }, (_, index) => (keySeed + index) % 256);
   const publicKey = ed25519.getPublicKey(privateKey);
   const identityAddress = bs58.encode(randomBytes(32));
-  const identityId = `swid:v1:${networkId}:${identityAddress}`;
+  const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
   return {
     privateKey,
     publicKey,

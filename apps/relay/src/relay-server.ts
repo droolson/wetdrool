@@ -266,7 +266,7 @@ export class RelayServer {
     if (pathname === '/healthz') {
       sendJson(response, 200, {
         ok: true,
-        service: '@socially-woke/relay',
+        service: '@wokesocial/relay',
         advisory: true,
         canonical: false,
         relayId: this.#relayId,
@@ -747,7 +747,7 @@ export function createPrivacySafeJsonLogger(): RelayLogger {
     process.stdout.write(
       `${JSON.stringify({
         level,
-        service: '@socially-woke/relay',
+        service: '@wokesocial/relay',
         message,
         ...context,
         timestamp: new Date().toISOString(),

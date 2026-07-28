@@ -30,7 +30,7 @@ export async function migrateAuth(databaseUrl: string): Promise<void> {
       await sql.begin(async (transaction) => {
         await transaction`
           SELECT pg_advisory_xact_lock(
-            hashtext('socially-woke/auth-service/schema-migrations')
+            hashtext('wokesocial/auth-service/schema-migrations')
           )
         `;
         const applied = await transaction<{ version: string }[]>`

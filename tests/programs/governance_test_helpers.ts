@@ -18,7 +18,7 @@ import {
 
 const { PublicKey, SystemProgram } = web3;
 
-const PDA_PREFIX = Buffer.from("sw");
+const PDA_PREFIX = Buffer.from("wokesocial");
 const PDA_VERSION = Buffer.from([1]);
 const COMMUNITY_SEED = Buffer.from("community");
 const MEMBERSHIP_SEED = Buffer.from("membership");
@@ -34,7 +34,7 @@ export const SCOPE_PROFILE = 1;
 export const SCOPE_SOCIAL = 1 << 2;
 export const SCOPE_COMMUNITY = 1 << 3;
 export const GOVERNANCE_STRATEGY =
-  "socially-woke:governance:one-active-member-one-vote:v1;" +
+  "wokesocial:governance:one-active-member-one-vote:v1;" +
   "quorum-bps=5000;approval-bps=5001;abstain=quorum-only";
 export const GOVERNANCE_STRATEGY_HASH = Array.from(
   createHash("sha256").update(GOVERNANCE_STRATEGY).digest(),

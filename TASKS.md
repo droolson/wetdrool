@@ -1,4 +1,4 @@
-# Socially Woke implementation plan
+# WokeSocial implementation plan
 
 Updated: 2026-07-28
 
@@ -57,6 +57,12 @@ Dependencies: repository audit.
 ### Monorepo and toolchains
 
 - [x] Initialize Git without configuring a remote.
+- [x] Set the repository identity to `wokenet` and enforce the platform/network
+  naming boundary.
+  - Evidence: the local repository directory and root package are both
+    `wokenet`; `pnpm naming:check` enforces `WokeSocial`/`wokesocial` for the
+    platform and `WokeNet`/`wokenet` for the chain and repository. No Git remote
+    is configured, so there was no remote repository to rename.
 - [x] Add a strict pnpm workspace and Turborepo pipeline.
 - [x] Pin Node, pnpm, TypeScript, Rust, Anchor, the compatibility oracle, and
   native Firedancer source.
@@ -64,7 +70,7 @@ Dependencies: repository audit.
     Anchor 0.32.1, and Agave/Solana 2.3.0 are exact compatibility inputs;
     official Firedancer commit
     `60c3d2e381a6607f63adc818481e2f31472ae681` and the downstream patch queue
-    are SHA-256 pinned for Woke Network.
+    are SHA-256 pinned for WokeNet.
 - [x] Add strict shared TypeScript, ESLint, Prettier, and Rust formatting/lint
   configuration.
 - [x] Add `.gitignore`, `.gitattributes`, `.editorconfig`, `.env.example`,
@@ -73,7 +79,7 @@ Dependencies: repository audit.
   and scripts without placeholder success responses.
   - Implemented subset: web, authentication, indexer, feed, relay, moderation,
     media, protocol, storage, SDK, UI, configuration, crypto, messaging, shared
-    fixtures, the Anchor workspace, Woke Network downstream, local
+    fixtures, the Anchor workspace, WokeNet downstream, local
     infrastructure, and scripts exist. Generated docs, full product recovery,
     creator-payment UX, production moderation identity, native network
     operation, and several launch boundaries remain incomplete.
@@ -109,12 +115,12 @@ Dependencies: repository audit.
     program suite.
 - [x] Documentation matches the generated foundation.
 
-## 2. Woke Network and core protocol
+## 2. WokeNet and core protocol
 
 Dependencies: phase 1, canonical schemas, pinned native Firedancer source, and
 pinned Rust/Anchor/Solana-format compatibility toolchains.
 
-- [ ] Operate a sovereign Woke Network using native Firedancer validator and RPC
+- [ ] Operate a sovereign WokeNet using native Firedancer validator and RPC
   software without Agave.
   - Implemented subset: the repository pins the official Firedancer revision
     and exact downstream genesis patch, enforces an exact patch-queue diff,
@@ -173,9 +179,10 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
     signer control, handle collisions/releases, delegated authority attacks, and
     overflow are tested. A clean local-validator gate keeps representative
     transactions below 1,100 bytes and 150,000 CU (largest observed overall:
-    668 bytes; governance additions: at most 554 bytes and 28,329 CU). Exact
-    rent is asserted for all 19 current account families. Generalized close
-    rules, fuzzing, and future account families remain incomplete.
+    892 bytes and 64,523 CU; governance additions: at most 554 bytes and
+    26,856 CU). Exact rent is asserted for all 19 current account families.
+    Generalized close rules, fuzzing, and future account families remain
+    incomplete.
 - [ ] Generate and verify the client from the IDL.
   - Implemented subset: Anchor generates the local IDL and TypeScript type used
     by the local-validator and connected suites. A complete checked-in SDK
@@ -185,7 +192,7 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
   unauthorized-close cases.
   - Verified subset: 21 native Rust tests cover account sizing, validation, PDA
     domains, discriminators, stale sequences, rotation epochs, governance and
-    payment arithmetic, deterministic allocation, and overflow. Twenty-one
+    payment arithmetic, deterministic allocation, and overflow. Thirty-three
     Agave compatibility-oracle flows exercise the original core path;
     rotation/delegation lifecycle;
     displaced-root invalidation; block/community/membership/governance
@@ -205,7 +212,7 @@ Dependencies: phase 2 protocol identifiers and events.
   - Evidence: `packages/protocol` defines strict modular Zod schemas and typed
     builders for all 29 current v1 portable object families. Its checked-in
     Draft 2020-12 signed-envelope schema is generated from the same registry,
-    exported as `@socially-woke/protocol/schema/v1`, and fails `schema:check`
+    exported as `@wokesocial/protocol/schema/v1`, and fails `schema:check`
     when stale. Rust consumption and cross-language golden conformance remain
     separate open gates.
 - [x] Implement deterministic canonical serialization, stable identifiers,
@@ -234,7 +241,7 @@ Dependencies: phase 2 protocol identifiers and events.
 - [ ] Implement idempotent, finality-aware indexing with checkpoints, backfill,
   replay, DLQ, migrations, validation, retries, corruption detection, and
   metrics.
-  - Implemented subset: finalized Woke Network Solana-format JSON-RPC
+  - Implemented subset: finalized WokeNet Solana-format JSON-RPC
     synchronization validates exact genesis/program identity, fails over RPC
     endpoints, replays from a configured deployment slot, verifies manifests,
     applies idempotent checkpoints, retries/DLQ, suppresses tombstones, and
@@ -250,8 +257,8 @@ Dependencies: phase 2 protocol identifiers and events.
   - Implemented subset: the Fastify service exposes liveness, readiness,
     OpenAPI, feed, and post endpoints backed by PostgreSQL with CORS, rate
     limiting, security headers, structured logging, and tracing hooks.
-  - The production server can run the Woke Network synchronizer when explicit
-    network, deployment-slot, `WOKE_*` RPC, storage, and database configuration
+  - The production server can run the WokeNet synchronizer when explicit
+    network, deployment-slot, `WOKENET_*` RPC, storage, and database configuration
     is supplied; it remains honestly disabled when that configuration is absent
     and rejects retired `SOLANA_*` runtime variables.
 - [x] Implement non-authoritative multi-relay protocol and failover.
@@ -290,8 +297,8 @@ Dependencies: phases 1-3 public interfaces.
 - [x] Deliver every required public, onboarding, feed, community, messaging,
   creator, settings, safety, data, developer, and status screen.
   - Evidence: 46 App Router page files cover the complete required route surface.
-    The current production build emits 33 static entries, including the
-    framework `_not-found` entry, plus 14 dynamic routes. Unsupported mutations
+    The current production build emits 32 static route entries, including the
+    framework `_not-found` entry, plus 15 dynamic routes. Unsupported mutations
     are visibly disabled rather than reporting false success.
 - [ ] Implement responsive navigation and polished loading, empty, error,
   offline, and degraded-network states.
@@ -378,18 +385,26 @@ threat-model mitigations.
 - [ ] Implement passkey-first onboarding using WebAuthn and a documented
   noncustodial signing architecture.
   - Implemented subset: ADR-0006 fixes the authentication/signing boundary;
-    `@socially-woke/crypto` wraps locally generated Ed25519 seeds with
+    `@wokesocial/crypto` wraps locally generated Ed25519 seeds with
     credential-bound WebAuthn PRF output using HKDF-SHA-256 plus AES-256-GCM.
     The replaceable auth service now verifies exact-origin/RP, user-verifying,
     discoverable ceremonies with durable PostgreSQL challenge, credential,
-    session, and ciphertext-bundle state. The browser creates an Ed25519 seed
-    locally, strips PRF output from server requests, synchronizes only the
-    encrypted wrapper, logs out, and signs in discoverably. Unit, PostgreSQL,
-    and real Chromium virtual-authenticator cases pass.
+    session, and ciphertext-bundle state. Initial credential creation, the
+    credential-bound encrypted root wrapper, and account activation commit
+    atomically; PRF absence fails before the account is created. Authentication
+    commits the credential counter transition and new session atomically with
+    revocation, including PostgreSQL rollback coverage. The browser creates the
+    Ed25519 root seed locally, strips PRF output from server requests, and
+    supports discoverable sign-in plus list/add/revoke service passkeys. Each
+    additional passkey unwraps and rewraps the same root, and revocation requires
+    fresh step-up, deletes that wrapper, and revokes service sessions. Twenty-four
+    auth unit, three isolated PostgreSQL, one auth-browser, 61 web unit, and one
+    desktop web virtual-authenticator flow pass.
   - Remaining scope: create the actual protocol identity/delegation through a
-    simulated and confirmed Woke Network transaction, complete multi-device UX
-    and independent security review, and provide a reviewed fallback for
-    authenticators without PRF support.
+    simulated and confirmed WokeNet transaction, connect service-passkey
+    revocation to the separate WokeNet delegation/device-authority lifecycle,
+    complete recovery UX and independent security review, and provide a reviewed
+    fallback for authenticators without PRF support.
 - [ ] Implement email-assisted recovery without making email the protocol
   identity.
 - [ ] Implement device-bound delegated keys, expiration, revocation, wallet
@@ -408,15 +423,15 @@ Dependencies: secure devices, identity verification, relay envelope interface.
   ADR; do not invent cryptography.
   - Evidence: ADR-0007 selects the Apache-2.0 Rust
     `matrix-sdk-crypto`/`vodozemac` engine through its maintained WASM binding,
-    preserves Socially Woke identity and relay authority boundaries, and keeps
+    preserves WokeSocial identity and relay authority boundaries, and keeps
     group messaging gated.
 - [ ] Implement device keys, authenticated encryption, replay protection,
   rotation, forward secrecy where supported, safety-number UX, encrypted local
   storage, attachments, revocation, message requests, and blocking.
-  - Implemented subset: `@socially-woke/messaging` delegates pairwise sessions
+  - Implemented subset: `@wokesocial/messaging` delegates pairwise sessions
     to pinned `@matrix-org/matrix-sdk-crypto-wasm@18.4.0`, routes only opaque
     upload/query/claim requests, binds engine keys to injected current
-    Socially Woke device authorization before and after sensitive operations,
+    WokeSocial device authorization before and after sensitive operations,
     verifies a canonical sender-device Ed25519 signature over routing fields
     and ciphertext before mutating Olm state, and rejects replay, corruption,
     wrong-device delivery, local or remote revocation, authorization changes,
@@ -471,7 +486,7 @@ security review.
   - Implemented compatibility subset: the Anchor program has strict
     upgrade-authority payment bootstrap, paused-by-default policy state, direct
     current-root WOKE tips, permanent payer/nonce receipts, and exact fee
-    snapshots. Non-native tokens and native Woke Network deployment remain
+    snapshots. Non-native tokens and native WokeNet deployment remain
     disabled.
 - [ ] Implement creator subscriptions, paid communities/events, entitlement
   verification, splits, fees, previews, history, and refund metadata.
@@ -480,13 +495,16 @@ security review.
     allocation, manual one-week renewals, 52-week prepayment bound, entitlement
     compare-and-swap state, terminal retirement, root-epoch invalidation, and
     refund-policy hash commitment without refund execution.
-  - Implemented SDK subset: `@socially-woke/sdk` binds every operation to an
+  - Implemented SDK subset: `@wokesocial/sdk` binds every operation to an
     injected endpoint, genesis hash, and program; constructs all seven
     IDL-aligned payment/config/offering instructions; derives golden-tested
     PDAs; plans exact integer WOKE transfers; strictly compares caller-parsed
-    simulations; and verifies injected finalized receipt/entitlement records.
-    A concrete RPC parser/account decoder, full message compiler, signer,
-    broadcaster, wallet UX, and native Woke execution remain open.
+    simulations; verifies injected finalized receipt/entitlement records; and
+    accepts an operation-scoped publication signer while rejecting payload,
+    identity, public-key, or signature substitution before storage or chain
+    submission. A concrete RPC parser/account decoder, payment-message compiler,
+    payment transaction signer/broadcaster, wallet UX, and native WokeNet
+    execution remain open.
 - [ ] Test recipient substitution, double payment, replay, rounding,
   unsupported-token spoofing, fake entitlement, and simulation mismatch.
   - Implemented program subset: Rust allocation and boundary tests cover
@@ -504,7 +522,7 @@ security review.
     validator flows cover same-kind and cross-kind replay, duplicate settlement,
     and stale-entitlement barriers. Native Firedancer and public-network
     evidence remain open.
-- [ ] Keep production Woke Network deployment and every real-fund action manual
+- [ ] Keep production WokeNet deployment and every real-fund action manual
   and documented.
 
 ## 10. Launch hardening and independent operation
@@ -528,7 +546,7 @@ Dependencies: all applicable product phases.
 - [ ] Prepare provider-neutral deployment, native public-test-network
   automation, DNS/TLS guide, monitoring, privacy-controlled error tracking,
   backups, rollback, incident response, and disaster recovery.
-- [ ] Obtain `BLOCKED(external)` independent Woke Network/Firedancer/social
+- [ ] Obtain `BLOCKED(external)` independent WokeNet/Firedancer/social
   program security audits.
 - [ ] Obtain `BLOCKED(external)` cryptography and messaging audit.
 - [ ] Obtain `BLOCKED(external)` qualified legal/privacy/safety review.
@@ -540,12 +558,12 @@ Dependencies: all applicable product phases.
 
 This gate is deliberately cross-phase and is the first integrated milestone.
 
-`pnpm test:vertical-slice` passed from a fresh Agave compatibility validator and
-disposable PostgreSQL in 41.34 seconds on 2026-07-28. It finalized nine local
-Solana-format transactions, applied eight projected events from eight program
-transactions, produced zero dead letters, compared pre/post replay state
-exactly, and passed production desktop/mobile Chromium without request
-interception. It is not native Woke Network evidence.
+`pnpm test:vertical-slice` passed on the final naming/PDA state from a fresh
+Agave compatibility validator and disposable PostgreSQL on 2026-07-28. It
+finalized nine local Solana-format transactions, applied eight projected events
+from eight program transactions, produced zero dead letters, compared pre/post
+replay state exactly, and passed production desktop/mobile Chromium without
+request interception. It is not native WokeNet evidence.
 
 - [x] A user creates an identity on a real local validator.
 - [x] The user creates or updates a profile.
@@ -562,16 +580,25 @@ interception. It is not native Woke Network evidence.
 
 ## Final completion gates
 
-- [ ] Build gate passes from a clean checkout.
-- [ ] Unit, program, integration, E2E, accessibility, and critical security
+- [x] Build gate passes from a clean checkout.
+  - Evidence: a separate local `git clone --no-hardlinks` of the final committed
+    source state passed `pnpm install --frozen-lockfile`, naming/domain/network
+    policy, formatting, lint, typecheck, 438 unit executions, and all 14
+    production builds. This is same-host isolation evidence, not an independent
+    clean-machine attestation.
+- [x] Unit, program, integration, E2E, accessibility, and critical security
   suites pass.
+  - Evidence: 438 unit executions, 43 integration executions, 21 Rust tests, 33
+    compatibility-validator flows, 204 browser passes with one intentional
+    duplicate skip, four connected-slice browser passes, dependency audit, and
+    Gitleaks passed in the renamed working tree.
 - [ ] Essential consumer flows work without manual database editing.
 - [ ] Protocol schemas, signatures, hashes, alternate endpoints, rebuild, and
   migration are verified.
 - [ ] No known high-severity vulnerability remains.
-- [ ] Architecture, APIs, deployment, operations, limitations, and clean-machine
+- [x] Architecture, APIs, deployment, operations, limitations, and clean-machine
   setup documentation match the implementation.
-- [ ] `FINAL_REPORT.md` distinguishes implemented-and-tested,
+- [x] `FINAL_REPORT.md` distinguishes implemented-and-tested,
   externally-configured, experimental, planned, and not-implemented work.
-- [ ] Production Woke Network readiness is assessed without automatically
+- [x] Production WokeNet readiness is assessed without automatically
   creating genesis, deploying, or spending funds.

@@ -1,5 +1,5 @@
 {
-  "name": "@socially-woke/test-fixtures",
+  "name": "@wokesocial/test-fixtures",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@socially-woke/protocol": "workspace:*"
+    "@wokesocial/protocol": "workspace:*"
   },
   "devDependencies": {
     "vitest": "4.1.10"

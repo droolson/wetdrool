@@ -1,8 +1,8 @@
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import type { NetworkId } from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import type { NetworkId } from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   AnchorEventDecodingError,
@@ -478,7 +478,7 @@ describe('payment HTTP contract', () => {
         },
       });
 
-      const wrongNetwork = `woke:v1:${publicKey(220)}:${fixture.programId}` as NetworkId;
+      const wrongNetwork = `wokenet:v1:${publicKey(220)}:${fixture.programId}` as NetworkId;
       const wrongNetworkResponse = await app.inject({
         method: 'GET',
         url:

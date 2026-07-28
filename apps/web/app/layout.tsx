@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import '@socially-woke/ui/styles.css';
+import '@wokesocial/ui/styles.css';
 
 import { ConnectivityNotice } from '@/components/connectivity-notice';
 import { MobileDock } from '@/components/mobile-dock';
@@ -13,15 +13,15 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_ORIGIN),
   title: {
-    default: 'Socially Woke — Own your voice',
-    template: '%s · Socially Woke',
+    default: 'WokeSocial — Own your voice',
+    template: '%s · WokeSocial',
   },
   description:
     'A social network designed for portable identity, safer conversation, and algorithms people can question.',
   openGraph: {
     description: 'Portable identity. Safer conversation. Algorithms people can question.',
-    siteName: 'Socially Woke',
-    title: 'Socially Woke — Own your voice',
+    siteName: 'WokeSocial',
+    title: 'WokeSocial — Own your voice',
     type: 'website',
   },
   robots: {

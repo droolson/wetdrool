@@ -48,8 +48,8 @@ jobs:
 
       - name: Verify pinned native Firedancer fork
         run: |
-          woke_source_root="$(mktemp -d)/firedancer"
-          pnpm network:woke:materialize -- "$woke_source_root"
+          wokenet_source_root="$(mktemp -d)/firedancer"
+          pnpm wokenet:materialize -- "$wokenet_source_root"
 
       - name: Run quality, tests, and build
         run: pnpm verify
@@ -101,7 +101,7 @@ jobs:
         run: >-
           docker compose
           --env-file .env.example
-          --project-name socially-woke-ci
+          --project-name wokesocial-ci
           --file infra/compose.yaml
           config --quiet
 
@@ -109,17 +109,17 @@ jobs:
         run: >-
           docker compose
           --env-file .env.example
-          --project-name socially-woke-ci
+          --project-name wokesocial-ci
           --file infra/compose.yaml
           up --detach --wait
 
       - name: Verify dependency commands
         run: |
-          docker compose --project-name socially-woke-ci --file infra/compose.yaml exec -T postgres \
-            pg_isready -U socially_woke -d socially_woke
-          docker compose --project-name socially-woke-ci --file infra/compose.yaml exec -T redis \
+          docker compose --project-name wokesocial-ci --file infra/compose.yaml exec -T postgres \
+            pg_isready -U wokesocial -d wokesocial
+          docker compose --project-name wokesocial-ci --file infra/compose.yaml exec -T redis \
             /bin/sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping'
-          docker compose --project-name socially-woke-ci --file infra/compose.yaml exec -T ipfs \
+          docker compose --project-name wokesocial-ci --file infra/compose.yaml exec -T ipfs \
             ipfs id
 
       - name: Build integration dependencies
@@ -132,13 +132,13 @@ jobs:
         run: |
           docker compose \
             --env-file .env.example \
-            --project-name socially-woke-ci \
+            --project-name wokesocial-ci \
             --file infra/compose.yaml \
             --profile services \
             build auth-service feed-service
           docker compose \
             --env-file .env.example \
-            --project-name socially-woke-ci \
+            --project-name wokesocial-ci \
             --file infra/compose.yaml \
             --profile services \
             up --detach --no-build --wait auth-service feed-service
@@ -147,11 +147,11 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4100/healthz
           curl --fail --silent --show-error http://127.0.0.1:4100/readyz
           test "$(
-            docker inspect socially-woke-ci-auth-service-1 \
+            docker inspect wokesocial-ci-auth-service-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10001:10001 true healthy'
           test "$(
-            docker inspect socially-woke-ci-feed-service-1 \
+            docker inspect wokesocial-ci-feed-service-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10002:10002 true healthy'
 
@@ -159,13 +159,13 @@ jobs:
         run: |
           docker compose \
             --env-file .env.example \
-            --project-name socially-woke-ci \
+            --project-name wokesocial-ci \
             --file infra/compose.yaml \
             --profile locked-services \
             build relay moderation-service
           docker compose \
             --env-file .env.example \
-            --project-name socially-woke-ci \
+            --project-name wokesocial-ci \
             --file infra/compose.yaml \
             --profile locked-services \
             up --detach --no-build --wait relay moderation-service
@@ -180,11 +180,11 @@ jobs:
               http://127.0.0.1:4400/readyz
           )" = '503'
           test "$(
-            docker inspect socially-woke-ci-relay-1 \
+            docker inspect wokesocial-ci-relay-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10003:10003 true healthy'
           test "$(
-            docker inspect socially-woke-ci-moderation-service-1 \
+            docker inspect wokesocial-ci-moderation-service-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10004:10004 true healthy'
 
@@ -192,27 +192,27 @@ jobs:
         run: |
           docker compose \
             --env-file .env.example \
-            --project-name socially-woke-ci \
+            --project-name wokesocial-ci \
             --file infra/compose.yaml \
             --profile media \
             build clamav media-worker
           docker compose \
             --env-file .env.example \
-            --project-name socially-woke-ci \
+            --project-name wokesocial-ci \
             --file infra/compose.yaml \
             --profile media \
             up --detach --no-build --wait clamav media-worker
           curl --fail --silent --show-error http://127.0.0.1:4500/healthz
           curl --fail --silent --show-error http://127.0.0.1:4500/readyz
-          docker exec socially-woke-ci-media-worker-1 \
+          docker exec wokesocial-ci-media-worker-1 \
             node scripts/verify-clamd.mjs
-          test -z "$(docker port socially-woke-ci-clamav-1 3310/tcp)"
+          test -z "$(docker port wokesocial-ci-clamav-1 3310/tcp)"
           test "$(
-            docker inspect socially-woke-ci-clamav-1 \
+            docker inspect wokesocial-ci-clamav-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '1000:1000 true healthy'
           test "$(
-            docker inspect socially-woke-ci-media-worker-1 \
+            docker inspect wokesocial-ci-media-worker-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '1000:1000 true healthy'
 
@@ -220,7 +220,7 @@ jobs:
         if: failure()
         run: >-
           docker compose
-          --project-name socially-woke-ci
+          --project-name wokesocial-ci
           --file infra/compose.yaml
           --profile services
           --profile locked-services
@@ -231,7 +231,7 @@ jobs:
         if: always()
         run: >-
           docker compose
-          --project-name socially-woke-ci
+          --project-name wokesocial-ci
           --file infra/compose.yaml
           --profile services
           --profile locked-services

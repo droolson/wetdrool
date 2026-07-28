@@ -227,9 +227,9 @@ Start local PostgreSQL using the repository infrastructure, configure a local
 database URL and a throwaway 32-byte key, then run:
 
 ```sh
-pnpm --filter @socially-woke/moderation-service migrate
+pnpm --filter @wokesocial/moderation-service migrate
 MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE=1 \
-  pnpm --filter @socially-woke/moderation-service dev
+  pnpm --filter @wokesocial/moderation-service dev
 ```
 
 The migration runner:
@@ -253,11 +253,11 @@ backup/point-in-time restore or a reviewed forward corrective migration.
 From the repository root:
 
 ```sh
-pnpm --filter @socially-woke/moderation-service lint
-pnpm --filter @socially-woke/moderation-service typecheck
-pnpm --filter @socially-woke/moderation-service test
-pnpm --filter @socially-woke/moderation-service test:integration
-pnpm --filter @socially-woke/moderation-service build
+pnpm --filter @wokesocial/moderation-service lint
+pnpm --filter @wokesocial/moderation-service typecheck
+pnpm --filter @wokesocial/moderation-service test
+pnpm --filter @wokesocial/moderation-service test:integration
+pnpm --filter @wokesocial/moderation-service build
 pnpm audit --prod
 ```
 

@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
-const AUTH_SERVICE_URL = `http://localhost:${process.env.SOCIALLY_WOKE_AUTH_PORT ?? '4300'}`;
+const AUTH_SERVICE_URL = `http://localhost:${process.env.WOKESOCIAL_AUTH_PORT ?? '4300'}`;
 
 interface ObservedRequest {
   readonly body: unknown;
@@ -8,7 +8,7 @@ interface ObservedRequest {
   readonly path: string;
 }
 
-test('registers, synchronizes ciphertext, logs out, and signs in discoverably', async ({
+test('registers ciphertext atomically, logs out, and signs in discoverably', async ({
   context,
   page,
 }, testInfo) => {
@@ -64,11 +64,11 @@ test('registers, synchronizes ciphertext, logs out, and signs in discoverably', 
     {},
   );
 
-  const bundleWrite = observed.find(
+  const legacyBundleWrites = observed.filter(
     (request) => request.method === 'PUT' && request.path.startsWith('/v1/key-bundles/'),
   );
-  expect(bundleWrite).toBeDefined();
-  const bundle = nestedObject(bundleWrite?.body, 'bundle');
+  expect(legacyBundleWrites).toHaveLength(0);
+  const bundle = nestedObject(registrationVerification, 'bundle');
   expect(Object.keys(bundle).sort()).toEqual([
     'algorithm',
     'credentialBinding',

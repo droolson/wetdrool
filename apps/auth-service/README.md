@@ -4,15 +4,16 @@ This service implements the relying-party side of user-verifying, discoverable W
 credentials. It creates opaque account IDs, never asks for email or on-chain identity data, and
 issues short-lived host-only sessions after exact-origin and exact-RP verification.
 
-The service is deliberately not a Socially Woke identity or wallet:
+The service is deliberately not a WokeSocial identity or wallet:
 
 - WebAuthn authenticates access to this replaceable service only.
-- Woke Network transaction and portable-object signing keys remain client-side.
+- WokeNet transaction and portable-object signing keys remain client-side.
 - Serialized `solana-ed25519-*` bundle kinds remain compatibility identifiers
   for Solana-compatible Ed25519 wire roles; they do not identify the network.
 - WebAuthn PRF results, plaintext Ed25519 seeds, and private keys are rejected before request
   handling and redacted from logs.
-- Only validated `@socially-woke/crypto` ciphertext bundles can be synchronized.
+- A validated `@wokesocial/crypto` root ciphertext is created only in the same transaction as its
+  first or additional credential; authenticated callers cannot replace established wrappers.
 - Email recovery and last-credential revocation are disabled until a reviewed recovery protocol
   exists.
 
@@ -30,7 +31,8 @@ last-use time, and revocation time. Counters advance monotonically, while backup
 verified assertions are preserved. Adding or revoking credentials requires a fresh user-verifying
 step-up. Credential revocation atomically deletes the corresponding synchronized wrappers and
 revokes every service session for the account, but does not pretend to revoke an on-chain
-delegation.
+delegation. Normal authentication commits its credential-state transition and new session in one
+store transaction, so revocation cannot land between those writes.
 
 The in-memory store identifies itself as `memory-development-only`. Server startup requires
 `AUTH_DATABASE_URL` unless `AUTH_DANGEROUSLY_USE_MEMORY_STORE=1` is explicitly configured.
@@ -57,13 +59,13 @@ capabilities are available from `GET /v1/policy`.
 From the repository root:
 
 ```sh
-pnpm --filter @socially-woke/auth-service typecheck
-pnpm --filter @socially-woke/auth-service lint
-pnpm --filter @socially-woke/auth-service test
-pnpm --filter @socially-woke/auth-service test:integration
-pnpm --filter @socially-woke/auth-service test:e2e
-pnpm --filter @socially-woke/auth-service build
-docker build --file apps/auth-service/Dockerfile --tag socially-woke-auth-service:local .
+pnpm --filter @wokesocial/auth-service typecheck
+pnpm --filter @wokesocial/auth-service lint
+pnpm --filter @wokesocial/auth-service test
+pnpm --filter @wokesocial/auth-service test:integration
+pnpm --filter @wokesocial/auth-service test:e2e
+pnpm --filter @wokesocial/auth-service build
+docker build --file apps/auth-service/Dockerfile --tag wokesocial-auth-service:local .
 ```
 
 The integration suite uses `AUTH_INTEGRATION_DATABASE_URL`, then `DATABASE_URL`, then the

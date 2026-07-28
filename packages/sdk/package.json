@@ -1,9 +1,9 @@
 {
-  "name": "@socially-woke/sdk",
+  "name": "@wokesocial/sdk",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Provider-neutral publication and Woke Network protocol client SDK for Socially Woke",
+  "description": "Provider-neutral publication and WokeNet protocol client SDK for WokeSocial",
   "license": "Apache-2.0",
   "exports": {
     ".": {
@@ -23,8 +23,8 @@
   },
   "dependencies": {
     "@solana/kit": "7.0.0",
-    "@socially-woke/protocol": "workspace:*",
-    "@socially-woke/storage": "workspace:*"
+    "@wokesocial/protocol": "workspace:*",
+    "@wokesocial/storage": "workspace:*"
   },
   "devDependencies": {
     "@noble/curves": "2.2.0",

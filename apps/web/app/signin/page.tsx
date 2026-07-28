@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ButtonLink, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { PasskeyAuthPanel } from '@/components/passkey-auth-panel';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 export default function SignInPage() {
   const authServiceUrl =
-    process.env['SOCIALLY_WOKE_AUTH_URL'] ??
+    process.env['WOKESOCIAL_AUTH_URL'] ??
     process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
     'http://localhost:4300';
 

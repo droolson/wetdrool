@@ -1,9 +1,9 @@
 {
-  "name": "@socially-woke/storage",
+  "name": "@wokesocial/storage",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Replaceable content-addressed storage adapters for Socially Woke",
+  "description": "Replaceable content-addressed storage adapters for WokeSocial",
   "license": "Apache-2.0",
   "exports": {
     ".": {
@@ -23,7 +23,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@socially-woke/protocol": "workspace:*",
+    "@wokesocial/protocol": "workspace:*",
     "multiformats": "14.0.5"
   },
   "devDependencies": {

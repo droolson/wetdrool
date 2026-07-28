@@ -85,7 +85,7 @@ importers:
       '@simplewebauthn/server':
         specifier: 13.3.2
         version: 13.3.2
-      '@socially-woke/crypto':
+      '@wokesocial/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
       fastify:
@@ -150,18 +150,18 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
-      '@socially-woke/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@socially-woke/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
-      '@socially-woke/storage':
-        specifier: workspace:*
-        version: link:../../packages/storage
       '@solana/kit':
         specifier: 7.0.0
         version: 7.0.0(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
+      '@wokesocial/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@wokesocial/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@wokesocial/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       bs58:
         specifier: 6.0.0
         version: 6.0.0
@@ -199,10 +199,10 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
-      '@socially-woke/protocol':
+      '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@socially-woke/storage':
+      '@wokesocial/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       fastify:
@@ -236,7 +236,7 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
-      '@socially-woke/protocol':
+      '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       fastify:
@@ -249,12 +249,12 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
-      '@socially-woke/test-fixtures':
-        specifier: workspace:*
-        version: link:../../packages/test-fixtures
       '@types/node':
         specifier: 22.20.1
         version: 22.20.1
+      '@wokesocial/test-fixtures':
+        specifier: workspace:*
+        version: link:../../packages/test-fixtures
       tsx:
         specifier: 4.23.1
         version: 4.23.1
@@ -267,7 +267,7 @@ importers:
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0
-      '@socially-woke/protocol':
+      '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       bs58:
@@ -301,10 +301,10 @@ importers:
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0
-      '@socially-woke/crypto':
+      '@wokesocial/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
-      '@socially-woke/ui':
+      '@wokesocial/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       next:
@@ -428,15 +428,15 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@socially-woke/protocol':
-        specifier: workspace:*
-        version: link:../protocol
-      '@socially-woke/storage':
-        specifier: workspace:*
-        version: link:../storage
       '@solana/kit':
         specifier: 7.0.0
         version: 7.0.0(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
+      '@wokesocial/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@wokesocial/storage':
+        specifier: workspace:*
+        version: link:../storage
     devDependencies:
       '@noble/curves':
         specifier: 2.2.0
@@ -450,7 +450,7 @@ importers:
 
   packages/storage:
     dependencies:
-      '@socially-woke/protocol':
+      '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../protocol
       multiformats:
@@ -466,7 +466,7 @@ importers:
 
   packages/test-fixtures:
     dependencies:
-      '@socially-woke/protocol':
+      '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../protocol
     devDependencies:

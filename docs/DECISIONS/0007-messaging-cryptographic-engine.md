@@ -7,7 +7,7 @@
 
 ## Context
 
-Socially Woke requires asynchronous one-to-one messaging with device keys,
+WokeSocial requires asynchronous one-to-one messaging with device keys,
 forward secrecy, authentication, replay resistance, verification, rotation, and
 revocation. A static sealed-box construction would not provide the required
 ratchet properties. Implementing X3DH, a Double Ratchet, or a group protocol in
@@ -15,14 +15,14 @@ this repository would be unaudited custom cryptography and is prohibited.
 
 The engine must run in browsers, persist state locally in encrypted storage, and
 remain independent of the flagship relay. It must not turn a hosted Matrix
-homeserver, Signal service, or Socially Woke database into the identity or
+homeserver, Signal service, or WokeSocial database into the identity or
 message authority.
 
 ## Decision
 
 Use the Apache-2.0
 [`@matrix-org/matrix-sdk-crypto-wasm`](https://www.npmjs.com/package/@matrix-org/matrix-sdk-crypto-wasm)
-binding to the Rust `matrix-sdk-crypto` engine behind a Socially Woke-owned,
+binding to the Rust `matrix-sdk-crypto` engine behind a WokeSocial-owned,
 versioned adapter. The upstream project describes `OlmMachine` as a standalone
 end-to-end-encryption state machine with no network I/O. The
 [Matrix Rust SDK](https://github.com/matrix-org/matrix-rust-sdk) describes the
@@ -38,7 +38,7 @@ interoperability gates pass.
 
 ```mermaid
 flowchart LR
-    Identity["Socially Woke identity and authorized device key"] --> Adapter["Versioned messaging adapter"]
+    Identity["WokeSocial identity and authorized device key"] --> Adapter["Versioned messaging adapter"]
     Adapter --> Engine["matrix-sdk-crypto OlmMachine"]
     Engine --> State["Encrypted device-local crypto store"]
     Engine --> Requests["Opaque key-directory requests"]
@@ -51,7 +51,7 @@ flowchart LR
 
 - A Matrix-shaped user or device identifier used internally by the engine is an
   encoding detail, not an account, homeserver dependency, or protocol identity.
-- Each engine device key must be bound to a current Socially Woke identity
+- Each engine device key must be bound to a current WokeSocial identity
   delegation or separately signed device-key assertion before another client
   trusts it.
 - The key directory distributes public key material and one-time keys but cannot
@@ -80,7 +80,7 @@ The adapter will expose typed operations for:
    reporting device.
 
 Raw upstream request objects and Matrix room semantics do not cross the public
-Socially Woke API. The adapter version pins the upstream event formats it
+WokeSocial API. The adapter version pins the upstream event formats it
 understands and rejects unknown critical algorithms or downgrade attempts.
 
 ## Metadata boundary
@@ -105,7 +105,7 @@ default. Documentation and UI must not claim metadata invisibility.
   review and an interoperability plan.
 - **Legacy `libolm`:** deprecated in favor of the audited Rust implementation.
 - **Treat a hosted Matrix service as the account system:** conflicts with
-  Socially Woke identity authority and replaceable-relay requirements.
+  WokeSocial identity authority and replaceable-relay requirements.
 - **Enable group encryption immediately:** group membership and history
   semantics create a substantially larger security surface than pairwise
   sessions.
@@ -118,8 +118,8 @@ audit portion of 9. Specifically, 13 real-WASM cases exercise independent
 devices, Olm session establishment, canonical sender-device signatures over
 outer routing metadata and ciphertext, relay mutation rejection before
 stateful decryption, post-session loss/reordering,
-duplicate/corruption/wrong-device rejection, current local and remote Socially
-Woke authorization before and after sensitive operations, revocation/rotation,
+duplicate/corruption/wrong-device rejection, current local and remote
+WokeSocial authorization before and after sensitive operations, revocation/rotation,
 bounded dependency failure, malformed-Unicode rejection, production
 volatile-storage denial, plaintext absence/zeroization, fixed errors, private
 runtime construction, and absent group APIs. No Matrix room/group interface

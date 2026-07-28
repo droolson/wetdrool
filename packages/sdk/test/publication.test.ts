@@ -3,22 +3,38 @@ import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildPostPayload,
   createPayloadBuilderIdentity,
+  decodeMultibaseBase64Url,
+  encodeMultibaseBase64Url,
+  signPayload,
   type NetworkId,
   type PostContent,
-} from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage, MultiProviderStorage } from '@socially-woke/storage';
+  type PortablePayload,
+  type ProfileContent,
+} from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage, MultiProviderStorage } from '@wokesocial/storage';
 
-import { PublicationError, PublicationPipeline, type ProtocolChainWriter } from '../src/index.js';
+import {
+  PublicationError,
+  PublicationPipeline,
+  type PublicationPipelineOptions,
+  type ProtocolChainWriter,
+} from '../src/index.js';
 
 const privateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const publicKey = ed25519.getPublicKey(privateKey);
 const genesis = bs58.encode(Uint8Array.from({ length: 32 }, () => 7));
 const program = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 const identityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 9));
-const network = `woke:v1:${genesis}:${program}` as NetworkId;
-const author = `swid:v1:woke:v1:${genesis}:${program}:${identityPda}`;
+const network = `wokenet:v1:${genesis}:${program}` as NetworkId;
+const author = `wokesocialid:v1:wokenet:v1:${genesis}:${program}:${identityPda}`;
 const identity = createPayloadBuilderIdentity(network, author, publicKey);
+const otherPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 33);
+const otherPublicKey = ed25519.getPublicKey(otherPrivateKey);
+const otherIdentityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 10));
+const otherAuthor = `wokesocialid:v1:wokenet:v1:${genesis}:${program}:${otherIdentityPda}`;
+const otherIdentity = createPayloadBuilderIdentity(network, otherAuthor, otherPublicKey);
 const content: PostContent = {
   format: 'plain',
   body: 'A signed post.',
@@ -34,6 +50,26 @@ const content: PostContent = {
   replyPolicy: 'anyone',
   quotePolicy: 'allowed',
 };
+const profileContent: ProfileContent = {
+  displayName: 'River',
+  bio: 'Building humane social infrastructure.',
+  pronouns: [{ value: 'they/them', visibility: 'public' }],
+  genderVisibility: 'private',
+  chosenFamilyLabels: [],
+  links: [],
+};
+const fixedCreatedAt = new Date('2026-07-28T12:00:00.000Z');
+const fixedNonce = Uint8Array.from({ length: 16 }, (_, index) => index);
+
+function signer<Payload extends PortablePayload>(payload: Payload) {
+  return signPayload(payload, privateKey);
+}
+
+function storage(): MultiProviderStorage {
+  return new MultiProviderStorage({
+    providers: [new MemoryContentAddressedStorage()],
+  });
+}
 
 function chainWriter(publishPost: ProtocolChainWriter['publishPost']): ProtocolChainWriter {
   return {
@@ -54,10 +90,7 @@ describe('publication pipeline', () => {
     }));
     const pipeline = new PublicationPipeline({
       identity,
-      privateKey,
-      storage: new MultiProviderStorage({
-        providers: [new MemoryContentAddressedStorage()],
-      }),
+      storage: storage(),
       chain: chainWriter(publishPost),
       onProgress: ({ stage }) => stages.push(stage),
     });
@@ -66,8 +99,9 @@ describe('publication pipeline', () => {
       content,
       { permanence: 'deletion-compatible' },
       {
-        createdAt: new Date('2026-07-28T12:00:00.000Z'),
-        nonce: Uint8Array.from({ length: 16 }, (_, index) => index),
+        signer,
+        createdAt: fixedCreatedAt,
+        nonce: fixedNonce,
       },
     );
 
@@ -92,22 +126,222 @@ describe('publication pipeline', () => {
   it('surfaces stored content for a retry after chain failure', async () => {
     const pipeline = new PublicationPipeline({
       identity,
-      privateKey,
-      storage: new MultiProviderStorage({
-        providers: [new MemoryContentAddressedStorage()],
-      }),
+      storage: storage(),
       chain: chainWriter(async () => {
         throw new Error('RPC unavailable');
       }),
     });
 
-    const result = pipeline.publishPost(content, {
-      permanence: 'deletion-compatible',
-    });
+    const result = pipeline.publishPost(
+      content,
+      {
+        permanence: 'deletion-compatible',
+      },
+      {
+        signer,
+      },
+    );
     await expect(result).rejects.toBeInstanceOf(PublicationError);
     await expect(result).rejects.toMatchObject({
       stage: 'anchoring',
       recoverableCid: expect.stringMatching(/^bafk/u),
     });
+  });
+
+  it('keeps signers operation-scoped and has no key-bearing pipeline option or property', async () => {
+    type PipelineAcceptsPrivateKey = 'privateKey' extends keyof PublicationPipelineOptions
+      ? true
+      : false;
+    type PostOptions = Parameters<PublicationPipeline['publishPost']>[2];
+    type OperationRequiresSigner = PostOptions extends { readonly signer: unknown } ? true : false;
+
+    const pipelineAcceptsPrivateKey: PipelineAcceptsPrivateKey = false;
+    const operationRequiresSigner: OperationRequiresSigner = true;
+    const publishPost = vi.fn(async () => ({
+      signature: 'post-transaction-signature',
+      slot: 43n,
+      finalized: true,
+    }));
+    const updateProfile = vi.fn(async () => ({
+      signature: 'profile-transaction-signature',
+      slot: 44n,
+      finalized: true,
+    }));
+    const postSigner = vi.fn(signer);
+    const profileSigner = vi.fn(signer);
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: storage(),
+      chain: {
+        publishPost,
+        updateProfile,
+        follow: vi.fn(),
+        unfollow: vi.fn(),
+      },
+    });
+
+    expect(pipelineAcceptsPrivateKey).toBe(false);
+    expect(operationRequiresSigner).toBe(true);
+    expect(Reflect.ownKeys(pipeline).map(String)).not.toEqual(
+      expect.arrayContaining(['privateKey', 'signer']),
+    );
+
+    await pipeline.publishPost(
+      content,
+      { permanence: 'deletion-compatible' },
+      {
+        signer: postSigner,
+        createdAt: fixedCreatedAt,
+        nonce: fixedNonce,
+      },
+    );
+    await pipeline.updateProfile(
+      profileContent,
+      { permanence: 'deletion-compatible' },
+      {
+        signer: profileSigner,
+        createdAt: fixedCreatedAt,
+        nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 16),
+      },
+    );
+
+    expect(postSigner).toHaveBeenCalledOnce();
+    expect(postSigner.mock.calls[0]?.[0]).toMatchObject({
+      author,
+      signingKey: identity.signingKey,
+      type: 'post',
+    });
+    expect(profileSigner).toHaveBeenCalledOnce();
+    expect(profileSigner.mock.calls[0]?.[0]).toMatchObject({
+      author,
+      signingKey: identity.signingKey,
+      type: 'profile',
+    });
+  });
+
+  it('rejects a tampered signature before storage or chain submission', async () => {
+    const publicationStorage = storage();
+    const publish = vi.spyOn(publicationStorage, 'publish');
+    const publishPost = vi.fn(async () => ({
+      signature: 'must-not-submit',
+      slot: 45n,
+      finalized: true,
+    }));
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: publicationStorage,
+      chain: chainWriter(publishPost),
+    });
+
+    const result = pipeline.publishPost(
+      content,
+      { permanence: 'deletion-compatible' },
+      {
+        signer: (payload) => {
+          const envelope = signPayload(payload, privateKey);
+          const signature = decodeMultibaseBase64Url(envelope.proof.signature, 64);
+          signature[0] = (signature[0] ?? 0) ^ 1;
+          return {
+            ...envelope,
+            proof: {
+              ...envelope.proof,
+              signature: encodeMultibaseBase64Url(signature),
+            },
+          };
+        },
+        createdAt: fixedCreatedAt,
+        nonce: fixedNonce,
+      },
+    );
+
+    await expect(result).rejects.toMatchObject({
+      stage: 'signing',
+      message: 'Invalid Ed25519 signature.',
+    });
+    expect(publish).not.toHaveBeenCalled();
+    expect(publishPost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a signer payload mismatch before storage or chain submission', async () => {
+    const publicationStorage = storage();
+    const publish = vi.spyOn(publicationStorage, 'publish');
+    const publishPost = vi.fn(async () => ({
+      signature: 'must-not-submit',
+      slot: 46n,
+      finalized: true,
+    }));
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: publicationStorage,
+      chain: chainWriter(publishPost),
+    });
+
+    const result = pipeline.publishPost(
+      content,
+      { permanence: 'deletion-compatible' },
+      {
+        signer: (payload) =>
+          signPayload(
+            {
+              ...payload,
+              content: {
+                ...payload.content,
+                body: 'A different signed post.',
+              },
+            },
+            privateKey,
+          ),
+        createdAt: fixedCreatedAt,
+        nonce: fixedNonce,
+      },
+    );
+
+    await expect(result).rejects.toMatchObject({
+      stage: 'signing',
+      message:
+        'Signer returned an envelope that does not exactly match the constructed payload and identity.',
+    });
+    expect(publish).not.toHaveBeenCalled();
+    expect(publishPost).not.toHaveBeenCalled();
+  });
+
+  it('rejects a signer identity mismatch before storage or chain submission', async () => {
+    const publicationStorage = storage();
+    const publish = vi.spyOn(publicationStorage, 'publish');
+    const publishPost = vi.fn(async () => ({
+      signature: 'must-not-submit',
+      slot: 47n,
+      finalized: true,
+    }));
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: publicationStorage,
+      chain: chainWriter(publishPost),
+    });
+
+    const result = pipeline.publishPost(
+      content,
+      { permanence: 'deletion-compatible' },
+      {
+        signer: () =>
+          signPayload(
+            buildPostPayload(otherIdentity, content, {
+              createdAt: fixedCreatedAt,
+              nonce: fixedNonce,
+            }),
+            otherPrivateKey,
+          ),
+        createdAt: fixedCreatedAt,
+        nonce: fixedNonce,
+      },
+    );
+
+    await expect(result).rejects.toMatchObject({
+      stage: 'signing',
+      message:
+        'Signer returned an envelope that does not exactly match the constructed payload and identity.',
+    });
+    expect(publish).not.toHaveBeenCalled();
+    expect(publishPost).not.toHaveBeenCalled();
   });
 });

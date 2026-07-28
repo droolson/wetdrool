@@ -10,8 +10,8 @@ import {
   signPayload,
   type NetworkId,
   type PostContent,
-} from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+} from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   ManifestVerifier,
@@ -26,8 +26,8 @@ const genesis = bs58.encode(Uint8Array.from({ length: 32 }, () => 7));
 const program = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 const identityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 9));
 const authority = bs58.encode(publicKey);
-const networkId = `woke:v1:${genesis}:${program}` as NetworkId;
-const identityId = `swid:v1:woke:v1:${genesis}:${program}:${identityAddress}`;
+const networkId = `wokenet:v1:${genesis}:${program}` as NetworkId;
+const identityId = `wokesocialid:v1:wokenet:v1:${genesis}:${program}:${identityAddress}`;
 const identity = createPayloadBuilderIdentity(networkId, identityId, publicKey, 'root');
 const content: PostContent = {
   format: 'plain',

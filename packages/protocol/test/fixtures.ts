@@ -10,8 +10,8 @@ const genesis = bs58.encode(Uint8Array.from({ length: 32 }, () => 7));
 const program = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 const identityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 9));
 
-export const network = `woke:v1:${genesis}:${program}` as NetworkId;
-export const author = `swid:v1:${network}:${identityPda}`;
+export const network = `wokenet:v1:${genesis}:${program}` as NetworkId;
+export const author = `wokesocialid:v1:${network}:${identityPda}`;
 export const identity = createPayloadBuilderIdentity(network, author, publicKey);
 
 export const postContent: PostContent = {

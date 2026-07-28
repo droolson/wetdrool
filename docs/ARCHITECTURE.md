@@ -1,11 +1,11 @@
-# woke.social Architecture
+# WokeSocial Architecture
 
 ## Document status
 
 - **Design status:** Initial architecture baseline
 - **Implementation status:** Foundation and experimental core subsets implemented
 - **Deployment status:** Solana-wire compatibility harness and local-container
-  testing only; no native Firedancer cluster, persistent Woke Network localnet,
+  testing only; no native Firedancer cluster, persistent WokeNet localnet,
   test network, staging network, or production network
 - **Last verified:** 2026-07-28
 
@@ -18,16 +18,16 @@ native Firedancer or complete-product path.
 
 ## Architectural goals
 
-woke.social is designed as an open social protocol with a polished reference
+WokeSocial is designed as an open social protocol with a polished reference
 client. The architecture must preserve these properties:
 
 1. An identity and its public social graph can outlive the flagship client.
-2. Public content can be authenticated without trusting a woke.social
+2. Public content can be authenticated without trusting a WokeSocial
    database.
 3. PostgreSQL, Redis, relays, indexers, feed providers, storage vendors, and RPC
    providers are replaceable.
 4. Sensitive data, authentication secrets, moderation evidence, and private
-   messages never become public Woke Network state.
+   messages never become public WokeNet state.
 5. Private messaging uses established end-to-end encryption and does not treat a
    relay as an authority.
 6. Official services can honor deletion and safety requests without falsely
@@ -42,8 +42,8 @@ flowchart LR
     Person["Person"]
     Client["Flagship or third-party client"]
     Wallet["Wallet, passkey-backed account, or delegated device key"]
-    RPC["One or more Woke Network RPC providers"]
-    Chain["Woke Network program and ledger"]
+    RPC["One or more WokeNet RPC providers"]
+    Chain["WokeNet program and ledger"]
     Storage["Content-addressed storage providers"]
     Relay["Replaceable real-time relays"]
     Indexer["Replaceable indexers"]
@@ -79,7 +79,7 @@ interchangeable would break the decentralization and privacy requirements.
 
 | State class | Examples | Authority | May be rebuilt? |
 | --- | --- | --- | --- |
-| Verifiable protocol state | Identity roots, delegations, handle claims, public follow edges, community authority, post references, payment settlement, revocations, tombstones | Woke Network program state and finalized ledger history | Yes, from the configured deployment slot and public content |
+| Verifiable protocol state | Identity roots, delegations, handle claims, public follow edges, community authority, post references, payment settlement, revocations, tombstones | WokeNet program state and finalized ledger history | Yes, from the configured deployment slot and public content |
 | Signed portable objects | Profile and post manifests, media manifests, policies, moderation-label feeds, feed-provider descriptors | Valid signatures plus authorized key state and content hashes | Yes, from any provider retaining the bytes |
 | Derived projections | Timelines, search indexes, notification lists, counters, entitlement caches | Never authoritative; each record must retain provenance | Yes, deterministically |
 | Private or ephemeral service state | Encrypted message envelopes, typing/presence, rate limits, local drafts, private abuse evidence, recovery contact data | The relevant user, encrypted conversation, or scoped operator policy | Not necessarily; minimize and apply retention limits |
@@ -91,7 +91,7 @@ See:
 - [ADR-0006: Passkey Authentication and Account-Key Boundary](DECISIONS/0006-passkey-account-key-boundary.md)
 - [ADR-0007: Messaging Cryptographic Engine](DECISIONS/0007-messaging-cryptographic-engine.md)
 - [ADR-0008: Canonical Domain Transition](DECISIONS/0008-canonical-domain-transition.md)
-- [ADR-0009: Sovereign Woke Network on Native Firedancer](DECISIONS/0009-sovereign-woke-network-firedancer.md)
+- [ADR-0009: Sovereign WokeNet on Native Firedancer](DECISIONS/0009-sovereign-wokenet-firedancer.md)
 
 ## Monorepo boundaries
 
@@ -101,22 +101,22 @@ not scaffolded as empty services.
 | Path | Responsibility | Authority constraints | Current status |
 | --- | --- | --- | --- |
 | `apps/web` | Flagship Next.js client | Must allow alternate endpoints and independently verify protocol objects | Complete required route surface, typed connected indexer reads, provider settings, resilient local composer/preferences/export, and a real passkey-service registration/sign-in path; protocol-identity and transactional adapters remain absent |
-| `apps/auth-service` | Replaceable WebAuthn relying party, short-lived service sessions, and encrypted key-bundle synchronization | Never becomes the protocol identity or receives PRF output, plaintext seeds, or private keys | Exact-origin/RP user-verifying ceremonies, discoverable credentials, PostgreSQL challenges/credentials/sessions, step-up revocation, bounded retention, ciphertext-only sync, OpenAPI, real-browser verification, and fail-closed custody/recovery policy implemented |
-| `apps/indexer` | Woke Network Solana-format RPC and content ingestion, PostgreSQL projections, public query API | Database is disposable and noncanonical | Finalized live synchronization, exhaustive 32-event current-IDL projection including payments, signed-manifest verification, memory/PostgreSQL rebuild, ten migrations, provenance, DLQ, and read-only APIs implemented; native Firedancer RPC remains blocked |
+| `apps/auth-service` | Replaceable WebAuthn relying party, short-lived service sessions, and credential-bound encrypted root-wrapper custody | Never becomes the protocol identity or receives PRF output, plaintext seeds, or private keys | Exact-origin/RP user-verifying ceremonies, discoverable credentials, atomic initial credential/wrapper/activation, same-root passkey addition, atomic authentication/session issuance, step-up revocation, bounded retention, OpenAPI, real-browser verification, and fail-closed custody/recovery policy implemented |
+| `apps/indexer` | WokeNet Solana-format RPC and content ingestion, PostgreSQL projections, public query API | Database is disposable and noncanonical | Finalized live synchronization, exhaustive 32-event current-IDL projection including payments, signed-manifest verification, memory/PostgreSQL rebuild, ten migrations, provenance, DLQ, and read-only APIs implemented; native Firedancer RPC remains blocked |
 | `apps/relay` | WebSocket delivery of presence, typing, notifications, and encrypted envelopes | Hints and transport only | Signed advisory protocol, fail-closed server, bounded in-memory state, privacy-safe observability, and multi-relay failover client implemented and tested over real loopback sockets; production key authorizer and E2EE remain external |
 | `apps/moderation-service` | Policy evaluation, reports, appeals, signed labels | Cannot rewrite protocol objects or become a global speech authority | Signed label/report/appeal verification, AES-256-GCM restricted evidence, append-only memory/PostgreSQL case ledger, scoped assertions and conflict overrides, retention/legal holds, due/expiry transitions, transparency aggregation, restricted reads, OpenAPI, and security controls implemented; production authorizer/SSO and specialist workflows remain blocked |
 | `apps/feed-service` | Explainable, selectable feed scoring | Results are recommendations, never protocol truth | Deterministic chronological/following/community/media scopes, bounded-window trending, explainable recommendations, third-party order reconciliation, bound cursors, local safety filtering, source checkpoints, and noncanonical disclaimers implemented and tested |
 | `apps/media-worker` | Validation, metadata stripping, transcoding, thumbnails, captions, and malware scanning | Clients may publish independently processed compliant media; worker output is unsigned | Authenticated resumable uploads, exact chunk/source hashes, strict MIME/container validation, metadata-free image/video/audio profiles, HLS, waveforms, bounded processing, real ClamAV INSTREAM with fresh database provenance, content-addressed publication, and independent preprocessed mode implemented and tested |
 | `apps/docs` | Human and generated protocol/API documentation | Generated reference must derive from canonical schemas | Planned |
-| `programs/social_protocol` | Compact Woke Network/Solana-format state, authorization, events, and native WOKE settlement | Canonical only for explicitly documented onchain facts | Forty instructions, 19 account layouts, and 32 events cover config, identity/profile reference, handles, rotation/delegation/recovery, social actions, communities/governance, posts/reactions/tombstones, native WOKE tips, weekly subscriptions, receipts, and entitlements in the compatibility oracle; other governance models, execution, token assets, and native Firedancer evidence remain open |
+| `programs/social_protocol` | Compact WokeNet/Solana-format state, authorization, events, and native WOKE settlement | Canonical only for explicitly documented onchain facts | Forty instructions, 19 account layouts, and 32 events cover config, identity/profile reference, handles, rotation/delegation/recovery, social actions, communities/governance, posts/reactions/tombstones, native WOKE tips, weekly subscriptions, receipts, and entitlements in the compatibility oracle; other governance models, execution, token assets, and native Firedancer evidence remain open |
 | `packages/protocol` | Versioned schemas, canonical serialization, identifiers, validation | Single source of truth for portable object formats | Strict modular v1 schemas and builders for all 29 current portable object families, RFC 8785 bytes, bounded primitives, transitions, SHA-256 IDs/CIDs, Ed25519 proofs, and intrinsic/external authorization boundaries implemented |
 | `packages/storage` | Content-addressed publication and retrieval | Provider receipts never replace local integrity verification | Local/memory CAS, multi-provider quorum/failover, IPFS/Kubo, and consent-gated Arweave-compatible adapters implemented |
-| `packages/sdk` | Signing, verification, WOKE instruction construction, provider clients | Must not silently trust flagship endpoints | Recoverable provider-neutral publication pipeline and provider pool plus seven IDL-aligned Anchor instruction builders, exact payment planning, strict caller-parsed simulation comparison, and injected finalized-account proof verification; concrete RPC parsers/readers and full message compile/sign/broadcast adapter remain absent |
+| `packages/sdk` | Signing, verification, WOKE instruction construction, provider clients | Must not silently trust flagship endpoints | Operation-scoped signed recoverable publication and provider pool plus seven IDL-aligned Anchor instruction builders, exact payment planning, strict caller-parsed simulation comparison, and injected finalized-account proof verification; concrete RPC parsers/readers and payment-message compile/sign/broadcast adapter remain absent |
 | `packages/crypto` | Thin wrappers around platform and reviewed cryptographic libraries | No custom cryptographic primitives | WebCrypto random/hash/HKDF/AES-GCM sealed-envelope and credential-bound WebAuthn-PRF key-wrapping primitives implemented and tested; ceremonies are implemented at the web/auth-service boundary, while no messaging protocol is claimed here |
-| `packages/messaging` | Pairwise E2EE adapter over the pinned Matrix Rust crypto WASM engine | Socially Woke device authorization remains authoritative; directory and relay cannot authorize devices or receive plaintext | Real Olm sessions, opaque bounded upload/query/claim routing, before/after local and remote authorization checks, canonical sender-signed envelopes verified before state mutation, replay/corruption/wrong-device rejection, revocation, fixed errors, private construction, and disabled room/group APIs implemented; only volatile test/development storage exists and production rejects it |
+| `packages/messaging` | Pairwise E2EE adapter over the pinned Matrix Rust crypto WASM engine | WokeSocial device authorization remains authoritative; directory and relay cannot authorize devices or receive plaintext | Real Olm sessions, opaque bounded upload/query/claim routing, before/after local and remote authorization checks, canonical sender-signed envelopes verified before state mutation, replay/corruption/wrong-device rejection, revocation, fixed errors, private construction, and disabled room/group APIs implemented; only volatile test/development storage exists and production rejects it |
 | `packages/ui` | Accessible design primitives and tokens | No protocol authority | Initial brand, tokens, themes, and shared primitives implemented |
-| `packages/config` | Shared typed configuration and observability contracts | Secrets remain external; retired Solana runtime variables fail closed | Typed `WOKE_*` root/indexer configuration, canonical-origin enforcement, production constraints, and safe summaries implemented |
-| `packages/test-fixtures` | Deterministic keys, manifests, events, and adversarial fixtures | Test-only; never production secrets | Clearly labeled deterministic `woke:v1` public test keys plus signed profile/post/reply/tombstone fixtures and golden values implemented |
+| `packages/config` | Shared typed configuration and observability contracts | Secrets remain external; retired Solana runtime variables fail closed | Typed `WOKENET_*` root/indexer configuration, canonical-origin enforcement, production constraints, and safe summaries implemented |
+| `packages/test-fixtures` | Deterministic keys, manifests, events, and adversarial fixtures | Test-only; never production secrets | Clearly labeled deterministic `wokenet:v1` public test keys plus signed profile/post/reply/tombstone fixtures and golden values implemented |
 | `infra` | Local containers and provider-neutral deployment examples | Must not imply a mandatory cloud | Digest-pinned PostgreSQL, Redis, Kubo, patched ClamAV, and hardened optional authentication/feed/media plus fail-closed relay/moderation service profiles implemented and locally health-checked |
 
 Code dependencies should point inward toward stable protocol contracts:
@@ -129,7 +129,7 @@ flowchart TD
     Protocol["packages/protocol"]
     Crypto["packages/crypto"]
     Program["programs/social_protocol"]
-    External["Woke Network, storage, and provider adapters"]
+    External["WokeNet, storage, and provider adapters"]
 
     UI --> SDK
     UI --> Protocol
@@ -147,21 +147,21 @@ for drift in CI, but the versioned schema and program IDL remain the inputs.
 
 ## Runtime layers
 
-### 1. Woke Network protocol layer
+### 1. WokeNet protocol layer
 
-Woke Network is a sovereign Solana-protocol-compatible network with WOKE as its
+WokeNet is a sovereign Solana-protocol-compatible network with WOKE as its
 native currency. It is not a Solana-operated cluster. Production and network
 development runtimes are restricted to full native Firedancer; Frankendancer
 and Agave validator/RPC processes are forbidden. The exact upstream source,
 downstream patch queue, native RPC capability gate, genesis policy, and
-unlaunchable production templates live under `network/woke-network/`.
+unlaunchable production templates live under `network/wokenet/`.
 
 The native runtime is not production-ready. At the pinned revision, full native
 Firedancer has no production release and lacks application-critical RPC
 methods. The existing Agave-backed local validator is retained only as a
 Solana-wire compatibility oracle for Anchor program and client behavior. It is
-not Woke Network deployment evidence. See
-[ADR-0009](DECISIONS/0009-sovereign-woke-network-firedancer.md).
+not WokeNet deployment evidence. See
+[ADR-0009](DECISIONS/0009-sovereign-wokenet-firedancer.md).
 
 The Anchor program is intended to hold only compact, high-value, verifiable
 state:
@@ -180,7 +180,7 @@ The program must emit sufficient versioned events to reconstruct projection
 state. Every instruction must validate signer authority, PDA derivation,
 ownership, relationship constraints, bounded inputs, replay identifiers, and
 checked arithmetic. Account layouts, maximum sizes, rent, compute, and
-transaction-size budgets must be measured before any native Woke Network test
+transaction-size budgets must be measured before any native WokeNet test
 deployment.
 
 The current compatibility-localnet implementation covers configuration,
@@ -214,12 +214,12 @@ proofs, local and memory CAS, multi-provider quorum/failover, IPFS/Kubo, and a
 consent-gated Arweave-compatible path. Media-manifest content is produced by
 the worker but deliberately remains unsigned until a client signs it. Unit and
 real Kubo/processor integrations verify those paths. Shared Rust/TypeScript
-golden vectors, a funded Arweave upload, and a general browser Woke Network
+golden vectors, a funded Arweave upload, and a general browser WokeNet
 writer remain absent.
 
 ### 3. Projection and discovery layer
 
-An open-source indexer reconstructs queryable state from finalized Woke Network
+An open-source indexer reconstructs queryable state from finalized WokeNet
 data, signed manifests, and signed policy feeds. PostgreSQL contains projections
 and ingestion provenance, not truth. Redis, if enabled, is restricted to
 disposable queues, rate limits, and caches.
@@ -237,7 +237,7 @@ The indexer must support:
 See [ADR-0004](DECISIONS/0004-indexer-projection-and-replay.md).
 
 The current indexer synchronizes finalized program logs through configurable
-Woke Network RPC providers via the Solana-compatible wire API, enforces exact
+WokeNet RPC providers via the Solana-compatible wire API, enforces exact
 32-event IDL drift, verifies referenced manifests, and projects implemented
 identity/social/community/governance/recovery/payment state into memory or
 PostgreSQL with raw-event provenance, checkpoints, bounded retry/dead letters,
@@ -282,7 +282,7 @@ preferences, exact-identity feed hiding, scoped export, and real
 virtual-authenticator passkey registration/sign-in against the replaceable auth
 service. Wallet, protocol-identity, transaction, moderation, recovery, payment,
 deletion, and messaging mutations remain visibly disabled. The production
-build, 54 unit cases, and 203 passing desktop/mobile Playwright cases—including
+build, 61 unit cases, and 203 passing desktop/mobile Playwright cases—including
 90 axe scans over 45 route fixtures—pass; one duplicate mobile passkey case is
 deliberately skipped. The connected post-detail route has semantic browser
 coverage but is not part of the current axe matrix.
@@ -384,7 +384,7 @@ sequenceDiagram
 
 The pairwise adapter now proves this cryptographic core with the real pinned
 Matrix Rust crypto WASM engine on two independent devices, opaque directory
-requests, current Socially Woke device authorization, sender-signed outer
+requests, current WokeSocial device authorization, sender-signed outer
 envelopes verified before Olm state mutation, and 13 adversarial
 replay/corruption/revocation/lifecycle tests. Messaging remains disabled in production
 until encrypted persistent state, browser WASM/CSP packaging, attachment and
@@ -397,7 +397,7 @@ separate security gate.
 | Boundary | Untrusted input | Required control |
 | --- | --- | --- |
 | Browser ↔ wallet/passkey | Transaction requests, wallet response, origin state | Human-readable intent, origin binding, simulation comparison, explicit user consent |
-| Client/indexer ↔ Woke RPC | Accounts, blocks, signatures, simulation data | Multiple endpoints, exact genesis/program allowlists, commitment checks, cross-provider comparison for sensitive actions, native-Firedancer capability checks |
+| Client/indexer ↔ WokeNet RPC | Accounts, blocks, signatures, simulation data | Multiple endpoints, exact genesis/program allowlists, commitment checks, cross-provider comparison for sensitive actions, native-Firedancer capability checks |
 | Client/indexer ↔ storage | Bytes, MIME declarations, redirects, gateway metadata | CID/hash verification, signature verification, size limits, safe URL policy, decompression limits |
 | Public input ↔ services | Manifests, queries, uploads, webhook-like callbacks | Runtime schemas, authorization, rate limits, output encoding, SSRF/path traversal defenses |
 | Relay ↔ client | Presence/events/envelopes | Treat events as hints; authenticate envelopes; replay protection; reconcile public facts |
@@ -409,7 +409,7 @@ separate security gate.
 
 | Store | Allowed data | Forbidden role |
 | --- | --- | --- |
-| Woke Network accounts and ledger | Compact public protocol state and references | PII, private messages, secrets, media, large post bodies |
+| WokeNet accounts and ledger | Compact public protocol state and references | PII, private messages, secrets, media, large post bodies |
 | Content-addressed providers | Signed public manifests; encrypted restricted content; media manifests | Plaintext private messages or decryption keys |
 | PostgreSQL | Rebuildable projections, provenance, operator-scoped private records in isolated schemas | Sole source of identity, social graph, signed content, or entitlement truth |
 | Redis | Rate-limit counters, queues, cache entries, short-lived coordination | Durable protocol state, session authority, irreplaceable jobs |
@@ -495,7 +495,7 @@ addresses, or moderation evidence.
 The currently verified connected development slice runs a
 Solana-wire-compatible test validator, PostgreSQL, local content-addressed
 storage, and the minimum services needed for the vertical slice. That validator
-is a compatibility oracle, not Woke Network. A native development/localnet
+is a compatibility oracle, not WokeNet. A native development/localnet
 environment uses `firedancer-dev --no-agave`; a public test or production
 validator/RPC node uses the native `firedancer` binary. Both require a supported
 Linux host and remain activation blocked until native RPC parity exists.
@@ -525,7 +525,7 @@ flowchart TB
         ModerationB["Moderation provider B"]
     end
 
-    Woke["Woke Network (native Firedancer)"]
+    WokeNet["WokeNet (native Firedancer)"]
     StorageA["Storage/gateway A"]
 
     Web <--> LocalKeys
@@ -539,8 +539,8 @@ flowchart TB
     Web <--> GatewayB
     IndexerA <--> PgA
     IndexerA -.-> RedisA
-    IndexerA --> Woke
-    IndexerB --> Woke
+    IndexerA --> WokeNet
+    IndexerB --> WokeNet
     IndexerA --> StorageA
     IndexerB --> GatewayB
 ```
@@ -548,7 +548,7 @@ flowchart TB
 Local setup automation, a fixed development program ID, and local container
 configuration exist. The downstream Firedancer source is pinned and
 materializable, but no native cluster or production genesis exists. Production
-activation, provider deployment, release promotion, and public Woke Network
+activation, provider deployment, release promotion, and public WokeNet
 operations remain blocked.
 
 ## Smallest complete vertical slice
@@ -560,7 +560,7 @@ component harnesses:
 2. Create or update a signed profile manifest and anchor its verified reference.
 3. Canonicalize and sign a text-post manifest.
 4. Publish it to local content-addressed storage and verify the returned bytes.
-5. Anchor the manifest reference and hash through the Woke Network social program.
+5. Anchor the manifest reference and hash through the WokeNet social program.
 6. Ingest the finalized event and manifest into a rebuildable indexer projection.
 7. Display the verified post in the reference web feed.
 8. Follow another identity and reflect the edge in the following feed.
@@ -577,7 +577,7 @@ wire-compatible validator, signed local content-addressed storage, the
 production indexer and PostgreSQL projection, destructive replay, production
 web build, and desktop/mobile Chromium all participate. This evidence validates
 program and application compatibility only. It does not prove that native
-Firedancer processed the transactions, so the equivalent Woke Network slice
+Firedancer processed the transactions, so the equivalent WokeNet slice
 remains blocked.
 
 ## Architectural verification checklist
@@ -609,4 +609,4 @@ remains blocked.
 - [ADR-0003: Onchain and Offchain Data Split](DECISIONS/0003-onchain-offchain-data-split.md)
 - [ADR-0004: Indexer Projection and Replay](DECISIONS/0004-indexer-projection-and-replay.md)
 - [ADR-0005: Provider Replaceability](DECISIONS/0005-provider-replaceability.md)
-- [ADR-0009: Sovereign Woke Network on Native Firedancer](DECISIONS/0009-sovereign-woke-network-firedancer.md)
+- [ADR-0009: Sovereign WokeNet on Native Firedancer](DECISIONS/0009-sovereign-wokenet-firedancer.md)

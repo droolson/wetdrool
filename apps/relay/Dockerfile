@@ -16,15 +16,15 @@ COPY patches ./patches
 COPY apps/relay/package.json ./apps/relay/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
 
-RUN --mount=type=cache,id=socially-woke-pnpm,target=/opt/pnpm/store \
-    pnpm install --frozen-lockfile --filter @socially-woke/relay...
+RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
+    pnpm install --frozen-lockfile --filter @wokesocial/relay...
 
 COPY apps/relay ./apps/relay
 COPY packages/protocol ./packages/protocol
 
-RUN pnpm --filter @socially-woke/protocol build \
-    && pnpm --filter @socially-woke/relay build \
-    && pnpm --filter @socially-woke/relay deploy \
+RUN pnpm --filter @wokesocial/protocol build \
+    && pnpm --filter @wokesocial/relay build \
+    && pnpm --filter @wokesocial/relay deploy \
       --prod \
       --legacy \
       --strict-peer-dependencies=false \
@@ -37,10 +37,10 @@ ENV NODE_ENV=production \
     RELAY_PORT=4200
 WORKDIR /app
 
-RUN groupadd --system --gid 10003 socially-woke \
-    && useradd --system --uid 10003 --gid socially-woke --home-dir /nonexistent socially-woke
+RUN groupadd --system --gid 10003 wokesocial \
+    && useradd --system --uid 10003 --gid wokesocial --home-dir /nonexistent wokesocial
 
-COPY --from=build --chown=socially-woke:socially-woke /opt/relay ./
+COPY --from=build --chown=wokesocial:wokesocial /opt/relay ./
 
 USER 10003:10003
 EXPOSE 4200

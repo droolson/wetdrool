@@ -16,9 +16,7 @@ let browser;
 let stoppingServer = false;
 
 if (!existsSync(buildId)) {
-  throw new Error(
-    'Production build is missing. Run `pnpm --filter @socially-woke/web build` first.',
-  );
+  throw new Error('Production build is missing. Run `pnpm --filter @wokesocial/web build` first.');
 }
 if (!existsSync(nextCli)) {
   throw new Error(`Next.js CLI is missing at ${nextCli}.`);
@@ -59,18 +57,18 @@ try {
       const context = await browser.newContext();
       const page = await context.newPage();
       await page.addInitScript(() => {
-        globalThis.__wokePerformance = { cls: 0, lcpMs: 0 };
+        globalThis.__wokesocialPerformance = { cls: 0, lcpMs: 0 };
         if (PerformanceObserver.supportedEntryTypes.includes('largest-contentful-paint')) {
           new PerformanceObserver((list) => {
             const entries = list.getEntries();
             const latest = entries.at(-1);
-            if (latest) globalThis.__wokePerformance.lcpMs = latest.startTime;
+            if (latest) globalThis.__wokesocialPerformance.lcpMs = latest.startTime;
           }).observe({ buffered: true, type: 'largest-contentful-paint' });
         }
         if (PerformanceObserver.supportedEntryTypes.includes('layout-shift')) {
           new PerformanceObserver((list) => {
             for (const entry of list.getEntries()) {
-              if (!entry.hadRecentInput) globalThis.__wokePerformance.cls += entry.value;
+              if (!entry.hadRecentInput) globalThis.__wokesocialPerformance.cls += entry.value;
             }
           }).observe({ buffered: true, type: 'layout-shift' });
         }
@@ -90,9 +88,9 @@ try {
             throw new Error('Navigation timing entry is unavailable.');
           }
           return {
-            cls: globalThis.__wokePerformance.cls,
+            cls: globalThis.__wokesocialPerformance.cls,
             domContentLoadedMs: navigation.domContentLoadedEventEnd,
-            lcpMs: globalThis.__wokePerformance.lcpMs,
+            lcpMs: globalThis.__wokesocialPerformance.lcpMs,
             loadMs: navigation.loadEventEnd,
             ttfbMs: navigation.responseStart,
           };

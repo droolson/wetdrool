@@ -3,117 +3,117 @@
 @layer theme {
   :root {
     color-scheme: light;
-    --sw-font-sans: 'Avenir Next', Avenir, 'Segoe UI', Helvetica, Arial, sans-serif;
-    --sw-font-display: 'Iowan Old Style', 'Palatino Linotype', Baskerville, Georgia, serif;
-    --sw-ink: #17131d;
-    --sw-ink-muted: #615a68;
-    --sw-canvas: #f8f5ef;
-    --sw-canvas-raised: #fffcf6;
-    --sw-surface: rgba(255, 252, 246, 0.88);
-    --sw-surface-strong: #fffdf8;
-    --sw-line: rgba(43, 31, 50, 0.15);
-    --sw-line-strong: rgba(43, 31, 50, 0.28);
-    --sw-plum: #5f2c83;
-    --sw-plum-deep: #40205f;
-    --sw-coral: #ed6a5a;
-    --sw-coral-soft: #ffd8cf;
-    --sw-citron: #d7f171;
-    --sw-sky: #76c5d5;
-    --sw-success: #167653;
-    --sw-warning: #9a5a00;
-    --sw-danger: #b2303a;
-    --sw-focus: #006dc7;
-    --sw-shadow-sm: 0 10px 28px rgba(56, 40, 66, 0.09);
-    --sw-shadow-lg: 0 34px 90px rgba(55, 34, 70, 0.16);
-    --sw-radius-sm: 0.75rem;
-    --sw-radius-md: 1.25rem;
-    --sw-radius-lg: 2rem;
-    --sw-radius-pill: 999px;
-    --sw-space-1: 0.25rem;
-    --sw-space-2: 0.5rem;
-    --sw-space-3: 0.75rem;
-    --sw-space-4: 1rem;
-    --sw-space-5: 1.5rem;
-    --sw-space-6: 2rem;
-    --sw-space-7: 3rem;
-    --sw-space-8: 4.5rem;
-    --sw-duration-fast: 140ms;
-    --sw-duration-base: 220ms;
-    --sw-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --wokesocial-font-sans: 'Avenir Next', Avenir, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --wokesocial-font-display: 'Iowan Old Style', 'Palatino Linotype', Baskerville, Georgia, serif;
+    --wokesocial-ink: #17131d;
+    --wokesocial-ink-muted: #615a68;
+    --wokesocial-canvas: #f8f5ef;
+    --wokesocial-canvas-raised: #fffcf6;
+    --wokesocial-surface: rgba(255, 252, 246, 0.88);
+    --wokesocial-surface-strong: #fffdf8;
+    --wokesocial-line: rgba(43, 31, 50, 0.15);
+    --wokesocial-line-strong: rgba(43, 31, 50, 0.28);
+    --wokesocial-plum: #5f2c83;
+    --wokesocial-plum-deep: #40205f;
+    --wokesocial-coral: #ed6a5a;
+    --wokesocial-coral-soft: #ffd8cf;
+    --wokesocial-citron: #d7f171;
+    --wokesocial-sky: #76c5d5;
+    --wokesocial-success: #167653;
+    --wokesocial-warning: #9a5a00;
+    --wokesocial-danger: #b2303a;
+    --wokesocial-focus: #006dc7;
+    --wokesocial-shadow-sm: 0 10px 28px rgba(56, 40, 66, 0.09);
+    --wokesocial-shadow-lg: 0 34px 90px rgba(55, 34, 70, 0.16);
+    --wokesocial-radius-sm: 0.75rem;
+    --wokesocial-radius-md: 1.25rem;
+    --wokesocial-radius-lg: 2rem;
+    --wokesocial-radius-pill: 999px;
+    --wokesocial-space-1: 0.25rem;
+    --wokesocial-space-2: 0.5rem;
+    --wokesocial-space-3: 0.75rem;
+    --wokesocial-space-4: 1rem;
+    --wokesocial-space-5: 1.5rem;
+    --wokesocial-space-6: 2rem;
+    --wokesocial-space-7: 3rem;
+    --wokesocial-space-8: 4.5rem;
+    --wokesocial-duration-fast: 140ms;
+    --wokesocial-duration-base: 220ms;
+    --wokesocial-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']):not([data-theme='contrast']) {
       color-scheme: dark;
-      --sw-ink: #f7f1fa;
-      --sw-ink-muted: #c4bac9;
-      --sw-canvas: #151019;
-      --sw-canvas-raised: #1d1623;
-      --sw-surface: rgba(29, 22, 35, 0.9);
-      --sw-surface-strong: #241b2b;
-      --sw-line: rgba(244, 228, 250, 0.15);
-      --sw-line-strong: rgba(244, 228, 250, 0.3);
-      --sw-plum: #c58cef;
-      --sw-plum-deep: #e2c2f8;
-      --sw-coral: #ff8879;
-      --sw-coral-soft: #542d31;
-      --sw-citron: #dff77d;
-      --sw-sky: #8ad3e2;
-      --sw-success: #74d5ab;
-      --sw-warning: #ffc56d;
-      --sw-danger: #ff9098;
-      --sw-focus: #85c9ff;
-      --sw-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
-      --sw-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
+      --wokesocial-ink: #f7f1fa;
+      --wokesocial-ink-muted: #c4bac9;
+      --wokesocial-canvas: #151019;
+      --wokesocial-canvas-raised: #1d1623;
+      --wokesocial-surface: rgba(29, 22, 35, 0.9);
+      --wokesocial-surface-strong: #241b2b;
+      --wokesocial-line: rgba(244, 228, 250, 0.15);
+      --wokesocial-line-strong: rgba(244, 228, 250, 0.3);
+      --wokesocial-plum: #c58cef;
+      --wokesocial-plum-deep: #e2c2f8;
+      --wokesocial-coral: #ff8879;
+      --wokesocial-coral-soft: #542d31;
+      --wokesocial-citron: #dff77d;
+      --wokesocial-sky: #8ad3e2;
+      --wokesocial-success: #74d5ab;
+      --wokesocial-warning: #ffc56d;
+      --wokesocial-danger: #ff9098;
+      --wokesocial-focus: #85c9ff;
+      --wokesocial-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
+      --wokesocial-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
     }
   }
 
   :root[data-theme='dark'] {
     color-scheme: dark;
-    --sw-ink: #f7f1fa;
-    --sw-ink-muted: #c4bac9;
-    --sw-canvas: #151019;
-    --sw-canvas-raised: #1d1623;
-    --sw-surface: rgba(29, 22, 35, 0.9);
-    --sw-surface-strong: #241b2b;
-    --sw-line: rgba(244, 228, 250, 0.15);
-    --sw-line-strong: rgba(244, 228, 250, 0.3);
-    --sw-plum: #c58cef;
-    --sw-plum-deep: #e2c2f8;
-    --sw-coral: #ff8879;
-    --sw-coral-soft: #542d31;
-    --sw-citron: #dff77d;
-    --sw-sky: #8ad3e2;
-    --sw-success: #74d5ab;
-    --sw-warning: #ffc56d;
-    --sw-danger: #ff9098;
-    --sw-focus: #85c9ff;
-    --sw-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
-    --sw-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
+    --wokesocial-ink: #f7f1fa;
+    --wokesocial-ink-muted: #c4bac9;
+    --wokesocial-canvas: #151019;
+    --wokesocial-canvas-raised: #1d1623;
+    --wokesocial-surface: rgba(29, 22, 35, 0.9);
+    --wokesocial-surface-strong: #241b2b;
+    --wokesocial-line: rgba(244, 228, 250, 0.15);
+    --wokesocial-line-strong: rgba(244, 228, 250, 0.3);
+    --wokesocial-plum: #c58cef;
+    --wokesocial-plum-deep: #e2c2f8;
+    --wokesocial-coral: #ff8879;
+    --wokesocial-coral-soft: #542d31;
+    --wokesocial-citron: #dff77d;
+    --wokesocial-sky: #8ad3e2;
+    --wokesocial-success: #74d5ab;
+    --wokesocial-warning: #ffc56d;
+    --wokesocial-danger: #ff9098;
+    --wokesocial-focus: #85c9ff;
+    --wokesocial-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
+    --wokesocial-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
   }
 
   :root[data-theme='contrast'] {
     color-scheme: dark;
-    --sw-ink: #ffffff;
-    --sw-ink-muted: #ffffff;
-    --sw-canvas: #000000;
-    --sw-canvas-raised: #000000;
-    --sw-surface: #000000;
-    --sw-surface-strong: #000000;
-    --sw-line: #ffffff;
-    --sw-line-strong: #ffffff;
-    --sw-plum: #f4a7ff;
-    --sw-plum-deep: #ffffff;
-    --sw-coral: #ffb3a7;
-    --sw-coral-soft: #000000;
-    --sw-citron: #e9ff75;
-    --sw-sky: #9eeaff;
-    --sw-success: #8dffc9;
-    --sw-warning: #ffe27a;
-    --sw-danger: #ff9ca5;
-    --sw-focus: #ffef62;
-    --sw-shadow-sm: none;
-    --sw-shadow-lg: none;
+    --wokesocial-ink: #ffffff;
+    --wokesocial-ink-muted: #ffffff;
+    --wokesocial-canvas: #000000;
+    --wokesocial-canvas-raised: #000000;
+    --wokesocial-surface: #000000;
+    --wokesocial-surface-strong: #000000;
+    --wokesocial-line: #ffffff;
+    --wokesocial-line-strong: #ffffff;
+    --wokesocial-plum: #f4a7ff;
+    --wokesocial-plum-deep: #ffffff;
+    --wokesocial-coral: #ffb3a7;
+    --wokesocial-coral-soft: #000000;
+    --wokesocial-citron: #e9ff75;
+    --wokesocial-sky: #9eeaff;
+    --wokesocial-success: #8dffc9;
+    --wokesocial-warning: #ffe27a;
+    --wokesocial-danger: #ff9ca5;
+    --wokesocial-focus: #ffef62;
+    --wokesocial-shadow-sm: none;
+    --wokesocial-shadow-lg: none;
   }
 }
 
@@ -125,26 +125,26 @@
   }
 
   :focus-visible {
-    outline: 3px solid var(--sw-focus);
+    outline: 3px solid var(--wokesocial-focus);
     outline-offset: 3px;
   }
 
   ::selection {
     color: #17131d;
-    background: var(--sw-citron);
+    background: var(--wokesocial-citron);
   }
 }
 
 @layer components {
-  .sw-brand {
+  .wokesocial-brand {
     display: inline-flex;
     align-items: center;
     gap: 0.7rem;
-    color: var(--sw-ink);
+    color: var(--wokesocial-ink);
     text-decoration: none;
   }
 
-  .sw-brand__symbol {
+  .wokesocial-brand__symbol {
     position: relative;
     display: inline-grid;
     width: 2.15rem;
@@ -152,28 +152,28 @@
     flex: 0 0 auto;
     place-items: center;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--sw-plum) 45%, transparent);
+    border: 1px solid color-mix(in srgb, var(--wokesocial-plum) 45%, transparent);
     border-radius: 42% 58% 58% 42% / 48% 42% 58% 52%;
     background:
-      radial-gradient(circle at 68% 28%, var(--sw-citron) 0 13%, transparent 14%),
-      linear-gradient(145deg, var(--sw-coral), var(--sw-plum) 67%);
+      radial-gradient(circle at 68% 28%, var(--wokesocial-citron) 0 13%, transparent 14%),
+      linear-gradient(145deg, var(--wokesocial-coral), var(--wokesocial-plum) 67%);
     box-shadow: inset 0 0 0 0.24rem color-mix(in srgb, white 16%, transparent);
     transform: rotate(-5deg);
   }
 
-  .sw-brand__symbol::after {
+  .wokesocial-brand__symbol::after {
     position: absolute;
     right: 0.18rem;
     bottom: -0.09rem;
     width: 0.72rem;
     height: 0.72rem;
     border-radius: 0 0 0.6rem;
-    background: var(--sw-plum);
+    background: var(--wokesocial-plum);
     content: '';
     transform: rotate(25deg);
   }
 
-  .sw-brand__spark {
+  .wokesocial-brand__spark {
     width: 0.63rem;
     height: 0.63rem;
     border: 0.18rem solid white;
@@ -181,31 +181,31 @@
     box-shadow: 0.53rem 0.42rem 0 -0.13rem white;
   }
 
-  .sw-brand__wordmark {
+  .wokesocial-brand__wordmark {
     display: flex;
     align-items: baseline;
     gap: 0.3rem;
-    font-family: var(--sw-font-sans);
+    font-family: var(--wokesocial-font-sans);
     font-size: 1.03rem;
     font-weight: 730;
     letter-spacing: -0.04em;
     line-height: 1;
   }
 
-  .sw-brand__wordmark strong {
-    color: var(--sw-plum);
-    font-family: var(--sw-font-display);
+  .wokesocial-brand__wordmark strong {
+    color: var(--wokesocial-plum);
+    font-family: var(--wokesocial-font-display);
     font-size: 1.16em;
     font-style: italic;
     font-weight: 700;
     letter-spacing: -0.035em;
   }
 
-  .sw-brand--compact .sw-brand__wordmark {
+  .wokesocial-brand--compact .wokesocial-brand__wordmark {
     display: none;
   }
 
-  .sw-button {
+  .wokesocial-button {
     display: inline-flex;
     min-height: 2.85rem;
     align-items: center;
@@ -213,56 +213,56 @@
     gap: 0.5rem;
     padding: 0.72rem 1.05rem;
     border: 1px solid transparent;
-    border-radius: var(--sw-radius-pill);
-    font-family: var(--sw-font-sans);
+    border-radius: var(--wokesocial-radius-pill);
+    font-family: var(--wokesocial-font-sans);
     font-size: 0.92rem;
     font-weight: 720;
     letter-spacing: -0.015em;
     line-height: 1;
     text-decoration: none;
     transition:
-      transform var(--sw-duration-fast) var(--sw-ease),
-      background var(--sw-duration-fast) var(--sw-ease),
-      border-color var(--sw-duration-fast) var(--sw-ease);
+      transform var(--wokesocial-duration-fast) var(--wokesocial-ease),
+      background var(--wokesocial-duration-fast) var(--wokesocial-ease),
+      border-color var(--wokesocial-duration-fast) var(--wokesocial-ease);
   }
 
-  .sw-button:hover {
+  .wokesocial-button:hover {
     transform: translateY(-2px);
   }
 
-  .sw-button--primary {
+  .wokesocial-button--primary {
     color: #fff;
-    background: var(--sw-plum-deep);
-    box-shadow: 0 8px 20px color-mix(in srgb, var(--sw-plum) 25%, transparent);
+    background: var(--wokesocial-plum-deep);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--wokesocial-plum) 25%, transparent);
   }
 
-  :root[data-theme='dark'] .sw-button--primary,
-  :root[data-theme='contrast'] .sw-button--primary {
+  :root[data-theme='dark'] .wokesocial-button--primary,
+  :root[data-theme='contrast'] .wokesocial-button--primary {
     color: #17131d;
-    background: var(--sw-citron);
+    background: var(--wokesocial-citron);
   }
 
-  .sw-button--secondary {
-    color: var(--sw-ink);
-    border-color: var(--sw-line-strong);
-    background: var(--sw-surface-strong);
+  .wokesocial-button--secondary {
+    color: var(--wokesocial-ink);
+    border-color: var(--wokesocial-line-strong);
+    background: var(--wokesocial-surface-strong);
   }
 
-  .sw-button--secondary:hover {
-    border-color: var(--sw-plum);
+  .wokesocial-button--secondary:hover {
+    border-color: var(--wokesocial-plum);
   }
 
-  .sw-button--quiet {
+  .wokesocial-button--quiet {
     min-height: 2.5rem;
     padding-inline: 0.8rem;
-    color: var(--sw-plum);
+    color: var(--wokesocial-plum);
     background: transparent;
   }
 
-  .sw-eyebrow {
+  .wokesocial-eyebrow {
     margin: 0;
-    color: var(--sw-plum);
-    font-family: var(--sw-font-sans);
+    color: var(--wokesocial-plum);
+    font-family: var(--wokesocial-font-sans);
     font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.12em;
@@ -270,207 +270,207 @@
     text-transform: uppercase;
   }
 
-  .sw-section-heading {
+  .wokesocial-section-heading {
     display: grid;
     max-width: 47rem;
     gap: 0.8rem;
   }
 
-  .sw-section-heading--center {
+  .wokesocial-section-heading--center {
     margin-inline: auto;
     justify-items: center;
     text-align: center;
   }
 
-  .sw-section-heading h1,
-  .sw-section-heading h2 {
+  .wokesocial-section-heading h1,
+  .wokesocial-section-heading h2 {
     margin: 0;
-    color: var(--sw-ink);
-    font-family: var(--sw-font-display);
+    color: var(--wokesocial-ink);
+    font-family: var(--wokesocial-font-display);
     font-size: clamp(2rem, 5vw, 3.65rem);
     font-weight: 650;
     letter-spacing: -0.045em;
     line-height: 0.98;
   }
 
-  .sw-section-heading__description {
-    color: var(--sw-ink-muted);
-    font-family: var(--sw-font-sans);
+  .wokesocial-section-heading__description {
+    color: var(--wokesocial-ink-muted);
+    font-family: var(--wokesocial-font-sans);
     font-size: clamp(1rem, 2vw, 1.15rem);
     line-height: 1.65;
   }
 
-  .sw-section-heading__description > * {
+  .wokesocial-section-heading__description > * {
     margin: 0;
   }
 
-  .sw-status {
+  .wokesocial-status {
     display: inline-flex;
     width: fit-content;
     align-items: center;
     gap: 0.42rem;
     padding: 0.36rem 0.62rem;
-    border: 1px solid var(--sw-line);
-    border-radius: var(--sw-radius-pill);
-    color: var(--sw-ink-muted);
-    background: color-mix(in srgb, var(--sw-surface-strong) 88%, transparent);
-    font-family: var(--sw-font-sans);
+    border: 1px solid var(--wokesocial-line);
+    border-radius: var(--wokesocial-radius-pill);
+    color: var(--wokesocial-ink-muted);
+    background: color-mix(in srgb, var(--wokesocial-surface-strong) 88%, transparent);
+    font-family: var(--wokesocial-font-sans);
     font-size: 0.72rem;
     font-weight: 760;
     line-height: 1;
     white-space: nowrap;
   }
 
-  .sw-status__dot {
+  .wokesocial-status__dot {
     width: 0.48rem;
     height: 0.48rem;
     border-radius: 50%;
     background: currentColor;
   }
 
-  .sw-status--verified {
-    color: var(--sw-success);
+  .wokesocial-status--verified {
+    color: var(--wokesocial-success);
   }
 
-  .sw-status--pending {
-    color: var(--sw-warning);
+  .wokesocial-status--pending {
+    color: var(--wokesocial-warning);
   }
 
-  .sw-status--degraded {
-    color: var(--sw-warning);
+  .wokesocial-status--degraded {
+    color: var(--wokesocial-warning);
   }
 
-  .sw-status--unavailable {
-    color: var(--sw-danger);
+  .wokesocial-status--unavailable {
+    color: var(--wokesocial-danger);
   }
 
-  .sw-state-panel {
+  .wokesocial-state-panel {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 1.1rem;
     padding: clamp(1.25rem, 4vw, 2rem);
-    border: 1px solid var(--sw-line);
-    border-radius: var(--sw-radius-lg);
+    border: 1px solid var(--wokesocial-line);
+    border-radius: var(--wokesocial-radius-lg);
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--sw-surface-strong) 94%, transparent),
-      color-mix(in srgb, var(--sw-canvas-raised) 82%, transparent)
+      color-mix(in srgb, var(--wokesocial-surface-strong) 94%, transparent),
+      color-mix(in srgb, var(--wokesocial-canvas-raised) 82%, transparent)
     );
-    box-shadow: var(--sw-shadow-sm);
+    box-shadow: var(--wokesocial-shadow-sm);
   }
 
-  .sw-state-panel__signal {
+  .wokesocial-state-panel__signal {
     display: grid;
     width: 2.7rem;
     height: 2.7rem;
     place-items: center;
-    border: 1px solid var(--sw-line);
+    border: 1px solid var(--wokesocial-line);
     border-radius: 50%;
-    background: var(--sw-surface-strong);
+    background: var(--wokesocial-surface-strong);
   }
 
-  .sw-state-panel__signal span {
+  .wokesocial-state-panel__signal span {
     width: 0.74rem;
     height: 0.74rem;
     border: 0.17rem solid currentColor;
     border-radius: 50%;
   }
 
-  .sw-state-panel--loading .sw-state-panel__signal span {
+  .wokesocial-state-panel--loading .wokesocial-state-panel__signal span {
     border-right-color: transparent;
-    animation: sw-spin 850ms linear infinite;
+    animation: wokesocial-spin 850ms linear infinite;
   }
 
-  .sw-state-panel--error .sw-state-panel__signal {
-    color: var(--sw-danger);
+  .wokesocial-state-panel--error .wokesocial-state-panel__signal {
+    color: var(--wokesocial-danger);
   }
 
-  .sw-state-panel--offline .sw-state-panel__signal,
-  .sw-state-panel--degraded .sw-state-panel__signal {
-    color: var(--sw-warning);
+  .wokesocial-state-panel--offline .wokesocial-state-panel__signal,
+  .wokesocial-state-panel--degraded .wokesocial-state-panel__signal {
+    color: var(--wokesocial-warning);
   }
 
-  .sw-state-panel--empty .sw-state-panel__signal {
-    color: var(--sw-plum);
+  .wokesocial-state-panel--empty .wokesocial-state-panel__signal {
+    color: var(--wokesocial-plum);
   }
 
-  .sw-state-panel__body {
+  .wokesocial-state-panel__body {
     display: grid;
     gap: 0.55rem;
   }
 
-  .sw-state-panel h1,
-  .sw-state-panel h2,
-  .sw-state-panel h3 {
+  .wokesocial-state-panel h1,
+  .wokesocial-state-panel h2,
+  .wokesocial-state-panel h3 {
     margin: 0;
-    color: var(--sw-ink);
-    font-family: var(--sw-font-display);
+    color: var(--wokesocial-ink);
+    font-family: var(--wokesocial-font-display);
     font-size: clamp(1.45rem, 3vw, 2rem);
     letter-spacing: -0.03em;
     line-height: 1.05;
   }
 
-  .sw-state-panel__copy {
+  .wokesocial-state-panel__copy {
     max-width: 48rem;
-    color: var(--sw-ink-muted);
-    font-family: var(--sw-font-sans);
+    color: var(--wokesocial-ink-muted);
+    font-family: var(--wokesocial-font-sans);
     line-height: 1.6;
   }
 
-  .sw-state-panel__copy > * {
+  .wokesocial-state-panel__copy > * {
     margin-block: 0;
   }
 
-  .sw-state-panel__action {
+  .wokesocial-state-panel__action {
     margin-top: 0.5rem;
   }
 
-  .sw-provider-card {
+  .wokesocial-provider-card {
     display: grid;
     min-height: 15rem;
     align-content: start;
     gap: 0.85rem;
     padding: 1.35rem;
-    border: 1px solid var(--sw-line);
-    border-radius: var(--sw-radius-md);
-    background: var(--sw-surface);
-    box-shadow: var(--sw-shadow-sm);
+    border: 1px solid var(--wokesocial-line);
+    border-radius: var(--wokesocial-radius-md);
+    background: var(--wokesocial-surface);
+    box-shadow: var(--wokesocial-shadow-sm);
   }
 
-  .sw-provider-card__topline {
+  .wokesocial-provider-card__topline {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
   }
 
-  .sw-provider-card h3 {
+  .wokesocial-provider-card h3 {
     margin: 0.25rem 0 0;
-    color: var(--sw-ink);
-    font-family: var(--sw-font-display);
+    color: var(--wokesocial-ink);
+    font-family: var(--wokesocial-font-display);
     font-size: 1.55rem;
     letter-spacing: -0.035em;
   }
 
-  .sw-provider-card > p {
+  .wokesocial-provider-card > p {
     margin: 0;
-    color: var(--sw-ink-muted);
-    font-family: var(--sw-font-sans);
+    color: var(--wokesocial-ink-muted);
+    font-family: var(--wokesocial-font-sans);
     line-height: 1.6;
   }
 
-  .sw-provider-card__footer {
+  .wokesocial-provider-card__footer {
     align-self: end;
     margin-top: auto;
     padding-top: 0.8rem;
-    border-top: 1px solid var(--sw-line);
-    color: var(--sw-ink-muted);
-    font-family: var(--sw-font-sans);
+    border-top: 1px solid var(--wokesocial-line);
+    color: var(--wokesocial-ink-muted);
+    font-family: var(--wokesocial-font-sans);
     font-size: 0.82rem;
     line-height: 1.5;
   }
 
-  .sw-info-card {
+  .wokesocial-info-card {
     position: relative;
     display: grid;
     min-height: 13rem;
@@ -478,85 +478,85 @@
     gap: 0.8rem;
     overflow: hidden;
     padding: 1.35rem;
-    border: 1px solid var(--sw-line);
-    border-radius: var(--sw-radius-md);
-    background: var(--sw-surface);
-    box-shadow: var(--sw-shadow-sm);
+    border: 1px solid var(--wokesocial-line);
+    border-radius: var(--wokesocial-radius-md);
+    background: var(--wokesocial-surface);
+    box-shadow: var(--wokesocial-shadow-sm);
   }
 
-  .sw-info-card::before {
+  .wokesocial-info-card::before {
     position: absolute;
     inset-block: 0;
     inset-inline-start: 0;
     width: 0.28rem;
-    background: var(--sw-line-strong);
+    background: var(--wokesocial-line-strong);
     content: '';
   }
 
-  .sw-info-card--plum::before {
-    background: var(--sw-plum);
+  .wokesocial-info-card--plum::before {
+    background: var(--wokesocial-plum);
   }
 
-  .sw-info-card--coral::before {
-    background: var(--sw-coral);
+  .wokesocial-info-card--coral::before {
+    background: var(--wokesocial-coral);
   }
 
-  .sw-info-card--sky::before {
-    background: var(--sw-sky);
+  .wokesocial-info-card--sky::before {
+    background: var(--wokesocial-sky);
   }
 
-  .sw-info-card__top {
+  .wokesocial-info-card__top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
   }
 
-  .sw-info-card__top > span {
+  .wokesocial-info-card__top > span {
     width: 0.65rem;
     height: 0.65rem;
-    border: 1px solid var(--sw-line-strong);
+    border: 1px solid var(--wokesocial-line-strong);
     border-radius: 50%;
-    background: var(--sw-canvas-raised);
+    background: var(--wokesocial-canvas-raised);
   }
 
-  .sw-info-card h3 {
+  .wokesocial-info-card h3 {
     margin: 0;
-    color: var(--sw-ink);
-    font-family: var(--sw-font-display);
+    color: var(--wokesocial-ink);
+    font-family: var(--wokesocial-font-display);
     font-size: 1.55rem;
     letter-spacing: -0.035em;
     line-height: 1.05;
   }
 
-  .sw-info-card__copy {
-    color: var(--sw-ink-muted);
-    font-family: var(--sw-font-sans);
+  .wokesocial-info-card__copy {
+    color: var(--wokesocial-ink-muted);
+    font-family: var(--wokesocial-font-sans);
     line-height: 1.6;
   }
 
-  .sw-info-card__copy > * {
+  .wokesocial-info-card__copy > * {
     margin: 0;
   }
 
-  .sw-info-card footer {
+  .wokesocial-info-card footer {
     padding-top: 0.8rem;
     margin-top: auto;
-    border-top: 1px solid var(--sw-line);
-    color: var(--sw-ink-muted);
-    font-family: var(--sw-font-sans);
+    border-top: 1px solid var(--wokesocial-line);
+    color: var(--wokesocial-ink-muted);
+    font-family: var(--wokesocial-font-sans);
     font-size: 0.8rem;
     line-height: 1.5;
   }
 
-  @keyframes sw-spin {
+  @keyframes wokesocial-spin {
     to {
       transform: rotate(1turn);
     }
   }
 
   @media (max-width: 36rem) {
-    .sw-state-panel {
+    .wokesocial-state-panel {
       grid-template-columns: 1fr;
     }
   }
@@ -571,7 +571,7 @@
       transition-duration: 0.01ms !important;
     }
 
-    .sw-button:hover {
+    .wokesocial-button:hover {
       transform: none;
     }
   }

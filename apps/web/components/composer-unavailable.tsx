@@ -1,4 +1,4 @@
-import { ButtonLink } from '@socially-woke/ui';
+import { ButtonLink } from '@wokesocial/ui';
 
 export function ComposerUnavailable() {
   return (

@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   buildIndexerApp,
@@ -20,11 +20,11 @@ import {
 } from '../src/index.js';
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-const networkId = `woke:v1:${publicKey(1)}:${programId}` as NetworkId;
+const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
 const identityAddress = publicKey(2);
 const secondIdentityAddress = publicKey(3);
-const identityId = `swid:v1:${networkId}:${identityAddress}`;
-const secondIdentityId = `swid:v1:${networkId}:${secondIdentityAddress}`;
+const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const secondIdentityId = `wokesocialid:v1:${networkId}:${secondIdentityAddress}`;
 const rootAuthority = publicKey(4);
 const secondRootAuthority = publicKey(5);
 const configAddress = publicKey(6);

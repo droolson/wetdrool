@@ -3,8 +3,11 @@ export type BrowserAuthErrorCode =
   | 'ceremony-cancelled'
   | 'credential-invalid'
   | 'csrf-unavailable'
+  | 'key-wrapper-failed'
+  | 'key-wrapper-invalid'
   | 'network-unavailable'
   | 'origin-invalid'
+  | 'prf-required'
   | 'server-invalid'
   | 'service-rejected';
 
@@ -15,8 +18,14 @@ const USER_MESSAGES: Record<BrowserAuthErrorCode, string> = {
   'credential-invalid': 'The passkey response could not be used safely. Please try again.',
   'csrf-unavailable':
     'This tab cannot safely change the current session. Sign in with your passkey again first.',
+  'key-wrapper-failed':
+    'The encrypted account-key wrapper could not be prepared. No service credential was committed.',
+  'key-wrapper-invalid':
+    'No single valid encrypted account-key wrapper matched the passkey used for verification.',
   'network-unavailable': 'The replaceable authentication service could not be reached.',
   'origin-invalid': 'The authentication service URL is not a permitted secure origin.',
+  'prf-required':
+    'This passkey does not expose the PRF capability required to protect an embedded account key. No service credential was committed.',
   'server-invalid': 'The authentication service returned an invalid response.',
   'service-rejected': 'The authentication service rejected the ceremony. Please start again.',
 };

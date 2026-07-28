@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
 
-import { digestSha256Multibase } from '@socially-woke/protocol';
+import { digestSha256Multibase } from '@wokesocial/protocol';
 
 import { MediaWorkerError } from './errors.js';
 

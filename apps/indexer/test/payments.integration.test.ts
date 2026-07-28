@@ -1,7 +1,7 @@
 import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   ManifestVerifier,
@@ -15,7 +15,7 @@ import { createPaymentFixture, publicKey, signature } from './payment-fixtures.j
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke';
+  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL payment projection integration', () => {
   it('migrates, validates transitions atomically, rebuilds, and isolates exact networks', async () => {

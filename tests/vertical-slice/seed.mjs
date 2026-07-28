@@ -27,7 +27,7 @@ const CONTENT_STORAGE_PATH = required('CONTENT_STORAGE_PATH');
 const METADATA_PATH = required('VERTICAL_SLICE_METADATA_PATH');
 const DEPLOYER_KEYPAIR_PATH = required('DEPLOYER_KEYPAIR_PATH');
 
-const PDA_PREFIX = Buffer.from('sw');
+const PDA_PREFIX = Buffer.from('wokesocial');
 const PDA_VERSION = Buffer.from([1]);
 const CONFIG_SEED = Buffer.from('config');
 const IDENTITY_SEED = Buffer.from('identity');
@@ -36,7 +36,7 @@ const FOLLOW_SEED = Buffer.from('follow');
 const TOMBSTONE_SEED = Buffer.from('tombstone');
 const AUTHOR_DISPLAY_NAME = 'Avery Sol';
 const POST_BODY =
-  'A real signed post crossed Woke Network localnet, canonical storage, replay, and this production feed.';
+  'A real signed post crossed WokeNet localnet, canonical storage, replay, and this production feed.';
 const TOMBSTONED_POST_BODY = 'This validator post must be suppressed by its on-chain tombstone.';
 
 const idl = JSON.parse(
@@ -63,7 +63,7 @@ const program = new anchor.Program(idl, provider);
 assert.equal(program.programId.toBase58(), PROGRAM_ID, 'Anchor program address');
 
 const genesisHash = await connection.getGenesisHash();
-const networkId = `woke:v1:${genesisHash}:${PROGRAM_ID}`;
+const networkId = `wokenet:v1:${genesisHash}:${PROGRAM_ID}`;
 const config = PublicKey.findProgramAddressSync(
   [PDA_PREFIX, PDA_VERSION, CONFIG_SEED],
   program.programId,
@@ -91,8 +91,8 @@ const tombstone = PublicKey.findProgramAddressSync(
   program.programId,
 )[0];
 
-const authorIdentityId = `swid:v1:${networkId}:${authorIdentity.toBase58()}`;
-const viewerIdentityId = `swid:v1:${networkId}:${viewerIdentity.toBase58()}`;
+const authorIdentityId = `wokesocialid:v1:${networkId}:${authorIdentity.toBase58()}`;
+const viewerIdentityId = `wokesocialid:v1:${networkId}:${viewerIdentity.toBase58()}`;
 const authorBuilder = createPayloadBuilderIdentity(
   networkId,
   authorIdentityId,

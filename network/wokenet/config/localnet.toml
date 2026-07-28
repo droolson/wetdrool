@@ -1,8 +1,8 @@
-name = "woke-local"
+name = "wokenet-local"
 telemetry = false
 
 [paths]
-    base = "/var/lib/woke-network/localnet"
+    base = "/var/lib/wokenet/localnet"
 
 [gossip]
     entrypoints = []

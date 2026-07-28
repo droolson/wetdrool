@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { InfoCard, StatusBadge } from '@socially-woke/ui';
+import { InfoCard, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { LocalPreferenceEditor } from '@/components/local-preference-editor';

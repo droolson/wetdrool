@@ -2,7 +2,7 @@ ALTER TABLE identities
   ADD CONSTRAINT identities_network_identity_key
   UNIQUE (network_id, identity_id),
   ADD CONSTRAINT identities_network_address_binding
-  CHECK (identity_id = 'swid:v1:' || network_id || ':' || identity_address);
+  CHECK (identity_id = 'wokesocialid:v1:' || network_id || ':' || identity_address);
 
 ALTER TABLE posts
   DROP CONSTRAINT posts_author_identity_id_fkey;

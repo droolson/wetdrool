@@ -33,8 +33,8 @@ describe('environment configuration', () => {
     expect(environment.NEXT_PUBLIC_MEDIA_WORKER_URL).toBe('http://localhost:4500');
     expect(environment.NEXT_PUBLIC_MODERATION_SERVICE_URL).toBe('http://localhost:4400');
     expect(environment.NEXT_PUBLIC_RELAY_URL).toBe('ws://localhost:4200/v1/relay');
-    expect(environment.NEXT_PUBLIC_WOKE_NETWORK).toBe('localnet');
-    expect(environment.WOKE_COMMITMENT).toBe('finalized');
+    expect(environment.NEXT_PUBLIC_WOKENET).toBe('localnet');
+    expect(environment.WOKENET_COMMITMENT).toBe('finalized');
     expect(environment.SPONSOR_ENABLED).toBe(false);
     expect(summarizeEnvironment(environment)).toMatchObject({
       rpcProviderCount: 1,
@@ -73,16 +73,16 @@ describe('environment configuration', () => {
   it('parses explicit provider lists and enabled sponsorship', () => {
     const environment = parseServerEnvironment({
       ALLOWED_ORIGINS: 'https://woke.social, https://app.woke.social',
-      WOKE_RPC_URLS: 'https://rpc-one.example,https://rpc-two.example',
-      WOKE_WS_URLS: 'wss://rpc-one.example,wss://rpc-two.example',
+      WOKENET_RPC_URLS: 'https://rpc-one.example,https://rpc-two.example',
+      WOKENET_WS_URLS: 'wss://rpc-one.example,wss://rpc-two.example',
       SPONSOR_DAILY_LAMPORT_LIMIT: '1000000',
       SPONSOR_ENABLED: '1',
       SPONSOR_SIGNER_URI: 'kms://development/sponsor',
     });
 
     expect(environment.ALLOWED_ORIGINS).toHaveLength(2);
-    expect(environment.WOKE_RPC_URLS).toHaveLength(2);
-    expect(environment.WOKE_WS_URLS).toHaveLength(2);
+    expect(environment.WOKENET_RPC_URLS).toHaveLength(2);
+    expect(environment.WOKENET_WS_URLS).toHaveLength(2);
     expect(environment.SPONSOR_ENABLED).toBe(true);
   });
 
@@ -96,7 +96,7 @@ describe('environment configuration', () => {
     );
     expect(() =>
       parsePublicEnvironment({
-        NEXT_PUBLIC_WOKE_RPC_URL: 'https://user:password@rpc.example',
+        NEXT_PUBLIC_WOKENET_RPC_URL: 'https://user:password@rpc.example',
       }),
     ).toThrow(/must not include credentials/);
     expect(() =>
@@ -133,11 +133,11 @@ describe('environment configuration', () => {
   });
 
   it.each([
-    ['NEXT_PUBLIC_SOLANA_CLUSTER', 'NEXT_PUBLIC_WOKE_NETWORK'],
-    ['NEXT_PUBLIC_SOLANA_RPC_URL', 'NEXT_PUBLIC_WOKE_RPC_URL'],
-    ['SOLANA_COMMITMENT', 'WOKE_COMMITMENT'],
-    ['SOLANA_RPC_URLS', 'WOKE_RPC_URLS'],
-    ['SOLANA_WS_URLS', 'WOKE_WS_URLS'],
+    ['NEXT_PUBLIC_SOLANA_CLUSTER', 'NEXT_PUBLIC_WOKENET'],
+    ['NEXT_PUBLIC_SOLANA_RPC_URL', 'NEXT_PUBLIC_WOKENET_RPC_URL'],
+    ['SOLANA_COMMITMENT', 'WOKENET_COMMITMENT'],
+    ['SOLANA_RPC_URLS', 'WOKENET_RPC_URLS'],
+    ['SOLANA_WS_URLS', 'WOKENET_WS_URLS'],
   ])('rejects retired %s instead of silently ignoring it', (retiredKey, replacementKey) => {
     expect(() => parseServerEnvironment({ [retiredKey]: 'retired-value' })).toThrow(
       new RegExp(`${retiredKey}.*${replacementKey}`, 's'),
@@ -149,18 +149,18 @@ describe('environment configuration', () => {
       APP_ENV: 'production',
       NEXT_PUBLIC_APP_ORIGIN: 'https://woke.social',
       NEXT_PUBLIC_PROGRAM_ID: '11111111111111111111111111111111',
-      NEXT_PUBLIC_WOKE_NETWORK: 'public-test',
+      NEXT_PUBLIC_WOKENET: 'public-test',
       SESSION_SECRET: 'a-production-session-secret-with-32-characters',
     });
 
     expect(environment.APP_ENV).toBe('production');
-    expect(environment.NEXT_PUBLIC_WOKE_NETWORK).toBe('public-test');
+    expect(environment.NEXT_PUBLIC_WOKENET).toBe('public-test');
   });
 
-  it('keeps the production Woke Network selector disabled pending activation', () => {
+  it('keeps the production WokeNet selector disabled pending activation', () => {
     expect(() =>
       parsePublicEnvironment({
-        NEXT_PUBLIC_WOKE_NETWORK: 'production',
+        NEXT_PUBLIC_WOKENET: 'production',
       }),
     ).toThrow(/localnet.*public-test/);
   });

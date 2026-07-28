@@ -24,7 +24,7 @@ const environmentSchema = z
   .object({
     RELAY_HOST: hostSchema.default('127.0.0.1'),
     RELAY_PORT: z.coerce.number().int().min(1).max(65_535).default(4200),
-    RELAY_ID: relayIdSchema.default('socially-woke-relay'),
+    RELAY_ID: relayIdSchema.default('wokesocial-relay'),
     RELAY_ALLOWED_ORIGINS: z.string().default(''),
     RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: z.enum(['0', '1']).default('0'),
   })

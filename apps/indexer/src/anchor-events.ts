@@ -1231,7 +1231,7 @@ class BorshReader {
 
   wokeTipPaymentKind(): 'woke-tip' {
     if (this.u8() === 0) return 'woke-tip';
-    throw new AnchorEventDecodingError('Woke tip event contains a mismatched payment kind.');
+    throw new AnchorEventDecodingError('WOKE tip event contains a mismatched payment kind.');
   }
 
   subscriptionPaymentKind(): 'weekly-subscription' {

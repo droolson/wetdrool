@@ -11,7 +11,7 @@ import { actionInput, operator } from './ledger-fixtures.js';
 const databaseUrl =
   process.env['MODERATION_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke';
+  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 const sql = postgres(databaseUrl, { max: 2, onnotice: () => undefined });
 const key = Uint8Array.from({ length: 32 }, (_, index) => index + 31);
 const keyRing = () => new ModerationKeyRing({ activeKeyId: 'test-v1', keys: { 'test-v1': key } });

@@ -1,5 +1,5 @@
-import { parseServerEnvironment } from '@socially-woke/config';
-import { networkIdSchema, solanaPublicKeySchema } from '@socially-woke/protocol';
+import { parseServerEnvironment } from '@wokesocial/config';
+import { networkIdSchema, solanaPublicKeySchema } from '@wokesocial/protocol';
 import { z } from 'zod';
 
 import { SOCIAL_PROTOCOL_EVENT_LAYOUT } from './anchor-events.js';
@@ -33,10 +33,10 @@ export function readIndexerConfig(environment: NodeJS.ProcessEnv = process.env):
       : syncEnvironmentSchema.parse({
           networkId,
           programId: explicitProgramId,
-          rpcUrls: parsed.WOKE_RPC_URLS,
+          rpcUrls: parsed.WOKENET_RPC_URLS,
           deploymentSlot: parsed.INDEXER_DEPLOYMENT_SLOT,
           batchSize: parsed.INDEXER_BATCH_SIZE,
-          commitment: parsed.WOKE_COMMITMENT,
+          commitment: parsed.WOKENET_COMMITMENT,
           pollIntervalMilliseconds: nonEmpty(environment['INDEXER_POLL_INTERVAL_MS']),
           retryAttempts: nonEmpty(environment['INDEXER_RETRY_ATTEMPTS']),
           retryBaseMilliseconds: nonEmpty(environment['INDEXER_RETRY_BASE_MS']),

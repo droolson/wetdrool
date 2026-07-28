@@ -28,6 +28,12 @@ export class SessionManager {
   ) {}
 
   async create(accountId: string, now: Date, stepUp: boolean): Promise<IssuedSession> {
+    const issued = this.issue(accountId, now, stepUp);
+    await this.store.putSession(issued.session);
+    return issued;
+  }
+
+  issue(accountId: string, now: Date, stepUp: boolean): IssuedSession {
     const sessionId = randomSessionId();
     const secret = randomToken();
     const csrfToken = randomToken();
@@ -41,7 +47,6 @@ export class SessionManager {
       lastAuthenticatedAt: now.toISOString(),
       ...(stepUp ? { stepUpAt: now.toISOString() } : {}),
     };
-    await this.store.putSession(session);
     return {
       session,
       cookieValue: sessionCookieValue(sessionId, secret),

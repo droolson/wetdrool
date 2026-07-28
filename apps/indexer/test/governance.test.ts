@@ -1,8 +1,8 @@
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   AnchorEventDecodingError,
@@ -32,12 +32,12 @@ const strategyBytes = Uint8Array.from([
   248, 60, 14, 192, 167, 251, 22, 215, 252, 112,
 ]);
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-const networkId = `woke:v1:${publicKey(1)}:${programId}` as NetworkId;
+const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
 const configAddress = publicKey(2);
 const creatorAddress = publicKey(3);
 const voterAddress = publicKey(4);
-const creatorIdentityId = `swid:v1:${networkId}:${creatorAddress}`;
-const voterIdentityId = `swid:v1:${networkId}:${voterAddress}`;
+const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
+const voterIdentityId = `wokesocialid:v1:${networkId}:${voterAddress}`;
 const creatorAuthority = publicKey(5);
 const voterAuthority = publicKey(6);
 const communityAddress = publicKey(7);
@@ -198,7 +198,7 @@ describe('governance Anchor events', () => {
 
 describe('governance projection', () => {
   it('isolates identical identity, community, proposal, membership, and vote addresses by network', async () => {
-    const secondNetworkId = `woke:v1:${publicKey(140)}:${programId}` as NetworkId;
+    const secondNetworkId = `wokenet:v1:${publicKey(140)}:${programId}` as NetworkId;
     const projection = new MemoryProjectionStore();
     const indexer = new OpenIndexer(
       projection,

@@ -1,4 +1,4 @@
-# Contributing to Socially Woke
+# Contributing to WokeSocial
 
 Thank you for helping build an inclusive, user-owned social network. Contributions are
 welcome from people of every identity and experience level. Participation is governed by
@@ -17,7 +17,7 @@ welcome from people of every identity and experience level. Participation is gov
 
 The repository pins Node 22.23.1, pnpm 11.2.2, Rust, Anchor, the
 Solana-format compatibility toolchain, and the exact official Firedancer source
-used for Woke Network. Do not silently substitute newer versions.
+used for WokeNet. Do not silently substitute newer versions.
 
 ```sh
 corepack enable
@@ -33,7 +33,7 @@ needed.
 ## Repository conventions
 
 - Applications live in `apps/*`; shared TypeScript packages live in `packages/*`.
-- Woke Network programs use the Solana-compatible Rust and Anchor workspace
+- WokeNet programs use the Solana-compatible Rust and Anchor workspace
   rather than pnpm workspaces; Agave/local-validator results are compatibility
   evidence only.
 - Shared protocol schemas are defined once and imported by clients and services.
@@ -57,7 +57,7 @@ pnpm build
 ```
 
 Use `pnpm test:e2e` for browser flows and `pnpm test:programs` for the
-Anchor/Agave compatibility-oracle suite. Use `pnpm network:woke:check` for the
+Anchor/Agave compatibility-oracle suite. Use `pnpm wokenet:check` for the
 pinned native-Firedancer policy/source gate. These commands fail if no workspace
 or toolchain implements the requested gate; an empty test stage is not reported
 as success.

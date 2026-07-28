@@ -12,7 +12,7 @@ import {
   signingKeyIdSchema,
   timestampSchema,
   utf8,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 import bs58 from 'bs58';
 import { canonicalize } from 'json-canonicalize';
 import { z } from 'zod';
@@ -83,12 +83,12 @@ const newPostPayloadSchema = z
     transactionSignature: z
       .string()
       .regex(/^[1-9A-HJ-NP-Za-km-z]{80,96}$/u)
-      .refine(isExactSolanaSignature, 'Woke Network transaction signature must decode to 64 bytes.')
+      .refine(isExactSolanaSignature, 'WokeNet transaction signature must decode to 64 bytes.')
       .optional(),
     slot: z
       .string()
       .regex(/^(?:0|[1-9][0-9]{0,19})$/u)
-      .refine(isU64Decimal, 'Woke Network slot must be an unsigned 64-bit decimal string.')
+      .refine(isU64Decimal, 'WokeNet slot must be an unsigned 64-bit decimal string.')
       .optional(),
   })
   .strict();
@@ -125,7 +125,7 @@ const communityUpdatePayloadSchema = z
 const encryptedMessagePayloadSchema = z
   .object({
     messageId: identifierSchema,
-    mediaType: z.literal('application/socially-woke-e2ee+json'),
+    mediaType: z.literal('application/wokesocial-e2ee+json'),
     cipherSuite: z.enum(['x25519-xsalsa20-poly1305', 'x25519-xchacha20-poly1305']),
     senderKeyId: signingKeyIdSchema,
     ciphertext: base64UrlSchema.max(RELAY_POLICY.message.maximumCiphertextCharacters),
@@ -137,7 +137,7 @@ const livestreamSignalPayloadSchema = z
     sessionId: identifierSchema,
     sequence: z.number().int().nonnegative().safe(),
     signalType: z.enum(['answer', 'end', 'ice-candidate', 'offer', 'renegotiate']),
-    mediaType: mediaTypeSchema.default('application/socially-woke-e2ee+json'),
+    mediaType: mediaTypeSchema.default('application/wokesocial-e2ee+json'),
     encryptedMetadata: base64UrlSchema
       .max(RELAY_POLICY.message.maximumMetadataCharacters)
       .optional(),

@@ -1,10 +1,10 @@
-# Socially Woke media worker
+# WokeSocial media worker
 
-`@socially-woke/media-worker` is a non-custodial media preparation service. It
+`@wokesocial/media-worker` is a non-custodial media preparation service. It
 accepts resumable byte uploads, verifies every chunk and the complete object,
 validates MIME signatures, requires a real malware scanner, creates bounded
 renditions, and publishes all deliverable bytes through
-`@socially-woke/storage`.
+`@wokesocial/storage`.
 
 The result contains protocol-valid **unsigned** `media-manifest` content and
 the exact storage receipts. The worker never holds an identity key and never
@@ -145,7 +145,7 @@ such as
 Build from the repository root:
 
 ```sh
-docker build -f apps/media-worker/Dockerfile -t socially-woke-media-worker .
+docker build -f apps/media-worker/Dockerfile -t wokesocial-media-worker .
 ```
 
 The multi-stage image uses the digest-pinned Node 22.23.1 bookworm-slim base,
@@ -161,19 +161,19 @@ the production `ClamdScanner`, requires opposite verdicts, and verifies that
 the adapter does not expose the daemon's signature name.
 
 For a read-only root filesystem, mount writable, private storage at the three
-configured `/var/lib/socially-woke` subdirectories and provide a bounded
+configured `/var/lib/wokesocial` subdirectories and provide a bounded
 temporary filesystem if the container runtime requires `/tmp`:
 
 ```sh
 docker run --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-  --mount type=volume,src=media-staging,dst=/var/lib/socially-woke/staging \
-  --mount type=volume,src=media-temporary,dst=/var/lib/socially-woke/temporary \
-  --mount type=volume,src=media-cas,dst=/var/lib/socially-woke/cas \
+  --mount type=volume,src=media-staging,dst=/var/lib/wokesocial/staging \
+  --mount type=volume,src=media-temporary,dst=/var/lib/wokesocial/temporary \
+  --mount type=volume,src=media-cas,dst=/var/lib/wokesocial/cas \
   --network media-private \
   --env-file /path/to/chmod-0600-media-worker.env \
   -p 127.0.0.1:4500:4500 \
-  socially-woke-media-worker
+  wokesocial-media-worker
 ```
 
 The environment file must contain the two required variables and should point
@@ -290,11 +290,11 @@ timeouts, CORS, and rate limits are applied before route work.
 ## Verification
 
 ```sh
-pnpm --filter @socially-woke/media-worker lint
-pnpm --filter @socially-woke/media-worker typecheck
-pnpm --filter @socially-woke/media-worker test
-pnpm --filter @socially-woke/media-worker test:integration
-pnpm --filter @socially-woke/media-worker build
+pnpm --filter @wokesocial/media-worker lint
+pnpm --filter @wokesocial/media-worker typecheck
+pnpm --filter @wokesocial/media-worker test
+pnpm --filter @wokesocial/media-worker test:integration
+pnpm --filter @wokesocial/media-worker build
 ```
 
 The integration suite explicitly checks the host for Sharp, FFmpeg, and

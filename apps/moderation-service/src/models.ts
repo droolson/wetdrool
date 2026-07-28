@@ -4,7 +4,7 @@ import {
   objectIdSchema,
   timestampSchema,
   type ModerationSubject,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 import { z } from 'zod';
 
 export const CASE_STATES = [

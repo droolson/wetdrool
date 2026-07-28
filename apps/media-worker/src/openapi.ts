@@ -11,7 +11,7 @@ const uploadIdParameter = {
 export const mediaWorkerOpenApiDocument = {
   openapi: '3.1.0',
   info: {
-    title: 'Socially Woke media worker',
+    title: 'WokeSocial media worker',
     version: '0.1.0',
     description:
       'Resumable upload, bounded media processing, malware-gated content-addressed publication, and unsigned media-manifest preparation.',

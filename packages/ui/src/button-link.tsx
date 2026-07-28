@@ -7,7 +7,9 @@ export interface ButtonLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement>
 }
 
 export function ButtonLink({ className = '', variant = 'primary', ...props }: ButtonLinkProps) {
-  const classes = ['sw-button', `sw-button--${variant}`, className].filter(Boolean).join(' ');
+  const classes = ['wokesocial-button', `wokesocial-button--${variant}`, className]
+    .filter(Boolean)
+    .join(' ');
 
   return <a className={classes} {...props} />;
 }

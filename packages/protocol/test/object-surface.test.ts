@@ -37,7 +37,7 @@ describe('v1 portable object surface', () => {
       const verified = await verifyEnvelope(canonicalizeEnvelope(envelope), () => true);
 
       expect(verified.envelope.payload.type).toBe(payload.type);
-      expect(verified.objectId).toMatch(new RegExp(`^swobj:v1:${payload.type}:`, 'u'));
+      expect(verified.objectId).toMatch(new RegExp(`^wokesocialobj:v1:${payload.type}:`, 'u'));
       expect(verified.cid).toMatch(/^bafk/u);
     }
   });
@@ -283,7 +283,7 @@ describe('object authorization policy', () => {
     await expect(
       verifyEnvelope(envelope, (context) => {
         expect(context.payload).toEqual(payload);
-        expect(context.objectId).toMatch(/^swobj:v1:governance-vote:/u);
+        expect(context.objectId).toMatch(/^wokesocialobj:v1:governance-vote:/u);
         expect(context.requirement.scopes).toEqual(['governance.vote']);
         expect(context.requirement.externalChecks).toContain('vote-eligibility-and-weight');
         return false;

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { StatusBadge } from '@socially-woke/ui';
+import { StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { Composer } from '@/components/composer';
@@ -7,7 +7,7 @@ import { Composer } from '@/components/composer';
 export const metadata: Metadata = {
   title: 'Compose',
   description:
-    'Prepare and preview a Socially Woke post in local browser storage without simulating publication.',
+    'Prepare and preview a WokeSocial post in local browser storage without simulating publication.',
 };
 
 export default function ComposePage() {

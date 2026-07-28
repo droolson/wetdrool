@@ -1,6 +1,6 @@
-# Socially Woke relay
+# WokeSocial relay
 
-This package is an independently replaceable real-time transport. Relay events are **advisory and non-canonical**: a notification never proves that a manifest is authentic, available, or anchored on Woke Network. Clients must verify the signed manifest, current key authorization, tombstones, access policy, and finalized on-chain anchor before changing durable state.
+This package is an independently replaceable real-time transport. Relay events are **advisory and non-canonical**: a notification never proves that a manifest is authentic, available, or anchored on WokeNet. Clients must verify the signed manifest, current key authorization, tombstones, access policy, and finalized on-chain anchor before changing durable state.
 
 The service transports:
 
@@ -15,7 +15,7 @@ It never reads or logs an event payload, topic, recipient list, ciphertext, subs
 
 ## Security and privacy boundaries
 
-Every publish and subscription authorization is a strict, versioned Ed25519 envelope. The signing key ID must be structurally attached to the declared Socially Woke identity. The server validates the payload hash, signature, exact-millisecond timestamps, expiry, nonce, audience, opaque topic, known critical fields, and event-specific size limits.
+Every publish and subscription authorization is a strict, versioned Ed25519 envelope. The signing key ID must be structurally attached to the declared WokeSocial identity. The server validates the payload hash, signature, exact-millisecond timestamps, expiry, nonce, audience, opaque topic, known critical fields, and event-specific size limits.
 
 Structural key possession is not identity authorization: an attacker can generate a key and write its public key under someone else’s identity-shaped key ID. The server therefore starts **locked and not ready by default**, rejects every WebSocket upgrade, and accepts no event until a deployment injects `authorizeKey` backed by a current finalized identity/delegation projection. `authorizeSubscription` can additionally enforce opaque-topic access.
 
@@ -53,19 +53,19 @@ Environment:
 
 - `RELAY_HOST` defaults to `127.0.0.1`
 - `RELAY_PORT` defaults to `4200`
-- `RELAY_ID` defaults to `socially-woke-relay`
+- `RELAY_ID` defaults to `wokesocial-relay`
 - `RELAY_ALLOWED_ORIGINS` is a comma-separated HTTP(S) origin allowlist; empty denies browser `Origin` headers while still allowing non-browser clients
 - `RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE` defaults to `0`; only exact `1` unlocks structural-only local test mode
 
 ## Local development
 
 ```sh
-pnpm --filter @socially-woke/relay lint
-pnpm --filter @socially-woke/relay typecheck
-pnpm --filter @socially-woke/relay test
-pnpm --filter @socially-woke/relay test:integration
-pnpm --filter @socially-woke/relay build
-pnpm --filter @socially-woke/relay dev
+pnpm --filter @wokesocial/relay lint
+pnpm --filter @wokesocial/relay typecheck
+pnpm --filter @wokesocial/relay test
+pnpm --filter @wokesocial/relay test:integration
+pnpm --filter @wokesocial/relay build
+pnpm --filter @wokesocial/relay dev
 ```
 
 Integration tests use real loopback WebSocket servers and clients. They do not mock socket transport.

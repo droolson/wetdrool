@@ -56,9 +56,24 @@ export interface AuthStore {
   finalizeFirstCredential(
     accountId: string,
     credential: CredentialRecord,
+    rootBundle: StoredKeyBundle,
     activatedAt: string,
   ): Promise<void>;
-  addCredential(accountId: string, credential: CredentialRecord): Promise<void>;
+  addCredential(
+    accountId: string,
+    credential: CredentialRecord,
+    rootBundle: StoredKeyBundle,
+  ): Promise<void>;
+  /**
+   * Atomically commits an authenticated credential-state transition and the
+   * session issued from that exact transition. This serialization boundary
+   * prevents credential revocation from racing between verification and
+   * session persistence.
+   */
+  completeAuthentication(
+    update: CredentialAuthenticationUpdate,
+    session: SessionRecord,
+  ): Promise<CredentialRecord>;
   updateCredentialAfterAuthentication(
     update: CredentialAuthenticationUpdate,
   ): Promise<CredentialRecord>;
@@ -72,7 +87,6 @@ export interface AuthStore {
   getSession(sessionId: string): Promise<SessionRecord | undefined>;
   rotateSession(input: RotateSessionInput): Promise<SessionRecord>;
   revokeSession(sessionId: string, revokedAt: string): Promise<void>;
-  putKeyBundle(bundle: StoredKeyBundle): Promise<void>;
   listKeyBundles(accountId: string): Promise<readonly StoredKeyBundle[]>;
   cleanupExpired(input: CleanupExpiredInput): Promise<CleanupExpiredResult>;
   readiness(): Promise<void>;

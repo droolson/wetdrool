@@ -117,23 +117,23 @@
       ],
       "additionalProperties": false
     },
-    "__schema1": { "type": "string", "const": "socially-woke" },
+    "__schema1": { "type": "string", "const": "wokesocial" },
     "__schema2": { "type": "string", "const": "1.0" },
     "__schema3": { "type": "number", "const": 1 },
     "__schema4": {
       "type": "string",
-      "maxLength": 97,
-      "pattern": "^woke:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
+      "maxLength": 100,
+      "pattern": "^wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
     },
     "__schema5": {
       "type": "string",
-      "maxLength": 150,
-      "pattern": "^swid:v1:woke:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
+      "maxLength": 161,
+      "pattern": "^wokesocialid:v1:wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
     },
     "__schema6": {
       "type": "string",
       "maxLength": 220,
-      "pattern": "^swid:v1:woke:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+#(?:root|delegation)\\/[1-9A-HJ-NP-Za-km-z]+$"
+      "pattern": "^wokesocialid:v1:wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+#(?:root|delegation)\\/[1-9A-HJ-NP-Za-km-z]+$"
     },
     "__schema7": { "type": "string" },
     "__schema8": { "type": "string", "pattern": "^u[A-Za-z0-9_-]{22}$" },
@@ -206,7 +206,7 @@
     },
     "__schema19": {
       "type": "string",
-      "pattern": "^swobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$"
+      "pattern": "^wokesocialobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$"
     },
     "__schema20": { "$ref": "#/$defs/__schema15" },
     "__schema21": {
@@ -2303,12 +2303,12 @@
     },
     "__schema214": { "type": "string", "enum": ["in-app", "push", "email"] }
   },
-  "title": "Socially Woke signed portable object envelope v1",
-  "description": "Structural interchange schema for every Socially Woke v1 portable object and its Ed25519 proof.",
+  "title": "WokeSocial signed portable object envelope v1",
+  "description": "Structural interchange schema for every WokeSocial v1 portable object and its Ed25519 proof.",
   "$comment": "JSON Schema validates transport structure. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, and current external authorization policy from the protocol library.",
-  "x-socially-woke-protocol-version": "1.0",
-  "x-socially-woke-schema-version": 1,
-  "x-socially-woke-object-types": [
+  "x-wokesocial-protocol-version": "1.0",
+  "x-wokesocial-schema-version": 1,
+  "x-wokesocial-object-types": [
     "profile",
     "post",
     "tombstone",

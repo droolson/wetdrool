@@ -27,9 +27,9 @@ if (!(await scanner.healthCheck())) {
   throw new Error('Clamd PING verification failed.');
 }
 
-const root = await mkdtemp(join(tmpdir(), 'socially-woke-clamd-verification-'));
+const root = await mkdtemp(join(tmpdir(), 'wokesocial-clamd-verification-'));
 try {
-  const benign = Buffer.from('Socially Woke benign ClamAV integration fixture.\n', 'utf8');
+  const benign = Buffer.from('WokeSocial benign ClamAV integration fixture.\n', 'utf8');
   const eicar = Buffer.from(
     ['X5O!P%@AP[4', '\\PZX54(P^)7CC)7}$EICAR', '-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'].join(''),
     'ascii',

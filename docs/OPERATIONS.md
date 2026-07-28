@@ -4,8 +4,8 @@ Last reviewed: 2026-07-28
 
 ## Document status
 
-This is the target operations contract for Socially Woke on the sovereign Woke
-Network. No native Woke Network validator/RPC environment, staging service, or
+This is the target operations contract for WokeSocial on the sovereign WokeNet.
+No native WokeNet validator/RPC environment, staging service, or
 production service is deployed, and there are no production alerts, backups,
 runbook automations, on-call schedules, or completed incident exercises.
 
@@ -19,11 +19,11 @@ processors, and live ClamAV benign/malware verdicts. These local checks do not
 satisfy any production-readiness claim. Unless a section says otherwise, the
 controls and procedures below remain **Planned**.
 
-The canonical public origin is `https://woke.social`. `sociallywoke.com` and its
-`www` host are redirect-only legacy origins and must never become an alternate
-application, identity namespace, RPC surface, or cookie scope.
+The canonical public origin is `https://woke.social`. `sociallywoke.com` and
+`www.sociallywoke.com` are redirect-only legacy origins and must never become
+an alternate application, identity namespace, RPC surface, or cookie scope.
 
-Woke Network is a sovereign protocol forked from Solana. Its native asset is
+WokeNet is a sovereign protocol forked from Solana. Its native asset is
 WOKE with 9 decimal places. The wire/base-unit identifier `lamports` may remain
 in compatibility schemas, where `1 WOKE = 1,000,000,000 lamports`; it does not
 mean the runtime asset is SOL. Native validator and RPC operation is Firedancer
@@ -31,7 +31,7 @@ only. That path is **Experimental**, has no verified production binary or
 native connected-slice evidence, and blocks production activation. Existing
 Agave/Solana local-validator results are an explicitly labeled compatibility
 oracle for Solana-format program, transaction, and RPC behavior; they are not
-native Woke Network runtime evidence.
+native WokeNet runtime evidence.
 
 This document does not authorize production-network activity. See
 [DEPLOYMENT.md](./DEPLOYMENT.md) for the explicit manual production boundary and
@@ -40,7 +40,7 @@ This document does not authorize production-network activity. See
 ## Operating principles
 
 - Preserve user safety and key integrity before availability metrics.
-- Treat finalized Woke Network state and signed protocol objects as canonical;
+- Treat finalized WokeNet state and signed protocol objects as canonical;
   treat service databases as replayable projections.
 - Keep native Firedancer evidence separate from Agave/Solana compatibility-oracle
   evidence in alerts, dashboards, releases, and incident records.
@@ -67,7 +67,7 @@ roles MUST remain separated for high-impact changes.
 | Incident commander | Coordinates response, priorities, timeline, and handoffs | Deploy unreviewed program changes or suppress required notification |
 | Operations lead | Service health, capacity, failover, database and queue operations | Access user private content without approved purpose |
 | Security lead | Compromise analysis, containment, evidence, credential rotation | Unilaterally accept critical residual risk |
-| Woke Network release authority | Verifies Firedancer artifacts, network, program, and authority state | Satisfy production multisig quorum alone or substitute Agave compatibility evidence for native evidence |
+| WokeNet release authority | Verifies Firedancer artifacts, network, program, and authority state | Satisfy production multisig quorum alone or substitute Agave compatibility evidence for native evidence |
 | Safety lead | User harm, moderation escalation, evidence minimization | Expand evidence access or retention without review |
 | Communications lead | Operator/user/status updates | Make legal conclusions or unsupported attribution |
 | Privacy/legal contact | Advises notification, preservation, disclosure, and retention | Alter technical evidence without audit trail |
@@ -80,14 +80,14 @@ out-of-band communications, and a tested method for reaching multisig signers.
 
 | Component | Role | Canonical? | Expected failure behavior |
 | --- | --- | --- | --- |
-| Woke Network program and finalized ledger | Protocol authorization and compact public state | Yes, within documented protocol scope | Writes pause or remain pending; clients retain safe read/degraded mode |
+| WokeNet program and finalized ledger | Protocol authorization and compact public state | Yes, within documented protocol scope | Writes pause or remain pending; clients retain safe read/degraded mode |
 | Signed content manifests | Verifiable public/restricted object representation | Yes for represented content | Alternate provider retrieval; reject unverifiable bytes |
 | PostgreSQL indexer database | Query projection | No | Fail over or rebuild from protocol data |
 | Redis | Cache, queue coordination, rate limiting | No | Lose cache safely; sensitive limits fail safe; reconcile queued work |
 | Indexer | Reconstruction and query convenience | No | Mark stale, replay from checkpoint, permit alternate indexer |
 | Relay | Low-latency delivery | No | Reconnect elsewhere and reconcile durable signed state |
 | Feed provider | Ranking convenience | No | Fall back to chronological/following and enforce local safety controls |
-| Woke Network RPC provider | Native Firedancer transport | No | Health-score and switch; validate network/genesis/finality; never fail over to an Agave oracle in production |
+| WokeNet RPC provider | Native Firedancer transport | No | Health-score and switch; validate network/genesis/finality; never fail over to an Agave oracle in production |
 | Content gateway/pinner | Content transport and availability | No | Hash-verify alternate provider; expose degraded replication |
 | Media worker | Derivative convenience | No | Queue safely; permit protocol-compliant independent media |
 | ClamAV daemon | Private malware-scanning dependency | No | Media finalization fails closed; preserve resumable upload for safe retry |
@@ -130,7 +130,7 @@ exists. All requirements below beyond those subsets are **Planned**.
 - Timestamp in UTC, service, environment, region, instance, release digest.
 - Trace/correlation ID generated independently of user content.
 - Operation name, stable result code, duration, retry count.
-- Woke Network environment, genesis hash, native Firedancer version, RPC
+- WokeNet environment, genesis hash, native Firedancer version, RPC
   provider alias, observed slot, commitment, and checkpoint where relevant.
 - An explicit `compatibility-oracle` marker plus Agave/Solana tool versions for
   tests that intentionally exercise the Solana-format compatibility path.
@@ -169,7 +169,7 @@ Alerts MUST be actionable, routed to an owning role, deduplicated, and linked to
 a runbook. Page for user-impacting or security-critical conditions; create
 nonpaging tickets for trends. Every page must identify environment, genesis, and
 runtime so a compatibility oracle cannot be mistaken for a native or production
-Woke Network environment.
+WokeNet environment.
 
 High-priority pages include:
 
@@ -293,7 +293,7 @@ deterministically reconstructs identity, profile, post, follow, tombstone,
 checkpoint, and suppression state from actual finalized Agave local-validator
 history plus signed CAS manifests. The synchronizer handles finalized polling,
 checkpoints, retry/DLQ, and RPC failover against that compatibility oracle.
-This is not native Woke Network/Firedancer evidence. Native history, native RPC
+This is not native WokeNet/Firedancer evidence. Native history, native RPC
 failover, production-scale timing, and independent-provider comparison remain
 unverified.
 
@@ -376,7 +376,7 @@ screen sharing of secret material.
 1. Declare SEV-0 or SEV-1 based on scope and move to out-of-band coordination.
 2. Stop deployments and sponsorship. Disable affected service credentials and
    isolate control-plane access.
-3. Independently inspect the affected Woke Network genesis, native Firedancer
+3. Independently inspect the affected WokeNet genesis, native Firedancer
    release, program ID, program-data address, binary hash, upgrade authority,
    WOKE balances, and recent transactions.
 4. Notify multisig signers through verified channels; do not collect root secrets
@@ -389,7 +389,7 @@ screen sharing of secret material.
    required.
 8. Publish material program changes and incident facts.
 
-There is no safe generic rollback for a stateful Woke Network program. Any
+There is no safe generic rollback for a stateful WokeNet program. Any
 program action requires independent review of binary and state compatibility.
 Agave/Solana compatibility-oracle behavior cannot approve a native Firedancer
 production action.

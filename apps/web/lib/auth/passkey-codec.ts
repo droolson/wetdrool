@@ -101,6 +101,7 @@ export function extractPrfOutput(credential: PublicKeyCredential): Uint8Array | 
   const first = credential.getClientExtensionResults().prf?.results?.first;
   if (first === undefined) return undefined;
   const output = copyBuffer(first);
+  clearBufferSource(first);
   if (output.byteLength !== 32) {
     output.fill(0);
     return undefined;
@@ -150,6 +151,19 @@ export function decodeBase64Url(value: string, maximumBytes = 1_024): Uint8Array
 function copyBuffer(value: BufferSource): Uint8Array {
   if (value instanceof ArrayBuffer) return new Uint8Array(value.slice(0));
   return new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice();
+}
+
+function clearBufferSource(value: BufferSource): void {
+  try {
+    if (value instanceof ArrayBuffer) {
+      new Uint8Array(value).fill(0);
+    } else {
+      new Uint8Array(value.buffer, value.byteOffset, value.byteLength).fill(0);
+    }
+  } catch {
+    // The browser may expose an immutable or detached view. The copied output
+    // remains caller-owned and is cleared by every flow.
+  }
 }
 
 function assertCredentialIdentity(credential: PublicKeyCredential, rawId: string): void {

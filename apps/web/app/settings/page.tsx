@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
-import { ButtonLink, InfoCard, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, InfoCard, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { SettingsNav } from '@/components/settings-nav';
 
 export const metadata: Metadata = {
   title: 'Settings',
-  description: 'Review local and provider-backed Socially Woke settings surfaces.',
+  description: 'Review local and provider-backed WokeSocial settings surfaces.',
 };
 
 export default function SettingsPage() {

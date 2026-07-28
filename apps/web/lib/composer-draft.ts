@@ -1,4 +1,4 @@
-export const COMPOSER_DRAFT_STORAGE_KEY = 'socially-woke:composer-draft:v1';
+export const COMPOSER_DRAFT_STORAGE_KEY = 'wokesocial:composer-draft:v1';
 export const COMPOSER_DRAFT_VERSION = 1 as const;
 export const MAX_POST_CHARACTERS = 5_000;
 export const MAX_POST_UTF8_BYTES = 10_000;

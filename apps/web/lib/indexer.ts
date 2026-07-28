@@ -297,7 +297,7 @@ export async function getHomeFeed(): Promise<FeedResult> {
   if (!base) {
     return degraded(
       'unconfigured',
-      'Set SOCIALLY_WOKE_INDEXER_URL to a compatible indexer base URL. No demonstration posts are substituted.',
+      'Set WOKESOCIAL_INDEXER_URL to a compatible indexer base URL. No demonstration posts are substituted.',
     );
   }
 
@@ -365,8 +365,7 @@ export async function getPostById(id: string): Promise<PostResult> {
 
   if (!base) {
     return {
-      detail:
-        'Set SOCIALLY_WOKE_INDEXER_URL to load and verify a post. No placeholder post is shown.',
+      detail: 'Set WOKESOCIAL_INDEXER_URL to load and verify a post. No placeholder post is shown.',
       kind: 'degraded',
       reason: 'unconfigured',
     };

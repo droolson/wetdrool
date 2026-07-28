@@ -1,5 +1,5 @@
 import type { AuthenticatorTransportFuture, CredentialDeviceType } from '@simplewebauthn/server';
-import type { PasskeyWrappedKeyBundle } from '@socially-woke/crypto';
+import type { PasskeyWrappedKeyBundle } from '@wokesocial/crypto';
 
 export type CeremonyPurpose = 'register-account' | 'authenticate' | 'step-up' | 'add-credential';
 

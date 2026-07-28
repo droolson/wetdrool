@@ -1,7 +1,7 @@
 [package]
 name = "social_protocol"
 version = "0.1.0"
-description = "Woke Network identity, social graph, content reference, and native-payment protocol"
+description = "WokeNet identity, social graph, content reference, and native-payment protocol"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

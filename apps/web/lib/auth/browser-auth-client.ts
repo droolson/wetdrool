@@ -7,9 +7,14 @@ import {
   type PasskeyWrappedKeyBundle,
   type UnwrapPasskeyAccountKeyInput,
   type WrapPasskeyAccountKeyInput,
-} from '@socially-woke/crypto';
+} from '@wokesocial/crypto';
 
-import { AuthApiClient, type AuthApiClientOptions, type AuthSessionView } from './auth-api';
+import {
+  AuthApiClient,
+  type AuthApiClientOptions,
+  type AuthSessionView,
+  type PasskeyCredentialView,
+} from './auth-api';
 import { BrowserAuthError, passkeyPromptError } from './errors';
 import {
   authenticationResponseForServer,
@@ -84,34 +89,29 @@ export class BrowserAuthClient {
     return this.api.logout();
   }
 
+  listPasskeys(): Promise<readonly PasskeyCredentialView[]> {
+    return this.api.credentials();
+  }
+
   async register(): Promise<BrowserAuthFlowResult> {
     const issued = await this.api.registrationOptions();
-    const evaluation = await createPasskeyPrfEvaluationInput();
-    let credential: PublicKeyCredential;
-    try {
-      const options = withPrfEvaluation(
-        this.#platform.parseCreationOptions(issued.options),
-        evaluation.first,
-      );
-      credential = publicKeyCredential(await this.#prompt(() => this.#platform.create(options)));
-    } finally {
-      evaluation.first.fill(0);
-    }
-
+    const credential = await this.#createCredentialWithPrf(issued.options);
     const prfOutput = extractPrfOutput(credential);
+    if (prfOutput === undefined) {
+      throw new BrowserAuthError('prf-required');
+    }
     try {
+      const prepared = await this.#prepareNewRootBundle(credential.id, prfOutput);
       const verified = await this.api.verifyRegistration({
         accountId: issued.accountId,
         ceremonyId: issued.ceremonyId,
         response: registrationResponseForServer(credential),
+        bundle: prepared.bundle,
       });
       assertVerifiedCredential(credential.id, issued.accountId, verified);
-      if (prfOutput === undefined) {
-        return authResult(verified, fallback('prf-unsupported'));
-      }
-      return authResult(verified, await this.#createAndSynchronizeKey(credential.id, prfOutput));
+      return authResult(verified, prepared.key);
     } finally {
-      prfOutput?.fill(0);
+      prfOutput.fill(0);
     }
   }
 
@@ -145,16 +145,70 @@ export class BrowserAuthClient {
     }
   }
 
-  async #createAndSynchronizeKey(
+  async addPasskeyForExistingRoot(): Promise<PasskeyCredentialView> {
+    const stepped = await this.#freshStepUp(true);
+    try {
+      const issued = await this.api.additionalRegistrationOptions();
+      const credential = await this.#createCredentialWithPrf(issued.options);
+      const newPrfOutput = extractPrfOutput(credential);
+      if (newPrfOutput === undefined) {
+        throw new BrowserAuthError('prf-required');
+      }
+
+      let root:
+        | {
+            readonly publicKey: Uint8Array;
+            readonly seed: Uint8Array;
+          }
+        | undefined;
+      try {
+        root = await this.#unwrapSynchronizedRoot(stepped.credentialId, stepped.prfOutput);
+        let bundle: PasskeyWrappedKeyBundle;
+        try {
+          bundle = await this.#keyOperations.wrap({
+            prfOutput: newPrfOutput,
+            credentialId: decodeBase64Url(credential.id, 1_023),
+            accountKeySeed: root.seed,
+            publicKey: root.publicKey,
+            keyKind: 'solana-ed25519-root-seed',
+          });
+        } catch {
+          throw new BrowserAuthError('key-wrapper-failed');
+        }
+        const added = await this.api.verifyAdditionalRegistration({
+          ceremonyId: issued.ceremonyId,
+          response: registrationResponseForServer(credential),
+          bundle,
+        });
+        if (added.credentialId !== credential.id || added.revokedAt !== undefined) {
+          throw new BrowserAuthError('server-invalid');
+        }
+        return added;
+      } finally {
+        root?.seed.fill(0);
+        root?.publicKey.fill(0);
+        newPrfOutput.fill(0);
+      }
+    } finally {
+      stepped.prfOutput.fill(0);
+    }
+  }
+
+  async revokePasskey(credentialId: string): Promise<PasskeyCredentialView> {
+    await this.#freshStepUp(false);
+    return this.api.revokeCredential(credentialId);
+  }
+
+  async #prepareNewRootBundle(
     credentialId: string,
     prfOutput: Uint8Array,
-  ): Promise<EmbeddedKeyState> {
+  ): Promise<{ readonly bundle: PasskeyWrappedKeyBundle; readonly key: EmbeddedKeyState }> {
     const seed = this.#keyOperations.randomBytes(32);
     let publicKey: Uint8Array | undefined;
     try {
-      if (seed.byteLength !== 32) return fallback('bundle-sync-failed');
+      if (seed.byteLength !== 32) throw new BrowserAuthError('key-wrapper-failed');
       publicKey = Uint8Array.from(this.#keyOperations.publicKeyFromSeed(seed));
-      if (publicKey.byteLength !== 32) return fallback('bundle-sync-failed');
+      if (publicKey.byteLength !== 32) throw new BrowserAuthError('key-wrapper-failed');
       const bundle = await this.#keyOperations.wrap({
         prfOutput,
         credentialId: decodeBase64Url(credentialId, 1_023),
@@ -162,18 +216,17 @@ export class BrowserAuthClient {
         publicKey,
         keyKind: 'solana-ed25519-root-seed',
       });
-      try {
-        await this.api.synchronizeBundle(credentialId, bundle);
-      } catch {
-        return fallback('bundle-sync-failed');
-      }
       return {
-        status: 'ready',
-        publicKey: bundle.publicKey,
-        lifecycle: 'generated-wrapped-and-cleared',
+        bundle,
+        key: {
+          status: 'ready',
+          publicKey: bundle.publicKey,
+          lifecycle: 'generated-wrapped-and-cleared',
+        },
       };
-    } catch {
-      return fallback('bundle-sync-failed');
+    } catch (error) {
+      if (error instanceof BrowserAuthError) throw error;
+      throw new BrowserAuthError('key-wrapper-failed');
     } finally {
       seed.fill(0);
       publicKey?.fill(0);
@@ -229,6 +282,107 @@ export class BrowserAuthClient {
       seed?.fill(0);
       actualPublicKey?.fill(0);
       expectedPublicKeyBytes?.fill(0);
+    }
+  }
+
+  async #unwrapSynchronizedRoot(
+    credentialId: string,
+    prfOutput: Uint8Array,
+  ): Promise<{ readonly publicKey: Uint8Array; readonly seed: Uint8Array }> {
+    let seed: Uint8Array | undefined;
+    let publicKey: Uint8Array | undefined;
+    let expectedPublicKey: Uint8Array | undefined;
+    try {
+      const bundles = await this.api.bundles();
+      const matches = bundles.filter(
+        (stored) =>
+          stored.credentialId === credentialId &&
+          bundleString(stored.bundle, 'keyKind') === 'solana-ed25519-root-seed',
+      );
+      if (matches.length !== 1) throw new BrowserAuthError('key-wrapper-invalid');
+      const bundle = matches[0]?.bundle;
+      const expectedPublicKeyString = bundleString(bundle, 'publicKey');
+      if (expectedPublicKeyString === undefined) {
+        throw new BrowserAuthError('key-wrapper-invalid');
+      }
+      seed = await this.#keyOperations.unwrap({
+        prfOutput,
+        credentialId: decodeBase64Url(credentialId, 1_023),
+        bundle,
+      });
+      if (seed.byteLength !== 32) throw new BrowserAuthError('key-wrapper-invalid');
+      publicKey = Uint8Array.from(this.#keyOperations.publicKeyFromSeed(seed));
+      expectedPublicKey = decodeBase64Url(expectedPublicKeyString, 32);
+      if (publicKey.byteLength !== 32 || !constantTimeEqual(publicKey, expectedPublicKey)) {
+        throw new BrowserAuthError('key-wrapper-invalid');
+      }
+      expectedPublicKey.fill(0);
+      expectedPublicKey = undefined;
+      return { seed, publicKey };
+    } catch (error) {
+      seed?.fill(0);
+      publicKey?.fill(0);
+      expectedPublicKey?.fill(0);
+      if (error instanceof BrowserAuthError) throw error;
+      throw new BrowserAuthError('key-wrapper-invalid');
+    }
+  }
+
+  async #createCredentialWithPrf(
+    options: PublicKeyCredentialCreationOptionsJSON,
+  ): Promise<PublicKeyCredential> {
+    const evaluation = await createPasskeyPrfEvaluationInput();
+    try {
+      const parsed = withPrfEvaluation(
+        this.#platform.parseCreationOptions(options),
+        evaluation.first,
+      );
+      return publicKeyCredential(await this.#prompt(() => this.#platform.create(parsed)));
+    } finally {
+      evaluation.first.fill(0);
+    }
+  }
+
+  async #freshStepUp(
+    requirePrf: true,
+  ): Promise<{ readonly credentialId: string; readonly prfOutput: Uint8Array }>;
+  async #freshStepUp(requirePrf: false): Promise<{ readonly credentialId: string }>;
+  async #freshStepUp(
+    requirePrf: boolean,
+  ): Promise<{ readonly credentialId: string; readonly prfOutput?: Uint8Array }> {
+    const issued = await this.api.stepUpOptions();
+    let evaluation: Awaited<ReturnType<typeof createPasskeyPrfEvaluationInput>> | undefined;
+    let credential: PublicKeyCredential;
+    try {
+      const parsed = this.#platform.parseRequestOptions(issued.options);
+      if (requirePrf) {
+        evaluation = await createPasskeyPrfEvaluationInput();
+      }
+      const options =
+        evaluation === undefined ? parsed : withPrfEvaluation(parsed, evaluation.first);
+      credential = publicKeyCredential(await this.#prompt(() => this.#platform.get(options)));
+    } finally {
+      evaluation?.first.fill(0);
+    }
+    const prfOutput = requirePrf ? extractPrfOutput(credential) : undefined;
+    if (requirePrf && prfOutput === undefined) {
+      throw new BrowserAuthError('prf-required');
+    }
+    try {
+      const verified = await this.api.verifyStepUp({
+        ceremonyId: issued.ceremonyId,
+        response: authenticationResponseForServer(credential),
+      });
+      if (verified.credentialId !== credential.id || verified.revokedAt !== undefined) {
+        throw new BrowserAuthError('server-invalid');
+      }
+      return {
+        credentialId: credential.id,
+        ...(prfOutput === undefined ? {} : { prfOutput }),
+      };
+    } catch (error) {
+      prfOutput?.fill(0);
+      throw error;
     }
   }
 

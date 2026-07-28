@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, StatePanel, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, StatePanel, StatusBadge } from '@wokesocial/ui';
 
 import { ComposerUnavailable } from '@/components/composer-unavailable';
 import { FeedTabs, type FeedKind } from '@/components/feed-tabs';
@@ -10,7 +10,7 @@ import { formatUtcDate } from '@/lib/presentation';
 
 export const metadata: Metadata = {
   title: 'Home',
-  description: 'A typed, honest feed view backed by the configured Socially Woke indexer.',
+  description: 'A typed, honest feed view backed by the configured WokeSocial indexer.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -173,8 +173,8 @@ export default async function HomePage({
             <p className="section-kicker">Publishing</p>
             <h2>Intentionally locked</h2>
             <p>
-              A real post needs canonical serialization, signing, storage, Woke Network
-              confirmation, and indexing. The UI will not skip those steps for appearances.
+              A real post needs canonical serialization, signing, storage, WokeNet confirmation, and
+              indexing. The UI will not skip those steps for appearances.
             </p>
           </section>
           <section className="sidebar-links">

@@ -10,13 +10,13 @@ export interface InfoCardProps {
 
 export function InfoCard({ children, eyebrow, footer, title, tone = 'neutral' }: InfoCardProps) {
   return (
-    <article className={`sw-info-card sw-info-card--${tone}`}>
-      <div className="sw-info-card__top">
-        {eyebrow ? <p className="sw-eyebrow">{eyebrow}</p> : null}
+    <article className={`wokesocial-info-card wokesocial-info-card--${tone}`}>
+      <div className="wokesocial-info-card__top">
+        {eyebrow ? <p className="wokesocial-eyebrow">{eyebrow}</p> : null}
         <span aria-hidden="true" />
       </div>
       <h3>{title}</h3>
-      <div className="sw-info-card__copy">{children}</div>
+      <div className="wokesocial-info-card__copy">{children}</div>
       {footer ? <footer>{footer}</footer> : null}
     </article>
   );

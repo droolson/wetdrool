@@ -1,21 +1,23 @@
 import {
   buildPostPayload,
   buildProfilePayload,
-  canonicalizeEnvelope,
+  canonicalizePayload,
   decodeMultibaseBase64Url,
-  getObjectId,
-  signPayload,
+  type PayloadBuildOptions,
   type PayloadBuilderIdentity,
   type PostContent,
+  type PostPayload,
+  type PortablePayload,
   type ProfileContent,
+  type ProfilePayload,
   type SignedEnvelope,
   verifyEnvelope,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 import type {
   MultiProviderStorage,
   ReplicatedPublication,
   StoragePolicy,
-} from '@socially-woke/storage';
+} from '@wokesocial/storage';
 
 import { assertFinalized, type ChainConfirmation, type ProtocolChainWriter } from './chain.js';
 
@@ -47,10 +49,19 @@ type AnchorWriter = (input: AnchorInput) => Promise<ChainConfirmation>;
 
 export interface PublicationPipelineOptions {
   readonly identity: PayloadBuilderIdentity;
-  readonly privateKey: Uint8Array;
   readonly storage: MultiProviderStorage;
   readonly chain: ProtocolChainWriter;
   readonly onProgress?: (progress: PublicationProgress) => void;
+}
+
+export type PublicationSigner<Payload extends PortablePayload> = (
+  payload: Payload,
+) => SignedEnvelope | Promise<SignedEnvelope>;
+
+export interface PublicationOperationOptions<
+  Payload extends PortablePayload,
+> extends PayloadBuildOptions {
+  readonly signer: PublicationSigner<Payload>;
 }
 
 export class PublicationError extends Error {
@@ -68,14 +79,12 @@ export class PublicationError extends Error {
 
 export class PublicationPipeline {
   readonly #identity: PayloadBuilderIdentity;
-  readonly #privateKey: Uint8Array;
   readonly #storage: MultiProviderStorage;
   readonly #chain: ProtocolChainWriter;
   readonly #onProgress: ((progress: PublicationProgress) => void) | undefined;
 
   constructor(options: PublicationPipelineOptions) {
-    this.#identity = options.identity;
-    this.#privateKey = options.privateKey.slice();
+    this.#identity = { ...options.identity };
     this.#storage = options.storage;
     this.#chain = options.chain;
     this.#onProgress = options.onProgress;
@@ -84,11 +93,11 @@ export class PublicationPipeline {
   async publishPost(
     content: PostContent,
     policy: StoragePolicy,
-    options: { readonly createdAt?: Date; readonly nonce?: Uint8Array } = {},
+    options: PublicationOperationOptions<PostPayload>,
   ): Promise<PublicationResult> {
     this.#progress('validating', 'Validating the post manifest.');
     const payload = buildPostPayload(this.#identity, content, options);
-    return this.#publish(signPayload(payload, this.#privateKey), policy, (anchor) =>
+    return this.#publish(payload, options.signer, policy, (anchor) =>
       this.#chain.publishPost(anchor),
     );
   }
@@ -96,17 +105,18 @@ export class PublicationPipeline {
   async updateProfile(
     content: ProfileContent,
     policy: StoragePolicy,
-    options: { readonly createdAt?: Date; readonly nonce?: Uint8Array } = {},
+    options: PublicationOperationOptions<ProfilePayload>,
   ): Promise<PublicationResult> {
     this.#progress('validating', 'Validating the profile manifest.');
     const payload = buildProfilePayload(this.#identity, content, options);
-    return this.#publish(signPayload(payload, this.#privateKey), policy, (anchor) =>
+    return this.#publish(payload, options.signer, policy, (anchor) =>
       this.#chain.updateProfile(anchor),
     );
   }
 
-  async #publish(
-    envelope: SignedEnvelope,
+  async #publish<Payload extends PortablePayload>(
+    payload: Payload,
+    signer: PublicationSigner<Payload>,
     policy: StoragePolicy,
     anchor: AnchorWriter,
   ): Promise<PublicationResult> {
@@ -115,25 +125,33 @@ export class PublicationPipeline {
     let stage: PublicationStage = 'signing';
     try {
       this.#progress('signing', 'Signing canonical manifest bytes.');
+      const expectedPayloadBytes = canonicalizePayload(payload);
+      const envelope = await signer(payload);
+      const signedPayloadBytes = canonicalizePayload(envelope.payload);
+      if (!equalBytes(expectedPayloadBytes, signedPayloadBytes)) {
+        throw new TypeError(
+          'Signer returned an envelope that does not exactly match the constructed payload and identity.',
+        );
+      }
       const verified = await verifyEnvelope(envelope);
-      objectId = getObjectId(envelope.payload);
+      objectId = verified.objectId;
 
       stage = 'storing';
       this.#progress('storing', 'Publishing to configured storage providers.', {
         objectId,
       });
-      stored = await this.#storage.publish(canonicalizeEnvelope(envelope), policy);
+      stored = await this.#storage.publish(verified.canonicalBytes, policy);
 
       stage = 'anchoring';
-      this.#progress('anchoring', 'Submitting the verified reference to Woke Network.', {
+      this.#progress('anchoring', 'Submitting the verified reference to WokeNet.', {
         objectId,
         cid: stored.cid,
       });
       const chain = await this.#anchor(anchor, {
-        identity: this.#identity.author,
+        identity: verified.envelope.payload.author,
         objectId,
         cid: stored.cid,
-        payloadHash: decodeMultibaseBase64Url(envelope.proof.payloadHash, 32),
+        payloadHash: decodeMultibaseBase64Url(verified.envelope.proof.payloadHash, 32),
       });
 
       stage = 'confirming';
@@ -174,4 +192,8 @@ export class PublicationPipeline {
   ): void {
     this.#onProgress?.({ stage, message, ...context });
   }
+}
+
+function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
 }

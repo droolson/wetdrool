@@ -56,9 +56,9 @@ describe('Arweave-compatible permanent storage', () => {
     });
     expect(uploadRequests[0]?.tags).toEqual(
       expect.arrayContaining([
-        { name: 'Socially-Woke-CID', value: receipt.cid },
+        { name: 'WokeSocial-CID', value: receipt.cid },
         {
-          name: 'Socially-Woke-SHA256',
+          name: 'WokeSocial-SHA256',
           value: receipt.contentSha256,
         },
       ]),

@@ -6,10 +6,7 @@ import { z } from 'zod';
 import { PORTABLE_OBJECT_TYPES } from '../src/constants.js';
 import { signedEnvelopeSchema } from '../src/schemas.js';
 
-const outputUrl = new URL(
-  '../schemas/socially-woke-signed-envelope-v1.schema.json',
-  import.meta.url,
-);
+const outputUrl = new URL('../schemas/wokesocial-signed-envelope-v1.schema.json', import.meta.url);
 
 const generated = z.toJSONSchema(signedEnvelopeSchema, {
   io: 'input',
@@ -20,14 +17,14 @@ const generated = z.toJSONSchema(signedEnvelopeSchema, {
 const artifact = {
   $id: 'https://woke.social/protocol/schemas/signed-envelope-v1.schema.json',
   ...generated,
-  title: 'Socially Woke signed portable object envelope v1',
+  title: 'WokeSocial signed portable object envelope v1',
   description:
-    'Structural interchange schema for every Socially Woke v1 portable object and its Ed25519 proof.',
+    'Structural interchange schema for every WokeSocial v1 portable object and its Ed25519 proof.',
   $comment:
     'JSON Schema validates transport structure. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, and current external authorization policy from the protocol library.',
-  'x-socially-woke-protocol-version': '1.0',
-  'x-socially-woke-schema-version': 1,
-  'x-socially-woke-object-types': PORTABLE_OBJECT_TYPES,
+  'x-wokesocial-protocol-version': '1.0',
+  'x-wokesocial-schema-version': 1,
+  'x-wokesocial-object-types': PORTABLE_OBJECT_TYPES,
 };
 
 const serialized = await format(JSON.stringify(artifact), {
@@ -46,12 +43,12 @@ if (mode === '--write') {
     current = await readFile(outputUrl, 'utf8');
   } catch {
     throw new Error(
-      'The checked-in protocol JSON Schema is missing. Run pnpm --filter @socially-woke/protocol schema:generate.',
+      'The checked-in protocol JSON Schema is missing. Run pnpm --filter @wokesocial/protocol schema:generate.',
     );
   }
   if (current !== serialized) {
     throw new Error(
-      'The checked-in protocol JSON Schema is stale. Run pnpm --filter @socially-woke/protocol schema:generate.',
+      'The checked-in protocol JSON Schema is stale. Run pnpm --filter @wokesocial/protocol schema:generate.',
     );
   }
   process.stdout.write('Protocol JSON Schema matches the canonical Zod registry.\n');

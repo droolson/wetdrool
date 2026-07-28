@@ -11,8 +11,8 @@ import {
   signPayload,
   type NetworkId,
   type PostContent,
-} from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+} from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   decodeAnchorEventLog,
@@ -26,12 +26,12 @@ import {
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
 const genesisHash = publicKey(70);
-const networkId = `woke:v1:${genesisHash}:${programId}` as NetworkId;
+const networkId = `wokenet:v1:${genesisHash}:${programId}` as NetworkId;
 const configAddress = publicKey(71);
 const identityAddress = publicKey(72);
 const memberAddress = publicKey(73);
-const identityId = `swid:v1:${networkId}:${identityAddress}`;
-const memberIdentityId = `swid:v1:${networkId}:${memberAddress}`;
+const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const memberIdentityId = `wokesocialid:v1:${networkId}:${memberAddress}`;
 const rootPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const rootAuthority = bs58.encode(ed25519.getPublicKey(rootPrivateKey));
 const nextRootAuthority = publicKey(74);

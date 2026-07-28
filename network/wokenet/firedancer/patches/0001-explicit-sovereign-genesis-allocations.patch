@@ -1,4 +1,4 @@
-From: Woke Network Maintainers <security@woke.social>
+From: WokeNet Maintainers <security@woke.social>
 Subject: [PATCH] Make sovereign genesis inputs explicit and reproducible
 
 The upstream development genesis builder uses the wall clock, a fixed faucet
@@ -185,7 +185,7 @@ index a867432b6..5d2d453d9 100644
  version_cmd_fn( args_t *   args   FD_PARAM_UNUSED,
                  config_t * config FD_PARAM_UNUSED ) {
 -  FD_LOG_STDOUT(( "%s (%s)\n", fd_version_cstr, fd_commit_ref_cstr ));
-+  FD_LOG_STDOUT(( "Woke Network Firedancer downstream-v1 %s (%s)\n",
++  FD_LOG_STDOUT(( "WokeNet Firedancer downstream-v1 %s (%s)\n",
 +                  fd_version_cstr, fd_commit_ref_cstr ));
  }
  

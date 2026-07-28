@@ -5,7 +5,7 @@ import {
   mediaManifestContentSchema,
   mediaReferenceSchema,
   nonEmptyLimitedString,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 import { z } from 'zod';
 
 export const maximumUploadBytes = 100_000_000;

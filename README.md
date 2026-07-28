@@ -1,13 +1,13 @@
-# Socially Woke
+# WokeSocial
 
-Socially Woke is an open, LGBTQ+ affirming, trans-owned social-network protocol
+WokeSocial is an open, LGBTQ+ affirming, trans-owned social-network protocol
 and reference client built around user-controlled identity, signed content, and
 replaceable infrastructure.
 
 The flagship experience is intended to feel like a polished consumer product.
 Users should not need cryptocurrency knowledge, a visible wallet address, or
 WOKE to explore the social network. Compact, verifiable protocol state and
-native creator settlement target Woke Network, a sovereign
+native creator settlement target WokeNet, a sovereign
 Solana-protocol-compatible network. Content, media, private messages, search,
 recommendations, and other high-volume concerns live in independently operable
 offchain layers.
@@ -29,10 +29,10 @@ requirement may contain a tested subset without being complete.
 | --- | --- |
 | Architecture and specifications | Initial baseline implemented; v1 conformance work remains |
 | Monorepo and local infrastructure | Implemented and verified locally with PostgreSQL, Redis, Kubo, and hardened service-container profiles |
-| Woke Network | Sovereign network identity, native WOKE policy, pinned native-Firedancer downstream, deterministic genesis patch, native-only configurations, and fail-closed capability gates are implemented; no native cluster has been verified and production activation is blocked |
-| Social protocol | The Solana-wire compatibility oracle verifies 40 instructions, 19 account layouts, and 32 events covering identity/profile references, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, native WOKE tips, subscriptions, receipts, and entitlements; this is not native Woke Network evidence |
+| WokeNet | Sovereign network identity, native WOKE policy, pinned native-Firedancer downstream, deterministic genesis patch, native-only configurations, and fail-closed capability gates are implemented; no native cluster has been verified and production activation is blocked |
+| Social protocol | The Solana-wire compatibility oracle verifies 40 instructions, 19 account layouts, and 32 events covering identity/profile references, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, native WOKE tips, subscriptions, receipts, and entitlements; this is not native WokeNet evidence |
 | Signed content and storage | A strict 29-family portable object registry, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
-| Open indexer | Finalized Solana-format RPC synchronization tested against the Agave compatibility oracle, exact 32-event IDL projection including payment state, manifest verification, PostgreSQL replay, failover, checkpoints, DLQ, provenance, and REST APIs are implemented; native Woke RPC remains unverified |
+| Open indexer | Finalized Solana-format RPC synchronization tested against the Agave compatibility oracle, exact 32-event IDL projection including payment state, manifest verification, PostgreSQL replay, failover, checkpoints, DLQ, provenance, and REST APIs are implemented; native WokeNet RPC remains unverified |
 | Feed service | Independently replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and third-party reconciliation engine implemented and tested |
 | Relay | Replaceable signed WebSocket transport and multi-relay failover client implemented and tested; authoritative key authorization must be injected and E2EE remains upstream |
 | Flagship web application | Complete required route surface, production build, responsive/a11y states, local composer/preferences/export, provider settings, and real passkey-service registration/sign-in implemented; unsupported onchain mutations fail closed |
@@ -45,19 +45,19 @@ requirement may contain a tested subset without being complete.
 
 The fixed compatibility-localnet program ID is
 `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`. It is a development identifier,
-not evidence of a native Woke Network deployment.
+not evidence of a native WokeNet deployment.
 
 ### Verified local evidence
 
-- `pnpm network:woke:check` structurally verifies the pinned Firedancer source
+- `pnpm wokenet:check` structurally verifies the pinned Firedancer source
   and patch checksums, native-only build declarations, fail-closed RPC
   capability record, WOKE unit policy, TOML safety settings, and local genesis
-  allocations. `pnpm network:woke:materialize -- /absolute/path` produces the
+  allocations. `pnpm wokenet:materialize -- /absolute/path` produces the
   exact downstream source tree. A supported Linux native build/cluster is still
   required.
 - `pnpm setup` installs checksum-verified, project-local Rust 1.89.0, Agave
   2.3.0, and Anchor 0.32.1 compatibility toolchains; starts the pinned local
-  containers; and applies PostgreSQL migrations. Agave is never Woke Network
+  containers; and applies PostgreSQL migrations. Agave is never WokeNet
   runtime evidence.
 - `pnpm test:programs` performs a native Anchor SBF build and passes a real
   33-case Agave compatibility-oracle suite covering core actions, handle
@@ -70,7 +70,7 @@ not evidence of a native Woke Network deployment.
   through the production indexer, suppresses a tombstoned post, clears and
   exactly replays the projection, and exercises production Next.js on desktop
   and mobile Chromium. This is a Solana-format compatibility proof, not a
-  native Woke Network transaction claim.
+  native WokeNet transaction claim.
 - Package tests cover deterministic canonical bytes and identifiers, Ed25519
   verification across 29 portable object families, local CAS integrity, storage
   replication, recoverable SDK publication, manifest verification, exhaustive
@@ -94,16 +94,20 @@ not evidence of a native Woke Network deployment.
 - Container integration tests pass against PostgreSQL and Kubo. The PostgreSQL
   test projects signed profile/post/tombstone manifests, a follow edge, duplicate
   delivery, feed filtering, and deterministic rebuild.
-- The 46-page Next.js route surface builds for production; 54 web unit tests and
+- The 46-page Next.js route surface builds for production; 61 web unit tests and
   203 desktop/mobile Playwright cases pass, with one deliberate duplicate
   mobile passkey case skipped. The suite includes automated axe WCAG A/AA
   checks across 45 route fixtures in both desktop and mobile projects, plus
   semantic connected-post coverage and a real virtual-authenticator
-  registration, ciphertext-sync, logout, and discoverable-sign-in journey.
-- The replaceable authentication service passes 19 unit/API security and
-  retention cases, two real PostgreSQL integration cases, and one real-browser
-  WebAuthn ceremony case. It never receives a PRF result or plaintext signing
-  seed and does not claim to create the protocol identity.
+  atomic-registration, logout, and discoverable-sign-in journey.
+- The replaceable authentication service passes 24 unit/API security and
+  retention cases, three isolated PostgreSQL integration cases, and one
+  real-browser WebAuthn ceremony case. Initial credential/root-wrapper/account
+  activation, same-root passkey addition, and authentication/session issuance
+  are atomic at their respective store boundaries; revocation is step-up
+  protected and invalidates service sessions. The service never receives a PRF
+  result or plaintext signing seed and does not claim to create or revoke the
+  protocol identity or WokeNet delegation.
 - Digest-pinned OCI images for authentication, feed, relay, and moderation
   services have been locally built and exercised as unprivileged users with
   read-only roots, dropped capabilities, bounded process counts, and explicit
@@ -168,7 +172,7 @@ packages/
 programs/
   social_protocol/      Implemented Anchor core-protocol subset
 network/
-  woke-network/         Pinned native-Firedancer downstream, policy, configs, and gates
+  wokenet/         Pinned native-Firedancer downstream, policy, configs, and gates
 infra/                  Local and provider-neutral infrastructure
 scripts/                Reproducible setup, verification, and operations
 docs/                   Product, protocol, security, and operator docs
@@ -188,8 +192,8 @@ The following root interfaces are implemented:
 ```sh
 pnpm install --frozen-lockfile
 pnpm setup
-pnpm network:woke:check
-pnpm network:woke:materialize -- /absolute/path/to/woke-firedancer
+pnpm wokenet:check
+pnpm wokenet:materialize -- /absolute/path/to/wokenet-firedancer
 pnpm dev
 pnpm test
 pnpm test:integration

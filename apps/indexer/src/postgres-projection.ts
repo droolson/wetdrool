@@ -1893,7 +1893,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
           event.distributableLamports !== allocation.distributableLamports ||
           event.recipientLamports !== allocation.recipientAmounts[0]
         ) {
-          throw stale('Woke tip receipt does not match indexed identities or payment policy.');
+          throw stale('WOKE tip receipt does not match indexed identities or payment policy.');
         }
         await insertPaymentReceipt(sql, event, {
           termsReference: recipient.identity_address,

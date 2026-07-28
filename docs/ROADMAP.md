@@ -1,4 +1,4 @@
-# Socially Woke Delivery Roadmap
+# WokeSocial Delivery Roadmap
 
 **Status:** Active implementation roadmap  
 **Last updated:** 2026-07-28
@@ -26,7 +26,7 @@ foundation and experimental subsets across phases 2–4:
   desktop/mobile browser cases and 90 automated axe checks across 45 route
   fixtures.
 
-Woke Network is now the sovereign runtime target. It is forked from Solana,
+WokeNet is now the sovereign runtime target. It is forked from Solana,
 uses native WOKE with 9 decimals, and retains `lamports` only as the compatible
 wire/base-unit name (`1 WOKE = 1,000,000,000 lamports`). Native validator and
 RPC operation is Firedancer only. Native Firedancer/RPC remains
@@ -34,8 +34,8 @@ RPC operation is Firedancer only. Native Firedancer/RPC remains
 activation. Agave and Solana tooling are compatibility oracles only and cannot
 supply native or production evidence.
 
-The existing compatibility vertical slice is verified locally; the native Woke
-Network vertical slice is not. No public test-network, production-network
+The existing compatibility vertical slice is verified locally; the native
+WokeNet vertical slice is not. No public test-network, production-network
 deployment, or expenditure is authorized by this roadmap. The canonical public
 origin is `https://woke.social`; `sociallywoke.com` is redirect-only.
 [`../TASKS.md`](../TASKS.md) is the checkbox-level evidence record.
@@ -58,7 +58,7 @@ The planned dependency chain follows the required implementation sequence:
 flowchart LR
     P0["Phase 0: audit and decisions"] --> P1["Phase 1: foundation"]
     P1 --> V["First complete vertical slice"]
-    V --> P2["Phase 2: Woke Network protocol"]
+    V --> P2["Phase 2: WokeNet protocol"]
     P2 --> P3["Phase 3: manifests, storage, indexer, feeds"]
     P3 --> P4["Phase 4: flagship social experience"]
     P4 --> P5["Phase 5: moderation and governance"]
@@ -81,11 +81,11 @@ The first complete vertical slice spans Phases 1–3. It has priority over broad
 | --- | --- | --- | --- |
 | 0 | Repository audit, product/specification baseline, architecture and ADR decisions, dependency plan | Verified baseline | Required documents reviewed; decisions recorded; no unsupported implementation claims |
 | 1 | Monorepo, design system, local infrastructure, documentation foundation | In progress; implemented local subset verified | Clean install; real setup/dev/test/build commands; local dependencies healthy |
-| 2 | Woke Network identity, profile, delegation, follows, communities, post references | Experimental Solana-compatible core subset; native Firedancer unverified | Anchor/Rust compatibility checks plus native Firedancer build and tests; account/PDA/cost documentation matches code |
-| 3 | Signed manifests, storage adapters, publication, open indexer, feeds | Experimental connected subset; Agave compatibility slice verified, native Woke slice open | Native connected slice; complete object/event breadth; alternate-provider reconciliation; operator conformance |
+| 2 | WokeNet identity, profile, delegation, follows, communities, post references | Experimental Solana-compatible core subset; native Firedancer unverified | Anchor/Rust compatibility checks plus native Firedancer build and tests; account/PDA/cost documentation matches code |
+| 3 | Signed manifests, storage adapters, publication, open indexer, feeds | Experimental connected subset; Agave compatibility slice verified, native WokeNet slice open | Native connected slice; complete object/event breadth; alternate-provider reconciliation; operator conformance |
 | 4 | Complete flagship core social experience | Complete route surface and local-state subset; authenticated transactions incomplete | Essential browser flows and accessible responsive states pass |
 | 5 | Moderation, reports, appeals, blocklists, governance, safety center | Signed provider and one-member-one-vote program subsets implemented | Permission, evidence privacy, tombstone, appeal, and audit tests pass |
-| 6 | Passkeys, recovery, sponsorship, device management | Key wrapping, replaceable relying-party service, durable ceremonies/sessions, ciphertext sync, and browser registration/sign-in implemented; protocol onboarding and recovery remain open | Recovery/revocation and sponsor anti-abuse tests pass; custody design reviewed |
+| 6 | Passkeys, recovery, sponsorship, device management | Key wrapping, replaceable relying-party service, durable ceremonies/sessions, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and browser registration/sign-in implemented; protocol onboarding, WokeNet delegation lifecycle, and recovery remain open | Recovery/delegation and sponsor anti-abuse tests pass; custody design reviewed |
 | 7 | E2EE messages and relay infrastructure | Relay plus pairwise real-WASM adapter implemented; volatile storage/browser integration keep messaging non-production | One-to-one E2EE and metadata tests pass; group path remains Experimental until gated |
 | 8 | Media pipeline, vertical video, stories, events, livestream architecture | Hardened resumable media-worker subset implemented; flagship upload, stories/events/live product flows remain open | Real processing/storage/accessibility/expiry tests pass |
 | 9 | WOKE tips, subscriptions, entitlements, paid memberships/events | Native WOKE tip/weekly-subscription program, SDK, receipt/entitlement, and indexer compatibility subset implemented; UX and native execution open | Native Firedancer public-test payment and adversarial tests pass; no custody or production-network action |
@@ -105,7 +105,7 @@ The first complete vertical slice spans Phases 1–3. It has priority over broad
 - Compatible pinned Node, pnpm, TypeScript, Next.js, Rust, Anchor, native
   Firedancer, and Solana-format compatibility-oracle versions
 - Onchain/offchain boundary and public/private relationship treatment
-- WebAuthn-to-Woke Network custody and signing model
+- WebAuthn-to-WokeNet custody and signing model
 - WOKE fee and settlement rules, fixed 9-decimal precision, and explicit
   `lamports` wire/base-unit compatibility
 - Canonical manifest serialization, hashing, signature, and identifier rules
@@ -160,12 +160,12 @@ This milestone is the highest-priority proof of architecture.
 1. Create an identity.
 2. Create or update an inclusive profile.
 3. Publish a canonically serialized, signed text-post manifest to local content-addressed storage.
-4. Anchor its hash and reference through the Woke Network program.
+4. Anchor its hash and reference through the WokeNet program.
 5. Ingest and verify the event.
 6. Display the verified post in the web feed.
 7. Follow another identity.
 8. Rebuild the feed projection from protocol data.
-9. Run the entire flow through a native Firedancer validator and Woke Network
+9. Run the entire flow through a native Firedancer validator and WokeNet
    RPC.
 
 ### Exit criteria
@@ -183,11 +183,11 @@ Agave local validator, the verified post reached the production API and
 browser, the tombstoned post was suppressed, and a cleared projection replayed
 to exact state equivalence with zero dead letters.
 
-This proof does not satisfy native Woke Network/Firedancer evidence and does not
+This proof does not satisfy native WokeNet/Firedancer evidence and does not
 complete the broader product, protocol, provider, security, or public-network
 gates.
 
-## 8. Phase 2 — Woke Network protocol
+## 8. Phase 2 — WokeNet protocol
 
 ### Planned outcomes
 
@@ -219,7 +219,7 @@ gates.
 
 ### Exit criteria
 
-- The vertical slice passes with a native Firedancer validator and Woke Network
+- The vertical slice passes with a native Firedancer validator and WokeNet
   RPC; the Agave local-validator compatibility oracle remains a separate
   regression lane.
 - Indexer rebuild from configured deployment slot produces the same verified projection.
@@ -278,7 +278,7 @@ the phase exit criteria.
 - Passkey-first account path — credential-bound PRF key wrapping, replaceable
   WebAuthn service, durable one-time ceremony/session state, ciphertext-only
   sync, and real-browser registration/discoverable sign-in implemented;
-  native Woke Network protocol onboarding remains open
+  native WokeNet protocol onboarding remains open
 - Device-bound delegated keys with scope and expiry
 - Multiple wallets, link/unlink, rotation, device revocation
 - Guardian/social recovery with delay and cancellation
@@ -311,7 +311,7 @@ implements signed advisory envelopes, short bounded retention, metadata-safe
 logs/metrics, origin and rate controls, reconnect, deduplication, and endpoint
 failover. The pairwise-only adapter now delegates real Olm ratchets and
 authenticated encryption to pinned Matrix Rust crypto WASM, binds device keys
-to current Socially Woke authorization, verifies sender-signed outer metadata
+to current WokeSocial authorization, verifies sender-signed outer metadata
 before stateful Olm processing, and passes 13 independent-device adversarial
 cases. It is not production messaging: state/replay history is
 volatile, browser packaging and relay integration are absent, attachment and
@@ -354,20 +354,20 @@ and the flagship browser does not yet perform the publication flow.
 ### Planned outcomes
 
 - Noncustodial native WOKE tips with fixed 9-decimal accounting
-- Optional allowlisted Woke Network token tips; any SPL-format identifiers are
+- Optional allowlisted WokeNet token tips; any SPL-format identifiers are
   explicitly compatibility-labeled
 - Creator subscriptions, paid communities/events, splits, receipts, refund metadata, and entitlement verification
 - Encrypted delivery of paid content
 
 ### Exit criteria
 
-- Native Woke test-network tests cover recipient substitution, WOKE/base-unit
+- Native WokeNet test network tests cover recipient substitution, WOKE/base-unit
   confusion, asset spoofing, duplicate payment, replay, rounding, simulation
   mismatch, and fake entitlement.
 - The application never controls a custodial hot wallet.
 - Unauthorized storage retrieval returns ciphertext.
 - Fee, asset, recipient, network, split, and recurrence are previewed before signing.
-- Production Woke Network activation remains blocked pending native
+- Production WokeNet activation remains blocked pending native
   Firedancer/RPC evidence, external review, and a documented manual operator
   action.
 
@@ -409,7 +409,7 @@ The roadmap must ultimately verify:
 11. Encrypted message
 12. Feed algorithm switch
 13. Block and mute
-14. Native Woke test-network creator tip
+14. Native WokeNet test network creator tip
 15. Data export
 16. Delegated-key rotation
 17. Migration to another indexer and relay
@@ -420,7 +420,7 @@ The roadmap must ultimately verify:
 The fast suite may use mocks, but native Firedancer, Agave compatibility-oracle,
 storage, indexer replay, media, relay, and payment claims require distinct real
 integration tiers. A passing compatibility tier cannot be relabeled as native
-Woke Network evidence.
+WokeNet evidence.
 
 ## 18. Cross-phase quality loop
 
@@ -444,7 +444,7 @@ Passing one phase does not waive later regression checks.
 ### Critical path
 
 Pinned native Firedancer and compatibility toolchains → protocol serialization
-and identity → local storage publication → Woke Network reference → native
+and identity → local storage publication → WokeNet reference → native
 indexer verification/rebuild → web feed → portable provider configuration →
 hardening.
 
@@ -472,9 +472,9 @@ The following must remain **Experimental** or **Externally blocked** until their
 | Sponsored transactions | Funded sponsor and anti-abuse operational limits |
 | Child-safety escalation | Jurisdiction, trained operators, specialist/legal review |
 | Production legal policies | Qualified legal review for actual operator and regions |
-| Native Firedancer/RPC runtime | Reproducible native build, Woke genesis, RPC conformance, connected slice, and independent operator evidence |
-| Woke public test-network deployment | Native Firedancer RPC, funded WOKE deployer, and recorded program authority |
-| Woke production-network deployment | Native runtime gate, independent security audit, multisig authority, legal/operations approval, and explicit funded action |
+| Native Firedancer/RPC runtime | Reproducible native build, WokeNet genesis, RPC conformance, connected slice, and independent operator evidence |
+| WokeNet public test network deployment | Native Firedancer RPC, funded WOKE deployer, and recorded program authority |
+| WokeNet production network deployment | Native runtime gate, independent security audit, multisig authority, legal/operations approval, and explicit funded action |
 | Production DNS/TLS | Domain-owner action and deployment target |
 
 An external dependency does not block unrelated local implementation and tests.
@@ -484,7 +484,7 @@ An external dependency does not block unrelated local implementation and tests.
 ### Build
 
 - Clean install succeeds.
-- All production applications and Woke Network programs build; Solana-format
+- All production applications and WokeNet programs build; Solana-format
   compatibility artifacts remain separately identified.
 - Generated clients are current.
 - No unresolved type errors.
@@ -494,7 +494,7 @@ An external dependency does not block unrelated local implementation and tests.
 - Unit, program, integration, browser, accessibility, and critical security suites pass.
 - Native Firedancer validator/RPC and independent rebuild tiers pass.
 - The Agave/Solana compatibility-oracle tier passes without being counted as
-  native Woke Network evidence.
+  native WokeNet evidence.
 
 ### Product
 
@@ -541,8 +541,8 @@ Do not report percent complete without a defined denominator. Prefer verified re
 ## 23. Immediate next milestone
 
 The next engineering milestone is **native Firedancer/RPC bring-up followed by
-the first native Woke Network vertical slice**. The success criterion is a
-reproducible native flow from Woke genesis and identity through signed-manifest
+the first native WokeNet vertical slice**. The success criterion is a
+reproducible native flow from WokeNet genesis and identity through signed-manifest
 anchoring, verified indexing, feed display, follow, tombstone suppression, and
 projection rebuild. It must preserve the existing Agave lane as a separately
 labeled Solana-format compatibility oracle.

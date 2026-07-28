@@ -1,4 +1,4 @@
-import type { PostContent, ProfileContent } from '@socially-woke/protocol';
+import type { PostContent, ProfileContent } from '@wokesocial/protocol';
 
 export interface IdentityProjection {
   readonly identityId: string;

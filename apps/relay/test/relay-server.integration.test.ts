@@ -30,7 +30,7 @@ describe('relay server over loopback WebSockets', () => {
     expect(health.status).toBe(200);
     expect(await health.json()).toEqual({
       ok: true,
-      service: '@socially-woke/relay',
+      service: '@wokesocial/relay',
       advisory: true,
       canonical: false,
       relayId: address.relayId,
@@ -46,7 +46,7 @@ describe('relay server over loopback WebSockets', () => {
     const policy = await (await fetch(`${address.httpUrl}/v1/policy`)).json();
     expect(policy).toMatchObject({ advisory: true, canonical: false });
     const metrics = await (await fetch(`${address.httpUrl}/metrics`)).text();
-    expect(metrics).toContain('socially_woke_relay_active_connections');
+    expect(metrics).toContain('wokesocial_relay_active_connections');
     expect(metrics).not.toContain(alice.identityId);
     expect(server.metrics()).toMatchObject({
       activeConnections: 0,

@@ -1,4 +1,4 @@
-import { LocalContentAddressedStorage } from '@socially-woke/storage';
+import { LocalContentAddressedStorage } from '@wokesocial/storage';
 
 import { buildIndexerApp } from './app.js';
 import { readIndexerConfig } from './config.js';
@@ -33,7 +33,7 @@ let syncPromise: Promise<void> | undefined;
 let syncWorker: SolanaSyncWorker | undefined;
 if (config.sync === undefined) {
   app.log.warn(
-    'Woke Network ingestion is disabled; set both INDEXER_NETWORK_ID and NEXT_PUBLIC_PROGRAM_ID to enable the finalized replay worker',
+    'WokeNet ingestion is disabled; set both INDEXER_NETWORK_ID and NEXT_PUBLIC_PROGRAM_ID to enable the finalized replay worker',
   );
 } else {
   const genesisHash = config.sync.networkId.split(':').at(-2);
@@ -77,7 +77,7 @@ process.once('SIGTERM', () => void shutdown('SIGTERM'));
 await app.listen({ host: config.host, port: config.port });
 if (syncWorker !== undefined) {
   syncPromise = syncWorker.run(syncAbort.signal).catch((error: unknown) => {
-    app.log.error({ error }, 'Woke Network ingestion stopped unexpectedly');
+    app.log.error({ error }, 'WokeNet ingestion stopped unexpectedly');
     process.exitCode = 1;
   });
 }

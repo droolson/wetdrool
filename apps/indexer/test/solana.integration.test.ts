@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   FailoverSolanaRpc,
@@ -24,7 +24,7 @@ describe('local-validator Solana ingestion', () => {
       const endpoint = new KitSolanaRpcEndpoint(rpcUrl);
       const genesisHash = await endpoint.genesisHash();
       const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-      const networkId = `woke:v1:${genesisHash}:${programId}`;
+      const networkId = `wokenet:v1:${genesisHash}:${programId}`;
       const projection = new MemoryProjectionStore();
       const storage = new MemoryContentAddressedStorage();
       const indexer = new OpenIndexer(

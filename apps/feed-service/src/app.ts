@@ -24,7 +24,7 @@ export async function buildFeedServiceApp(
         ? false
         : {
             level: 'info',
-            base: { service: '@socially-woke/feed-service' },
+            base: { service: '@wokesocial/feed-service' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -64,7 +64,7 @@ export async function buildFeedServiceApp(
 
   app.get('/healthz', async () => ({
     ok: true,
-    service: '@socially-woke/feed-service',
+    service: '@wokesocial/feed-service',
     policyVersion: FEED_POLICY_VERSION,
   }));
 

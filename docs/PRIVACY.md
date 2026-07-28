@@ -1,4 +1,4 @@
-# Socially Woke Privacy and Data Lifecycle
+# WokeSocial Privacy and Data Lifecycle
 
 **Status:** Planning baseline requiring qualified legal review  
 **Last updated:** 2026-07-28
@@ -7,7 +7,7 @@
 
 This document specifies privacy requirements for the protocol, flagship client, operated services, and local development environment. It is technical implementation support, not legal advice or a claim of GDPR, CCPA, COPPA, or other regulatory compliance.
 
-The sovereign runtime is Woke Network, a protocol forked from Solana. Native
+The sovereign runtime is WokeNet, a protocol forked from Solana. Native
 validator and RPC operation is Firedancer only and remains **Experimental**;
 the Agave/Solana local harness is compatibility-oracle evidence, not native or
 production evidence, and production activation remains blocked. The native
@@ -63,7 +63,7 @@ Combining public fields can still create sensitive inferences. Indexers and clie
 
 ## 4. Data forbidden onchain
 
-The following must never be placed in Woke Network accounts, instructions,
+The following must never be placed in WokeNet accounts, instructions,
 transaction memos, or public program events. Solana-format compatibility
 fixtures must enforce the same prohibition:
 
@@ -147,7 +147,7 @@ It must not silently convert private preferences, recovery data, or message cont
   receives PRF output or a plaintext Ed25519 seed.
 - Service-account IDs and credential metadata remain pseudonymous personal data
   subject to bounded retention, access control, export, and deletion policy.
-- Any embedded Woke Network signing-key design must document custody,
+- Any embedded WokeNet signing-key design must document custody,
   extraction resistance, backup, recovery, and device compromise. Agave/Solana
   compatibility tooling must never become a production custodian.
 - Delegated session keys are device-bound, least-privileged, expiring, and revocable.
@@ -340,7 +340,7 @@ Deactivation is reversible and suppresses the profile and content from official 
 
 The product must state plainly that deletion cannot guarantee removal from:
 
-- Woke Network transaction history, account history, archives, or explorers,
+- WokeNet transaction history, account history, archives, or explorers,
   including copies exported through Solana-compatible tooling
 - Arweave or another intentionally permanent store
 - IPFS nodes or gateways outside operator control
@@ -436,8 +436,8 @@ The privacy model remains **Planned** until all applicable checks pass.
 
 ### 18.1 Automated acceptance criteria
 
-- **PRIV-TST-001:** Forbidden personal-data fixtures are rejected before Woke
-  Network transaction construction in both native Firedancer and explicitly
+- **PRIV-TST-001:** Forbidden personal-data fixtures are rejected before WokeNet
+  transaction construction in both native Firedancer and explicitly
   labeled Solana-format compatibility paths.
 - **PRIV-TST-002:** Logs, traces, analytics, and error reports contain no seeded secrets, emails, message plaintext, or private profile fields.
 - **PRIV-TST-003:** Pronoun and identity-attribute visibility is enforced by API and indexer queries.

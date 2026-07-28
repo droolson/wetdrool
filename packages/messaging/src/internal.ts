@@ -5,7 +5,7 @@ const ADDRESS_MAX_UTF8_BYTES = 256;
 const ASSERTION_ID_MAX_UTF8_BYTES = 256;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/u;
 const CONTENT_TYPE_PATTERN = /^[a-z][a-z0-9.+/-]{0,127}$/u;
-const MESSAGE_ID_PATTERN = /^swm_[A-Za-z0-9_-]{22}$/u;
+const MESSAGE_ID_PATTERN = /^wokesocial-message_[A-Za-z0-9_-]{22}$/u;
 const MAX_CIPHERTEXT_CHARACTERS = 8 * 1024 * 1024;
 export const MAX_DIRECTORY_BODY_BYTES = 16 * 1024 * 1024;
 export const MAX_PLAINTEXT_BYTES = 1024 * 1024;
@@ -88,8 +88,8 @@ export async function deriveInternalAddress(
   ]);
   return {
     external: copyAddress(external),
-    userId: `@sw_${encodeBase64Url(identityDigest)}:messaging.invalid`,
-    deviceId: `SW_${encodeBase64Url(deviceDigest)}`,
+    userId: `@wokesocial_${encodeBase64Url(identityDigest)}:messaging.invalid`,
+    deviceId: `WOKESOCIAL_${encodeBase64Url(deviceDigest)}`,
   };
 }
 
@@ -118,7 +118,9 @@ export function secureMessageId(): string {
   if (typeof cryptoProvider?.getRandomValues !== 'function') {
     throw messagingError('ENGINE_UNAVAILABLE');
   }
-  return `swm_${encodeBase64Url(cryptoProvider.getRandomValues(new Uint8Array(16)))}`;
+  return `wokesocial-message_${encodeBase64Url(
+    cryptoProvider.getRandomValues(new Uint8Array(16)),
+  )}`;
 }
 
 export function requireMessageId(input: unknown): string {

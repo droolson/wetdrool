@@ -47,9 +47,9 @@ describe('bounded relay state', () => {
     metrics.activeConnections = 2;
     metrics.acceptedEvents = 4;
     const output = metrics.prometheus('relay-public-id', 1, 'verified');
-    expect(output).toContain('socially_woke_relay_active_connections 2');
-    expect(output).toContain('socially_woke_relay_accepted_events_total 4');
-    expect(output).not.toContain('swid:');
+    expect(output).toContain('wokesocial_relay_active_connections 2');
+    expect(output).toContain('wokesocial_relay_accepted_events_total 4');
+    expect(output).not.toContain('wokesocialid:');
   });
 });
 
@@ -63,7 +63,7 @@ describe('relay environment configuration', () => {
     ).toEqual({
       host: '127.0.0.1',
       port: 4200,
-      relayId: 'socially-woke-relay',
+      relayId: 'wokesocial-relay',
       allowedOrigins: ['https://social.example', 'http://127.0.0.1:3000'],
       dangerouslyAllowUnverifiedLocalMode: false,
     });

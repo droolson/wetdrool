@@ -1,4 +1,4 @@
-export const FEED_POLICY_VERSION = 'sw-feed-v1';
+export const FEED_POLICY_VERSION = 'wokesocial-feed-v1';
 
 export const FEED_POLICY = {
   positive: {

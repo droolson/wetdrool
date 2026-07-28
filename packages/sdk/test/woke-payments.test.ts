@@ -3,7 +3,7 @@ import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  WOKE_SYSTEM_PROGRAM_ADDRESS,
+  WOKENET_SYSTEM_PROGRAM_ADDRESS,
   WokePaymentError,
   assertWokePaymentSimulationMatches,
   buildCreateWokeSubscriptionOfferingInstruction,
@@ -15,7 +15,7 @@ import {
   buildUpdateWokePaymentConfigInstruction,
   calculatePaymentPlan,
   calculateWokeNativePaymentPlan,
-  createWokeNetworkContext,
+  createWokeNetContext,
   deriveWokeIdentityAddress,
   deriveWokePaymentConfigAddress,
   deriveWokePaymentReceiptAddress,
@@ -30,7 +30,7 @@ import {
   type PaymentPlanInput,
   type SettleWokeSubscriptionInput,
   type WokeFinalizedAccount,
-  type WokeNetworkContext,
+  type WokeNetContext,
   type WokePaymentAccountReader,
   type WokePaymentReceiptRecord,
   type WokePaymentSimulation,
@@ -66,7 +66,7 @@ const paymentAuthority = key(17);
 const upgradeAuthority = key(18);
 const rotatedAuthority = key(19);
 
-const context: WokeNetworkContext = {
+const context: WokeNetContext = {
   endpoint: 'https://rpc.network.woke.social',
   genesisHash: 'EahQmXc3rwhY3CH1g3ZgUx8L4vHTNmzpK1xtiQ1RAxq6',
   programAddress: 'EWn7dE93GeQJu72WEkEmC5MZpm5FhiJzkcJEf1xpRdWP',
@@ -78,12 +78,12 @@ const expectedContext = {
 };
 
 const golden = {
-  config: 'CSiCKyh4QAMJBf9Qne85uQgHsq8ZGH33PkrV3Sdbjtbk',
-  paymentConfig: '3viPP3XDEtbtkCeNo5UfA1kZPBLLNgN2nWBvMBPNmHoJ',
-  identity: 'GP8WPwzcNiNAiUtqb8GcVVeenRNGxUXPzeCAhxiJ4i2S',
-  offering: 'AsUEUQoRHzma4z8BSj5woTfW5A8qB9yQiwyaHeU9eLzA',
-  receipt: '3CWqHh1MVNTSBcrfK3Es6PEmPRRpWCGKSYmDRfmfwbVJ',
-  entitlement: '8FszyWavAL9ieBVRVr1TKAEnGhZp31K4aGH56HqmNddG',
+  config: 'FeSjhoreagBTkGASC5AxV926Jir3pRuzj19W2iwZZvgN',
+  paymentConfig: 'AewMCbKbVH69n78imNzEG5tmX9TNVK7hTuvf9gJRtEpY',
+  identity: '9fu4mSTovjLnPUeBdtAeRKWFugsCK5Nd3up1ibjhiA2s',
+  offering: '9YDbbCYWYV89wni3rApUJmJYHiw94pHvsFM83778wkBu',
+  receipt: 'HSNdFGhZbSdj6rvLG2h71p9YWmZDPyE4ZEuDPYF66CDE',
+  entitlement: '3HcPGWEwxsgREnoNprN1SJJgG9F9MFTBMegvbXxGuzPs',
   programData: 'Bu4Nc1osJDMhzpqdwaY6ep8vNtkqHN9TPz2Pawdnf6jv',
 } as const;
 
@@ -166,22 +166,22 @@ function subscriptionInput(
   };
 }
 
-describe('Woke Network native allocation', () => {
+describe('WokeNet native allocation', () => {
   it('requires an explicit endpoint, genesis hash, and program address', () => {
-    expect(createWokeNetworkContext(context)).toEqual(expectedContext);
+    expect(createWokeNetContext(context)).toEqual(expectedContext);
     expect(() =>
-      createWokeNetworkContext({ ...context, endpoint: 'wss://rpc.network.woke.social' }),
+      createWokeNetContext({ ...context, endpoint: 'wss://rpc.network.woke.social' }),
     ).toThrowError(expect.objectContaining({ code: 'invalid-context' }));
     expect(() =>
-      createWokeNetworkContext({
+      createWokeNetContext({
         ...context,
         genesisHash: `solana:${context.genesisHash}`,
       }),
     ).toThrowError(expect.objectContaining({ code: 'invalid-address' }));
     expect(() =>
-      createWokeNetworkContext({
+      createWokeNetContext({
         ...context,
-        programAddress: WOKE_SYSTEM_PROGRAM_ADDRESS,
+        programAddress: WOKENET_SYSTEM_PROGRAM_ADDRESS,
       }),
     ).toThrowError(expect.objectContaining({ code: 'invalid-address' }));
   });
@@ -360,7 +360,7 @@ describe('Woke Network native allocation', () => {
       protocolFee: { basisPoints: 0, destination: feeDestination },
       recipientSplits: [
         {
-          recipient: `swid:v1:woke:v1:${context.genesisHash}:${context.programAddress}:${creatorIdentity}`,
+          recipient: `wokesocialid:v1:wokenet:v1:${context.genesisHash}:${context.programAddress}:${creatorIdentity}`,
           destination: creatorDestination,
           basisPoints: 10_000,
         },
@@ -371,7 +371,7 @@ describe('Woke Network native allocation', () => {
   });
 });
 
-describe('Woke protocol PDA derivation', () => {
+describe('WokeSocial protocol PDA derivation', () => {
   it('matches the pinned protocol seed vectors', async () => {
     await expect(deriveWokeProtocolConfigAddress(context)).resolves.toBe(golden.config);
     await expect(deriveWokePaymentConfigAddress(context)).resolves.toBe(golden.paymentConfig);
@@ -400,7 +400,7 @@ describe('Woke protocol PDA derivation', () => {
   });
 });
 
-describe('Woke Anchor instruction builders', () => {
+describe('WokeSocial Anchor instruction builders', () => {
   it('builds initialize/update/rotate config instructions with exact IDL order and wire data', async () => {
     const initialized = await buildInitializeWokePaymentConfigInstruction(context, {
       upgradeAuthority,
@@ -419,7 +419,7 @@ describe('Woke Anchor instruction builders', () => {
       { address: paymentAuthority, role: AccountRole.READONLY_SIGNER },
       { address: feeDestination, role: AccountRole.READONLY },
       { address: rentPayer, role: AccountRole.WRITABLE_SIGNER },
-      { address: WOKE_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: WOKENET_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
     ]);
     expect([...initialized.data]).toEqual([38, 187, 7, 244, 201, 111, 164, 182, 250, 0]);
 
@@ -483,7 +483,7 @@ describe('Woke Anchor instruction builders', () => {
       { address: golden.offering, role: AccountRole.WRITABLE },
       { address: creatorDestination, role: AccountRole.READONLY_SIGNER },
       { address: rentPayer, role: AccountRole.WRITABLE_SIGNER },
-      { address: WOKE_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: WOKENET_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
       { address: recipientIdentityA, role: AccountRole.READONLY },
       { address: recipientDestinationA, role: AccountRole.READONLY },
       { address: recipientIdentityB, role: AccountRole.READONLY },
@@ -607,7 +607,7 @@ describe('Woke Anchor instruction builders', () => {
 
     expect(built.kind).toBe('woke-tip');
     expect(built.receiptAddress).toBe(golden.receipt);
-    expect(built.receiptBump).toBe(254);
+    expect(built.receiptBump).toBe(255);
     expect(built.plan.asset).toBe('WOKE');
     expect(built.plan.recipientAllocations[0]?.lamports).toBe(99n);
     expect(built.instruction.accounts).toEqual([
@@ -620,7 +620,7 @@ describe('Woke Anchor instruction builders', () => {
       { address: creatorDestination, role: AccountRole.WRITABLE },
       { address: feeDestination, role: AccountRole.WRITABLE },
       { address: rentPayer, role: AccountRole.WRITABLE_SIGNER },
-      { address: WOKE_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: WOKENET_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
     ]);
     expect([...built.instruction.data.slice(0, 8)]).toEqual([45, 180, 20, 31, 17, 4, 214, 17]);
     expect(built.instruction.data.slice(8, 24)).toEqual(nonce);
@@ -647,7 +647,7 @@ describe('Woke Anchor instruction builders', () => {
 
     expect(built.kind).toBe('weekly-subscription');
     expect(built.entitlementAddress).toBe(golden.entitlement);
-    expect(built.entitlementBump).toBe(254);
+    expect(built.entitlementBump).toBe(255);
     expect(built.plan.recipientAllocations.map((recipient) => recipient.lamports)).toEqual([
       49n,
       25n,
@@ -667,7 +667,7 @@ describe('Woke Anchor instruction builders', () => {
       { address: creatorDestination, role: AccountRole.WRITABLE },
       { address: feeDestination, role: AccountRole.WRITABLE },
       { address: rentPayer, role: AccountRole.WRITABLE_SIGNER },
-      { address: WOKE_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+      { address: WOKENET_SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
       { address: recipientIdentityA, role: AccountRole.READONLY },
       { address: recipientDestinationA, role: AccountRole.WRITABLE },
       { address: recipientIdentityB, role: AccountRole.READONLY },
@@ -747,7 +747,7 @@ describe('strict WOKE simulation verification', () => {
         transfers: [
           ...simulation.transfers,
           {
-            programAddress: WOKE_SYSTEM_PROGRAM_ADDRESS,
+            programAddress: WOKENET_SYSTEM_PROGRAM_ADDRESS,
             source: payerAuthority,
             destination: recipientDestinationA,
             lamports: 1n,
@@ -947,7 +947,7 @@ function tipSimulation(built: BuiltWokeTipInstruction): WokePaymentSimulation {
     ...expectedContext,
     error: null,
     transfers: built.plan.transfers.map((transfer) => ({
-      programAddress: WOKE_SYSTEM_PROGRAM_ADDRESS,
+      programAddress: WOKENET_SYSTEM_PROGRAM_ADDRESS,
       source: transfer.source,
       destination: transfer.destination,
       lamports: transfer.lamports,
@@ -1002,7 +1002,7 @@ function subscriptionSimulation(
     ...expectedContext,
     error: null,
     transfers: built.plan.transfers.map((transfer) => ({
-      programAddress: WOKE_SYSTEM_PROGRAM_ADDRESS,
+      programAddress: WOKENET_SYSTEM_PROGRAM_ADDRESS,
       source: transfer.source,
       destination: transfer.destination,
       lamports: transfer.lamports,

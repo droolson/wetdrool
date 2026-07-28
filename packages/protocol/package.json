@@ -1,16 +1,16 @@
 {
-  "name": "@socially-woke/protocol",
+  "name": "@wokesocial/protocol",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Canonical Socially Woke protocol schemas, identifiers, hashing, and signatures",
+  "description": "Canonical WokeSocial protocol schemas, identifiers, hashing, and signatures",
   "license": "Apache-2.0",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
-    "./schema/v1": "./schemas/socially-woke-signed-envelope-v1.schema.json"
+    "./schema/v1": "./schemas/wokesocial-signed-envelope-v1.schema.json"
   },
   "files": [
     "dist",

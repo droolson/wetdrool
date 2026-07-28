@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
-import { ButtonLink, SectionHeading, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, SectionHeading, StatusBadge } from '@wokesocial/ui';
 
 export const metadata: Metadata = {
   title: 'Protocol',
   description:
-    'How Socially Woke separates verifiable protocol state from replaceable service conveniences.',
+    'How WokeSocial separates verifiable protocol state from replaceable service conveniences.',
 };
 
 const LAYERS = [
   {
     number: '01',
-    title: 'Woke Network proof',
+    title: 'WokeNet proof',
     label: 'Compact and verifiable',
     copy: 'Identity roots, delegations, selected public relationships, hashes, references, governance state, payments, and tombstones belong in compact protocol state—not raw media or private information.',
   },
@@ -47,9 +47,9 @@ export default function ProtocolPage() {
         </div>
         <div>
           <p>
-            Socially Woke separates durable protocol facts from fast, replaceable services. That
-            makes the network independently verifiable without asking every screen to feel like a
-            block explorer.
+            WokeSocial separates durable protocol facts from fast, replaceable services. That makes
+            the network independently verifiable without asking every screen to feel like a block
+            explorer.
           </p>
           <p className="protocol-hero__note">
             This page describes the intended protocol. Live writes remain disabled until the SDK,

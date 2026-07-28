@@ -3,15 +3,15 @@ import { createHash } from 'node:crypto';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url } from '@socially-woke/protocol';
+import { encodeMultibaseBase64Url } from '@wokesocial/protocol';
 
 import { GOVERNANCE_STRATEGY_HASH, protocolEventSchema } from '../src/index.js';
 
 const programId = publicKey(1);
 const otherProgramId = publicKey(2);
-const networkId = `woke:v1:${publicKey(3)}:${programId}`;
-const secondNetworkId = `woke:v1:${publicKey(4)}:${programId}`;
-const otherProgramNetworkId = `woke:v1:${publicKey(5)}:${otherProgramId}`;
+const networkId = `wokenet:v1:${publicKey(3)}:${programId}`;
+const secondNetworkId = `wokenet:v1:${publicKey(4)}:${programId}`;
+const otherProgramNetworkId = `wokenet:v1:${publicKey(5)}:${otherProgramId}`;
 const identityAddress = publicKey(6);
 const secondIdentityAddress = publicKey(7);
 const thirdIdentityAddress = publicKey(8);
@@ -129,7 +129,7 @@ const fixtures = [
     type: 'profile-updated',
     identityId,
     authority: publicKey(16),
-    objectId: `swobj:v1:profile:${digest(45)}`,
+    objectId: `wokesocialobj:v1:profile:${digest(45)}`,
     cid: `b${'d'.repeat(20)}`,
     payloadHash: digest(46),
     sequence: 3n,
@@ -140,7 +140,7 @@ const fixtures = [
     identityId,
     authority: publicKey(16),
     postReference: publicKey(17),
-    objectId: `swobj:v1:post:${digest(18)}`,
+    objectId: `wokesocialobj:v1:post:${digest(18)}`,
     cid: `b${'a'.repeat(20)}`,
     payloadHash: digest(19),
     sequence: 3n,
@@ -150,7 +150,7 @@ const fixtures = [
     type: 'tombstoned',
     identityId,
     targetPostReference: publicKey(17),
-    targetObjectId: `swobj:v1:post:${digest(18)}`,
+    targetObjectId: `wokesocialobj:v1:post:${digest(18)}`,
     sequence: 4n,
   }),
   fixture('social-edges', {
@@ -505,7 +505,7 @@ describe('protocol event network and key bindings', () => {
   it('rejects malformed common network, program, and transaction keys in every family', () => {
     for (const { family, event } of fixtures) {
       for (const malformed of [
-        { ...event, networkId: 'woke:v1:abc:def' },
+        { ...event, networkId: 'wokenet:v1:abc:def' },
         { ...event, programId: 'abc' },
         { ...event, transactionSignature: 'abc' },
         { ...event, networkId: otherProgramNetworkId },
@@ -615,7 +615,7 @@ function fixture(family: string, event: Readonly<Record<string, unknown>>) {
 }
 
 function identity(address: string): string {
-  return `swid:v1:${networkId}:${address}`;
+  return `wokesocialid:v1:${networkId}:${address}`;
 }
 
 function publicKey(seed: number): string {

@@ -150,7 +150,7 @@ describe('bounded argument-array subprocess runner', () => {
     expect(
       () =>
         new MediaProcessor({
-          temporaryRoot: '/tmp/socially-woke-media-limit-test',
+          temporaryRoot: '/tmp/wokesocial-media-limit-test',
           limits: {
             ...defaultProcessingLimits,
             maximumHlsSegments: 63,

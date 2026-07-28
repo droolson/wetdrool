@@ -81,7 +81,7 @@ export const portablePayloadSchema = z
     notificationPreferencePayloadSchema,
   ])
   .superRefine((payload, context) => {
-    if (!payload.author.startsWith(`swid:v1:${payload.network}:`)) {
+    if (!payload.author.startsWith(`wokesocialid:v1:${payload.network}:`)) {
       context.addIssue({
         code: 'custom',
         path: ['author'],

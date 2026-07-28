@@ -9,7 +9,7 @@ import {
   networkIdSchema,
   objectIdSchema,
   solanaPublicKeySchema,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 
 import type { FeedEntry, PostProjection } from './models.js';
 import type { ProjectionStore } from './projection.js';
@@ -155,7 +155,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     const entries = await options.projection.getFeed(feedQuery);
     return {
       canonical: false,
-      projection: 'woke-network-open-indexer',
+      projection: 'wokenet-open-indexer',
       entries: entries.map(serializeFeedEntry),
       nextCursor: entries.at(-1)?.post.createdAt,
     };
@@ -296,7 +296,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-community-query',
-            message: 'A Woke Network community address and explicit network are required.',
+            message: 'A WokeNet community address and explicit network are required.',
           },
         };
       }
@@ -356,7 +356,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'woke-network-account-state',
+        authoritativeSource: 'wokenet-account-state',
         policy: serializeBigInts(policy),
       };
     },
@@ -378,7 +378,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       const requests = await options.projection.getRecoveryRequestsByIdentity(identity.identityId);
       return {
         canonical: false,
-        authoritativeSource: 'woke-network-account-state',
+        authoritativeSource: 'wokenet-account-state',
         eligibilityEvaluated: false,
         identityId: identity.identityId,
         requests: requests.map(serializeBigInts),
@@ -396,7 +396,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-recovery-request-query',
-            message: 'A Woke Network recovery request address and explicit network are required.',
+            message: 'A WokeNet recovery request address and explicit network are required.',
           },
         };
       }
@@ -410,7 +410,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'woke-network-account-state',
+        authoritativeSource: 'wokenet-account-state',
         eligibilityEvaluated: false,
         request: serializeBigInts(recoveryRequest),
       };
@@ -427,7 +427,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-community-query',
-            message: 'A Woke Network community address and explicit network are required.',
+            message: 'A WokeNet community address and explicit network are required.',
           },
         };
       }
@@ -461,7 +461,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-proposal-query',
-            message: 'A Woke Network proposal address and explicit network are required.',
+            message: 'A WokeNet proposal address and explicit network are required.',
           },
         };
       }
@@ -487,7 +487,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-proposal-query',
-            message: 'A Woke Network proposal address and explicit network are required.',
+            message: 'A WokeNet proposal address and explicit network are required.',
           },
         };
       }
@@ -521,7 +521,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-vote-query',
-            message: 'A Woke Network vote address and explicit network are required.',
+            message: 'A WokeNet vote address and explicit network are required.',
           },
         };
       }
@@ -541,7 +541,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     const parsedQuery = networkQuerySchema.safeParse(request.query);
     if (!parsedQuery.success) {
       void reply.code(400);
-      return paymentQueryError('An explicit Woke Network identifier is required.');
+      return paymentQueryError('An explicit WokeNet identifier is required.');
     }
     const paymentConfig = await options.projection.getPaymentConfig(parsedQuery.data.network);
     if (paymentConfig === undefined) {
@@ -550,7 +550,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     }
     return {
       canonical: false,
-      authoritativeSource: 'woke-network-account-state',
+      authoritativeSource: 'wokenet-account-state',
       paymentConfig: serializeBigInts(paymentConfig),
     };
   });
@@ -563,7 +563,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       if (!parsedParams.success || !parsedQuery.success) {
         void reply.code(400);
         return paymentQueryError(
-          'A Woke Network subscription offering address and explicit network are required.',
+          'A WokeNet subscription offering address and explicit network are required.',
         );
       }
       const offering = await options.projection.getSubscriptionOffering(
@@ -576,7 +576,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'woke-network-account-state',
+        authoritativeSource: 'wokenet-account-state',
         offering: serializeBigInts(offering),
       };
     },
@@ -591,7 +591,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     if (
       !parsedParams.success ||
       !parsedQuery.success ||
-      !parsedParams.data.identityId.startsWith(`swid:v1:${parsedQuery.data.network}:`)
+      !parsedParams.data.identityId.startsWith(`wokesocialid:v1:${parsedQuery.data.network}:`)
     ) {
       void reply.code(400);
       return paymentQueryError('The creator identity must belong to the explicit network.');
@@ -607,7 +607,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     );
     return {
       canonical: false,
-      authoritativeSource: 'woke-network-account-state',
+      authoritativeSource: 'wokenet-account-state',
       creatorIdentityId: creator.identityId,
       offerings: offerings.map(serializeBigInts),
     };
@@ -621,7 +621,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       if (!parsedParams.success || !parsedQuery.success) {
         void reply.code(400);
         return paymentQueryError(
-          'A Woke Network payment receipt address and explicit network are required.',
+          'A WokeNet payment receipt address and explicit network are required.',
         );
       }
       const receipt = await options.projection.getPaymentReceipt(
@@ -634,7 +634,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'woke-network-account-state-and-finalized-events',
+        authoritativeSource: 'wokenet-account-state-and-finalized-events',
         settlementOutcomeInferred: false,
         receipt: serializeBigInts(receipt),
       };
@@ -649,7 +649,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       if (!parsedParams.success || !parsedQuery.success) {
         void reply.code(400);
         return paymentQueryError(
-          'A Woke Network subscription entitlement address and explicit network are required.',
+          'A WokeNet subscription entitlement address and explicit network are required.',
         );
       }
       const entitlement = await options.projection.getSubscriptionEntitlement(
@@ -664,7 +664,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'woke-network-account-state-and-finalized-events',
+        authoritativeSource: 'wokenet-account-state-and-finalized-events',
         currentEligibilityEvaluated: false,
         entitlement: serializeBigInts(entitlement),
       };
@@ -749,7 +749,7 @@ async function responseMeta(projection: ProjectionStore, networkId: string) {
     checkpointSlot:
       checkpoint === undefined ? null : safeInteger(checkpoint, 'projection checkpoint slot'),
     indexedAt: new Date().toISOString(),
-    source: 'Woke Network open indexer',
+    source: 'WokeNet open indexer',
   };
 }
 

@@ -4,7 +4,7 @@ import { compareEventOrder, protocolEventSchema, type ProtocolEvent } from './ev
 import type { ManifestVerifier } from './manifest-verifier.js';
 import type { ProjectionStore } from './projection.js';
 
-const tracer = trace.getTracer('@socially-woke/indexer');
+const tracer = trace.getTracer('@wokesocial/indexer');
 
 export interface IndexResult {
   readonly event: ProtocolEvent;
@@ -21,8 +21,8 @@ export class OpenIndexer {
     return tracer.startActiveSpan('indexer.ingest', async (span) => {
       try {
         const event = protocolEventSchema.parse(input);
-        span.setAttribute('socially_woke.event_type', event.type);
-        span.setAttribute('socially_woke.slot', event.slot.toString());
+        span.setAttribute('wokesocial.event_type', event.type);
+        span.setAttribute('wokesocial.slot', event.slot.toString());
         const manifest = await this.manifests.forEvent(event);
         const applied = await this.projection.apply(event, manifest);
         return { event, applied };

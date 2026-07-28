@@ -1,6 +1,6 @@
 'use client';
 
-import { ButtonLink } from '@socially-woke/ui';
+import { ButtonLink } from '@wokesocial/ui';
 import { useEffect, useState } from 'react';
 
 import {
@@ -88,7 +88,7 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
       setNotice(
         completed.key.status === 'ready'
           ? mode === 'register'
-            ? 'Passkey authentication completed and a ciphertext-only key wrapper was synchronized.'
+            ? 'The passkey credential and ciphertext-only key wrapper were committed together.'
             : 'Passkey authentication completed and the synchronized key was checked locally.'
           : 'Passkey authentication completed, but embedded signing remains unavailable.',
       );

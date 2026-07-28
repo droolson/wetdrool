@@ -17,7 +17,7 @@ const databaseUrl = required('DATABASE_URL');
 const contentStoragePath = required('CONTENT_STORAGE_PATH');
 const networkId = networkIdSchema.parse(required('INDEXER_NETWORK_ID'));
 const programId = required('NEXT_PUBLIC_PROGRAM_ID');
-const rpcUrl = localHttpUrl(required('WOKE_RPC_URLS'));
+const rpcUrl = localHttpUrl(required('WOKENET_RPC_URLS'));
 const metadata = JSON.parse(await readFile(required('VERTICAL_SLICE_METADATA_PATH'), 'utf8'));
 assert.equal(metadata.networkId, networkId);
 assert.equal(metadata.programId, programId);
@@ -50,7 +50,7 @@ try {
   const indexer = new OpenIndexer(projection, verifier);
   const [, , genesisHash, networkProgramId] = networkId.split(':');
   if (genesisHash === undefined || networkProgramId !== programId) {
-    throw new Error('Woke Network ID is not bound to the configured program.');
+    throw new Error('WokeNet ID is not bound to the configured program.');
   }
   const worker = new SolanaSyncWorker({
     rpc: FailoverSolanaRpc.fromUrls([rpcUrl], genesisHash, programId),
@@ -127,7 +127,7 @@ function localHttpUrl(value) {
     !['127.0.0.1', 'localhost'].includes(urls[0].hostname)
   ) {
     throw new Error(
-      'Projection replay refuses non-local or ambiguous Woke Network Solana-compatible RPC endpoints.',
+      'Projection replay refuses non-local or ambiguous WokeNet Solana-compatible RPC endpoints.',
     );
   }
   return urls[0].toString();

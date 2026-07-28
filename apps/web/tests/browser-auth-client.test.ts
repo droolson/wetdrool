@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PasskeyWrappedKeyBundle, UnwrapPasskeyAccountKeyInput } from '@socially-woke/crypto';
+import type { PasskeyWrappedKeyBundle, UnwrapPasskeyAccountKeyInput } from '@wokesocial/crypto';
 
 import {
   BrowserAuthClient,
@@ -8,7 +8,8 @@ import {
   type PasskeyPlatform,
 } from '../lib/auth/browser-auth-client';
 import { ciphertextBundle, type TokenStorage } from '../lib/auth/auth-api';
-import { encodeBase64Url } from '../lib/auth/passkey-codec';
+import { BrowserAuthError } from '../lib/auth/errors';
+import { encodeBase64Url, extractPrfOutput } from '../lib/auth/passkey-codec';
 
 const accountId = `acct_${'A'.repeat(22)}`;
 const ceremonyId = `cer_${'B'.repeat(22)}`;
@@ -17,8 +18,11 @@ const sessionCsrf = 'D'.repeat(43);
 const credentialBytes = bytes(31, 32);
 const credentialId = encodeBase64Url(credentialBytes);
 const prfSecret = bytes(71, 32);
+const newPrfSecret = bytes(91, 32);
 const localSeed = bytes(111, 32);
 const publicKey = bytes(151, 32);
+const newCredentialBytes = bytes(191, 32);
+const newCredentialId = encodeBase64Url(newCredentialBytes);
 
 describe('browser passkey authentication boundary', () => {
   it('rejects the legacy redirect host as an authentication-service origin', () => {
@@ -31,7 +35,7 @@ describe('browser passkey authentication boundary', () => {
     ).toThrow('not a permitted secure origin');
   });
 
-  it('registers and synchronizes only ciphertext while clearing client key buffers', async () => {
+  it('registers with an atomic ciphertext bundle while clearing client key buffers', async () => {
     const recorder = registrationApi();
     const storage = new MemoryStorage();
     const platform = registrationPlatform(prfSecret);
@@ -90,9 +94,7 @@ describe('browser passkey authentication boundary', () => {
     expect(objectValue(objectValue(verification)['response'])['clientExtensionResults']).toEqual(
       {},
     );
-    const synchronized = requestBody(recorder.calls, `/v1/key-bundles/${credentialId}`);
-    expect(Object.keys(objectValue(synchronized))).toEqual(['bundle']);
-    expect(Object.keys(objectValue(objectValue(synchronized)['bundle'])).sort()).toEqual([
+    expect(Object.keys(objectValue(verification)['bundle'] as object).sort()).toEqual([
       'algorithm',
       'credentialBinding',
       'encryptedKey',
@@ -102,6 +104,12 @@ describe('browser passkey authentication boundary', () => {
       'salt',
       'version',
     ]);
+    expect(
+      recorder.calls.some(
+        (call) =>
+          call.init.method === 'PUT' && new URL(call.url).pathname.startsWith('/v1/key-bundles/'),
+      ),
+    ).toBe(false);
   });
 
   it('signs in discoverably, unwraps the matching bundle locally, and clears the result', async () => {
@@ -149,7 +157,7 @@ describe('browser passkey authentication boundary', () => {
     );
   });
 
-  it('fails closed to explicit noncustodial fallbacks when PRF is unsupported', async () => {
+  it('rejects registration before verification when PRF is unsupported', async () => {
     const recorder = registrationApi();
     const operations: LocalKeyOperations = {
       randomBytes: () => {
@@ -173,18 +181,219 @@ describe('browser passkey authentication boundary', () => {
       keyOperations: operations,
     });
 
-    await expect(client.register()).resolves.toMatchObject({
-      accountId,
-      credentialId,
-      protocolIdentityEstablished: false,
-      key: {
-        status: 'fallback-required',
-        reason: 'prf-unsupported',
-        safeFallbacks: ['external-wallet', 'reviewed-encrypted-recovery-kit'],
-      },
-    });
+    const registration = client.register();
+    await expect(registration).rejects.toBeInstanceOf(BrowserAuthError);
+    await expect(registration).rejects.toMatchObject({ code: 'prf-required' });
+    expect(recorder.calls.some((call) => call.url.endsWith('/v1/registration/verify'))).toBe(false);
     expect(recorder.calls.some((call) => call.url.includes('/v1/key-bundles/'))).toBe(false);
     assertNoKeyMaterial(recorder.calls);
+  });
+
+  it('lists complete authentication-service passkey records', async () => {
+    const recorder = credentialListApi();
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: new MemoryStorage(),
+      platform: unreachablePlatform(),
+    });
+
+    await expect(client.listPasskeys()).resolves.toEqual([
+      credentialView(credentialId),
+      credentialView(newCredentialId, {
+        backedUp: true,
+        deviceType: 'multiDevice',
+        lastUsedAt: null,
+        revokedAt: '2026-07-28T21:00:00.000Z',
+      }),
+    ]);
+    expect(recorder.calls).toHaveLength(1);
+    expect(recorder.calls[0]?.init.method).toBe('GET');
+    expect(new URL(recorder.calls[0]?.url ?? '').pathname).toBe('/v1/credentials');
+  });
+
+  it('adds a passkey by unwrapping the existing root and atomically wrapping that same root', async () => {
+    const recorder = additionalPasskeyApi();
+    const storage = authenticatedStorage();
+    const unwrappedSeed = localSeed.slice();
+    let unwrappedPrf: Uint8Array | undefined;
+    let wrappedPrf: Uint8Array | undefined;
+    let wrappedSeed: Uint8Array | undefined;
+    let wrappedPublicKey: Uint8Array | undefined;
+    const operations: LocalKeyOperations = {
+      randomBytes: () => {
+        throw new Error('Adding a passkey must not generate a replacement root.');
+      },
+      publicKeyFromSeed: (seed) => {
+        expect(seed).toBe(unwrappedSeed);
+        return publicKey.slice();
+      },
+      wrap: async (input) => {
+        expect(input.credentialId).toEqual(newCredentialBytes);
+        expect(input.prfOutput).toEqual(newPrfSecret);
+        expect(input.accountKeySeed).toEqual(localSeed);
+        expect(input.publicKey).toEqual(publicKey);
+        wrappedPrf = input.prfOutput;
+        wrappedSeed = input.accountKeySeed;
+        wrappedPublicKey = input.publicKey;
+        return {
+          ...bundleFixture(),
+          credentialBinding: encodeBase64Url(bytes(211, 32)),
+          prfOutput: encodeBase64Url(newPrfSecret),
+          accountKeySeed: encodeBase64Url(localSeed),
+          privateKey: encodeBase64Url(localSeed),
+        } as unknown as PasskeyWrappedKeyBundle;
+      },
+      unwrap: async (input) => {
+        expect(input.credentialId).toEqual(credentialBytes);
+        expect(input.prfOutput).toEqual(prfSecret);
+        unwrappedPrf = input.prfOutput;
+        return unwrappedSeed;
+      },
+    };
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: storage,
+      platform: credentialLifecyclePlatform(),
+      keyOperations: operations,
+    });
+
+    await expect(client.addPasskeyForExistingRoot()).resolves.toEqual(
+      credentialView(newCredentialId),
+    );
+    expect(unwrappedPrf?.every((value) => value === 0)).toBe(true);
+    expect(wrappedPrf?.every((value) => value === 0)).toBe(true);
+    expect(wrappedSeed?.every((value) => value === 0)).toBe(true);
+    expect(wrappedPublicKey?.every((value) => value === 0)).toBe(true);
+    expect(unwrappedSeed.every((value) => value === 0)).toBe(true);
+
+    expect(requestPaths(recorder.calls)).toEqual([
+      'POST /v1/step-up/options',
+      'POST /v1/step-up/verify',
+      'POST /v1/credentials/registration/options',
+      'GET /v1/key-bundles',
+      'POST /v1/credentials/registration/verify',
+    ]);
+    expect(
+      headerValue(recorder.calls, '/v1/credentials/registration/options', 'x-csrf-token'),
+    ).toBe(sessionCsrf);
+    const verification = requestBody(recorder.calls, '/v1/credentials/registration/verify');
+    expect(objectValue(objectValue(verification)['response'])['clientExtensionResults']).toEqual(
+      {},
+    );
+    expect(objectValue(objectValue(verification)['bundle'])['publicKey']).toBe(
+      encodeBase64Url(publicKey),
+    );
+    expect(
+      recorder.calls.some(
+        (call) =>
+          call.init.method === 'PUT' && new URL(call.url).pathname.startsWith('/v1/key-bundles/'),
+      ),
+    ).toBe(false);
+    assertNoKeyMaterial(recorder.calls);
+  });
+
+  it('uses a fresh step-up to revoke a passkey and clears the rotated session boundary', async () => {
+    const recorder = revocationApi();
+    const storage = authenticatedStorage();
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: storage,
+      platform: authenticationPlatform(undefined),
+    });
+
+    await expect(client.revokePasskey(newCredentialId)).resolves.toEqual(
+      credentialView(newCredentialId, {
+        revokedAt: '2026-07-28T22:00:00.000Z',
+      }),
+    );
+    expect(requestPaths(recorder.calls)).toEqual([
+      'POST /v1/step-up/options',
+      'POST /v1/step-up/verify',
+      `DELETE /v1/credentials/${newCredentialId}`,
+    ]);
+    expect(headerValue(recorder.calls, `/v1/credentials/${newCredentialId}`, 'x-csrf-token')).toBe(
+      sessionCsrf,
+    );
+    expect(storage.values.size).toBe(0);
+    assertNoKeyMaterial(recorder.calls);
+  });
+
+  it('recovers the session-bound CSRF token when a new tab has no stored copy', async () => {
+    const recorder = revocationApi();
+    const storage = new MemoryStorage();
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: storage,
+      platform: authenticationPlatform(undefined),
+    });
+
+    await expect(client.revokePasskey(newCredentialId)).resolves.toMatchObject({
+      credentialId: newCredentialId,
+      revokedAt: '2026-07-28T22:00:00.000Z',
+    });
+    expect(requestPaths(recorder.calls)).toEqual([
+      'GET /v1/csrf',
+      'POST /v1/step-up/options',
+      'POST /v1/step-up/verify',
+      `DELETE /v1/credentials/${newCredentialId}`,
+    ]);
+    expect(headerValue(recorder.calls, '/v1/step-up/options', 'x-csrf-token')).toBe(csrf);
+    expect(storage.values.size).toBe(0);
+  });
+
+  it('keeps in-memory CSRF state authoritative when Web Storage is denied', async () => {
+    const recorder = registrationApi();
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: new DeniedStorage(),
+      platform: registrationPlatform(prfSecret),
+      keyOperations: {
+        randomBytes: () => localSeed.slice(),
+        publicKeyFromSeed: () => publicKey.slice(),
+        wrap: async () => bundleFixture(),
+        unwrap: async () => {
+          throw new Error('Registration must not unwrap a key.');
+        },
+      },
+    });
+
+    await expect(client.register()).resolves.toMatchObject({ accountId, credentialId });
+    await expect(client.logout()).resolves.toBeUndefined();
+  });
+
+  it('rejects weakened WebAuthn options before prompting the platform', async () => {
+    const fetch: typeof globalThis.fetch = async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path === '/v1/csrf') return json({ csrfToken: csrf });
+      if (path === '/v1/registration/options') {
+        return json({
+          accountId,
+          ceremonyId,
+          options: {
+            ...creationOptions(),
+            authenticatorSelection: {
+              residentKey: 'preferred',
+              requireResidentKey: false,
+              userVerification: 'preferred',
+            },
+          },
+        });
+      }
+      return json({ error: 'unexpected request' }, 500);
+    };
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch,
+      tokenStorage: new MemoryStorage(),
+      platform: unreachablePlatform(),
+    });
+
+    await expect(client.register()).rejects.toMatchObject({ code: 'server-invalid' });
   });
 
   it('projects a ciphertext bundle to its exact safe wire shape', () => {
@@ -201,6 +410,20 @@ describe('browser passkey authentication boundary', () => {
     expect(JSON.stringify(ciphertextBundle(hostile))).not.toMatch(
       /must-not-pass|plaintextKey|"prf"|"seed"/u,
     );
+  });
+
+  it('copies and clears the JavaScript-visible PRF extension buffer', () => {
+    const exposed = prfSecret.slice();
+    const credential = {
+      getClientExtensionResults: () => ({
+        prf: { enabled: true, results: { first: exposed.buffer } },
+      }),
+    } as unknown as PublicKeyCredential;
+
+    const copied = extractPrfOutput(credential);
+    expect(copied).toEqual(prfSecret);
+    expect(exposed.every((value) => value === 0)).toBe(true);
+    copied?.fill(0);
   });
 });
 
@@ -227,15 +450,8 @@ function registrationApi() {
       case '/v1/registration/verify':
         return json({
           accountId,
-          credential: { credentialId },
+          credential: credentialRecord(credentialId),
           csrfToken: sessionCsrf,
-        });
-      case `/v1/key-bundles/${credentialId}`:
-        return json({
-          credentialId,
-          keyKind: 'solana-ed25519-root-seed',
-          publicKey: encodeBase64Url(publicKey),
-          ciphertextOnly: true,
         });
       case '/v1/session':
         return json({
@@ -248,6 +464,127 @@ function registrationApi() {
         });
       case '/v1/logout':
         return new Response(null, { status: 204 });
+      default:
+        return json({ error: 'unexpected request' }, 500);
+    }
+  };
+  return { calls, fetch };
+}
+
+function credentialListApi() {
+  const calls: RecordedCall[] = [];
+  const fetch: typeof globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    calls.push({ url, init });
+    if (new URL(url).pathname !== '/v1/credentials') {
+      return json({ error: 'unexpected request' }, 500);
+    }
+    return json({
+      accountId,
+      credentials: [
+        credentialRecord(credentialId),
+        credentialRecord(newCredentialId, {
+          backedUp: true,
+          deviceType: 'multiDevice',
+          lastUsedAt: null,
+          revokedAt: '2026-07-28T21:00:00.000Z',
+        }),
+      ],
+    });
+  };
+  return { calls, fetch };
+}
+
+function additionalPasskeyApi() {
+  const calls: RecordedCall[] = [];
+  const fetch: typeof globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    calls.push({ url, init });
+    const path = new URL(url).pathname;
+    switch (path) {
+      case '/v1/csrf':
+        return json({ csrfToken: csrf });
+      case '/v1/step-up/options':
+        return json({
+          ceremonyId,
+          options: requestOptions(),
+        });
+      case '/v1/step-up/verify':
+        return json({
+          credential: credentialRecord(credentialId),
+          session: {
+            expiresAt: '2026-07-29T00:00:00.000Z',
+            lastAuthenticatedAt: '2026-07-28T20:00:00.000Z',
+            stepUpAt: '2026-07-28T20:00:00.000Z',
+          },
+          csrfToken: sessionCsrf,
+          stepUp: 'verified',
+        });
+      case '/v1/credentials/registration/options':
+        return json({
+          ceremonyId: `cer_${'E'.repeat(22)}`,
+          options: creationOptions(),
+        });
+      case '/v1/key-bundles':
+        return json({
+          accountId,
+          ciphertextOnly: true,
+          bundles: [
+            {
+              credentialId,
+              bundle: bundleFixture(),
+              updatedAt: '2026-07-28T20:00:00.000Z',
+            },
+          ],
+        });
+      case '/v1/credentials/registration/verify':
+        return json(
+          {
+            credential: credentialRecord(newCredentialId),
+          },
+          201,
+        );
+      default:
+        return json({ error: 'unexpected request' }, 500);
+    }
+  };
+  return { calls, fetch };
+}
+
+function revocationApi() {
+  const calls: RecordedCall[] = [];
+  const fetch: typeof globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    calls.push({ url, init });
+    const path = new URL(url).pathname;
+    switch (path) {
+      case '/v1/csrf':
+        return json({ csrfToken: csrf });
+      case '/v1/step-up/options':
+        return json({
+          ceremonyId,
+          options: requestOptions(),
+        });
+      case '/v1/step-up/verify':
+        return json({
+          credential: credentialRecord(credentialId),
+          session: {
+            expiresAt: '2026-07-29T00:00:00.000Z',
+            lastAuthenticatedAt: '2026-07-28T20:00:00.000Z',
+            stepUpAt: '2026-07-28T20:00:00.000Z',
+          },
+          csrfToken: sessionCsrf,
+          stepUp: 'verified',
+        });
+      case `/v1/credentials/${newCredentialId}`:
+        return json({
+          credential: credentialRecord(newCredentialId, {
+            revokedAt: '2026-07-28T22:00:00.000Z',
+          }),
+          synchronizedWrappersDeleted: true,
+          sessionsRevoked: true,
+          onchainDelegationRevocationRequiredSeparately: true,
+        });
       default:
         return json({ error: 'unexpected request' }, 500);
     }
@@ -272,7 +609,7 @@ function authenticationApi() {
       case '/v1/authentication/verify':
         return json({
           accountId,
-          credential: { credentialId },
+          credential: credentialRecord(credentialId),
           csrfToken: sessionCsrf,
         });
       case '/v1/key-bundles':
@@ -307,7 +644,7 @@ function registrationPlatform(prf: Uint8Array | undefined): PasskeyPlatform {
   };
 }
 
-function authenticationPlatform(prf: Uint8Array): PasskeyPlatform {
+function authenticationPlatform(prf: Uint8Array | undefined): PasskeyPlatform {
   return {
     parseCreationOptions: () => {
       throw new Error('Authentication must not parse creation options.');
@@ -320,10 +657,40 @@ function authenticationPlatform(prf: Uint8Array): PasskeyPlatform {
   };
 }
 
-function registrationCredential(prf: Uint8Array | undefined): PublicKeyCredential {
+function credentialLifecyclePlatform(): PasskeyPlatform {
   return {
-    id: credentialId,
-    rawId: credentialBytes.slice().buffer,
+    parseCreationOptions: (options) => options as unknown as PublicKeyCredentialCreationOptions,
+    parseRequestOptions: (options) => options as unknown as PublicKeyCredentialRequestOptions,
+    create: async () => registrationCredential(newPrfSecret, newCredentialId, newCredentialBytes),
+    get: async () => authenticationCredential(prfSecret),
+  };
+}
+
+function unreachablePlatform(): PasskeyPlatform {
+  return {
+    parseCreationOptions: () => {
+      throw new Error('Credential listing must not parse creation options.');
+    },
+    parseRequestOptions: () => {
+      throw new Error('Credential listing must not parse request options.');
+    },
+    create: async () => {
+      throw new Error('Credential listing must not create a passkey.');
+    },
+    get: async () => {
+      throw new Error('Credential listing must not request an assertion.');
+    },
+  };
+}
+
+function registrationCredential(
+  prf: Uint8Array | undefined,
+  id = credentialId,
+  rawId = credentialBytes,
+): PublicKeyCredential {
+  return {
+    id,
+    rawId: rawId.slice().buffer,
     type: 'public-key',
     authenticatorAttachment: 'platform',
     response: {
@@ -338,10 +705,14 @@ function registrationCredential(prf: Uint8Array | undefined): PublicKeyCredentia
   } as unknown as PublicKeyCredential;
 }
 
-function authenticationCredential(prf: Uint8Array): PublicKeyCredential {
+function authenticationCredential(
+  prf: Uint8Array | undefined,
+  id = credentialId,
+  rawId = credentialBytes,
+): PublicKeyCredential {
   return {
-    id: credentialId,
-    rawId: credentialBytes.slice().buffer,
+    id,
+    rawId: rawId.slice().buffer,
     type: 'public-key',
     authenticatorAttachment: 'platform',
     response: {
@@ -350,22 +721,31 @@ function authenticationCredential(prf: Uint8Array): PublicKeyCredential {
       signature: bytes(61, 64).buffer,
       userHandle: bytes(131, 32).buffer,
     },
-    getClientExtensionResults: () => ({
-      prf: { enabled: true, results: { first: prf.slice().buffer } },
-    }),
+    getClientExtensionResults: () =>
+      prf === undefined
+        ? { prf: { enabled: false } }
+        : { prf: { enabled: true, results: { first: prf.slice().buffer } } },
   } as unknown as PublicKeyCredential;
 }
 
 function creationOptions(): PublicKeyCredentialCreationOptionsJSON {
   return {
     challenge: encodeBase64Url(bytes(1, 32)),
-    rp: { id: 'example', name: 'Socially Woke Test' },
+    rp: { id: 'example', name: 'WokeSocial Test' },
     user: {
       id: encodeBase64Url(bytes(41, 32)),
       name: accountId,
-      displayName: 'Socially Woke account',
+      displayName: 'WokeSocial account',
     },
     pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+    timeout: 60_000,
+    excludeCredentials: [],
+    authenticatorSelection: {
+      residentKey: 'required',
+      requireResidentKey: true,
+      userVerification: 'required',
+    },
+    attestation: 'none',
   };
 }
 
@@ -375,6 +755,7 @@ function requestOptions(): PublicKeyCredentialRequestOptionsJSON {
     rpId: 'example',
     allowCredentials: [],
     userVerification: 'required',
+    timeout: 60_000,
   };
 }
 
@@ -390,10 +771,52 @@ function bundleFixture(): PasskeyWrappedKeyBundle {
     encryptedKey: {
       version: 1,
       algorithm: 'A256GCM',
-      domain: 'socially-woke/auth/account-key-bundle',
+      domain: 'wokesocial/auth/account-key-bundle',
       nonce: encodeBase64Url(bytes(81, 12)),
       ciphertext: encodeBase64Url(bytes(101, 48)),
     },
+  };
+}
+
+interface CredentialRecord {
+  readonly credentialId: string;
+  readonly transports: readonly string[];
+  readonly deviceType: 'multiDevice' | 'singleDevice';
+  readonly backedUp: boolean;
+  readonly createdAt: string;
+  readonly lastUsedAt: string | null;
+  readonly revokedAt: string | null;
+}
+
+function credentialRecord(
+  id: string,
+  overrides: Partial<Omit<CredentialRecord, 'credentialId'>> = {},
+): CredentialRecord {
+  return {
+    credentialId: id,
+    transports: ['internal'],
+    deviceType: 'singleDevice',
+    backedUp: false,
+    createdAt: '2026-07-28T19:00:00.000Z',
+    lastUsedAt: '2026-07-28T20:00:00.000Z',
+    revokedAt: null,
+    ...overrides,
+  };
+}
+
+function credentialView(
+  id: string,
+  overrides: Partial<Omit<CredentialRecord, 'credentialId'>> = {},
+): Record<string, unknown> {
+  const record = credentialRecord(id, overrides);
+  return {
+    credentialId: record.credentialId,
+    transports: record.transports,
+    deviceType: record.deviceType,
+    backedUp: record.backedUp,
+    createdAt: record.createdAt,
+    ...(record.lastUsedAt === null ? {} : { lastUsedAt: record.lastUsedAt }),
+    ...(record.revokedAt === null ? {} : { revokedAt: record.revokedAt }),
   };
 }
 
@@ -413,16 +836,54 @@ class MemoryStorage implements TokenStorage {
   }
 }
 
+class DeniedStorage implements TokenStorage {
+  getItem(): string | null {
+    throw new DOMException('Storage access is denied.', 'SecurityError');
+  }
+
+  setItem(): void {
+    throw new DOMException('Storage access is denied.', 'SecurityError');
+  }
+
+  removeItem(): void {
+    throw new DOMException('Storage access is denied.', 'SecurityError');
+  }
+}
+
+function authenticatedStorage(): MemoryStorage {
+  const storage = new MemoryStorage();
+  storage.setItem(`wokesocial.auth.csrf.v1:${encodeURIComponent('https://auth.example/')}`, csrf);
+  return storage;
+}
+
 function assertNoKeyMaterial(calls: readonly RecordedCall[]): void {
   const serialized = calls
     .map((call) => (typeof call.init.body === 'string' ? call.init.body : ''))
     .join('\n');
   expect(serialized).not.toContain(encodeBase64Url(prfSecret));
+  expect(serialized).not.toContain(encodeBase64Url(newPrfSecret));
   expect(serialized).not.toContain(encodeBase64Url(localSeed));
   expect(serialized).not.toMatch(/prfOutput|accountKeySeed|privateKey|"prf"|"seed"/u);
   for (const call of calls) {
     expect(call.init.credentials).toBe('include');
   }
+}
+
+function requestPaths(calls: readonly RecordedCall[]): string[] {
+  return calls.map((call) => {
+    const path = new URL(call.url).pathname;
+    return `${call.init.method ?? 'GET'} ${path}`;
+  });
+}
+
+function headerValue(
+  calls: readonly RecordedCall[],
+  suffix: string,
+  header: string,
+): string | null {
+  const call = calls.find((candidate) => candidate.url.endsWith(suffix));
+  if (call === undefined) throw new Error(`Missing request for ${suffix}.`);
+  return new Headers(call.init.headers).get(header);
 }
 
 function requestBody(calls: readonly RecordedCall[], suffix: string): Record<string, unknown> {

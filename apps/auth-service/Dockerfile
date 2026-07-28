@@ -16,15 +16,15 @@ COPY patches ./patches
 COPY apps/auth-service/package.json ./apps/auth-service/package.json
 COPY packages/crypto/package.json ./packages/crypto/package.json
 
-RUN --mount=type=cache,id=socially-woke-pnpm,target=/opt/pnpm/store \
-    pnpm install --frozen-lockfile --filter @socially-woke/auth-service...
+RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
+    pnpm install --frozen-lockfile --filter @wokesocial/auth-service...
 
 COPY apps/auth-service ./apps/auth-service
 COPY packages/crypto ./packages/crypto
 
-RUN pnpm --filter @socially-woke/crypto build \
-    && pnpm --filter @socially-woke/auth-service build \
-    && pnpm --filter @socially-woke/auth-service deploy \
+RUN pnpm --filter @wokesocial/crypto build \
+    && pnpm --filter @wokesocial/auth-service build \
+    && pnpm --filter @wokesocial/auth-service deploy \
       --prod \
       --legacy \
       --strict-peer-dependencies=false \
@@ -37,10 +37,10 @@ ENV NODE_ENV=production \
     AUTH_PORT=4300
 WORKDIR /app
 
-RUN groupadd --system --gid 10001 socially-woke \
-    && useradd --system --uid 10001 --gid socially-woke --home-dir /nonexistent socially-woke
+RUN groupadd --system --gid 10001 wokesocial \
+    && useradd --system --uid 10001 --gid wokesocial --home-dir /nonexistent wokesocial
 
-COPY --from=build --chown=socially-woke:socially-woke /opt/auth-service ./
+COPY --from=build --chown=wokesocial:wokesocial /opt/auth-service ./
 
 USER 10001:10001
 EXPOSE 4300

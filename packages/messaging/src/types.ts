@@ -10,7 +10,7 @@ export interface LocalDeviceKeyBinding extends SocialDeviceAddress {
 }
 
 /**
- * A Woke Social authorization assertion which the injected resolver has
+ * A WokeSocial authorization assertion which the injected resolver has
  * already verified against the current identity delegation/device registry.
  */
 export interface CurrentDeviceAuthorization extends LocalDeviceKeyBinding {
@@ -23,7 +23,7 @@ export interface CurrentDeviceAuthorization extends LocalDeviceKeyBinding {
 
 /**
  * This is an authority boundary, not a key-directory callback. Implementations
- * must authenticate a current Woke Social assertion and return null for an
+ * must authenticate a current WokeSocial assertion and return null for an
  * absent, expired, revoked, superseded, or invalid assertion.
  */
 export interface CurrentDeviceAuthorizationResolver {
@@ -60,7 +60,7 @@ export interface OpaqueKeyDirectoryResponse {
 /**
  * A per-device, authenticated connection to a replaceable but untrusted key
  * directory. Authentication only identifies the local publisher; it does not
- * make directory responses authoritative for Woke Social device access.
+ * make directory responses authoritative for WokeSocial device access.
  */
 export interface UntrustedKeyDirectoryTransport {
   exchange(request: OpaqueKeyDirectoryRequest): Promise<OpaqueKeyDirectoryResponse>;

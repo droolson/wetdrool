@@ -1,6 +1,6 @@
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
-import { identityIdSchema, objectIdSchema, type ModerationSubject } from '@socially-woke/protocol';
+import { identityIdSchema, objectIdSchema, type ModerationSubject } from '@wokesocial/protocol';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
@@ -58,7 +58,7 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
         ? false
         : {
             level: 'info',
-            base: { service: '@socially-woke/moderation-service' },
+            base: { service: '@wokesocial/moderation-service' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -105,7 +105,7 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
 
   app.get('/healthz', async () => ({
     ok: true,
-    service: '@socially-woke/moderation-service',
+    service: '@wokesocial/moderation-service',
     advisory: true,
     canonical: false,
     authorization: options.service.authorizationMode,

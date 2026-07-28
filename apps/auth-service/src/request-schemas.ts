@@ -66,6 +66,7 @@ export const registrationVerificationSchema = z
     accountId: accountIdSchema,
     ceremonyId: ceremonyIdSchema,
     response: registrationResponseSchema,
+    bundle: z.unknown(),
   })
   .strict();
 
@@ -73,6 +74,7 @@ export const additionalRegistrationVerificationSchema = z
   .object({
     ceremonyId: ceremonyIdSchema,
     response: registrationResponseSchema,
+    bundle: z.unknown(),
   })
   .strict();
 
@@ -84,4 +86,3 @@ export const authenticationVerificationSchema = z
   .strict();
 
 export const emptyBodySchema = z.object({}).strict();
-export const bundleBodySchema = z.object({ bundle: z.unknown() }).strict();

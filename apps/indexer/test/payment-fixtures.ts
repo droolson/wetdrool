@@ -1,6 +1,6 @@
 import bs58 from 'bs58';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@socially-woke/protocol';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
 
 import {
   calculatePaymentAllocation,
@@ -27,7 +27,7 @@ export interface PaymentFixtureOptions {
 
 export async function createPaymentFixture(options: PaymentFixtureOptions = {}) {
   const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-  const networkId = `woke:v1:${publicKey(options.genesisSeed ?? 1)}:${programId}` as NetworkId;
+  const networkId = `wokenet:v1:${publicKey(options.genesisSeed ?? 1)}:${programId}` as NetworkId;
   const coordinateSeed = options.coordinateSeed ?? 0;
   const configAddress = publicKey(2);
   const creatorAddress = publicKey(10);
@@ -363,7 +363,7 @@ export async function createPaymentFixture(options: PaymentFixtureOptions = {}) 
 }
 
 export function identityId(networkId: NetworkId, identityAddress: string): string {
-  return `swid:v1:${networkId}:${identityAddress}`;
+  return `wokesocialid:v1:${networkId}:${identityAddress}`;
 }
 
 export function signature(seed: number): string {

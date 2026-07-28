@@ -1,8 +1,4 @@
-import {
-  decodeCanonicalEnvelope,
-  type SignedEnvelope,
-  verifyEnvelope,
-} from '@socially-woke/protocol';
+import { decodeCanonicalEnvelope, type SignedEnvelope, verifyEnvelope } from '@wokesocial/protocol';
 
 import type { ProtocolEvent } from './events.js';
 import type { VerifiedManifest } from './projection.js';

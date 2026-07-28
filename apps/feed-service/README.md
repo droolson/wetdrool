@@ -1,6 +1,6 @@
-# Socially Woke feed service
+# WokeSocial feed service
 
-This package is an independently replaceable, deterministic feed engine. It ranks caller-provided signed projection summaries; it is **not** a canonical protocol authority and does **not** verify projection signatures, Woke Network anchors, or content authenticity. Every response says so explicitly with `canonical: false`.
+This package is an independently replaceable, deterministic feed engine. It ranks caller-provided signed projection summaries; it is **not** a canonical protocol authority and does **not** verify projection signatures, WokeNet anchors, or content authenticity. Every response says so explicitly with `canonical: false`.
 
 ## Ranking behavior
 
@@ -60,10 +60,10 @@ Cursors are opaque base64url JSON containing a hash of the ranking inputs, the o
 ## Local development
 
 ```sh
-pnpm --filter @socially-woke/feed-service typecheck
-pnpm --filter @socially-woke/feed-service test
-pnpm --filter @socially-woke/feed-service build
-pnpm --filter @socially-woke/feed-service dev
+pnpm --filter @wokesocial/feed-service typecheck
+pnpm --filter @wokesocial/feed-service test
+pnpm --filter @wokesocial/feed-service build
+pnpm --filter @wokesocial/feed-service dev
 ```
 
 Environment:

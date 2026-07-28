@@ -1,4 +1,4 @@
-import { getContentCid, verifyContentCid } from '@socially-woke/protocol';
+import { getContentCid, verifyContentCid } from '@wokesocial/protocol';
 
 import {
   type ContentAddressedStorage,

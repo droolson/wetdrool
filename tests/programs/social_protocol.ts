@@ -18,7 +18,7 @@ const {
   SystemProgram,
 } = web3;
 
-const PDA_PREFIX = Buffer.from("sw");
+const PDA_PREFIX = Buffer.from("wokesocial");
 const PDA_VERSION = Buffer.from([1]);
 const CONFIG_SEED = Buffer.from("config");
 const IDENTITY_SEED = Buffer.from("identity");

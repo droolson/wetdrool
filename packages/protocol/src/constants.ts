@@ -1,4 +1,4 @@
-export const PROTOCOL_NAME = 'socially-woke' as const;
+export const PROTOCOL_NAME = 'wokesocial' as const;
 export const PROTOCOL_VERSION = '1.0' as const;
 export const SCHEMA_VERSION = 1 as const;
 export const SIGNATURE_DOMAIN = 'woke.social/protocol/signed-object' as const;

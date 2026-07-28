@@ -14,15 +14,15 @@ COPY packages/protocol/package.json ./packages/protocol/package.json
 COPY packages/storage/package.json ./packages/storage/package.json
 COPY apps/media-worker/package.json ./apps/media-worker/package.json
 
-RUN pnpm install --frozen-lockfile --filter @socially-woke/media-worker...
+RUN pnpm install --frozen-lockfile --filter @wokesocial/media-worker...
 
 COPY packages/protocol ./packages/protocol
 COPY packages/storage ./packages/storage
 COPY apps/media-worker ./apps/media-worker
 
-RUN pnpm --filter @socially-woke/media-worker... build
+RUN pnpm --filter @wokesocial/media-worker... build
 RUN pnpm --config.strict-peer-dependencies=false \
-    --filter @socially-woke/media-worker \
+    --filter @wokesocial/media-worker \
     --prod deploy --legacy /opt/media-worker
 
 FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS runtime
@@ -35,15 +35,15 @@ RUN apt-get update \
 ENV NODE_ENV=production
 ENV MEDIA_WORKER_HOST=0.0.0.0
 ENV MEDIA_WORKER_PORT=4500
-ENV MEDIA_WORKER_STAGING_ROOT=/var/lib/socially-woke/staging
-ENV MEDIA_WORKER_TEMPORARY_ROOT=/var/lib/socially-woke/temporary
-ENV MEDIA_WORKER_STORAGE_ROOT=/var/lib/socially-woke/cas
+ENV MEDIA_WORKER_STAGING_ROOT=/var/lib/wokesocial/staging
+ENV MEDIA_WORKER_TEMPORARY_ROOT=/var/lib/wokesocial/temporary
+ENV MEDIA_WORKER_STORAGE_ROOT=/var/lib/wokesocial/cas
 
 RUN install -d -o node -g node -m 0700 \
-    /var/lib/socially-woke \
-    /var/lib/socially-woke/staging \
-    /var/lib/socially-woke/temporary \
-    /var/lib/socially-woke/cas
+    /var/lib/wokesocial \
+    /var/lib/wokesocial/staging \
+    /var/lib/wokesocial/temporary \
+    /var/lib/wokesocial/cas
 
 COPY --from=build --chown=node:node /opt/media-worker /opt/media-worker
 

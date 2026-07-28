@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useSyncExternalStore } from 'react';
-import { StatusBadge } from '@socially-woke/ui';
+import { StatusBadge } from '@wokesocial/ui';
 
 import {
   MAX_POST_CHARACTERS,

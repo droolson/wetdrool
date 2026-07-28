@@ -1,6 +1,6 @@
-# Woke Network
+# WokeNet
 
-Woke Network is the sovereign execution network for `woke.social`. It is a
+WokeNet is the sovereign execution network for `woke.social`. It is a
 downstream fork of the Solana protocol implemented with the fully native
 Firedancer validator and RPC code. It is not a Solana-operated cluster and does
 not use Agave as its validator, replay runtime, consensus implementation, or RPC
@@ -9,7 +9,7 @@ server.
 The native currency is **WOKE** (`$WOKE`). WOKE pays network fees and rent,
 secures validator voting/staking, and settles native creator payments. It is not
 an SPL token and has no mint or token-contract address. For wire compatibility,
-RPC/account fields retain the protocol term `lamports`; Woke Network defines
+RPC/account fields retain the protocol term `lamports`; WokeNet defines
 `1 WOKE = 1,000,000,000 lamports`.
 
 ## Honest implementation status
@@ -26,10 +26,10 @@ to carry production traffic:
   production use.
 
 Frankendancer is not an acceptable fallback. Its complete RPC, replay,
-execution, and consensus paths use Agave, which violates the Woke Network
+execution, and consensus paths use Agave, which violates the WokeNet
 runtime requirement. Until the native gaps close and independent audits pass,
 the flagship application must remain on its verified compatibility harness and
-must not claim that a live Woke Network processed a transaction.
+must not claim that a live WokeNet processed a transaction.
 
 The upstream statements and source are available from
 [Firedancer’s repository](https://github.com/firedancer-io/firedancer) and
@@ -39,6 +39,15 @@ The upstream statements and source are available from
 observation, not conformance evidence. The pinned native C RPC target directly
 covers only `getMultipleAccounts`; every required read/write method still needs
 deterministic method-level conformance testing before activation.
+
+The WokeNet
+[`getSignatureStatuses` native design and test plan](firedancer/GET_SIGNATURE_STATUSES_DESIGN.md)
+records why a replay-only RPC cache is not safe to promote: snapshot restore
+currently loses the complete transaction result needed by RPC and native tower
+does not publish the cluster block-commitment confirmation count. The plan
+keeps the capability false and production fail-closed while specifying the
+shared snapshot/live cache, execution-event, commitment, fork, and direct C
+test work required for a correct implementation.
 
 ## Reproducible downstream fork
 
@@ -50,11 +59,11 @@ balance, and well-known benchmark-account funding explicit.
 Run:
 
 ```sh
-pnpm network:woke:check
-pnpm network:woke:materialize -- /absolute/path/to/woke-firedancer
-pnpm network:woke:source-check -- /absolute/path/to/woke-firedancer
+pnpm wokenet:check
+pnpm wokenet:materialize -- /absolute/path/to/wokenet-firedancer
+pnpm wokenet:source-check -- /absolute/path/to/wokenet-firedancer
 # After a supported Linux build:
-pnpm network:woke:binary-check -- /absolute/path/to/woke-firedancer
+pnpm wokenet:binary-check -- /absolute/path/to/wokenet-firedancer
 ```
 
 The materializer refuses to overwrite an existing destination, checks out the
@@ -69,7 +78,7 @@ pinned dependency source at its exact commit, rebuilds the required static
 OpenSSL artifacts inside that checkout, and creates the object directory there.
 It never builds from pre-existing ignored source, dependency artifacts, or
 `build/` files. It builds the two native binaries and two pinned unit-test
-targets, executes the tests, parses the Woke localnet configuration through the
+targets, executes the tests, parses the WokeNet localnet configuration through the
 freshly linked validator, verifies the ELF target and native symbols,
 exact-matches each ELF’s downstream marker, upstream commit, and
 source-declared version, rejects identical validator/development digests and
@@ -86,16 +95,16 @@ CPU isolation, NIC, memory, and storage described by upstream. On a dedicated
 Linux development host:
 
 ```sh
-pnpm network:woke:materialize -- /opt/woke-firedancer
-cd /opt/woke-firedancer
+pnpm wokenet:materialize -- /opt/wokenet-firedancer
+cd /opt/wokenet-firedancer
 ./deps.sh
 source activate
 make -j"$(nproc)" firedancer firedancer-dev test_genesis_create test_rpc_tile
 test_genesis_create
 test_rpc_tile
-pnpm --dir /path/to/repository network:woke:binary-check -- /opt/woke-firedancer
+pnpm --dir /path/to/repository wokenet:binary-check -- /opt/wokenet-firedancer
 sudo ./build/native/gcc/bin/firedancer-dev \
-  --config /path/to/repository/network/woke-network/config/localnet.toml \
+  --config /path/to/repository/network/wokenet/config/localnet.toml \
   dev --no-agave
 ```
 
@@ -103,7 +112,7 @@ sudo ./build/native/gcc/bin/firedancer-dev \
 `firedancer`, not `fdctl`, is the intended native operator binary. Running
 Firedancer performs privileged and persistent host configuration; use a
 dedicated machine and review the upstream initialization instructions first.
-The repository’s manual `Woke Network native Firedancer` workflow repeats the
+The repository’s manual `WokeNet native Firedancer` workflow repeats the
 policy and materialization checks, installs upstream dependencies, then lets
 the attestation command own the disposable tracked checkout, pinned OpenSSL
 source rebuild, isolated object directory, two direct test executables, native
@@ -135,7 +144,7 @@ After a native Firedancer ceremony produces `genesis.bin`, record and verify its
 canonical SHA-256/base58 genesis hash:
 
 ```sh
-pnpm network:woke:verify-genesis -- \
+pnpm wokenet:verify-genesis -- \
   /absolute/path/to/genesis.bin EXPECTED_BASE58_HASH
 ```
 
@@ -148,7 +157,7 @@ recreate and reconcile those values before using the resulting network ID.
 The canonical protocol namespace is:
 
 ```text
-woke:v1:<genesis-hash>:<social-protocol-program-id>
+wokenet:v1:<genesis-hash>:<social-protocol-program-id>
 ```
 
 The genesis hash, shred version, program ID, validator identities, vote/stake
@@ -163,7 +172,7 @@ non-voting and bind RPC to loopback for a separately hardened gateway.
 
 ## Production activation gates
 
-No public Woke Network genesis or production launch is authorized until all of
+No public WokeNet genesis or production launch is authorized until all of
 these are true:
 
 1. Native Firedancer has a supported release and reproducible build provenance.

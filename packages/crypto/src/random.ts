@@ -20,7 +20,7 @@ export function secureRandomId(
   options: { readonly bytes?: number; readonly prefix?: string } = {},
 ): string {
   const byteLength = requireInteger(options.bytes ?? 16, 'bytes', 16, 64);
-  const prefix = options.prefix ?? 'sw';
+  const prefix = options.prefix ?? 'wokesocial';
   if (!RANDOM_ID_PREFIX_PATTERN.test(prefix)) {
     throw new CryptoInputError(
       'prefix must be 1-32 lowercase ASCII letters, digits, or hyphens and begin with a letter.',

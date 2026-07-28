@@ -16,7 +16,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const networkRoot = join(repositoryRoot, 'network', 'woke-network');
+const networkRoot = join(repositoryRoot, 'network', 'wokenet');
 const forkRoot = join(networkRoot, 'firedancer');
 const lockPath = join(forkRoot, 'SOURCE.lock.json');
 const capabilitiesPath = join(forkRoot, 'NATIVE_RPC_CAPABILITIES.json');
@@ -24,7 +24,7 @@ const genesisPolicyPath = join(networkRoot, 'GENESIS_POLICY.json');
 const trustedTemporaryRoot = process.platform === 'win32' ? tmpdir() : '/tmp';
 
 function fail(message) {
-  throw new Error(`woke-network: ${message}`);
+  throw new Error(`wokenet: ${message}`);
 }
 
 function readJson(path) {
@@ -166,7 +166,7 @@ function loadPolicy() {
     'only the native Firedancer binaries may be configured',
   );
   assert(
-    lock.downstream.versionMarker === 'Woke Network Firedancer downstream-v1',
+    lock.downstream.versionMarker === 'WokeNet Firedancer downstream-v1',
     'the downstream binary version marker is missing or unexpected',
   );
   const requiredForbiddenBinaries = ['agave-validator', 'fdctl', 'fddev', 'solana-test-validator'];
@@ -317,7 +317,7 @@ function checkStatic() {
   const genesisPolicy = readJson(genesisPolicyPath);
   assert(genesisPolicy.schemaVersion === 1, 'unsupported genesis-policy schema');
   assert(
-    genesisPolicy.networkName === 'Woke Network' &&
+    genesisPolicy.networkName === 'WokeNet' &&
       genesisPolicy.nativeCurrency?.name === 'WOKE' &&
       genesisPolicy.nativeCurrency?.ticker === 'WOKE' &&
       genesisPolicy.nativeCurrency?.decimals === 9 &&
@@ -347,7 +347,7 @@ function checkStatic() {
 
   const localConfig = parseToml(join(networkRoot, 'config', 'localnet.toml'));
   const localContext = 'localnet.toml';
-  assertTomlValue(localConfig, 'name', 'woke-local', localContext);
+  assertTomlValue(localConfig, 'name', 'wokenet-local', localContext);
   assertTomlValue(localConfig, 'telemetry', false, localContext);
   assertTomlValue(localConfig, 'gossip.entrypoints', [], localContext);
   assertTomlValue(localConfig, 'snapshots.genesis_download', false, localContext);
@@ -397,8 +397,8 @@ function checkStatic() {
   );
 
   for (const [template, name, rpcEnabled] of [
-    ['validator.toml.example', 'woke-validator-01', false],
-    ['rpc.toml.example', 'woke-rpc-01', true],
+    ['validator.toml.example', 'wokenet-validator-01', false],
+    ['rpc.toml.example', 'wokenet-rpc-01', true],
   ]) {
     const config = parseToml(join(networkRoot, 'config', template));
     assertTomlValue(config, 'name', name, template);
@@ -444,7 +444,7 @@ function checkStatic() {
   }
 
   process.stdout.write(
-    `Woke Network policy is internally consistent at Firedancer ${lock.upstream.commit}.\n`,
+    `WokeNet policy is internally consistent at Firedancer ${lock.upstream.commit}.\n`,
   );
 }
 
@@ -515,7 +515,7 @@ function sourceState(sourceRoot, lock) {
 }
 
 function expectedPatchedDiff(sourceRoot, lock) {
-  const temporaryRoot = mkdtempSync(join(trustedTemporaryRoot, 'woke-firedancer-index-'));
+  const temporaryRoot = mkdtempSync(join(trustedTemporaryRoot, 'wokenet-firedancer-index-'));
   const temporaryIndex = join(temporaryRoot, 'index');
   const env = { GIT_INDEX_FILE: temporaryIndex };
   try {
@@ -563,7 +563,7 @@ function checkSource(sourceRoot) {
   }
   run('git', ['diff', '--check'], { cwd: sourceRoot });
   process.stdout.write(
-    `Woke Network Firedancer source is ${patched ? 'patched' : 'patch-ready'} at ${lock.upstream.commit}.\n`,
+    `WokeNet Firedancer source is ${patched ? 'patched' : 'patch-ready'} at ${lock.upstream.commit}.\n`,
   );
   return { patched };
 }
@@ -852,11 +852,13 @@ function checkBinaries(sourceRoot) {
   const suppliedSourceRoot = realpathSync(sourceRoot);
   const dependencySource = verifyOpenSslSource(suppliedSourceRoot, lock);
 
-  const attestationRoot = mkdtempSync(join(trustedTemporaryRoot, 'woke-firedancer-attestation-'));
+  const attestationRoot = mkdtempSync(
+    join(trustedTemporaryRoot, 'wokenet-firedancer-attestation-'),
+  );
   const resolvedAttestationRoot = realpathSync(attestationRoot);
   assert(
     dirname(resolvedAttestationRoot) === realpathSync(trustedTemporaryRoot) &&
-      basename(resolvedAttestationRoot).startsWith('woke-firedancer-attestation-'),
+      basename(resolvedAttestationRoot).startsWith('wokenet-firedancer-attestation-'),
     'fresh attestation checkout escaped the temporary directory',
   );
   try {
@@ -893,7 +895,7 @@ function checkBinaries(sourceRoot) {
       realpathSync(buildParent) === buildParent,
       'fresh attestation build parent escaped its checkout',
     );
-    const buildRoot = mkdtempSync(join(buildParent, 'woke-attestation-'));
+    const buildRoot = mkdtempSync(join(buildParent, 'wokenet-attestation-'));
     assert(
       realpathSync(buildRoot).startsWith(`${realpathSync(freshSourceRoot)}${sep}`),
       'fresh attestation object directory escaped its checkout',
@@ -1027,7 +1029,7 @@ function checkBinaries(sourceRoot) {
 async function materialize(destinationArgument) {
   const { lock } = loadPolicy();
   const destination = resolve(
-    destinationArgument ?? join(repositoryRoot, '.local', 'woke-network', 'firedancer'),
+    destinationArgument ?? join(repositoryRoot, '.local', 'wokenet', 'firedancer'),
   );
   assert(destination !== repositoryRoot && destination !== '/', 'refusing unsafe destination');
   assert(!existsSync(destination), `destination already exists: ${destination}`);
@@ -1044,7 +1046,7 @@ async function materialize(destinationArgument) {
     run('git', ['apply', resolvePatch(patch.path)], { cwd: destination });
   }
   checkSource(destination);
-  process.stdout.write(`Materialized native Woke Network Firedancer source at ${destination}.\n`);
+  process.stdout.write(`Materialized native WokeNet Firedancer source at ${destination}.\n`);
 }
 
 const [command = 'check', ...rawCommandArguments] = process.argv.slice(2);

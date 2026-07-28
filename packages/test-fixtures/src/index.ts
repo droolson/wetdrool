@@ -9,17 +9,17 @@ import {
   type NetworkId,
   type PayloadBuilderIdentity,
   type SignedEnvelope,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 
 export const TEST_FIXTURE_WARNING =
   'PUBLIC TEST KEY MATERIAL — NEVER USE FOR FUNDS, PRODUCTION IDENTITIES, OR TRUST DECISIONS.';
 
 export const FIXTURE_NETWORK =
-  'woke:v1:US517G5965aydkZ46HS38QLi7UQiSojurfbQfKCELFx:YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mnyfaf' as NetworkId;
+  'wokenet:v1:US517G5965aydkZ46HS38QLi7UQiSojurfbQfKCELFx:YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mnyfaf' as NetworkId;
 export const FIXTURE_CREATED_AT = '2026-07-28T12:00:00.000Z';
 
-const ALICE_AUTHOR = `swid:v1:${FIXTURE_NETWORK}:cGfHiC6Kgg3FpFZvgwGcswsCRtp4aBP2fzuXRQPizuN`;
-const BOB_AUTHOR = `swid:v1:${FIXTURE_NETWORK}:gBxS1f6uyyGPuW5MzGBukidSb71jdsCb5fZaoSzULE5`;
+const ALICE_AUTHOR = `wokesocialid:v1:${FIXTURE_NETWORK}:cGfHiC6Kgg3FpFZvgwGcswsCRtp4aBP2fzuXRQPizuN`;
+const BOB_AUTHOR = `wokesocialid:v1:${FIXTURE_NETWORK}:gBxS1f6uyyGPuW5MzGBukidSb71jdsCb5fZaoSzULE5`;
 
 const ALICE_PRIVATE_KEY = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,

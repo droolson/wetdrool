@@ -41,15 +41,15 @@ describe('provider configuration', () => {
   });
 
   it('returns no indexer when the setting is intentionally empty', () => {
-    expect(getIndexerBaseUrl({ SOCIALLY_WOKE_INDEXER_URL: '  ' })).toBeNull();
+    expect(getIndexerBaseUrl({ WOKESOCIAL_INDEXER_URL: '  ' })).toBeNull();
   });
 
   it('describes configured, invalid, and absent provider lists honestly', () => {
     const summaries = getProviderSummaries({
-      SOCIALLY_WOKE_CONTENT_GATEWAYS: 'https://one.example/ipfs,not a url,https://two.example',
-      SOCIALLY_WOKE_INDEXER_URL: 'https://indexer.example/private/path',
-      SOCIALLY_WOKE_RELAY_ENDPOINTS: 'wss://relay-one.example/v1/relay,https://not-a-relay.example',
-      SOCIALLY_WOKE_RPC_ENDPOINTS: 'javascript:alert(1)',
+      WOKESOCIAL_CONTENT_GATEWAYS: 'https://one.example/ipfs,not a url,https://two.example',
+      WOKESOCIAL_INDEXER_URL: 'https://indexer.example/private/path',
+      WOKESOCIAL_RELAY_ENDPOINTS: 'wss://relay-one.example/v1/relay,https://not-a-relay.example',
+      WOKENET_RPC_ENDPOINTS: 'javascript:alert(1)',
     });
 
     expect(summaries.find(({ id }) => id === 'indexer')).toMatchObject({

@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 import sharp from 'sharp';
 
 import { digestBytes } from '../src/digests.js';
@@ -42,7 +42,7 @@ export class RejectingScanner implements MalwareScanner {
 }
 
 export async function createTestRoot(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'socially-woke-media-'));
+  return mkdtemp(join(tmpdir(), 'wokesocial-media-'));
 }
 
 export async function removeTestRoot(root: string): Promise<void> {

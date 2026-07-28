@@ -11,8 +11,8 @@ import {
   type NetworkId,
   type PostContent,
   type SignedEnvelope,
-} from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage, type StorageReceipt } from '@socially-woke/storage';
+} from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
 
 import {
   decodeAnchorEventLog,
@@ -36,12 +36,12 @@ import {
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
 const genesisHash = publicKey(7);
-const networkId = `woke:v1:${genesisHash}:${programId}` as NetworkId;
+const networkId = `wokenet:v1:${genesisHash}:${programId}` as NetworkId;
 const configAddress = publicKey(6);
 const identityAddress = publicKey(9);
 const privateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const rootAuthority = bs58.encode(ed25519.getPublicKey(privateKey));
-const identityId = `swid:v1:${networkId}:${identityAddress}`;
+const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
 const identity = createPayloadBuilderIdentity(
   networkId,
   identityId,
@@ -124,7 +124,7 @@ describe('Solana sync configuration', () => {
       readIndexerConfig({
         INDEXER_NETWORK_ID: networkId,
         NEXT_PUBLIC_PROGRAM_ID: programId,
-        WOKE_COMMITMENT: 'finalized',
+        WOKENET_COMMITMENT: 'finalized',
       }).sync,
     ).toMatchObject({
       networkId,
@@ -135,7 +135,7 @@ describe('Solana sync configuration', () => {
 
     expect(() =>
       readIndexerConfig({
-        INDEXER_NETWORK_ID: `woke:v1:${genesisHash}:${publicKey(88)}`,
+        INDEXER_NETWORK_ID: `wokenet:v1:${genesisHash}:${publicKey(88)}`,
         NEXT_PUBLIC_PROGRAM_ID: programId,
       }),
     ).toThrow('network program ID must match');

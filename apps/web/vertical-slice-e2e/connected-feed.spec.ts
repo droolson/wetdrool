@@ -16,7 +16,7 @@ test('renders the finalized validator post through the production indexer', asyn
   await expect(page.getByText(expectedPost, { exact: true })).toBeVisible();
   await expect(page.getByText(suppressedPost, { exact: true })).toHaveCount(0);
   await expect(page.getByText('Indexer: verified', { exact: true })).toBeVisible();
-  await expect(page.getByText('Woke Network open indexer', { exact: true })).toBeVisible();
+  await expect(page.getByText('WokeNet open indexer', { exact: true })).toBeVisible();
   await expect(page.getByText(/No live feed substituted/u)).toHaveCount(0);
 
   await page.getByText('Verification details', { exact: true }).click();

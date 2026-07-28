@@ -18,16 +18,16 @@ import {
 } from './validation.js';
 
 const base58Pattern = '[1-9A-HJ-NP-Za-km-z]+';
-const networkPattern = new RegExp(`^woke:v1:${base58Pattern}:${base58Pattern}$`, 'u');
+const networkPattern = new RegExp(`^wokenet:v1:${base58Pattern}:${base58Pattern}$`, 'u');
 const identityPattern = new RegExp(
-  `^swid:v1:woke:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}$`,
+  `^wokesocialid:v1:wokenet:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}$`,
   'u',
 );
 const keyPattern = new RegExp(
-  `^swid:v1:woke:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}#(?:root|delegation)/${base58Pattern}$`,
+  `^wokesocialid:v1:wokenet:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}#(?:root|delegation)/${base58Pattern}$`,
   'u',
 );
-const objectIdPattern = /^swobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$/u;
+const objectIdPattern = /^wokesocialobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$/u;
 const digestPattern = /^u[A-Za-z0-9_-]{43}$/u;
 const signaturePattern = /^u[A-Za-z0-9_-]{86}$/u;
 const noncePattern = /^u[A-Za-z0-9_-]{22}$/u;
@@ -92,12 +92,12 @@ function hasExactSigningKey(value: string): boolean {
 
 export const networkIdSchema = z
   .string()
-  .max(97)
+  .max(100)
   .regex(networkPattern)
   .refine(hasExactNetworkKeys, 'Network genesis hash and program ID must each decode to 32 bytes.');
 export const identityIdSchema = z
   .string()
-  .max(150)
+  .max(161)
   .regex(identityPattern)
   .refine(
     hasExactIdentityKeys,
@@ -143,7 +143,7 @@ export const transactionSignatureSchema = z
   .regex(transactionPattern)
   .refine(
     (value) => isExactBase58Bytes(value, 64),
-    'Woke Network transaction signatures must decode to exactly 64 bytes.',
+    'WokeNet transaction signatures must decode to exactly 64 bytes.',
   );
 export const solanaPublicKeySchema = z
   .string()
@@ -151,7 +151,7 @@ export const solanaPublicKeySchema = z
   .regex(new RegExp(`^${base58Pattern}$`, 'u'))
   .refine(
     (value) => isExactBase58Bytes(value, 32),
-    'Woke Network public keys must decode to exactly 32 bytes.',
+    'WokeNet public keys must decode to exactly 32 bytes.',
   );
 
 export const limitedString = (maximumBytes: number) =>

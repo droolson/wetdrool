@@ -1,9 +1,9 @@
 {
-  "name": "@socially-woke/feed-service",
+  "name": "@wokesocial/feed-service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Replaceable, explainable Socially Woke feed-ranking service",
+  "description": "Replaceable, explainable WokeSocial feed-ranking service",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist coverage",

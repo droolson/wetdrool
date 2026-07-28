@@ -1,5 +1,5 @@
 {
-  "name": "@socially-woke/auth-service",
+  "name": "@wokesocial/auth-service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
     "@fastify/cors": "11.3.0",
     "@fastify/rate-limit": "11.1.0",
     "@simplewebauthn/server": "13.3.2",
-    "@socially-woke/crypto": "workspace:*",
+    "@wokesocial/crypto": "workspace:*",
     "fastify": "5.10.0",
     "postgres": "3.4.9",
     "zod": "4.4.3"

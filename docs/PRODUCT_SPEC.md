@@ -1,4 +1,4 @@
-# woke.social Product Specification
+# WokeSocial Product Specification
 
 **Status:** Product requirements baseline; implementation subsets tracked separately  
 **Last updated:** 2026-07-28  
@@ -27,8 +27,8 @@ Documentation, screenshots, mock data, disabled controls, and successful API-sha
 
 ## 2. Product vision
 
-woke.social is a polished, inclusive, LGBTQ+ affirming, trans-owned social
-network powered by Woke Network, a sovereign Solana-protocol-compatible
+WokeSocial is a polished, inclusive, LGBTQ+ affirming, trans-owned social
+network powered by WokeNet, a sovereign Solana-protocol-compatible
 network. People should be able to own and move their identity, social graph,
 public content relationships, communities, and choice of algorithm without
 needing to understand cryptocurrency.
@@ -38,7 +38,7 @@ than a wallet or blockchain explorer. A person may browse before owning WOKE,
 create a recoverable passkey-first account, use a familiar handle, and
 understand every transaction before approving it.
 
-Woke Network has its own native currency, WOKE (`$WOKE`), with nine decimals.
+WokeNet has its own native currency, WOKE (`$WOKE`), with nine decimals.
 It is not an SPL token and has no mint address. The product remains
 noncustodial: ordinary reading never requires WOKE, and no production network,
 public sale, bridge, exchange, lending, yield, or token-gated identity feature
@@ -96,9 +96,9 @@ open.
 layer supports exact-origin/RP, user-verifying passkey registration and
 discoverable sign-in, client-only Ed25519 seed generation, and ciphertext-only
 PRF wrapper synchronization. It deliberately does not yet claim to create the
-	protocol identity. Existing Woke-compatible-wallet onboarding, confirmed Woke Network identity
-creation, email-assisted recovery, and the complete device/recovery product
-remain open.
+protocol identity. Existing WokeNet-compatible wallet onboarding, confirmed
+WokeNet identity creation, email-assisted recovery, and the complete
+device/recovery product remain open.
 
 **Acceptance criteria**
 
@@ -122,7 +122,7 @@ remains disabled until its authentication and transaction adapters land.
 **Acceptance criteria**
 
 - The client signs the canonical manifest and verifies the signature and content hash before display.
-- Publication progress distinguishes local signing, storage publication, Woke Network confirmation, and indexing.
+- Publication progress distinguishes local signing, storage publication, WokeNet confirmation, and indexing.
 - A recoverable error can retry without producing a duplicate post.
 - The post remains independently verifiable without the flagship database.
 - A local-validator end-to-end test proves the complete flow without mocked blockchain success.
@@ -323,7 +323,7 @@ The initial recommendation model may use declared interests, follows, freshness,
 
 **PS-MSG-001 — Partially implemented and experimentally tested.** A
 pairwise-only adapter delegates real Olm device/session cryptography to pinned
-Matrix Rust crypto WASM, binds engine keys to current Socially Woke device
+Matrix Rust crypto WASM, binds engine keys to current WokeSocial device
 authorization, authenticates sender-signed outer routing metadata before Olm
 state mutation plus the encrypted inner context, and rejects replay, relay
 mutation, corruption, wrong-device delivery, authorization changes, and local
@@ -396,7 +396,7 @@ non-native token tips, paid memberships, and paid tickets remain planned.
   mint, token-program, and decimals allowlist; recipient or asset substitution
   is rejected.
 - Duplicate submission, replay, rounding, fake entitlement, and simulation mismatch tests pass.
-- Woke Network production execution remains disabled until the native
+- WokeNet production execution remains disabled until the native
   Firedancer, genesis, security, legal/economic, authority, and funded
   configuration gates are documented and pass.
 
@@ -492,7 +492,7 @@ No product copy may claim GDPR, CCPA, COPPA, or other legal compliance solely be
 - Appearance-based identity verification
 - A proprietary service required to interpret public protocol objects
 - Automatic publication to permanent storage without item-specific consent
-- Woke Network production deployment or spending real funds as part of ordinary development
+- WokeNet production deployment or spending real funds as part of ordinary development
 
 ## 19. Product verification gates
 
@@ -513,7 +513,7 @@ The product cannot be described as production-ready until:
 | Capability group | Status | Evidence |
 |---|---|---|
 | Public experience and onboarding | Partial | Complete route surface, 203 passing desktop/mobile browser cases, and real passkey service-account registration/sign-in; wallet and protocol-identity onboarding remain fail-closed |
-| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass the compatibility oracle; durable passkey ceremonies, sessions, and ciphertext sync pass, while recovery product UX, sponsorship, and native Firedancer execution remain open |
+| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass the compatibility oracle; durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and sessions pass, while protocol onboarding, WokeNet delegation lifecycle, recovery product UX, sponsorship, and native Firedancer execution remain open |
 | Signed publishing and social graph | Verified text-post vertical slice; broader interactions partial | Nine finalized transactions, signed CAS manifest, exact PostgreSQL replay, root/delegated social program tests |
 | Feeds, search, and discovery | Partial | Seven-mode replaceable feed contract with 29 tests and complete web surfaces; production source integration remains |
 | Communities and governance | Partial | Community/membership plus immutable one-member-one-vote proposal, vote, and finalization accounts pass 16 validator flows; other models, execution, and enabled web mutations remain open |

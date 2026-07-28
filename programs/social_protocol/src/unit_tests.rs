@@ -410,7 +410,7 @@ fn handle_validation_is_normalized_bounded_and_hash_bound() {
         "abc",
         "a1b",
         "1ab",
-        "socially_woke",
+        "wokesocial",
         "a_b_c",
         "a".repeat(MAX_HANDLE_BYTES).as_str(),
     ] {
@@ -714,7 +714,7 @@ fn governance_delegation_accepts_either_social_or_community_scope() {
 
 #[test]
 fn governance_strategy_and_windows_are_canonical_and_bounded() {
-    const STRATEGY: &str = "socially-woke:governance:one-active-member-one-vote:v1;\
+    const STRATEGY: &str = "wokesocial:governance:one-active-member-one-vote:v1;\
 quorum-bps=5000;approval-bps=5001;abstain=quorum-only";
     assert_eq!(
         solana_sha256_hasher::hash(STRATEGY.as_bytes()).to_bytes(),

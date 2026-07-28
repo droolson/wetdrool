@@ -17,15 +17,15 @@ COPY apps/moderation-service/package.json ./apps/moderation-service/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
 COPY packages/test-fixtures/package.json ./packages/test-fixtures/package.json
 
-RUN --mount=type=cache,id=socially-woke-pnpm,target=/opt/pnpm/store \
-    pnpm install --frozen-lockfile --filter @socially-woke/moderation-service...
+RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
+    pnpm install --frozen-lockfile --filter @wokesocial/moderation-service...
 
 COPY apps/moderation-service ./apps/moderation-service
 COPY packages/protocol ./packages/protocol
 
-RUN pnpm --filter @socially-woke/protocol build \
-    && pnpm --filter @socially-woke/moderation-service build \
-    && pnpm --filter @socially-woke/moderation-service deploy \
+RUN pnpm --filter @wokesocial/protocol build \
+    && pnpm --filter @wokesocial/moderation-service build \
+    && pnpm --filter @wokesocial/moderation-service deploy \
       --prod \
       --legacy \
       --strict-peer-dependencies=false \
@@ -38,10 +38,10 @@ ENV NODE_ENV=production \
     MODERATION_PORT=4400
 WORKDIR /app
 
-RUN groupadd --system --gid 10004 socially-woke \
-    && useradd --system --uid 10004 --gid socially-woke --home-dir /nonexistent socially-woke
+RUN groupadd --system --gid 10004 wokesocial \
+    && useradd --system --uid 10004 --gid wokesocial --home-dir /nonexistent wokesocial
 
-COPY --from=build --chown=socially-woke:socially-woke /opt/moderation-service ./
+COPY --from=build --chown=wokesocial:wokesocial /opt/moderation-service ./
 
 USER 10004:10004
 EXPOSE 4400

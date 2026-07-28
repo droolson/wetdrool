@@ -3,8 +3,6 @@ import { randomBytes } from 'node:crypto';
 import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
-import { wrapPasskeyAccountKey } from '@socially-woke/crypto';
-
 import {
   AuthService,
   cleanupExpiredAuthRecords,
@@ -13,18 +11,20 @@ import {
   type AccountRecord,
   type CeremonyRecord,
   type SessionRecord,
+  type StoredKeyBundle,
 } from '../src/index.js';
 import {
   authenticationResponse,
   credentialId,
   FakeCeremonyVerifier,
   registrationResponse,
+  wrappedKeyBundle,
 } from './fixtures.js';
 
 const databaseUrl =
   process.env['AUTH_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke';
+  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL authentication integration', () => {
   it('persists atomic ceremonies, credentials, sessions, and ciphertext lifecycle', async () => {
@@ -36,7 +36,7 @@ describe('PostgreSQL authentication integration', () => {
       store,
       verifier,
       now,
-      rpName: 'Socially Woke Integration',
+      rpName: 'WokeSocial Integration',
       rpId: 'localhost',
       origin: 'http://localhost:4300',
     });
@@ -47,16 +47,19 @@ describe('PostgreSQL authentication integration', () => {
       const registration = await service.registrationOptions();
       accounts.push(registration.accountId);
       const firstId = credentialId(51);
+      const firstBundle = await wrappedKeyBundle(firstId);
       const first = await service.verifyFirstRegistration({
         accountId: registration.accountId,
         ceremonyId: registration.ceremonyId,
         response: registrationResponse(firstId),
+        bundle: firstBundle,
       });
       await expect(
         service.verifyFirstRegistration({
           accountId: registration.accountId,
           ceremonyId: registration.ceremonyId,
           response: registrationResponse(firstId),
+          bundle: firstBundle,
         }),
       ).rejects.toMatchObject({ code: 'ceremony-unavailable' });
 
@@ -67,8 +70,23 @@ describe('PostgreSQL authentication integration', () => {
       await service.verifyAdditionalCredential(authenticated, {
         ceremonyId: addOptions.ceremonyId,
         response: registrationResponse(secondId),
+        bundle: await wrappedKeyBundle(secondId),
       });
       await expect(store.listCredentials(registration.accountId)).resolves.toHaveLength(2);
+      await expect(service.listKeyBundles(registration.accountId)).resolves.toHaveLength(2);
+
+      const mismatchedOptions = await service.additionalCredentialOptions(authenticated);
+      const mismatchedId = credentialId(53);
+      await expect(
+        service.verifyAdditionalCredential(authenticated, {
+          ceremonyId: mismatchedOptions.ceremonyId,
+          response: registrationResponse(mismatchedId),
+          bundle: await wrappedKeyBundle(mismatchedId, { publicKey: bytes(120, 32) }),
+        }),
+      ).rejects.toMatchObject({ code: 'bundle-invalid' });
+      await expect(store.getCredential(mismatchedId)).resolves.toBeUndefined();
+      await expect(store.listCredentials(registration.accountId)).resolves.toHaveLength(2);
+      await expect(service.listKeyBundles(registration.accountId)).resolves.toHaveLength(2);
 
       const burned = await service.authenticationOptions();
       verifier.failNextAuthentication = true;
@@ -104,20 +122,13 @@ describe('PostgreSQL authentication integration', () => {
       ).rejects.toMatchObject({ code: 'verification-failed' });
       await expect(store.getCredential(firstId)).resolves.toMatchObject({ counter: 1 });
 
-      const credentialBytes = Uint8Array.from(Buffer.from(firstId, 'base64url'));
-      const bundle = await wrapPasskeyAccountKey({
-        prfOutput: bytes(1, 32),
-        credentialId: credentialBytes,
-        accountKeySeed: bytes(40, 32),
-        publicKey: bytes(80, 32),
-        keyKind: 'solana-ed25519-root-seed',
-      });
-      await service.putKeyBundle(authenticated, firstId, bundle);
-      await expect(service.listKeyBundles(registration.accountId)).resolves.toHaveLength(1);
+      await expect(service.listKeyBundles(registration.accountId)).resolves.toHaveLength(2);
       await service.revokeCredential(authenticated, firstId);
       await expect(service.resolveSession(first.session.cookieValue)).resolves.toBeUndefined();
       await expect(service.resolveSession(login.session.cookieValue)).resolves.toBeUndefined();
-      await expect(service.listKeyBundles(registration.accountId)).resolves.toEqual([]);
+      await expect(service.listKeyBundles(registration.accountId)).resolves.toMatchObject([
+        { credentialId: secondId },
+      ]);
       await expect(service.revokeCredential(authenticated, secondId)).rejects.toMatchObject({
         code: 'last-credential',
       });
@@ -129,6 +140,7 @@ describe('PostgreSQL authentication integration', () => {
           accountId: duplicateRegistration.accountId,
           ceremonyId: duplicateRegistration.ceremonyId,
           response: registrationResponse(secondId),
+          bundle: await wrappedKeyBundle(secondId),
         }),
       ).rejects.toMatchObject({ code: 'credential-duplicate' });
 
@@ -161,6 +173,60 @@ describe('PostgreSQL authentication integration', () => {
     }
   }, 45_000);
 
+  it('rolls back the credential transition when atomic session persistence fails', async () => {
+    await migrateAuth(databaseUrl);
+    const store = new PostgresAuthStore(databaseUrl);
+    const verifier = new FakeCeremonyVerifier();
+    const now = () => new Date('2026-07-28T20:00:00.000Z');
+    const service = new AuthService({
+      store,
+      verifier,
+      now,
+      rpName: 'WokeSocial Integration',
+      rpId: 'localhost',
+      origin: 'http://localhost:4300',
+    });
+    const registration = await service.registrationOptions();
+    const id = credentialId(54);
+
+    try {
+      const first = await service.verifyFirstRegistration({
+        accountId: registration.accountId,
+        ceremonyId: registration.ceremonyId,
+        response: registrationResponse(id),
+        bundle: await wrappedKeyBundle(id),
+      });
+      const duplicateSession = {
+        ...first.session.session,
+        lastAuthenticatedAt: now().toISOString(),
+      };
+
+      await expect(
+        store.completeAuthentication(
+          {
+            credentialId: id,
+            previousCounter: 0,
+            newCounter: 1,
+            deviceType: 'multiDevice',
+            backedUp: true,
+            usedAt: now().toISOString(),
+          },
+          duplicateSession,
+        ),
+      ).rejects.toMatchObject({ code: 'database-error' });
+      const credential = await store.getCredential(id);
+      expect(credential).toMatchObject({
+        counter: 0,
+        backedUp: false,
+      });
+      expect(credential?.lastUsedAt).toBeUndefined();
+      await expect(store.getSession(duplicateSession.sessionId)).resolves.toBeDefined();
+    } finally {
+      await cleanupAccounts(databaseUrl, [registration.accountId]);
+      await store.close();
+    }
+  }, 45_000);
+
   it('cleans stale rows in bounded batches without deleting active or recent records', async () => {
     await migrateAuth(databaseUrl);
     const store = new PostgresAuthStore(databaseUrl);
@@ -186,19 +252,22 @@ describe('PostgreSQL authentication integration', () => {
         active,
         retentionCeremony(active.accountId, '2000-12-30T00:05:00.000Z'),
       );
+      const activeCredentialId = randomBytes(32).toString('base64url');
+      const activatedAt = '2000-12-30T00:01:00.000Z';
       await store.finalizeFirstCredential(
         active.accountId,
         {
-          credentialId: randomBytes(32).toString('base64url'),
+          credentialId: activeCredentialId,
           accountId: active.accountId,
           publicKey: Uint8Array.of(1),
           counter: 0,
           transports: ['internal'],
           deviceType: 'multiDevice',
           backedUp: false,
-          createdAt: '2000-12-30T00:01:00.000Z',
+          createdAt: activatedAt,
         },
-        '2000-12-30T00:01:00.000Z',
+        await storedRootBundle(active.accountId, activeCredentialId, activatedAt),
+        activatedAt,
       );
       const staleSession = retentionSession(active.accountId, '2000-12-31T00:00:00.000Z');
       const recentSession = retentionSession(active.accountId, '2001-01-01T12:00:00.000Z');
@@ -322,6 +391,22 @@ function retentionSession(accountId: string, expiresAt: string): SessionRecord {
     createdAt,
     expiresAt,
     lastAuthenticatedAt: createdAt,
+  };
+}
+
+async function storedRootBundle(
+  accountId: string,
+  credentialIdValue: string,
+  updatedAt: string,
+): Promise<StoredKeyBundle> {
+  const bundle = await wrappedKeyBundle(credentialIdValue);
+  return {
+    accountId,
+    credentialId: credentialIdValue,
+    keyKind: bundle.keyKind,
+    publicKey: bundle.publicKey,
+    bundle,
+    updatedAt,
   };
 }
 

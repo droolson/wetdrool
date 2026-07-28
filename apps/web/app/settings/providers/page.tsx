@@ -1,19 +1,19 @@
 import type { Metadata } from 'next';
-import { ProviderCard, SectionHeading, StatusBadge } from '@socially-woke/ui';
+import { ProviderCard, SectionHeading, StatusBadge } from '@wokesocial/ui';
 
 import { getProviderSummaries, type ProviderSummary } from '@/lib/provider-config';
 import { SettingsNav } from '@/components/settings-nav';
 
 export const metadata: Metadata = {
   title: 'Provider settings',
-  description: 'Inspect which replaceable Socially Woke service endpoints are configured.',
+  description: 'Inspect which replaceable WokeSocial service endpoints are configured.',
 };
 
 export const dynamic = 'force-dynamic';
 
 const PROVIDER_COPY: Readonly<Record<ProviderSummary['id'], string>> = {
   indexer: 'Builds a fast, disposable projection from public protocol events and signed manifests.',
-  rpc: 'Reads Woke Network state and submits transactions. No single RPC should be required.',
+  rpc: 'Reads WokeNet state and submits transactions. No single RPC should be required.',
   gateway:
     'Retrieves content-addressed public media and manifests, with hash verification before display.',
   relay: 'Carries ephemeral notifications, presence, typing, message envelopes, and live signals.',
@@ -96,11 +96,7 @@ export default function ProviderSettingsPage() {
         <fieldset disabled aria-describedby="provider-editor-note">
           <legend>Provider endpoint editor</legend>
           <label htmlFor="indexer-setting">Indexer base URL</label>
-          <input
-            id="indexer-setting"
-            placeholder="Managed by SOCIALLY_WOKE_INDEXER_URL"
-            type="url"
-          />
+          <input id="indexer-setting" placeholder="Managed by WOKESOCIAL_INDEXER_URL" type="url" />
           <button type="button">Saving is not connected</button>
         </fieldset>
         <p id="provider-editor-note">

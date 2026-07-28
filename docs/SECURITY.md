@@ -4,7 +4,7 @@ Last reviewed: 2026-07-28
 
 ## Document status
 
-This document defines the security requirements for woke.social and Woke Network. It is a design
+This document defines the security requirements for WokeSocial and WokeNet. It is a design
 contract, not evidence that a control exists.
 
 Status terms used throughout the project:
@@ -49,11 +49,11 @@ after the [official ClamAV security release](https://blog.clamav.net/2026/07/).
 
 ## Security objectives
 
-woke.social is designed to preserve:
+WokeSocial is designed to preserve:
 
 1. User control of identity, keys, social graph, content, and provider choice.
 2. Confidentiality and authenticity of private messages and restricted content.
-3. Integrity of signed manifests, Woke Network state, moderation labels, and indexer
+3. Integrity of signed manifests, WokeNet state, moderation labels, and indexer
    projections.
 4. Availability during a failure or compromise of any single RPC, gateway,
    indexer, relay, cache, or storage provider.
@@ -70,7 +70,7 @@ The following are explicitly not security assumptions:
 - TLS makes content returned by a third party authentic.
 - A database row is canonical protocol state.
 - IPFS guarantees availability or deletion.
-- A simulated Woke Network transaction is necessarily the transaction a wallet
+- A simulated WokeNet transaction is necessarily the transaction a wallet
   signs.
 - A Solana-wire-compatible or Agave-backed test proves native Firedancer
   execution, consensus, RPC behavior, or production readiness.
@@ -82,7 +82,7 @@ The security boundary includes:
 
 - Browser and future native clients.
 - Wallet adapters, passkey authenticators, delegated device keys, and recovery.
-- Woke Network’s Solana-compatible programs, program upgrade authority,
+- WokeNet’s Solana-compatible programs, program upgrade authority,
   transaction construction, and sponsorship.
 - Native Firedancer source, downstream patches, genesis, validator/RPC
   configuration, consensus, snapshots, repair, release, and operator authority.
@@ -107,7 +107,7 @@ revocation and recovery paths.
 | Browser to public edge | Transport to the configured origin | Manifest or protocol authenticity | TLS, HSTS, CSP, signature/hash verification, strict origin policy |
 | Public edge to application services | Authenticated service requests | Canonical protocol state | Service identity, authorization, schema validation, rate limits, trace correlation |
 | Service to PostgreSQL/Redis | Projection storage and disposable coordination | Identity or social-graph authority | Least-privilege roles, parameterized queries, migrations, replayable projections |
-| Client/service to Woke RPC | Transport of requests and observations | Correctness, completeness, ordering before finality, transaction intent, or proof of native-Firedancer operation | Multiple RPCs, exact genesis/program binding, native capability gate, commitment policy, response validation, simulation comparison, reconciliation |
+| Client/service to WokeNet RPC | Transport of requests and observations | Correctness, completeness, ordering before finality, transaction intent, or proof of native-Firedancer operation | Multiple RPCs, exact genesis/program binding, native capability gate, commitment policy, response validation, simulation comparison, reconciliation |
 | Client/service to content providers | Retrieval or publication of bytes | Byte integrity, availability, privacy, or deletion | Local hashing, CID/hash verification, encryption before upload, redundant providers |
 | Client to indexer/feed/relay | Discovery and low-latency convenience | Signatures, authorization, finality, or durable message truth | Signed objects, reconciliation, replaceable endpoints, bounded caches |
 | Operator control plane | Approved deployment and incident actions | User signing authority or plaintext user secrets | SSO/MFA, least privilege, audit logs, separation of duties, break-glass review |
@@ -120,7 +120,7 @@ risks.
 
 | Class | Examples | Allowed locations | Required handling |
 | --- | --- | --- | --- |
-| Public protocol data | Program IDs, public keys, public follows, signed public manifests | Woke Network, content providers, public APIs, caches | Version, sign, hash, validate, and document permanence |
+| Public protocol data | Program IDs, public keys, public follows, signed public manifests | WokeNet, content providers, public APIs, caches | Version, sign, hash, validate, and document permanence |
 | Public but deletable-by-policy content | Ordinary post bodies and media | Deletion-capable providers and indexer projections by default | Explicit storage policy, tombstones, provider deletion requests, no permanence claim |
 | Restricted content | Paid, private-community, or audience-limited content | Encrypted blobs and authorized client storage | Encrypt before upload; never colocate public decryption keys |
 | Private communications | Message bodies, attachments, safety numbers | End-to-end encrypted envelopes and encrypted local storage | No server plaintext; minimize metadata; explicit report disclosure |
@@ -137,11 +137,13 @@ metadata rather than user content.
 
 The credential-bound WebAuthn-PRF account-key wrapper, exact-origin/RP
 user-verifying ceremonies, durable one-time challenge/session service,
-ciphertext-only bundle sync, current-epoch Woke Network delegation enforcement, and
-delayed guardian-threshold recovery program are implemented and tested.
-Protocol-identity creation from the browser, complete multi-device inventory,
-email assistance, recovery notifications/product UX, and sponsorship remain
-**Planned** unless explicitly identified.
+atomic credential/wrapper registration, same-root service-passkey list/add/revoke,
+authentication/session issuance that is atomic against revocation,
+current-epoch WokeNet delegation enforcement, and delayed guardian-threshold
+recovery program are implemented and tested. Protocol-identity creation from
+the browser, WokeNet delegation/device-authority inventory, email assistance,
+recovery notifications/product UX, and sponsorship remain **Planned** unless
+explicitly identified.
 
 ### Wallet and passkey authentication
 
@@ -152,7 +154,7 @@ email assistance, recovery notifications/product UX, and sponsorship remain
 - Passkeys MUST be WebAuthn credentials bound to the exact production RP ID and
   approved origins. Development and production credential namespaces MUST be
   separate.
-- A WebAuthn assertion MUST NOT be presented as a Woke Network transaction or
+- A WebAuthn assertion MUST NOT be presented as a WokeNet transaction or
   portable-object signature. A compatible PRF result may wrap a locally
   generated Ed25519 key as
   specified by
@@ -203,7 +205,7 @@ UX, email assistance, and independent review remain launch gates.
 
 ### Operator and program authority
 
-- Production Woke Network program upgrade authority MUST be a publicly documented multisig with
+- Production WokeNet program upgrade authority MUST be a publicly documented multisig with
   independent signers, hardware-backed keys, quorum, and a time-delayed review
   process.
 - No application hot wallet may control production program upgrades or user
@@ -216,13 +218,13 @@ UX, email assistance, and independent review remain launch gates.
   verification MUST have reproducible runbooks and independently retained
   evidence.
 
-## Woke Network transaction, validator, and program security
+## WokeNet transaction, validator, and program security
 
 All items in this section are **Planned**.
 
 Before a wallet or sponsor signs, the client or service MUST:
 
-1. Resolve the selected Woke Network environment and exact expected genesis hash.
+1. Resolve the selected WokeNet environment and exact expected genesis hash.
 2. Verify every program ID against environment configuration.
 3. Decode every supported instruction and reject unknown instructions by default.
 4. Validate writable and signer accounts, PDA derivations, recipients, token
@@ -248,7 +250,7 @@ signals used only under the privacy policy, per-action budgets, idempotency keys
 transaction-shape allowlists, simulation, daily loss ceilings, and an emergency
 disable switch. Sponsorship MUST remain optional and replaceable.
 
-Woke Network runtime evidence MUST additionally:
+WokeNet runtime evidence MUST additionally:
 
 - build the exact pinned official Firedancer commit plus checksum-pinned patch
   queue;
@@ -346,7 +348,7 @@ retention/replay state, fail-closed key authorization, metadata-safe logs, and
 real-loopback tests. The pairwise-only adapter selected by ADR-0007 now
 delegates actual Olm ratchets, signatures, key agreement, and authenticated
 encryption to pinned Apache-2.0 Matrix Rust crypto WASM. Its 13 independent
-two-device cases cover current Socially Woke device binding,
+two-device cases cover current WokeSocial device binding,
 encryption/decryption, replay/corruption/wrong-device rejection,
 revocation/rotation, fixed errors, plaintext absence from directory/relay
 artifacts, canonical sender-device signatures before stateful Olm processing,
@@ -358,7 +360,7 @@ persistence, browser WASM/CSP packaging, durable replay state, pre-key
 retransmission, attachments, safety UX, deployed relay integration, and
 independent review remain **Planned**.
 
-- Socially Woke MUST use a maintained, independently reviewed messaging protocol
+- WokeSocial MUST use a maintained, independently reviewed messaging protocol
   and library; custom cryptographic constructions are forbidden.
 - One-to-one production messaging requires authenticated device keys, forward
   secrecy where supported, replay protection, key rotation, safety-number UX,
@@ -378,7 +380,7 @@ Digest-pinned local infrastructure and hardened optional service profiles are
 implemented; production secret injection, TLS, resource sizing, image signing,
 SBOM/provenance, backup/restore, and provider deployment remain **Planned**.
 
-- Separate compatibility-test, native localnet, Woke test-network, staging, and
+- Separate compatibility-test, native localnet, WokeNet test network, staging, and
   production credentials and data. Production-network credentials MUST never be
   available to pull-request jobs.
 - Inject secrets at runtime from a provider-neutral secret interface. `.env`
@@ -414,7 +416,7 @@ All items in this section are **Planned**.
   and code scanning before release.
 - Generate an SBOM and provenance for release artifacts. Sign immutable artifacts
   where the selected registry supports verification.
-- Woke Network releases MUST use reproducible/verifiable Firedancer and social
+- WokeNet releases MUST use reproducible/verifiable Firedancer and social
   program builds and publish source revisions, patch digests, toolchains, binary
   hashes, genesis/feature identifiers, program-data address, and authorities.
 - Dependency updates MUST be reviewed for install scripts, maintainer changes,
@@ -448,7 +450,7 @@ No row is satisfied until evidence is linked from a release report.
 | --- | --- | --- |
 | Source and dependency integrity | Frozen clean install, lockfile review, secret/dependency/code scans, SBOM | Partial: frozen install, exact patched overrides, a no-known-vulnerability audit result, and pinned CI/Gitleaks workflows exist; SBOM/release provenance and complete scan evidence remain |
 | Web/API security | Header test, CSP report review, authz/CSRF/SSRF/XSS/SQLi tests, rate-limit tests | Partial: read-only indexer rate limiting and basic headers exist; the full adversarial/CSP suite does not |
-| Woke Network runtime and program security | Native-Firedancer build/conformance/consensus gates, formatting, Clippy, unit and compatibility-validator tests, verifiable builds, independent audit findings resolved | Blocked: source/patch/capability policy and SBF/local compatibility evidence exist; native Firedancer lacks required RPC methods and a production release, and no native cluster, verifiable release, or independent audit exists |
+| WokeNet runtime and program security | Native-Firedancer build/conformance/consensus gates, formatting, Clippy, unit and compatibility-validator tests, verifiable builds, independent audit findings resolved | Blocked: source/patch/capability policy and SBF/local compatibility evidence exist; native Firedancer lacks required RPC methods and a production release, and no native cluster, verifiable release, or independent audit exists |
 | Transaction safety | Golden instruction decodes, substitution tests, simulation comparison tests, wallet UX review | Partial: exact account/data tests, substitution/allocation/replay tests, strict caller-parsed simulation comparison, and finalized-account proof validation exist; concrete RPC decoding, compiled-message/blockhash comparison, wallet integration, sponsorship policy, and native evidence remain open |
 | Identity and recovery | WebAuthn origin tests, nonce/replay tests, delegation/revocation/recovery abuse tests | Partial: real browser WebAuthn, durable challenges/sessions, delegation epochs, and delayed guardian recovery adversarial paths pass; protocol onboarding, email/notification UX, full device lifecycle, and review remain |
 | Content integrity | Canonical vectors, signature/hash/CID substitution tests, gateway failover tests | Partial: TypeScript canonical/signature/hash/CID and storage corruption tests pass; shared vectors and comprehensive failover do not |

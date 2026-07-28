@@ -47,14 +47,14 @@ export const fixedOptions = { createdAt: fixedCreatedAt, nonce: fixedNonce };
 export const rootIdentity = createPayloadBuilderIdentity(network, author, publicKey, 'root');
 
 const otherIdentityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 10));
-export const otherIdentity = `swid:v1:${network}:${otherIdentityPda}`;
+export const otherIdentity = `wokesocialid:v1:${network}:${otherIdentityPda}`;
 const delegatedPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => 200 - index);
 const delegatedPublicKey = ed25519.getPublicKey(delegatedPrivateKey);
 
 const fakeDigest = `u${'A'.repeat(43)}`;
 const fakeCid = (character: 'a' | 'c' | 'd' | 'e') => `b${character.repeat(58)}`;
 export const objectReference = (type: PortablePayloadType): ObjectReference => ({
-  id: `swobj:v1:${type}:${fakeDigest}`,
+  id: `wokesocialobj:v1:${type}:${fakeDigest}`,
 });
 
 export const encryptedContentReference: ContentReference = {
@@ -64,7 +64,7 @@ export const encryptedContentReference: ContentReference = {
   mediaType: 'application/octet-stream',
   protection: {
     kind: 'encrypted',
-    encryptionFormat: 'socially-woke-sealed-body-v1',
+    encryptionFormat: 'wokesocial-sealed-body-v1',
     keyEnvelope: objectReference('media-manifest'),
     accessPolicy: objectReference('community-rule-set'),
   },

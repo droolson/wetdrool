@@ -1,4 +1,4 @@
-# `@socially-woke/messaging`
+# `@wokesocial/messaging`
 
 This package is the narrow, pairwise-only adapter selected by ADR-0007. It
 delegates the ratchet, key agreement, authenticated encryption, and device-key
@@ -6,7 +6,7 @@ signing to the pinned Apache-2.0
 `@matrix-org/matrix-sdk-crypto-wasm@18.4.0` engine. It does not implement a
 cryptographic primitive or libolm compatibility layer.
 
-The public API uses Woke Social identity/device addresses. Matrix-shaped IDs,
+The public API uses WokeSocial identity/device addresses. Matrix-shaped IDs,
 engine request objects, and engine state stay inside the adapter. Create a
 device with `createPairwiseDevice`; the concrete implementation and its
 constructor are not runtime exports. The factory returns the public
@@ -14,7 +14,7 @@ constructor are not runtime exports. The factory returns the public
 
 A replaceable key-directory transport receives only an operation label and
 opaque bytes. The directory is untrusted: every engine device key is
-independently matched to a current Woke Social device-authorization assertion
+independently matched to a current WokeSocial device-authorization assertion
 before a key claim, encryption, stateful decryption, or plaintext release.
 Authorization is checked before and after sensitive operations so a mid-flight
 revocation or rotation fails closed. The local device is subject to the same

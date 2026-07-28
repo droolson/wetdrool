@@ -16,7 +16,7 @@ describe('real browser WebAuthn ceremony', () => {
     const store = new MemoryAuthStore();
     const service = new AuthService({
       store,
-      rpName: 'Socially Woke Browser Gate',
+      rpName: 'WokeSocial Browser Gate',
       rpId: 'localhost',
       origin,
     });
@@ -54,6 +54,54 @@ describe('real browser WebAuthn ceremony', () => {
           let binary = '';
           for (const byte of bytes) binary += String.fromCharCode(byte);
           return btoa(binary).replace(/\+/gu, '-').replace(/\//gu, '_').replace(/=+$/gu, '');
+        }
+        function encodeLength(length: number): Uint8Array {
+          const encoded = new Uint8Array(4);
+          new DataView(encoded.buffer).setUint32(0, length, false);
+          return encoded;
+        }
+        function concat(parts: readonly Uint8Array[]): Uint8Array {
+          const result = new Uint8Array(
+            parts.reduce((length, part) => length + part.byteLength, 0),
+          );
+          let offset = 0;
+          for (const part of parts) {
+            result.set(part, offset);
+            offset += part.byteLength;
+          }
+          return result;
+        }
+        async function rootBundle(credential: PublicKeyCredential) {
+          const encoder = new TextEncoder();
+          const fields = [
+            encoder.encode('wokesocial.crypto/v1'),
+            encoder.encode('sha256'),
+            encoder.encode('wokesocial/auth/passkey-credential-binding'),
+            encodeLength(1),
+            new Uint8Array(credential.rawId),
+          ];
+          const framed = concat(fields.flatMap((field) => [encodeLength(field.byteLength), field]));
+          const binding = await crypto.subtle.digest('SHA-256', framed.buffer as ArrayBuffer);
+          const publicKey = crypto.getRandomValues(new Uint8Array(32));
+          const salt = crypto.getRandomValues(new Uint8Array(32));
+          const nonce = crypto.getRandomValues(new Uint8Array(12));
+          const ciphertext = crypto.getRandomValues(new Uint8Array(48));
+          return {
+            version: 1,
+            kdf: 'HKDF-SHA-256',
+            algorithm: 'A256GCM',
+            credentialBinding: encode(binding),
+            keyKind: 'solana-ed25519-root-seed',
+            publicKey: encode(publicKey.buffer as ArrayBuffer),
+            salt: encode(salt.buffer as ArrayBuffer),
+            encryptedKey: {
+              version: 1,
+              algorithm: 'A256GCM',
+              domain: 'wokesocial/auth/account-key-bundle',
+              nonce: encode(nonce.buffer as ArrayBuffer),
+              ciphertext: encode(ciphertext.buffer as ArrayBuffer),
+            },
+          };
         }
         function creationOptions(
           input: Record<string, unknown>,
@@ -144,6 +192,7 @@ describe('real browser WebAuthn ceremony', () => {
           accountId: registration.accountId,
           ceremonyId: registration.ceremonyId,
           response: registrationJson(created),
+          bundle: await rootBundle(created),
         });
         const registrationVerified = (await registrationVerifyResponse.json()) as {
           csrfToken: string;

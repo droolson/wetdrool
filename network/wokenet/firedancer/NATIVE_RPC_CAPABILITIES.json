@@ -26,6 +26,18 @@
       "getTransaction",
       "sendTransaction",
       "simulateTransaction"
+    ],
+    "blockedMethodDesigns": [
+      {
+        "method": "getSignatureStatuses",
+        "status": "blocked",
+        "implementationPromoted": false,
+        "document": "GET_SIGNATURE_STATUSES_DESIGN.md",
+        "blockers": [
+          "snapshot status restore discards the complete transaction error and does not populate an RPC signature-status cache",
+          "native tower/RPC does not expose the cluster block-commitment confirmation count"
+        ]
+      }
     ]
   },
   "activationPolicy": {

@@ -2,8 +2,8 @@
 
 ## Current status
 
-Socially Woke and Woke Network are pre-release software. No version is currently
-supported for production Woke Network use, and no security control should be
+WokeSocial and WokeNet are pre-release software. No version is currently
+supported for production WokeNet use, and no security control should be
 considered verified without evidence in the release report. The design
 requirements and threat model are in `docs/SECURITY.md` and
 `docs/THREAT_MODEL.md`.
@@ -49,7 +49,7 @@ privacy or service harm.
 
 High-priority areas include:
 
-- Wallet prompts, transaction substitution, payments, sponsorship, Woke Network
+- Wallet prompts, transaction substitution, payments, sponsorship, WokeNet
   programs, and native Firedancer validator/RPC behavior.
 - Root identity, passkeys, delegated keys, recovery, and revocation.
 - Private messaging, restricted-content encryption, and device membership.

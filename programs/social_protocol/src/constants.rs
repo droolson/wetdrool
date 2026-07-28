@@ -5,8 +5,8 @@ pub const ACCOUNT_VERSION: u8 = 1;
 /// Public protocol version stored in the configuration account.
 pub const PROTOCOL_VERSION: u16 = 1;
 
-/// All v1 protocol PDAs begin with `b"sw"` and `[1]`.
-pub const PDA_PREFIX: &[u8] = b"sw";
+/// All v1 protocol PDAs begin with `b"wokesocial"` and `[1]`.
+pub const PDA_PREFIX: &[u8] = b"wokesocial";
 /// A separate byte seed prevents future account-version collisions.
 pub const PDA_VERSION: &[u8] = &[ACCOUNT_VERSION];
 
@@ -56,10 +56,10 @@ pub const VALID_COMMUNITY_ROLES: u16 =
     COMMUNITY_ROLE_MEMBER | COMMUNITY_ROLE_MODERATOR | COMMUNITY_ROLE_ADMIN;
 
 /// The only executable governance strategy in v1. The digest is SHA-256 over:
-/// `socially-woke:governance:one-active-member-one-vote:v1;quorum-bps=5000;approval-bps=5001;abstain=quorum-only`.
+/// `wokesocial:governance:one-active-member-one-vote:v1;quorum-bps=5000;approval-bps=5001;abstain=quorum-only`.
 pub const ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH: [u8; MANIFEST_HASH_BYTES] = [
-    194, 111, 47, 125, 12, 76, 238, 214, 100, 126, 189, 3, 102, 193, 39, 21, 92, 90, 225, 152, 44,
-    32, 248, 60, 14, 192, 167, 251, 22, 215, 252, 112,
+    46, 103, 181, 4, 56, 32, 56, 6, 227, 238, 34, 184, 15, 5, 131, 152, 36, 10, 237, 225, 159,
+    118, 162, 108, 176, 166, 41, 208, 234, 179, 144, 211,
 ];
 pub const GOVERNANCE_QUORUM_BPS: u16 = 5_000;
 pub const GOVERNANCE_APPROVAL_BPS: u16 = 5_001;

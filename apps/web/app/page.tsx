@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, SectionHeading, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, SectionHeading, StatusBadge } from '@wokesocial/ui';
 
 export const metadata: Metadata = {
   title: 'Own your voice',
@@ -60,8 +60,8 @@ export default function MarketingPage() {
             <em>Keep the keys.</em>
           </h1>
           <p className="hero__lede">
-            Socially Woke is building an affirming social network where identity is portable, feeds
-            are inspectable, and safety does not require one company to become the world’s speech
+            WokeSocial is building an affirming social network where identity is portable, feeds are
+            inspectable, and safety does not require one company to become the world’s speech
             authority.
           </p>
           <div className="hero__actions">
@@ -77,7 +77,7 @@ export default function MarketingPage() {
           </ul>
         </div>
 
-        <div className="hero-object" aria-label="Socially Woke design principles">
+        <div className="hero-object" aria-label="WokeSocial design principles">
           <div className="hero-object__halo" aria-hidden="true" />
           <article className="signal-card signal-card--front">
             <div className="signal-card__top">
@@ -85,7 +85,7 @@ export default function MarketingPage() {
                 S
               </span>
               <div>
-                <p>Socially Woke principle</p>
+                <p>WokeSocial principle</p>
                 <span>Designed in public</span>
               </div>
               <StatusBadge tone="neutral">Concept</StatusBadge>
@@ -191,7 +191,7 @@ export default function MarketingPage() {
       </section>
 
       <section className="closing-statement page-shell">
-        <p className="section-kicker">Socially Woke</p>
+        <p className="section-kicker">WokeSocial</p>
         <h2>
           Bold enough to be joyful.
           <span>Serious enough to earn trust.</span>

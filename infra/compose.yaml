@@ -1,12 +1,12 @@
-name: socially-woke-local
+name: wokesocial-local
 
 services:
   postgres:
     image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-socially_woke}
+      POSTGRES_DB: ${POSTGRES_DB:-wokesocial}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
-      POSTGRES_USER: ${POSTGRES_USER:-socially_woke}
+      POSTGRES_USER: ${POSTGRES_USER:-wokesocial}
     ports:
       - 127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432
     volumes:
@@ -81,17 +81,17 @@ services:
   auth-service:
     profiles:
       - services
-    image: socially-woke-auth-service:local
+    image: wokesocial-auth-service:local
     build:
       context: ..
       dockerfile: apps/auth-service/Dockerfile
     environment:
       AUTH_HOST: 0.0.0.0
       AUTH_PORT: 4300
-      AUTH_RP_NAME: ${AUTH_RP_NAME:-Socially Woke}
+      AUTH_RP_NAME: ${AUTH_RP_NAME:-WokeSocial}
       AUTH_RP_ID: ${AUTH_RP_ID:-localhost}
       AUTH_ORIGIN: ${AUTH_ORIGIN:-http://localhost:3000}
-      AUTH_DATABASE_URL: postgresql://${POSTGRES_USER:-socially_woke}:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/${POSTGRES_DB:-socially_woke}
+      AUTH_DATABASE_URL: postgresql://${POSTGRES_USER:-wokesocial}:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/${POSTGRES_DB:-wokesocial}
       AUTH_DANGEROUSLY_USE_MEMORY_STORE: 0
       AUTH_CLEANUP_INTERVAL_MS: ${AUTH_CLEANUP_INTERVAL_MS:-60000}
       AUTH_PENDING_ACCOUNT_RETENTION_MS: ${AUTH_PENDING_ACCOUNT_RETENTION_MS:-3600000}
@@ -131,7 +131,7 @@ services:
   feed-service:
     profiles:
       - services
-    image: socially-woke-feed-service:local
+    image: wokesocial-feed-service:local
     build:
       context: ..
       dockerfile: apps/feed-service/Dockerfile
@@ -169,14 +169,14 @@ services:
   relay:
     profiles:
       - locked-services
-    image: socially-woke-relay:local
+    image: wokesocial-relay:local
     build:
       context: ..
       dockerfile: apps/relay/Dockerfile
     environment:
       RELAY_HOST: 0.0.0.0
       RELAY_PORT: 4200
-      RELAY_ID: ${RELAY_ID:-socially-woke-local}
+      RELAY_ID: ${RELAY_ID:-wokesocial-local}
       RELAY_ALLOWED_ORIGINS: ${RELAY_ALLOWED_ORIGINS:-http://localhost:3000}
       RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: ${RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE:-0}
     ports:
@@ -209,7 +209,7 @@ services:
   moderation-service:
     profiles:
       - locked-services
-    image: socially-woke-moderation-service:local
+    image: wokesocial-moderation-service:local
     build:
       context: ..
       dockerfile: apps/moderation-service/Dockerfile
@@ -248,7 +248,7 @@ services:
   clamav:
     profiles:
       - media
-    image: socially-woke-clamav:local
+    image: wokesocial-clamav:local
     build:
       context: ..
       dockerfile: infra/clamav/Dockerfile
@@ -282,7 +282,7 @@ services:
   media-worker:
     profiles:
       - media
-    image: socially-woke-media-worker:local
+    image: wokesocial-media-worker:local
     build:
       context: ..
       dockerfile: apps/media-worker/Dockerfile
@@ -297,9 +297,9 @@ services:
       MEDIA_WORKER_CLAMD_STREAM_MAX_BYTES: 100000000
       MEDIA_WORKER_CLAMD_MAX_DATABASE_AGE_MS: ${MEDIA_WORKER_CLAMD_MAX_DATABASE_AGE_MS:-259200000}
       MEDIA_WORKER_STATIC_BEARER_TOKEN: ${MEDIA_WORKER_STATIC_BEARER_TOKEN:?Set a canonical base64url media-worker token}
-      MEDIA_WORKER_STAGING_ROOT: /var/lib/socially-woke/staging
-      MEDIA_WORKER_TEMPORARY_ROOT: /var/lib/socially-woke/temporary
-      MEDIA_WORKER_STORAGE_ROOT: /var/lib/socially-woke/cas
+      MEDIA_WORKER_STAGING_ROOT: /var/lib/wokesocial/staging
+      MEDIA_WORKER_TEMPORARY_ROOT: /var/lib/wokesocial/temporary
+      MEDIA_WORKER_STORAGE_ROOT: /var/lib/wokesocial/cas
       MEDIA_WORKER_CLEANUP_INTERVAL_MS: ${MEDIA_WORKER_CLEANUP_INTERVAL_MS:-900000}
       TZ: Etc/UTC
     ports:
@@ -307,9 +307,9 @@ services:
     networks:
       - media-private
     volumes:
-      - media-staging:/var/lib/socially-woke/staging
-      - media-temporary:/var/lib/socially-woke/temporary
-      - media-cas:/var/lib/socially-woke/cas
+      - media-staging:/var/lib/wokesocial/staging
+      - media-temporary:/var/lib/wokesocial/temporary
+      - media-cas:/var/lib/wokesocial/cas
     depends_on:
       clamav:
         condition: service_healthy

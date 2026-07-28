@@ -1,9 +1,9 @@
 {
-  "name": "@socially-woke/crypto",
+  "name": "@wokesocial/crypto",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Dependency-free WebCrypto primitives with Socially Woke domain separation",
+  "description": "Dependency-free WebCrypto primitives with WokeSocial domain separation",
   "license": "Apache-2.0",
   "exports": {
     ".": {

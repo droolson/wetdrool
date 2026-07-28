@@ -1,4 +1,4 @@
-# woke.social Protocol on Woke Network
+# WokeSocial Protocol on WokeNet
 
 ## Document status
 
@@ -7,7 +7,7 @@
 - **Conformance vectors:** TypeScript unit fixtures exist; shared
   Rust/TypeScript golden vectors are not created
 - **Compatibility-harness program ID:** `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`
-- **Woke Network deployment:** None; tests currently use a fresh
+- **WokeNet deployment:** None; tests currently use a fresh
   Solana-wire-compatible validator, not native Firedancer
 - **Last verified:** 2026-07-28
 
@@ -73,10 +73,10 @@ machine-readable registry and implementation must agree.
 A network is identified by all of:
 
 ```text
-woke:v1:<base58-genesis-hash>:<base58-program-id>
+wokenet:v1:<base58-genesis-hash>:<base58-program-id>
 ```
 
-The literal `woke:v1` binds the sovereign network family and namespace version.
+The literal `wokenet:v1` binds the sovereign network family and namespace version.
 Human labels such as `localnet`, `testnet`, or `main network` are display hints,
 not cryptographic network identifiers. Clients MUST compare the RPC genesis
 hash and configured program ID before reading or signing. Pre-migration
@@ -87,7 +87,7 @@ hash and configured program ID before reading or signing. Pre-migration
 An identity URI is:
 
 ```text
-swid:v1:woke:v1:<base58-genesis-hash>:<base58-program-id>:<base58-identity-pda>
+wokesocialid:v1:wokenet:v1:<base58-genesis-hash>:<base58-program-id>:<base58-identity-pda>
 ```
 
 The identity PDA remains stable when its root authority rotates. Wallet
@@ -101,7 +101,7 @@ is derived from its canonical unsigned payload:
 
 ```text
 digest = SHA-256(JCS(payload))
-id     = swobj:v1:<object-type>:<base64url-no-padding(digest)>
+id     = wokesocialobj:v1:<object-type>:<base64url-no-padding(digest)>
 ```
 
 The `object-type` segment MUST match `payload.type`. References to a portable
@@ -112,7 +112,7 @@ identifier.
 
 | Value | Encoding |
 | --- | --- |
-| Solana-compatible public key, PDA, signature, Woke genesis hash | Canonical base58; decoded length validated |
+| Solana-compatible public key, PDA, signature, WokeNet genesis hash | Canonical base58; decoded length validated |
 | Digest in JSON | Multibase base64url without padding, prefixed with `u` |
 | Random nonce | 16 cryptographically random bytes, multibase base64url without padding |
 | Timestamp | UTC RFC 3339 with exactly millisecond precision: `YYYY-MM-DDTHH:mm:ss.sssZ` |
@@ -155,13 +155,13 @@ Every signed portable object payload has these common fields:
 
 ```json
 {
-  "protocol": "socially-woke",
+  "protocol": "wokesocial",
   "protocolVersion": "1.0",
   "schemaVersion": 1,
   "type": "post",
-  "network": "woke:v1:<genesis-hash>:<program-id>",
-  "author": "swid:v1:woke:v1:<genesis-hash>:<program-id>:<identity-pda>",
-  "signingKey": "swid:v1:woke:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
+  "network": "wokenet:v1:<genesis-hash>:<program-id>",
+  "author": "wokesocialid:v1:wokenet:v1:<genesis-hash>:<program-id>:<identity-pda>",
+  "signingKey": "wokesocialid:v1:wokenet:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
   "createdAt": "2026-07-28T12:00:00.000Z",
   "nonce": "u<base64url-16-random-bytes>",
   "critical": [],
@@ -185,7 +185,7 @@ the payload:
   "payload": {},
   "proof": {
     "algorithm": "Ed25519",
-    "keyId": "swid:v1:woke:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
+    "keyId": "wokesocialid:v1:wokenet:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
     "payloadHash": "u<base64url-sha256>",
     "signature": "u<base64url-signature>"
   }
@@ -265,23 +265,25 @@ Consumers MUST download bytes, enforce size limits, recompute the content
 identifier, then verify the signed envelope. A successful HTTP response or
 provider receipt alone is insufficient.
 
-The `"protocol": "socially-woke"` value is a frozen v1 wire identifier. It is
-retained for compatibility and is not a domain, network selector, or claim that
-`sociallywoke.com` remains an application origin.
+The `"protocol": "wokesocial"` and `"network": "wokenet:v1:..."` values are the
+frozen WokeSocial and WokeNet prelaunch v1 wire identifiers. They were renamed
+before launch, so their current forms are canonical rather than old-brand
+compatibility exceptions. `sociallywoke.com` is only a legacy redirect hostname
+and is never an application origin.
 
-## Woke Network program model
+## WokeNet program model
 
-The program uses Woke Network’s Solana-compatible account, PDA, SBF, and
+The program uses WokeNet’s Solana-compatible account, PDA, SBF, and
 transaction model. Those terms describe wire compatibility; they do not
 identify a Solana-operated cluster. Native execution is restricted to
-Firedancer by [ADR-0009](DECISIONS/0009-sovereign-woke-network-firedancer.md).
+Firedancer by [ADR-0009](DECISIONS/0009-sovereign-wokenet-firedancer.md).
 
 ### PDA derivation
 
 Every v1 PDA begins with two seeds:
 
 ```text
-b"sw", [0x01]
+b"wokesocial", [0x01]
 ```
 
 All integer seeds use fixed-width little-endian bytes. All digest seeds are full
@@ -314,7 +316,7 @@ unbounded seeds.
 The implemented derivations have deterministic domain tests and are exercised
 by the Anchor local-validator suite. The program uses the fixed development ID
 `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; no PDA in this table is evidence
-of a native Firedancer cluster, Woke Network test deployment, or production
+of a native Firedancer cluster, WokeNet test deployment, or production
 deployment. Planned rows remain seed designs until implemented and tested.
 
 ### Handle rules
@@ -404,9 +406,9 @@ and no such offchain mechanism is authoritative over the program.
 ### Executable community governance
 
 The only executable strategy in the current program is committed by
-`SHA-256("socially-woke:governance:one-active-member-one-vote:v1;quorum-bps=5000;approval-bps=5001;abstain=quorum-only")`,
+`SHA-256("wokesocial:governance:one-active-member-one-vote:v1;quorum-bps=5000;approval-bps=5001;abstain=quorum-only")`,
 whose digest is
-`c26f2f7d0c4ceed6647ebd0366c127155c5ae1982c20f83c0ec0a7fb16d7fc70`.
+`2e67b50438203806e3ee22b80f058398240aede19f76a26cb0a629d0eab390d3`.
 It fixes quorum at 5,000 basis points and approval at 5,001 basis points.
 Proposal creation fails if the community commits to another strategy or the
 caller supplies different thresholds.
@@ -539,7 +541,7 @@ and relevant enum variants against the generated IDL. It ingests all six
 recovery events into deterministic memory and PostgreSQL policy/request
 projections. Those projections are explicitly non-canonical: a projected
 `pending` request means no terminal event was observed and is not an assertion
-that the current Woke Network accounts still make the request executable.
+that the current WokeNet accounts still make the request executable.
 
 `ProposalCreated` records the immutable strategy, thresholds, eligibility
 count, manifest, authority, window, and checked creator/community/proposal
@@ -560,12 +562,12 @@ conformance fixtures are stabilized.
 
 | Object | Canonical representation | Required signer/authority | Revision rule | Deletion semantics |
 | --- | --- | --- | --- | --- |
-| Identity | Woke Network identity account and events | Root authority or valid recovery execution | Monotonic state version | Deactivate/revoke; identity URI is never reassigned |
+| Identity | WokeNet identity account and events | Root authority or valid recovery execution | Monotonic state version | Deactivate/revoke; identity URI is never reassigned |
 | Profile | Signed profile manifest plus latest onchain reference | `profile` delegation or root | New immutable manifest points to previous ID | Tombstone/suppress old profile; history may remain replicated |
-| Handle claim | Woke Network PDA | Identity authority | Release then new claim under anti-impersonation policy | Release does not erase history |
-| Delegation | Woke Network account/event | Root or scoped recovery authority | Add/revoke; never mutate a key into broader scope | Revocation retained in replay history |
-| Follow edge | Woke Network PDA/event for public portable follows | `social` delegation or root | Create/remove idempotently | Removal event closes active edge; history remains |
-| Block edge | Optional public Woke Network edge; otherwise encrypted private export | `social` delegation or root | Create/remove | Official clients enforce active edge; private lists remain private |
+| Handle claim | WokeNet PDA | Identity authority | Release then new claim under anti-impersonation policy | Release does not erase history |
+| Delegation | WokeNet account/event | Root or scoped recovery authority | Add/revoke; never mutate a key into broader scope | Revocation retained in replay history |
+| Follow edge | WokeNet PDA/event for public portable follows | `social` delegation or root | Create/remove idempotently | Removal event closes active edge; history remains |
+| Block edge | Optional public WokeNet edge; otherwise encrypted private export | `social` delegation or root | Create/remove | Official clients enforce active edge; private lists remain private |
 | Mute preference | Encrypted client data/export only | User device | Mutable local preference | Local/provider purge |
 | Post | Signed post manifest plus optional onchain reference | `post` delegation or root | Immutable | Author tombstone and provider deletion requests |
 | Post revision | Signed post with `revisionOf` and `previousRevision` | Same identity as original | Append-only chain; forks explicitly represented | Tombstone any revision or logical thread |
@@ -575,21 +577,21 @@ conformance fixtures are stabilized.
 | Reaction | Signed interaction; optional onchain PDA | `social` delegation | Replace/retract explicitly | Retraction/removal |
 | Bookmark | Encrypted private client data/export by default | User device | Mutable | Local/provider purge; never public by default |
 | Media manifest | Signed portable manifest | `post` delegation or referenced post author | New rendition manifest references predecessor | Tombstone plus provider deletion where possible |
-| Community | Woke Network root plus signed metadata | Community creation permission/root authority | Monotonic config version | Deactivate; identifier not reassigned |
-| Community membership | Woke Network account/event for portable public membership; encrypted record for private membership | Member and/or configured community permission | State transition with version | Leave/remove; private history minimized |
+| Community | WokeNet root plus signed metadata | Community creation permission/root authority | Monotonic config version | Deactivate; identifier not reassigned |
+| Community membership | WokeNet account/event for portable public membership; encrypted record for private membership | Member and/or configured community permission | State transition with version | Leave/remove; private history minimized |
 | Community role | Onchain permission commitment plus signed role document | Authorized community admin | New version/hash | Retire role; audit events remain |
 | Community rule set | Signed policy object referenced onchain | Authorized community admin | Immutable revision chain | Replace/tombstone; prior signed rules remain auditable |
 | Moderation label | Signed provider assertion | Key authorized by named provider | Superseding assertion or expiry | Retraction label; consumers apply policy |
 | Report | Encrypted operator record; optional non-sensitive receipt hash | Reporting user | Append-only evidence choices and status | Retention policy and reporter deletion rights where lawful |
 | Appeal | Encrypted operator/community record; optional receipt | Affected identity | Append-only decision trail | Retention policy; never expose sensitive evidence publicly |
-| Governance proposal | Woke Network root plus signed proposal body | Community creator root or current `community` delegation | Immutable terms; a different full manifest digest is a new proposal | No current cancel/close path; terminal record remains |
-| Governance vote | Woke Network vote state/event | Snapshot-eligible active member root or current `social`/`community` delegation | Immutable one-per-identity vote; replacement is not supported | Vote and finalized tally history retained |
+| Governance proposal | WokeNet root plus signed proposal body | Community creator root or current `community` delegation | Immutable terms; a different full manifest digest is a new proposal | No current cancel/close path; terminal record remains |
+| Governance vote | WokeNet vote state/event | Snapshot-eligible active member root or current `social`/`community` delegation | Immutable one-per-identity vote; replacement is not supported | Vote and finalized tally history retained |
 | Creator offering | Signed terms plus optional onchain commitment | `payment` delegation or root | New terms version; no retroactive rewrite | Retire offering; settled periods remain |
 | Subscription entitlement | Onchain settlement or independently verifiable receipt | Program-validated payer/recipient | Period-specific | Expiry/refund status; settlement history remains |
-| Tip receipt | Woke Network transaction/program event | Payer | Immutable | Cannot erase settlement; UI may hide subject to policy |
+| Tip receipt | WokeNet transaction/program event | Payer | Immutable | Cannot erase settlement; UI may hide subject to policy |
 | Event | Signed social-event manifest; paid ticket settlement may be onchain | `post`/community authority | Immutable revisions | Cancel/tombstone; payment/refund metadata retained |
 | Notification preference | Encrypted client/operator preference | User device/session | Mutable | Immediate local/provider purge |
-| Deletion tombstone | Signed object and, for anchored content, Woke Network PDA/event | Original author or defined community authority | Immutable; correction is a separate scoped assertion | Official clients/indexers suppress named targets |
+| Deletion tombstone | Signed object and, for anchored content, WokeNet PDA/event | Original author or defined community authority | Immutable; correction is a separate scoped assertion | Official clients/indexers suppress named targets |
 
 Public membership and block visibility are explicit choices. A client MUST NOT
 publish a private membership, bookmark, mute, or block list merely to improve
@@ -679,7 +681,7 @@ portable-payload union:
     "transcript": null
   },
   "processing": {
-    "profile": "socially-woke-media-v1",
+    "profile": "wokesocial-media-v1",
     "metadataStripped": true,
     "processor": "self"
   },
@@ -698,7 +700,7 @@ rendition is independently hashed and bounded.
 ```json
 {
   "target": {
-    "id": "swobj:v1:post:u...",
+    "id": "wokesocialobj:v1:post:u...",
     "cid": "bafy..."
   },
   "reason": "author-deleted",
@@ -789,7 +791,7 @@ Deletion has three distinct effects:
    providers that support it.
 
 Deletion cannot guarantee removal from independent replicas, screenshots,
-archives, a public Woke Network ledger, or permanent storage. Clients must present this limit
+archives, a public WokeNet ledger, or permanent storage. Clients must present this limit
 before permanent publication. A tombstoned object must not reappear after an
 indexer rebuild.
 
@@ -907,7 +909,7 @@ Payment instructions and receipts MUST:
 
 WOKE is the native currency and therefore has no mint or token-contract
 address. Wire-compatible program and RPC fields retain the base-unit term
-`lamport`; `1 WOKE = 1,000,000,000 lamports`. Woke Network production payment
+`lamport`; `1 WOKE = 1,000,000,000 lamports`. WokeNet production payment
 support remains disabled until the native Firedancer, genesis, program, SDK,
 indexer, UI, security, economic, legal, and authority gates pass.
 
@@ -919,7 +921,7 @@ one-week creator subscription settlements using Solana-compatible native
 transfers. It does not support token assets, delegated payment
 signing, linked-wallet payment sources, gifts, monthly or annual periods,
 automatic renewal, escrow, refund execution, receipt/account closing, paid
-communities, paid events, or Woke Network production operation.
+communities, paid events, or WokeNet production operation.
 
 `PaymentConfig` can be created only once by the deployed program's verified
 upgrade authority. The proposed payment policy authority also signs bootstrap,
@@ -938,7 +940,7 @@ authorities to sign. The payment events are:
 
 The four payment account domains are:
 
-| Account | PDA seeds after `["sw", 1]` | Allocated bytes | Compatibility-validator rent-exempt minimum |
+| Account | PDA seeds after `["wokesocial", 1]` | Allocated bytes | Compatibility-validator rent-exempt minimum |
 | --- | --- | ---: | ---: |
 | `PaymentConfig` | `["payment_config"]` | 133 | 1,816,560 lamports |
 | `CreatorSubscriptionOffering` | `["subscription_offering", creator_identity, offering_nonce]` | 622 | 5,220,000 lamports |
@@ -1070,7 +1072,7 @@ fixtures independently in each test suite is insufficient.
 | Account-size and transaction-cost analysis | Implemented for the current compatibility subset | Native serialization tests assert all 19 account layouts. The real-validator harness enforces transaction-size, compute, balance-conservation, substitution, replay, recovery, governance, and payment bounds. These measurements are Solana-wire compatibility evidence, not native Firedancer performance evidence |
 | Local-validator tests | Experimental compatibility coverage | Real-validator flows cover root and delegated identity/social actions, handles, governance, delayed guardian recovery, native WOKE tips, weekly subscriptions, receipts, entitlements, substitution, replay, and exact balance deltas. The full cross-language, passkey/email product, native-Firedancer, and public-network matrix remains incomplete |
 | Native Firedancer runtime | Blocked | The exact official upstream commit and downstream genesis patch are reproducibly pinned, but full native Firedancer has no production release and lacks required submit/simulate/status/history/program-account RPC methods; no Agave fallback is permitted |
-| SDK verification path | Partial | Provider-neutral publication plus seven IDL-aligned native-WOKE instruction builders, exact plans, caller-parsed simulation comparison, and injected finalized-account verification use explicit Woke endpoint/genesis/program context; concrete RPC decoding, full message compile/sign/broadcast, wallet UX, and native finalized receipt/entitlement evidence remain absent |
+| SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus seven IDL-aligned native-WOKE instruction builders, exact plans, caller-parsed simulation comparison, and injected finalized-account verification use explicit WokeNet endpoint/genesis/program context; concrete RPC decoding, payment-message compile/sign/broadcast, wallet UX, and native finalized receipt/entitlement evidence remain absent |
 | Storage adapters and local CID verification | Implemented subset | Memory/local CAS, multi-provider quorum, IPFS HTTP/Kubo, and Arweave-compatible permanent-storage adapters are tested; no funded live Arweave uploader is configured |
 | Rebuildable indexer | Experimental connected implementation | Finalized Solana-compatible RPC ingestion, exhaustive 32-event current-IDL decoding, network-scoped checkpoints and identity references, signed-manifest verification, social/governance/recovery/payment projection, tombstone suppression, read APIs, PostgreSQL durability, and destructive replay are implemented and tested locally; native Firedancer and independent-provider reconciliation remain incomplete |
 | Alternate-provider conformance | Partial | Storage quorum/failover and real-loopback multi-relay failover/reconnect/deduplication are tested; independent RPC/indexer/feed conformance remains absent |

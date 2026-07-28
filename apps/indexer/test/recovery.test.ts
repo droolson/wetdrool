@@ -1,8 +1,8 @@
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import type { NetworkId } from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import type { NetworkId } from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   AnchorEventDecodingError,
@@ -23,10 +23,10 @@ import {
 } from '../src/index.js';
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-const networkId = `woke:v1:${publicKey(1)}:${programId}` as NetworkId;
+const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
 const configAddress = publicKey(2);
 const identityAddress = publicKey(3);
-const identityId = `swid:v1:${networkId}:${identityAddress}`;
+const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
 const originalRoot = publicKey(4);
 const recoveredRoot = publicKey(5);
 const secondTargetRoot = publicKey(6);
@@ -209,7 +209,7 @@ describe('recovery Anchor events', () => {
 
 describe('recovery projection', () => {
   it('isolates identical identity, policy, and request addresses by network', async () => {
-    const secondNetworkId = `woke:v1:${publicKey(140)}:${programId}` as NetworkId;
+    const secondNetworkId = `wokenet:v1:${publicKey(140)}:${programId}` as NetworkId;
     const projection = new MemoryProjectionStore();
     const indexer = new OpenIndexer(
       projection,
@@ -330,7 +330,7 @@ describe('recovery projection', () => {
       expect(policyResponse.statusCode).toBe(200);
       expect(policyResponse.json()).toMatchObject({
         canonical: false,
-        authoritativeSource: 'woke-network-account-state',
+        authoritativeSource: 'wokenet-account-state',
         policy: { policySequence: '3', active: false },
       });
       const requestsResponse = await app.inject({

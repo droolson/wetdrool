@@ -7,7 +7,7 @@ import {
   type ModerationSubject,
   type ReportPayload,
   type SignedEnvelope,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 
 import { ModerationServiceError } from './errors.js';
 import {

@@ -15,22 +15,22 @@ const ENDPOINT_KEYS: Readonly<
   Record<ProviderKind, { key: string; label: string; plural: boolean }>
 > = {
   indexer: {
-    key: 'SOCIALLY_WOKE_INDEXER_URL',
+    key: 'WOKESOCIAL_INDEXER_URL',
     label: 'Indexer',
     plural: false,
   },
   rpc: {
-    key: 'SOCIALLY_WOKE_RPC_ENDPOINTS',
-    label: 'Woke Network RPC',
+    key: 'WOKENET_RPC_ENDPOINTS',
+    label: 'WokeNet RPC',
     plural: true,
   },
   gateway: {
-    key: 'SOCIALLY_WOKE_CONTENT_GATEWAYS',
+    key: 'WOKESOCIAL_CONTENT_GATEWAYS',
     label: 'Content gateways',
     plural: true,
   },
   relay: {
-    key: 'SOCIALLY_WOKE_RELAY_ENDPOINTS',
+    key: 'WOKESOCIAL_RELAY_ENDPOINTS',
     label: 'Real-time relays',
     plural: true,
   },
@@ -88,7 +88,7 @@ function parseEndpoint(
 }
 
 export function getIndexerBaseUrl(environment: Environment = process.env): URL | null {
-  const rawValue = environment.SOCIALLY_WOKE_INDEXER_URL?.trim();
+  const rawValue = environment.WOKESOCIAL_INDEXER_URL?.trim();
   return rawValue ? parseHttpEndpoint(rawValue) : null;
 }
 

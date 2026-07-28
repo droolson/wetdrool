@@ -3,11 +3,11 @@ const networkParameter = {
   in: 'query',
   required: true,
   description:
-    'Canonical sovereign Woke Network identifier. Both base58 segments must decode to exactly 32 bytes.',
+    'Canonical sovereign WokeNet identifier. Both base58 segments must decode to exactly 32 bytes.',
   schema: {
     type: 'string',
     maxLength: 96,
-    pattern: '^woke:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$',
+    pattern: '^wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$',
   },
 } as const;
 
@@ -22,7 +22,7 @@ const solanaPublicKeyParameterSchema = {
 export const openApiDocument = {
   openapi: '3.1.0',
   info: {
-    title: 'Woke Network Open Indexer API',
+    title: 'WokeNet Open Indexer API',
     version: '0.1.0',
     description:
       'A rebuildable convenience projection. Responses are not canonical protocol state.',
@@ -47,7 +47,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the configured network’s chronological home feed',
         description:
-          'Returns only posts whose manifest signature, content hash, and finalized Woke Network anchor were verified during ingestion.',
+          'Returns only posts whose manifest signature, content hash, and finalized WokeNet anchor were verified during ingestion.',
         parameters: [
           {
             name: 'limit',
@@ -138,7 +138,7 @@ export const openApiDocument = {
       get: {
         summary: 'Resolve an active normalized global handle',
         description:
-          'Returns the current finalized handle projection for one explicit Woke Network identifier. This convenience projection is rebuildable and is not canonical protocol state.',
+          'Returns the current finalized handle projection for one explicit WokeNet identifier. This convenience projection is rebuildable and is not canonical protocol state.',
         parameters: [
           {
             name: 'handle',
@@ -222,7 +222,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the current projected recovery policy for an identity',
         description:
-          'This is a deterministic finalized-event projection, not authoritative account state. Clients must read and validate the Woke Network accounts before signing or executing recovery instructions.',
+          'This is a deterministic finalized-event projection, not authoritative account state. Clients must read and validate the WokeNet accounts before signing or executing recovery instructions.',
         parameters: [
           {
             name: 'identityId',
@@ -262,7 +262,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected recovery request lifecycle',
         description:
-          'This endpoint reports finalized events and never evaluates current on-chain execution eligibility. Woke Network account state remains authoritative.',
+          'This endpoint reports finalized events and never evaluates current on-chain execution eligibility. WokeNet account state remains authoritative.',
         parameters: [
           {
             name: 'recoveryRequestAddress',
@@ -358,7 +358,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the projected payment configuration',
         description:
-          'Returns a rebuildable exact-network projection of the Woke Network payment-config account. The response is not canonical protocol state.',
+          'Returns a rebuildable exact-network projection of the WokeNet payment-config account. The response is not canonical protocol state.',
         parameters: [networkParameter],
         responses: {
           '200': { description: 'Current projected payment policy and authority' },
@@ -371,7 +371,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected subscription offering',
         description:
-          'Returns event-derived terms for one exact-network offering. Clients must read the Woke Network account before constructing a payment.',
+          'Returns event-derived terms for one exact-network offering. Clients must read the WokeNet account before constructing a payment.',
         parameters: [
           {
             name: 'offeringAddress',
@@ -413,7 +413,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one permanent projected payment receipt',
         description:
-          'Returns a finalized-event and Woke Network account projection for one exact network. The indexer does not infer a broader settlement or refund outcome and never reports success on its own authority.',
+          'Returns a finalized-event and WokeNet account projection for one exact network. The indexer does not infer a broader settlement or refund outcome and never reports success on its own authority.',
         parameters: [
           {
             name: 'receiptAddress',
@@ -434,7 +434,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected subscription entitlement',
         description:
-          'Returns the latest finalized projected entitlement state for one exact network. Current eligibility is not evaluated; clients must compare time and authoritative Woke Network state.',
+          'Returns the latest finalized projected entitlement state for one exact network. Current eligibility is not evaluated; clients must compare time and authoritative WokeNet state.',
         parameters: [
           {
             name: 'entitlementAddress',

@@ -3,14 +3,14 @@
   "globalDependencies": [".env.example", "tsconfig.base.json"],
   "globalEnv": [
     "APP_ENV",
-    "NEXT_PUBLIC_WOKE_NETWORK",
-    "NEXT_PUBLIC_WOKE_RPC_URL",
+    "NEXT_PUBLIC_WOKENET",
+    "NEXT_PUBLIC_WOKENET_RPC_URL",
     "NEXT_TELEMETRY_DISABLED",
     "NODE_ENV",
     "TURBO_TELEMETRY_DISABLED",
-    "WOKE_COMMITMENT",
-    "WOKE_RPC_URLS",
-    "WOKE_WS_URLS"
+    "WOKENET_COMMITMENT",
+    "WOKENET_RPC_URLS",
+    "WOKENET_WS_URLS"
   ],
   "tasks": {
     "build": {

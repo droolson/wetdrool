@@ -65,7 +65,7 @@ async function ensureBinary() {
     // Install the checksum-pinned scanner below.
   }
 
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'socially-woke-gitleaks-'));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'wokesocial-gitleaks-'));
   try {
     const archive = join(temporaryDirectory, target.asset);
     const response = await fetch(

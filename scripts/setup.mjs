@@ -37,7 +37,7 @@ const environmentFile = existsSync(join(repositoryRoot, '.env'))
 loadEnvFile(environmentFile);
 
 run(process.execPath, ['scripts/infra.mjs', 'up']);
-run('pnpm', ['--filter', '@socially-woke/config', 'env:check']);
+run('pnpm', ['--filter', '@wokesocial/config', 'env:check']);
 
 let executedSteps = 0;
 for (const { directory, manifest } of await readWorkspacePackages()) {

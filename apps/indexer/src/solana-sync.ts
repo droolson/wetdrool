@@ -1,4 +1,4 @@
-import { networkIdSchema } from '@socially-woke/protocol';
+import { networkIdSchema } from '@wokesocial/protocol';
 
 import {
   AnchorEventDecodingError,
@@ -84,9 +84,7 @@ export class SolanaSyncWorker {
       }
     }
     if (options.batchSize > 1_000) {
-      throw new SolanaSyncConfigurationError(
-        'Woke Network RPC batches cannot exceed 1,000 signatures.',
-      );
+      throw new SolanaSyncConfigurationError('WokeNet RPC batches cannot exceed 1,000 signatures.');
     }
     this.#now = options.now ?? Date.now;
     this.#sleep = options.sleep ?? abortableSleep;
@@ -104,7 +102,7 @@ export class SolanaSyncWorker {
         networkId: this.options.networkId,
         programId: this.options.programId,
       },
-      'finalized Woke Network ingestion started',
+      'finalized WokeNet ingestion started',
     );
     while (!signal.aborted) {
       try {
@@ -115,7 +113,7 @@ export class SolanaSyncWorker {
             fromSlot: result.fromSlot.toString(),
             finalizedTip: result.finalizedTip.toString(),
           },
-          'finalized Woke Network ingestion poll completed',
+          'finalized WokeNet ingestion poll completed',
         );
       } catch (error) {
         if (signal.aborted) {
@@ -123,7 +121,7 @@ export class SolanaSyncWorker {
         }
         this.options.logger?.error?.(
           { error: errorMessage(error) },
-          'finalized Woke Network ingestion poll failed',
+          'finalized WokeNet ingestion poll failed',
         );
       }
       await this.#sleep(this.options.pollIntervalMilliseconds, signal);
@@ -401,7 +399,7 @@ export class SolanaSyncWorker {
         failureCode: failureCode(input.error),
         attempts,
       },
-      'Woke Network ingestion item moved to the retryable dead-letter queue',
+      'WokeNet ingestion item moved to the retryable dead-letter queue',
     );
   }
 
@@ -476,7 +474,7 @@ function parseNetworkId(networkId: string): {
   const [, , genesisHash, programId] = parsed.success ? parsed.data.split(':') : [];
   if (genesisHash === undefined || programId === undefined) {
     throw new SolanaSyncConfigurationError(
-      'Network ID must be woke:v1:<32-byte-genesis-hash>:<32-byte-program-id>.',
+      'Network ID must be wokenet:v1:<32-byte-genesis-hash>:<32-byte-program-id>.',
     );
   }
   return { genesisHash, programId };
@@ -532,7 +530,7 @@ function errorMessage(error: unknown): string {
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted === true) {
-    throw signal.reason instanceof Error ? signal.reason : new Error('Woke Network sync aborted.');
+    throw signal.reason instanceof Error ? signal.reason : new Error('WokeNet sync aborted.');
   }
 }
 

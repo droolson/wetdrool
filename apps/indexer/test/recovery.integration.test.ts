@@ -4,8 +4,8 @@ import bs58 from 'bs58';
 import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
-import type { NetworkId } from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import type { NetworkId } from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   deriveRecoveryPolicyAddress,
@@ -23,14 +23,14 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke';
+  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL recovery projection integration', () => {
   it('rolls back invalid transitions and deterministically rebuilds policy and request state', async () => {
     await migrate(databaseUrl);
     const fixture = await recoveryFixture();
     const secondNetworkId =
-      `woke:v1:${publicKey()}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
+      `wokenet:v1:${publicKey()}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
     const projection = new PostgresProjectionStore(databaseUrl);
     const inspectionSql = postgres(databaseUrl, { max: 1 });
     const indexer = new OpenIndexer(
@@ -186,10 +186,10 @@ describe('PostgreSQL recovery projection integration', () => {
 
 async function recoveryFixture() {
   const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-  const networkId = `woke:v1:${publicKey()}:${programId}` as NetworkId;
+  const networkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
   const configAddress = publicKey();
   const identityAddress = publicKey();
-  const identityId = `swid:v1:${networkId}:${identityAddress}`;
+  const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
   const originalRoot = publicKey();
   const recoveredRoot = publicKey();
   const secondTargetRoot = publicKey();

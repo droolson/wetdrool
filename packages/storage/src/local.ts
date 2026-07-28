@@ -2,7 +2,7 @@ import { access, mkdir, open, readFile, rename, rm, stat } from 'node:fs/promise
 import { dirname, join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { getContentCid, verifyContentCid } from '@socially-woke/protocol';
+import { getContentCid, verifyContentCid } from '@wokesocial/protocol';
 import { CID } from 'multiformats/cid';
 import * as raw from 'multiformats/codecs/raw';
 

@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { wrapPasskeyAccountKey } from '@socially-woke/crypto';
-
-import { AuthService, MemoryAuthStore, parseSessionCookie } from '../src/index.js';
+import {
+  AuthService,
+  MemoryAuthStore,
+  parseSessionCookie,
+  type CredentialAuthenticationUpdate,
+  type CredentialRecord,
+  type SessionRecord,
+} from '../src/index.js';
 import {
   authenticationResponse,
   credentialId,
   FakeCeremonyVerifier,
   registrationResponse,
+  wrappedKeyBundle,
 } from './fixtures.js';
 
 describe('WebAuthn ceremony service', () => {
@@ -18,10 +24,10 @@ describe('WebAuthn ceremony service', () => {
     expect(issued.accountId).toMatch(/^acct_[A-Za-z0-9_-]{22}$/u);
     expect(issued.ceremonyId).toMatch(/^cer_[A-Za-z0-9_-]{22}$/u);
     expect(issued.options).toMatchObject({
-      rp: { id: 'localhost', name: 'Socially Woke Test' },
+      rp: { id: 'localhost', name: 'WokeSocial Test' },
       user: {
         name: issued.accountId,
-        displayName: 'Socially Woke account',
+        displayName: 'WokeSocial account',
       },
       attestation: 'none',
       authenticatorSelection: {
@@ -34,10 +40,12 @@ describe('WebAuthn ceremony service', () => {
     expect(issued.options.user.id).not.toContain(issued.accountId);
 
     const id = credentialId(11);
+    const bundle = await wrappedKeyBundle(id);
     const registered = await fixture.service.verifyFirstRegistration({
       accountId: issued.accountId,
       ceremonyId: issued.ceremonyId,
       response: registrationResponse(id),
+      bundle,
     });
     expect(registered.credential).toMatchObject({
       accountId: issued.accountId,
@@ -62,6 +70,7 @@ describe('WebAuthn ceremony service', () => {
         accountId: issued.accountId,
         ceremonyId: issued.ceremonyId,
         response: registrationResponse(id),
+        bundle,
       }),
     ).rejects.toMatchObject({ code: 'ceremony-unavailable' });
     expect(fixture.verifier.registrationCalls).toHaveLength(1);
@@ -166,25 +175,12 @@ describe('WebAuthn ceremony service', () => {
     const second = await fixture.service.verifyAdditionalCredential(authenticated, {
       ceremonyId: addOptions.ceremonyId,
       response: registrationResponse(credentialId(15)),
+      bundle: await wrappedKeyBundle(credentialId(15)),
     });
     expect(await fixture.service.listCredentials(first.credential.accountId)).toHaveLength(2);
-
-    const credentialBytes = Uint8Array.from(
-      Buffer.from(first.credential.credentialId, 'base64url'),
-    );
-    const bundle = await wrapPasskeyAccountKey({
-      prfOutput: bytes(1, 32),
-      credentialId: credentialBytes,
-      accountKeySeed: bytes(40, 32),
-      publicKey: bytes(80, 32),
-      keyKind: 'solana-ed25519-root-seed',
-    });
-    await expect(
-      fixture.service.putKeyBundle(authenticated, first.credential.credentialId, bundle),
-    ).resolves.toMatchObject({ keyKind: 'solana-ed25519-root-seed' });
     await expect(
       fixture.service.listKeyBundles(authenticated.account.accountId),
-    ).resolves.toHaveLength(1);
+    ).resolves.toHaveLength(2);
 
     await expect(
       fixture.service.revokeCredential(authenticated, first.credential.credentialId),
@@ -192,9 +188,9 @@ describe('WebAuthn ceremony service', () => {
     await expect(
       fixture.service.resolveSession(first.session.cookieValue),
     ).resolves.toBeUndefined();
-    await expect(fixture.service.listKeyBundles(authenticated.account.accountId)).resolves.toEqual(
-      [],
-    );
+    await expect(
+      fixture.service.listKeyBundles(authenticated.account.accountId),
+    ).resolves.toMatchObject([{ credentialId: second.credentialId }]);
     await expect(
       fixture.service.revokeCredential(authenticated, second.credentialId),
     ).rejects.toMatchObject({ code: 'last-credential' });
@@ -239,6 +235,7 @@ describe('WebAuthn ceremony service', () => {
         accountId: otherOptions.accountId,
         ceremonyId: otherOptions.ceremonyId,
         response: registrationResponse(first.credential.credentialId),
+        bundle: await wrappedKeyBundle(first.credential.credentialId),
       }),
     ).rejects.toMatchObject({ code: 'credential-duplicate' });
 
@@ -256,45 +253,99 @@ describe('WebAuthn ceremony service', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('rejects malformed or credential-misbound encrypted bundles', async () => {
+  it('does not activate accounts for malformed or credential-misbound root wrappers', async () => {
     const fixture = serviceFixture();
-    const registered = await register(fixture, credentialId(19));
-    const authenticated = await fixture.service.resolveSession(registered.session.cookieValue);
+    const malformedCiphertextId = credentialId(20);
+    const malformedCiphertext = await wrappedKeyBundle(malformedCiphertextId);
+    const attempts: readonly { readonly id: string; readonly bundle: unknown }[] = [
+      { id: credentialId(19), bundle: { version: 1 } },
+      { id: credentialId(21), bundle: await wrappedKeyBundle(credentialId(22)) },
+      {
+        id: malformedCiphertextId,
+        bundle: {
+          ...malformedCiphertext,
+          encryptedKey: {
+            ...malformedCiphertext.encryptedKey,
+            ciphertext: malformedCiphertext.encryptedKey.ciphertext.slice(1),
+          },
+        },
+      },
+    ];
+
+    for (const attempt of attempts) {
+      const issued = await fixture.service.registrationOptions();
+      await expect(
+        fixture.service.verifyFirstRegistration({
+          accountId: issued.accountId,
+          ceremonyId: issued.ceremonyId,
+          response: registrationResponse(attempt.id),
+          bundle: attempt.bundle,
+        }),
+      ).rejects.toMatchObject({ code: 'bundle-invalid' });
+      await expect(fixture.store.getAccount(issued.accountId)).resolves.toMatchObject({
+        status: 'pending',
+      });
+      await expect(fixture.store.getCredential(attempt.id)).resolves.toBeUndefined();
+      await expect(fixture.store.listKeyBundles(issued.accountId)).resolves.toEqual([]);
+    }
+  });
+
+  it('rejects a second passkey wrapper for a different account root atomically', async () => {
+    const fixture = serviceFixture();
+    const first = await register(fixture, credentialId(21));
+    const authenticated = await fixture.service.resolveSession(first.session.cookieValue);
     if (authenticated === undefined) throw new Error('Expected registration session.');
 
+    const secondId = credentialId(22);
+    const addOptions = await fixture.service.additionalCredentialOptions(authenticated);
     await expect(
-      fixture.service.putKeyBundle(authenticated, registered.credential.credentialId, {
-        version: 1,
+      fixture.service.verifyAdditionalCredential(authenticated, {
+        ceremonyId: addOptions.ceremonyId,
+        response: registrationResponse(secondId),
+        bundle: await wrappedKeyBundle(secondId, { publicKey: bytes(120, 32) }),
       }),
     ).rejects.toMatchObject({ code: 'bundle-invalid' });
 
-    const bundle = await wrapPasskeyAccountKey({
-      prfOutput: bytes(3, 32),
-      credentialId: bytes(8, 32),
-      accountKeySeed: bytes(40, 32),
-      publicKey: bytes(80, 32),
-      keyKind: 'solana-ed25519-root-seed',
-    });
+    await expect(fixture.store.getCredential(secondId)).resolves.toBeUndefined();
     await expect(
-      fixture.service.putKeyBundle(authenticated, registered.credential.credentialId, bundle),
-    ).rejects.toMatchObject({ code: 'bundle-invalid' });
+      fixture.store.listCredentials(authenticated.account.accountId),
+    ).resolves.toHaveLength(1);
+    await expect(
+      fixture.store.listKeyBundles(authenticated.account.accountId),
+    ).resolves.toHaveLength(1);
+  });
 
-    const validBundle = await wrapPasskeyAccountKey({
-      prfOutput: bytes(3, 32),
-      credentialId: Uint8Array.from(Buffer.from(registered.credential.credentialId, 'base64url')),
-      accountKeySeed: bytes(40, 32),
-      publicKey: bytes(80, 32),
-      keyKind: 'solana-ed25519-root-seed',
+  it('cannot issue a session after the authenticating credential is concurrently revoked', async () => {
+    const store = new PausingMemoryAuthStore();
+    const fixture = serviceFixture(store);
+    const first = await register(fixture, credentialId(23));
+    const authenticated = await fixture.service.resolveSession(first.session.cookieValue);
+    if (authenticated === undefined) throw new Error('Expected registration session.');
+    const secondId = credentialId(24);
+    const addOptions = await fixture.service.additionalCredentialOptions(authenticated);
+    await fixture.service.verifyAdditionalCredential(authenticated, {
+      ceremonyId: addOptions.ceremonyId,
+      response: registrationResponse(secondId),
+      bundle: await wrappedKeyBundle(secondId),
     });
-    await expect(
-      fixture.service.putKeyBundle(authenticated, registered.credential.credentialId, {
-        ...validBundle,
-        encryptedKey: {
-          ...validBundle.encryptedKey,
-          ciphertext: validBundle.encryptedKey.ciphertext.slice(1),
-        },
-      }),
-    ).rejects.toMatchObject({ code: 'bundle-invalid' });
+
+    const loginOptions = await fixture.service.authenticationOptions();
+    store.pauseNextAuthentication();
+    const login = fixture.service.verifyAuthentication({
+      ceremonyId: loginOptions.ceremonyId,
+      response: authenticationResponse(first.credential.credentialId, first.options.user.id),
+    });
+    await store.authenticationEntered;
+    const rejected = expect(login).rejects.toMatchObject({ code: 'verification-failed' });
+    await fixture.service.revokeCredential(authenticated, first.credential.credentialId);
+    store.releaseAuthentication();
+    await rejected;
+
+    expect(store.candidateSessionId).toBeDefined();
+    await expect(store.getSession(store.candidateSessionId ?? '')).resolves.toBeUndefined();
+    await expect(store.getCredential(first.credential.credentialId)).resolves.toMatchObject({
+      revokedAt: fixture.now().toISOString(),
+    });
   });
 });
 
@@ -306,8 +357,7 @@ interface ServiceFixture {
   readonly advance: (milliseconds: number) => void;
 }
 
-function serviceFixture(): ServiceFixture {
-  const store = new MemoryAuthStore();
+function serviceFixture(store: MemoryAuthStore = new MemoryAuthStore()): ServiceFixture {
   const verifier = new FakeCeremonyVerifier();
   let current = Date.parse('2026-07-28T18:00:00.000Z');
   const now = () => new Date(current);
@@ -322,7 +372,7 @@ function serviceFixture(): ServiceFixture {
       store,
       verifier,
       now,
-      rpName: 'Socially Woke Test',
+      rpName: 'WokeSocial Test',
       rpId: 'localhost',
       origin: 'http://localhost:4300',
     }),
@@ -335,10 +385,54 @@ async function register(fixture: ServiceFixture, id: string) {
     accountId: options.accountId,
     ceremonyId: options.ceremonyId,
     response: registrationResponse(id),
+    bundle: await wrappedKeyBundle(id),
   });
   return { ...result, options: options.options };
 }
 
 function bytes(seed: number, length: number): Uint8Array {
   return Uint8Array.from({ length }, (_, index) => (seed + index) & 0xff);
+}
+
+class PausingMemoryAuthStore extends MemoryAuthStore {
+  readonly #entered = deferredSignal();
+  readonly #release = deferredSignal();
+  #pause = false;
+  candidateSessionId: string | undefined;
+
+  get authenticationEntered(): Promise<void> {
+    return this.#entered.promise;
+  }
+
+  pauseNextAuthentication(): void {
+    this.#pause = true;
+  }
+
+  releaseAuthentication(): void {
+    this.#release.resolve();
+  }
+
+  override async completeAuthentication(
+    update: CredentialAuthenticationUpdate,
+    session: SessionRecord,
+  ): Promise<CredentialRecord> {
+    if (this.#pause) {
+      this.#pause = false;
+      this.candidateSessionId = session.sessionId;
+      this.#entered.resolve();
+      await this.#release.promise;
+    }
+    return super.completeAuthentication(update, session);
+  }
+}
+
+function deferredSignal(): {
+  readonly promise: Promise<void>;
+  readonly resolve: () => void;
+} {
+  let resolve: () => void = () => undefined;
+  const promise = new Promise<void>((settle) => {
+    resolve = () => settle();
+  });
+  return { promise, resolve };
 }

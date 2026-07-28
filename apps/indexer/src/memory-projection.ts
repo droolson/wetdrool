@@ -1296,7 +1296,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           event.distributableLamports !== allocation.distributableLamports ||
           event.recipientLamports !== allocation.recipientAmounts[0]
         ) {
-          throw stale('Woke tip receipt does not match indexed identities or payment policy.');
+          throw stale('WOKE tip receipt does not match indexed identities or payment policy.');
         }
         this.#paymentReceipts.set(receiptKey, {
           networkId: event.networkId,
@@ -1901,7 +1901,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       }
     }
     for (const identityId of this.#lastGovernanceVoterSequence.keys()) {
-      if (identityId.startsWith(`swid:v1:${networkId}:`)) {
+      if (identityId.startsWith(`wokesocialid:v1:${networkId}:`)) {
         this.#lastGovernanceVoterSequence.delete(identityId);
       }
     }
@@ -2111,7 +2111,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       }
     }
     for (const [key, delegation] of this.#delegations) {
-      if (delegation.identityId.startsWith(`swid:v1:${networkId}:`)) {
+      if (delegation.identityId.startsWith(`wokesocialid:v1:${networkId}:`)) {
         this.#delegations.delete(key);
       }
     }
@@ -2123,16 +2123,16 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     }
     for (const [key, follow] of this.#follows) {
       if (
-        follow.followerIdentityId.startsWith(`swid:v1:${networkId}:`) ||
-        follow.followedIdentityId.startsWith(`swid:v1:${networkId}:`)
+        follow.followerIdentityId.startsWith(`wokesocialid:v1:${networkId}:`) ||
+        follow.followedIdentityId.startsWith(`wokesocialid:v1:${networkId}:`)
       ) {
         this.#follows.delete(key);
       }
     }
     for (const [key, block] of this.#blocks) {
       if (
-        block.blockerIdentityId.startsWith(`swid:v1:${networkId}:`) ||
-        block.subjectIdentityId.startsWith(`swid:v1:${networkId}:`)
+        block.blockerIdentityId.startsWith(`wokesocialid:v1:${networkId}:`) ||
+        block.subjectIdentityId.startsWith(`wokesocialid:v1:${networkId}:`)
       ) {
         this.#blocks.delete(key);
       }
@@ -2165,7 +2165,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       if (key.startsWith(`${networkId}\u0000`)) this.#voteByProposalVoter.delete(key);
     }
     for (const key of this.#lastGovernanceVoterSequence.keys()) {
-      if (key.startsWith(`swid:v1:${networkId}:`)) {
+      if (key.startsWith(`wokesocialid:v1:${networkId}:`)) {
         this.#lastGovernanceVoterSequence.delete(key);
       }
     }

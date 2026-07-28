@@ -135,7 +135,7 @@ export class FailoverSolanaRpc implements FinalizedSolanaRpc {
     private readonly expectedProgramId: string,
   ) {
     if (endpoints.length === 0) {
-      throw new SolanaRpcValidationError('At least one Woke Network RPC endpoint is required.');
+      throw new SolanaRpcValidationError('At least one WokeNet RPC endpoint is required.');
     }
   }
 
@@ -231,9 +231,7 @@ export class FailoverSolanaRpc implements FinalizedSolanaRpc {
         failures.push(`${endpoint.url}: ${errorMessage(error)}`);
       }
     }
-    throw new SolanaRpcUnavailableError(
-      `All Woke Network RPC endpoints failed. ${failures.join('; ')}`,
-    );
+    throw new SolanaRpcUnavailableError(`All WokeNet RPC endpoints failed. ${failures.join('; ')}`);
   }
 }
 

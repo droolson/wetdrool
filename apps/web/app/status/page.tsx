@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ProviderCard, StatusBadge } from '@socially-woke/ui';
+import { ProviderCard, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { getProviderSummaries, type ProviderSummary } from '@/lib/provider-config';

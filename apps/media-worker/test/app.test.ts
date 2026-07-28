@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildMediaWorkerApp } from '../src/app.js';
@@ -57,7 +57,7 @@ describe('media worker HTTP API', () => {
     const { app } = await makeApp({ locked: true });
     expect((await app.inject({ method: 'GET', url: '/healthz' })).json()).toEqual({
       ok: true,
-      service: '@socially-woke/media-worker',
+      service: '@wokesocial/media-worker',
       canonical: false,
       signsForUsers: false,
     });

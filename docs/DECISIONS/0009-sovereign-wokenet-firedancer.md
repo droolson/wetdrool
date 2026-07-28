@@ -1,4 +1,4 @@
-# ADR 0009: Sovereign Woke Network on native Firedancer
+# ADR 0009: Sovereign WokeNet on native Firedancer
 
 - Status: accepted architecture; production activation blocked
 - Date: 2026-07-28
@@ -6,11 +6,11 @@
 
 ## Context
 
-The flagship social application now uses `woke.social`, and its protocol is to
-run on a sovereign cryptocurrency network named **Woke Network**. The native
-currency is **WOKE** (`$WOKE`). The network must preserve the Solana protocol's
-account model and transaction compatibility while using Firedancer validator
-and RPC software instead of Agave.
+WokeSocial now uses `woke.social`, and its protocol is to run on a sovereign
+cryptocurrency network named **WokeNet**. Its native currency is **WOKE**
+(`$WOKE`). The network must preserve the Solana protocol's account model and
+transaction compatibility while using Firedancer validator and RPC software
+instead of Agave.
 
 That choice is not equivalent to deploying the social program to a
 Solana-operated cluster. It creates a new network with its own genesis, ledger,
@@ -34,7 +34,7 @@ simulate, confirm, query, and index the application's transactions.
 
 ### Network identity and currency
 
-1. Woke Network is a sovereign Solana-protocol-compatible network, not a Solana
+1. WokeNet is a sovereign Solana-protocol-compatible network, not a Solana
    cluster or an SPL token deployment.
 2. Its native currency is WOKE with nine decimal places.
 3. The protocol-compatible base-unit name remains `lamport` in binary layouts,
@@ -51,13 +51,13 @@ simulate, confirm, query, and index the application's transactions.
    program deployment:
 
    ```text
-   woke:v1:<32-byte-base58-genesis-hash>:<32-byte-base58-program-id>
+   wokenet:v1:<32-byte-base58-genesis-hash>:<32-byte-base58-program-id>
    ```
 
    Identity identifiers use:
 
    ```text
-   swid:v1:woke:v1:<genesis-hash>:<program-id>:<identity-pda>
+   wokesocialid:v1:wokenet:v1:<genesis-hash>:<program-id>:<identity-pda>
    ```
 
    Pre-migration `solana:` identifiers are rejected rather than silently
@@ -65,10 +65,10 @@ simulate, confirm, query, and index the application's transactions.
 
 ### Validator and RPC runtime
 
-1. Production, staging, and Woke Network development clusters may use only the
+1. Production, staging, and WokeNet development clusters may use only the
    full native `firedancer` or `firedancer-dev` binaries.
 2. `fdctl`, `fddev`, `agave-validator`, and `solana-test-validator` are forbidden
-   as Woke Network runtime processes.
+   as WokeNet runtime processes.
 3. Frankendancer is not a fallback because its Agave dependency contradicts the
    selected trust and implementation boundary.
 4. Validator and RPC configurations disable telemetry, set `no_agave = true`,
@@ -80,27 +80,27 @@ simulate, confirm, query, and index the application's transactions.
 ### Reproducible downstream source
 
 1. The official Firedancer repository and an exact 40-character commit are
-   pinned in `network/woke-network/firedancer/SOURCE.lock.json`.
+   pinned in `network/wokenet/firedancer/SOURCE.lock.json`.
 2. Every downstream patch is ordered and SHA-256 pinned.
-3. `pnpm network:woke:materialize` creates a detached checkout at that exact
-   commit, applies only the checked patch queue, and refuses to overwrite an
-   existing destination.
-4. `pnpm network:woke:source-check` verifies the source revision, requires the
+3. `pnpm wokenet:materialize` creates a detached checkout at that exact commit,
+   applies only the checked patch queue, and refuses to overwrite an existing
+   destination.
+4. `pnpm wokenet:source-check` verifies the source revision, requires the
    tracked diff to exactly match the checked patch queue, rejects unexpected
    untracked source, inspects both native binary declarations/mode flags, and
    checks current native-RPC capability evidence.
-5. On a supported Linux x64 build host, `pnpm network:woke:binary-check`
-   requires the exact downstream patch to be applied, creates a disposable
-   no-hardlink checkout at the pinned commit, reapplies only the patch queue,
-   clones and rebuilds OpenSSL at its separately pinned source commit, and owns
-   a clean object directory there rather than trusting pre-existing ignored
-   source, dependency artifacts, or executable files. It builds both native
-   ELFs plus the pinned genesis/RPC tests, executes those tests, parses and
-   checks the native localnet topology, and verifies ELF target/symbols plus the
-   binaries’ source-locked downstream marker, upstream commit, and version
-   before recording dependency/toolchain and distinct binary hashes and
-   rejecting forbidden dynamic runtime dependencies. The entire checkout is
-   removed afterward. CI also rejects forbidden runtime processes.
+5. On a supported Linux x64 build host, `pnpm wokenet:binary-check` requires the
+   exact downstream patch to be applied, creates a disposable no-hardlink
+   checkout at the pinned commit, reapplies only the patch queue, clones and
+   rebuilds OpenSSL at its separately pinned source commit, and owns a clean
+   object directory there rather than trusting pre-existing ignored source,
+   dependency artifacts, or executable files. It builds both native ELFs plus
+   the pinned genesis/RPC tests, executes those tests, parses and checks the
+   native localnet topology, and verifies ELF target/symbols plus the binaries’
+   source-locked downstream marker, upstream commit, and version before
+   recording dependency/toolchain and distinct binary hashes and rejecting
+   forbidden dynamic runtime dependencies. The entire checkout is removed
+   afterward. CI also rejects forbidden runtime processes.
 6. A missing RPC method becoming implemented intentionally makes the evidence
    check fail. Capability changes require review and conformance testing rather
    than silently changing the production gate.
@@ -127,11 +127,11 @@ simulate, confirm, query, and index the application's transactions.
 
 The existing Anchor and Solana-wire local-validator suites may remain only as a
 **compatibility oracle** for programs, account layouts, transaction encoding,
-and SDK behavior. They do not constitute Woke Network runtime evidence and
-must not be described as a Woke Network transaction, validator, RPC, testnet,
+and SDK behavior. They do not constitute WokeNet runtime evidence and
+must not be described as a WokeNet transaction, validator, RPC, testnet,
 or production deployment.
 
-The flagship application must not enable or claim Woke Network settlement until
+The flagship application must not enable or claim WokeNet settlement until
 the native runtime passes the activation gates below. Unsupported submission,
 simulation, confirmation, or indexing paths fail closed.
 
@@ -161,7 +161,7 @@ verified:
    enabled as a shortcut around these gates.
 
 The machine-readable gate is
-`network/woke-network/firedancer/NATIVE_RPC_CAPABILITIES.json`. Its production
+`network/wokenet/firedancer/NATIVE_RPC_CAPABILITIES.json`. Its production
 flags remain false until the evidence above exists.
 
 ## Consequences
@@ -179,7 +179,7 @@ flags remain false until the evidence above exists.
 
 ### Costs and risks
 
-- Woke Network inherits responsibility for validator security, consensus
+- WokeNet inherits responsibility for validator security, consensus
   operations, economics, upgrades, incident response, and ecosystem tooling.
 - Native Firedancer immaturity blocks a truthful production launch today.
 - Existing compatibility tests do not prove full native runtime behavior.
@@ -196,7 +196,7 @@ flags remain false until the evidence above exists.
   sovereign network or native fee currency.
 - **Use Frankendancer until full Firedancer is ready:** violates the explicit
   no-Agave runtime requirement.
-- **Rename an Agave local validator to Woke Network:** creates false evidence
+- **Rename an Agave local validator to WokeNet:** creates false evidence
   and an unverifiable trust boundary.
 - **Publish tokenomics or a production genesis from disposable fixtures:**
   bypasses security, economic, governance, and legal review.
@@ -205,9 +205,9 @@ flags remain false until the evidence above exists.
 
 ## References
 
-- `network/woke-network/README.md`
-- `network/woke-network/GENESIS_POLICY.json`
-- `network/woke-network/firedancer/SOURCE.lock.json`
-- `network/woke-network/firedancer/NATIVE_RPC_CAPABILITIES.json`
+- `network/wokenet/README.md`
+- `network/wokenet/GENESIS_POLICY.json`
+- `network/wokenet/firedancer/SOURCE.lock.json`
+- `network/wokenet/firedancer/NATIVE_RPC_CAPABILITIES.json`
 - Firedancer upstream repository: <https://github.com/firedancer-io/firedancer>
 - Firedancer operator documentation: <https://docs.firedancer.io/>

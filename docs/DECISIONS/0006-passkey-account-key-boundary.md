@@ -8,7 +8,7 @@
 ## Context
 
 WebAuthn credentials authenticate a person to a relying party. They do not
-natively produce Ed25519 signatures accepted by Solana or by Socially Woke's v1
+natively produce Ed25519 signatures accepted by Solana or by WokeSocial's v1
 portable-object protocol. Treating a WebAuthn P-256 assertion as a Solana
 signature would be false, while sending an account private key to an
 authentication service would create application custody.
@@ -25,12 +25,12 @@ The passkey-first path separates three authorities:
 
 1. The WebAuthn credential authenticates an account session to the selected
    relying-party service.
-2. A locally generated Ed25519 root or delegated seed signs Woke Network transactions
+2. A locally generated Ed25519 root or delegated seed signs WokeNet transactions
    and portable protocol objects.
 3. A supported WebAuthn credential's 32-byte PRF output derives a wrapping key
    for that Ed25519 seed entirely in the client.
 
-`@socially-woke/crypto` implements the third boundary using domain-separated
+`@wokesocial/crypto` implements the third boundary using domain-separated
 HKDF-SHA-256 and AES-256-GCM. The ciphertext is authenticated against:
 
 - a domain-separated digest of the WebAuthn credential ID;
@@ -102,8 +102,10 @@ replay protection, and explicit treatment of every delegated key.
   server.
 - Loss of every wrapper and every recovery method still loses the account; the
   UI must encourage multiple credentials or an explicit recovery kit.
-- A synced passkey may move between devices while an encrypted bundle does not,
-  so ciphertext synchronization and export are separate, visible capabilities.
+- A synced passkey may move between devices while its encrypted wrapper does
+  not. Every usable credential must therefore be registered atomically with its
+  own credential-bound wrapper; root export and recovery remain separate,
+  visible capabilities.
 - WebAuthn backup eligibility and current backup state inform recovery guidance
   but never grant protocol authority by themselves.
 
@@ -132,11 +134,16 @@ authentication service and flagship browser path additionally verify:
 2. explicit removal of client-only PRF results before every server request;
 3. durable, atomically consumed PostgreSQL challenges plus hashed, revocable
    sessions;
-4. ciphertext-only bundle synchronization, credential binding, logout, and
-   local unwrap/public-key verification; and
-5. bounded cleanup for provisional accounts, ceremonies, and sessions.
+4. atomic initial credential/wrapper/account activation, same-root additional
+   credential registration, credential binding, logout, and local
+   unwrap/public-key verification;
+5. atomic authentication counter/session issuance against concurrent
+   revocation, including PostgreSQL rollback; and
+6. service-passkey listing plus fresh-step-up revocation that deletes the
+   selected wrapper and revokes service sessions; and
+7. bounded cleanup for provisional accounts, ceremonies, and sessions.
 
-Remaining gates are complete multi-credential browser wrap/revoke/export UX,
-reviewed recovery and non-PRF fallback behavior, local-validator identity
-creation and rotation using only the unwrapped client key, load/restore
-evidence, and independent review of the browser-to-protocol flow.
+Remaining gates are root export/recovery UX, reviewed non-PRF fallback behavior,
+local-validator identity creation and rotation using only the unwrapped client
+key, WokeNet delegation/device-authority integration, load/restore evidence,
+and independent review of the browser-to-protocol flow.

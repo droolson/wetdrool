@@ -15,8 +15,8 @@ import {
   type PostContent,
   type ProfileContent,
   type SignedEnvelope,
-} from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage, type StorageReceipt } from '@socially-woke/storage';
+} from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
 
 import {
   buildIndexerApp,
@@ -31,8 +31,8 @@ const publicKey = ed25519.getPublicKey(privateKey);
 const genesisHash = bs58.encode(Uint8Array.from({ length: 32 }, () => 21));
 const programId = bs58.encode(Uint8Array.from({ length: 32 }, () => 22));
 const identityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 23));
-const networkId = `woke:v1:${genesisHash}:${programId}` as NetworkId;
-const identityId = `swid:v1:${networkId}:${identityAddress}`;
+const networkId = `wokenet:v1:${genesisHash}:${programId}` as NetworkId;
+const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
 const builderIdentity = createPayloadBuilderIdentity(networkId, identityId, publicKey, 'root');
 const transactionSignature = (seed: number) =>
   bs58.encode(Uint8Array.from({ length: 64 }, () => seed));
@@ -96,7 +96,7 @@ describe('indexer HTTP contract', () => {
       expect(feedResponse.json()).toMatchObject({
         meta: {
           checkpointSlot: 3,
-          source: 'Woke Network open indexer',
+          source: 'WokeNet open indexer',
         },
         posts: [
           {

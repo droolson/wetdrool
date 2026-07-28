@@ -4,14 +4,18 @@
 - Canonical public origin: `https://woke.social`
 - Legacy redirect origins: `https://sociallywoke.com` and
   `https://www.sociallywoke.com`
-- Network target: Woke Network, native currency `$WOKE`
+- Network target: WokeNet, native currency `$WOKE`
+- Repository identity: local directory and root package `wokenet`; no Git remote
+  is configured
 
 ## Executive summary
 
 This repository delivers a substantial, tested social-protocol foundation and
-a reproducible **experimental** Woke Network/Firedancer downstream scaffold. It
-does not deliver a production blockchain, a public Woke testnet/mainnet, or a
-production social network deployment.
+a reproducible **experimental** WokeNet/Firedancer downstream scaffold. It
+does not deliver a production blockchain, a public WokeNet testnet/mainnet, or a
+production deployment artifact. Repository inspection found no evidence of a
+production social-network deployment; it cannot establish whether unrelated
+external systems exist.
 
 The following claims are supported by passing local evidence:
 
@@ -30,19 +34,23 @@ The following claims are supported by passing local evidence:
   state, syncs it into PostgreSQL, serves it through the production indexer and
   production Next.js build, destroys the projection, replays it, and obtains
   identical desktop/mobile results.
-- Woke Network source policy is pinned to one exact official Firedancer commit,
+- WokeNet source policy is pinned to one exact official Firedancer commit,
   one exact downstream patch, and one exact OpenSSL source commit. The
   materializer and supported-Linux binary-attestation command reject Agave,
   Frankendancer, `fdctl`, pre-existing build output, inherited build injection,
   source drift, dependency drift, and unbound binaries.
+- The repository root, package name, package scope, platform IDs, chain IDs,
+  environment-variable namespaces, and wire namespace pass an automated naming
+  policy: WokeSocial/`wokesocial` is the application platform and
+  WokeNet/`wokenet` is the chain and repository.
 
 Production activation remains blocked. Upstream says full no-Agave Firedancer
 has no release and is not ready for test or production use. The pinned native
-RPC source is missing six methods required by the social stack. No native Woke
+RPC source is missing six methods required by the social stack. No native WokeNet
 cluster has been built and launched end to end, no production genesis or
 economic policy is approved, no native program deployment exists, and no
 independent security or legal review has been completed. Agave is retained only
-as a Solana-wire compatibility oracle and is forbidden as Woke Network runtime.
+as a Solana-wire compatibility oracle and is forbidden as WokeNet runtime.
 
 ## Status vocabulary
 
@@ -56,30 +64,30 @@ as a Solana-wire compatibility oracle and is forbidden as Woke Network runtime.
 
 ## Architecture delivered
 
-| Layer                | Delivered architecture                                                                                                                                                                                                          | Status and boundary                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Workspace            | Strict pnpm/Turborepo monorepo with 15 workspaces: seven apps and eight packages                                                                                                                                                | Implemented and tested                                                                                                         |
-| Web                  | Next.js App Router reference client with 46 page files, canonical-host proxy, provider settings, read-only/degraded states, device-local composer/preferences/export, and responsive themes                                     | Implemented and tested subset; transactional product flows remain gated                                                        |
-| Portable protocol    | 29 versioned object families, RFC 8785 canonical bytes, SHA-256 object identifiers/CIDs, Ed25519 signatures, authorization transitions, and generated Draft 2020-12 JSON Schema                                                 | Implemented and tested TypeScript subset; shared Rust/TypeScript golden corpus remains planned                                 |
-| Woke social program  | Anchor/SBF program with configuration, identities/profiles, handles, root rotation, delegation, recovery, follows/blocks, communities, voting, posts/reactions/tombstones, WOKE tips, subscriptions, receipts, and entitlements | Implemented and tested only against the Agave compatibility oracle                                                             |
-| WOKE SDK             | Recoverable publication plus seven IDL-aligned Anchor instruction builders, PDA derivation, Hamilton allocation, mandatory network context, parsed-simulation comparison, and finalized receipt/entitlement verification        | Implemented and tested subset; no concrete RPC parser, full message compiler, signer, broadcaster, or wallet UX                |
-| Indexer              | Solana-format finalized sync, exact 32-event decoder, signed-manifest validation, checkpoints, retry/DLQ, replay, provenance, REST/OpenAPI, and ten PostgreSQL projection migrations                                            | Implemented and tested against compatibility RPC/PostgreSQL; native Firedancer RPC and reorg evidence absent                   |
-| Replaceable services | WebAuthn auth service, seven-mode feed service, signed WebSocket relay, moderation service, and hardened media worker                                                                                                           | Implemented and tested subsets; production authorization, provider accounts, SSO, storage, and telemetry require configuration |
-| Storage              | Memory/local CAS, quorum provider, Kubo/IPFS adapter, and consent-gated Arweave-compatible adapter                                                                                                                              | Implemented and tested locally; funded/permanent production providers require external configuration                           |
-| Messaging            | Pairwise Olm adapter backed by Matrix Rust crypto WASM, signed routing envelope, authorization/revocation checks, and fail-closed production storage policy                                                                     | Experimental; volatile state only, without browser persistence, attachments, safety UX, or group messaging                     |
-| Woke Network         | Pinned native Firedancer source/patch policy, native-only configs, WOKE genesis policy, capability record, materializer, source checker, genesis byte-hash verifier, and isolated Linux binary-attestation gate                 | Experimental scaffold; no passing native connected cluster or production release                                               |
-| Operations           | Threat model, security, privacy, accessibility, deployment, incident, decentralization, legal-review, and nine ADR documents                                                                                                    | Implemented documentation; production drills and independent reviews are open                                                  |
+| Layer                | Delivered architecture                                                                                                                                                                                                               | Status and boundary                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace            | Strict pnpm/Turborepo monorepo with 15 workspaces: seven apps and eight packages                                                                                                                                                     | Implemented and tested                                                                                                                |
+| Web                  | Next.js App Router reference client with 46 page files, canonical-host proxy, provider settings, read-only/degraded states, device-local composer/preferences/export, and responsive themes                                          | Implemented and tested subset; transactional product flows remain gated                                                               |
+| Portable protocol    | 29 versioned object families, RFC 8785 canonical bytes, SHA-256 object identifiers/CIDs, Ed25519 signatures, authorization transitions, and generated Draft 2020-12 JSON Schema                                                      | Implemented and tested TypeScript subset; shared Rust/TypeScript golden corpus remains planned                                        |
+| WokeSocial program   | Anchor/SBF program with configuration, identities/profiles, handles, root rotation, delegation, recovery, follows/blocks, communities, voting, posts/reactions/tombstones, WOKE tips, subscriptions, receipts, and entitlements      | Implemented and tested only against the Agave compatibility oracle                                                                    |
+| WOKE SDK             | Operation-scoped signed publication plus seven IDL-aligned Anchor instruction builders, PDA derivation, Hamilton allocation, mandatory network context, parsed-simulation comparison, and finalized receipt/entitlement verification | Implemented and tested subset; no concrete RPC parser, payment-message compiler, payment transaction signer/broadcaster, or wallet UX |
+| Indexer              | Solana-format finalized sync, exact 32-event decoder, signed-manifest validation, checkpoints, retry/DLQ, replay, provenance, REST/OpenAPI, and ten PostgreSQL projection migrations                                                 | Implemented and tested against compatibility RPC/PostgreSQL; native Firedancer RPC and reorg evidence absent                          |
+| Replaceable services | WebAuthn auth service, seven-mode feed service, signed WebSocket relay, moderation service, and hardened media worker                                                                                                                | Implemented and tested subsets; production authorization, provider accounts, SSO, storage, and telemetry require configuration        |
+| Storage              | Memory/local CAS, quorum provider, Kubo/IPFS adapter, and consent-gated Arweave-compatible adapter                                                                                                                                   | Implemented and tested locally; funded/permanent production providers require external configuration                                  |
+| Messaging            | Pairwise Olm adapter backed by Matrix Rust crypto WASM, signed routing envelope, authorization/revocation checks, and fail-closed production storage policy                                                                          | Experimental; volatile state only, without browser persistence, attachments, safety UX, or group messaging                            |
+| WokeNet              | Pinned native Firedancer source/patch policy, native-only configs, WOKE genesis policy, capability record, materializer, source checker, genesis byte-hash verifier, and isolated Linux binary-attestation gate                      | Experimental scaffold; no passing native connected cluster or production release                                                      |
+| Operations           | Threat model, security, privacy, accessibility, deployment, incident, decentralization, legal-review, and nine ADR documents                                                                                                         | Implemented documentation; production drills and independent reviews are open                                                         |
 
-## Woke Network and `$WOKE`
+## WokeNet and `$WOKE`
 
 ### Implemented source and policy controls
 
 - Official Firedancer upstream:
   `60c3d2e381a6607f63adc818481e2f31472ae681`.
-- Downstream marker: `Woke Network Firedancer downstream-v1`.
+- Downstream marker: `WokeNet Firedancer downstream-v1`.
 - Downstream patch:
   `0001-explicit-sovereign-genesis-allocations.patch`, SHA-256
-  `ad9c538b5679460ff602f000c7d9c7f7bcc18a8796b3b5404a1dae655855130b`.
+  `7d1f6419c7325cdfbe777df740a0f5708f1de510d3b4e650a4e9483982767806`.
 - Pinned OpenSSL dependency: tag `openssl-3.6.2`, commit
   `fe686e15d84334b284f883118ed92f64b409b3aa`.
 - Native binaries: `firedancer` for public validator/RPC roles and
@@ -116,10 +124,13 @@ The following are **source observations, not conformance results**:
 | `getSlot`              | `simulateTransaction`                 |
 
 Only `getMultipleAccounts` has direct native upstream C-test coverage recorded
-in the capability file. An adversarial Linux audit built both native ELF
-binaries and passed the two named upstream tests, but its synthetic sysfs
-fixture stopped before the complete topology phase. The final attestation gate
-was therefore not recorded as passing, and no native cluster claim is made.
+in the capability file. `getSignatureStatuses` is design-only: the checked-in
+design records the required snapshot/live result cache, commitment, fork, and
+direct C-test work, while the capability remains false and no implementation is
+claimed. A historical ad hoc Linux audit built both native ELF binaries and
+passed the two named upstream tests, but its synthetic sysfs fixture stopped
+before the complete topology phase. No retained passing attestation artifact or
+native cluster claim exists.
 
 ## Features delivered
 
@@ -140,9 +151,17 @@ was therefore not recorded as passing, and no native cluster claim is made.
 - Seven WOKE SDK instruction builders with one-to-three-recipient allocation,
   account-order/signer/writable checks, replay context, optional-account
   sentinels, simulation verification, and finalized proof verification.
-- Ten indexer, four auth, and two moderation SQL migrations.
+- Operation-scoped SDK publication signing with a canonical payload snapshot and
+  pre-storage rejection of signer payload, identity, key, or signature
+  substitution.
+- Ten indexer, five auth, and two moderation SQL migrations.
 - Pairwise encrypted-message cryptographic adapter and real WebAuthn
-  service-account ceremony subset.
+  service-account ceremony subset. Initial credential/wrapper/activation,
+  additional same-root passkeys, authentication/session issuance, and
+  credential revocation are atomic at their respective store boundaries.
+- Browser service-passkey listing, same-root addition, step-up-protected
+  revocation, and cross-tab CSRF recovery. Service-passkey revocation does not
+  claim to revoke a separate WokeNet delegation.
 - Desktop/mobile browser semantics, accessibility automation, and a
   reproducible local production-browser performance observation.
 
@@ -161,22 +180,24 @@ was therefore not recorded as passing, and no native cluster claim is made.
 
 ### Experimental
 
-- The native Firedancer Woke Network downstream and native RPC path.
+- The native Firedancer WokeNet downstream and native RPC path.
 - Every WOKE settlement result, because execution evidence currently comes from
   the compatibility oracle rather than native Firedancer.
-- Creator WOKE tips/subscriptions and passkey account-key wrapping, because the
-  flagship wallet/protocol-identity transaction path is absent.
+- Creator WOKE tips/subscriptions and passkey-to-protocol identity integration,
+  because the flagship WokeNet identity/delegation transaction path is absent.
 - Pairwise Olm messaging, because durable encrypted state, browser/relay
   integration, attachment handling, safety-number UX, and independent review
   are absent.
 
 ### Planned
 
-- Native Woke localnet, public testnet, devnet/staging, and mainnet.
+- Native WokeNet localnet, public testnet, devnet/staging, and mainnet.
 - Production genesis ceremony, supply, allocation, inflation, fee, rewards, and
   validator-economics policy.
-- Wallet onboarding, sponsorship, complete device lifecycle, email/product
-  recovery, rich publication, uploads, and live payment UX.
+- Wallet onboarding, sponsorship, WokeNet delegation/device-authority
+  lifecycle, email/product recovery, rich publication, uploads, and live
+  payment UX. Authentication-service passkey list/add/revoke is already
+  implemented.
 - Persistent encrypted messaging, attachments, safety-number UX, selective
   reporting, and paid-content delivery.
 - Search service, full story/event/livestream semantics, paid
@@ -189,69 +210,73 @@ was therefore not recorded as passing, and no native cluster claim is made.
 ### Not implemented
 
 - Native versions of the six required missing RPC methods.
-- A deployed native Woke validator/RPC cluster or Woke program deployment.
+- A deployed native WokeNet validator/RPC cluster or WokeSocial program deployment.
 - Group encrypted messaging.
 - A production exchange, lending, yield, public sale, bridge, or custodial
   wallet. These are intentionally outside the delivered subset.
-- Production deployment or real-funds operation.
+- A production deployment artifact or real-funds operation in this repository.
+  External systems not represented by repository evidence were not assessed.
 
 ## Test counts and results
 
 All results below were obtained on 2026-07-28 unless marked as an incomplete
 native audit.
 
-| Gate                    | Result                                                    | Evidence boundary                                                                                                     |
-| ----------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Frozen install          | Pass: all 16 projects already up to date with pnpm 11.2.2 | Current workspace, not a separate clean machine                                                                       |
-| `pnpm verify`           | Pass                                                      | Workspace/domain/network policy, formatting, lint, typecheck, unit, build, production redirect probe                  |
-| Type checks             | 15/15 workspaces pass                                     | Strict TypeScript configuration                                                                                       |
-| Unit command            | 422 passing test executions                               | Messaging’s real-WASM file also runs in integration, so cross-gate totals are not unique                              |
-| Integration command     | 42 passing across 13 files                                | PostgreSQL, media processors, WebSocket relay, real WASM, and Kubo                                                    |
-| Rust program tests      | 21 passing                                                | Sizing, validation, PDA/discriminator, sequence, and allocation helpers                                               |
-| Program compatibility   | 33/33 passing                                             | Real Agave local validator; compatibility evidence only                                                               |
-| Web Playwright          | 203 pass, 1 intentional mobile passkey duplicate skipped  | Desktop Chrome and Pixel 7 projects                                                                                   |
-| Auth browser E2E        | 1 pass                                                    | Chromium virtual authenticator                                                                                        |
-| Root browser total      | 204 pass, 1 skip                                          | Does not include the connected-slice executions                                                                       |
-| Connected slice         | 2 desktop/mobile passes before replay and 2 after replay  | Nine finalized transactions, eight replayed events, zero dead letters                                                 |
-| IDL/indexer drift       | Pass                                                      | Checked-in decoder exhaustively covers all 32 IDL events                                                              |
-| Domain production probe | Pass                                                      | Exact legacy hosts return path/query-preserving `308` to `woke.social`; canonical/lookalike/trailing-dot hosts do not |
-| Woke static policy      | Pass                                                      | Source locks, patch, config, native-only policy, capability record, and fail-closed production flags                  |
-| Native binary/cluster   | Not passed                                                | No complete attestation artifact or native connected cluster                                                          |
-| Dependency audit        | Pass at check time: no known vulnerabilities reported     | Registry snapshot only; Node advisory caveat below                                                                    |
-| Secret scan             | Pass: about 4.12 MB scanned, no leaks found               | Gitleaks rules and current tracked candidate files                                                                    |
+| Gate                       | Result                                                    | Evidence boundary                                                                                                 |
+| -------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Frozen install             | Pass: all 16 projects already up to date with pnpm 11.2.2 | Renamed working tree; final-commit no-hardlink clone evidence is recorded separately                              |
+| Final committed clone      | Pass                                                      | Separate same-host `git clone --no-hardlinks`, frozen install, and `pnpm verify`; not an independent machine      |
+| `pnpm verify`              | Pass                                                      | Workspace/naming/domain/network policy, formatting, lint, typecheck, unit, build, local production redirect probe |
+| Naming policy              | Pass                                                      | Repository/package `wokenet`; platform `WokeSocial`/`wokesocial`; network `WokeNet`/`wokenet`                     |
+| Type checks                | 15/15 workspaces pass                                     | Strict TypeScript configuration                                                                                   |
+| Unit command               | 438 passing test executions                               | Messaging’s real-WASM file also runs in integration, so cross-gate totals are not unique                          |
+| Integration command        | 43 passing across 13 files                                | Isolated PostgreSQL 16, media processors, WebSocket relay, real WASM, and Kubo                                    |
+| Rust program tests         | 21 passing                                                | Sizing, validation, PDA/discriminator, sequence, and allocation helpers                                           |
+| Program compatibility      | 33/33 passing                                             | Real Agave local validator; compatibility evidence only                                                           |
+| Web Playwright             | 203 pass, 1 intentional mobile passkey duplicate skipped  | Desktop Chrome and Pixel 7 projects                                                                               |
+| Auth browser E2E           | 1 pass                                                    | Chromium virtual authenticator                                                                                    |
+| Root browser total         | 204 pass, 1 skip                                          | Does not include the connected-slice executions                                                                   |
+| Connected slice            | 2 desktop/mobile passes before replay and 2 after replay  | Nine finalized transactions, eight replayed events, zero dead letters                                             |
+| IDL/indexer drift          | Pass                                                      | Checked-in decoder exhaustively covers all 32 IDL events                                                          |
+| Domain production probe    | Pass                                                      | Local production-mode server with Host headers: exact legacy hosts preserve path/query in `308` redirects         |
+| WokeNet static policy      | Pass                                                      | Source locks, patch, config, native-only policy, capability record, and fail-closed production flags              |
+| WokeNet source apply/check | Pass                                                      | Fresh disposable checkout at the pinned upstream commit accepted the exact downstream patch and source audit      |
+| Native binary/cluster      | Not passed                                                | macOS cannot run the Linux-only binary gate; no complete attestation artifact or native connected cluster         |
+| Dependency audit           | Pass at check time: no known vulnerabilities reported     | Registry snapshot only; Node advisory caveat below                                                                |
+| Secret scan                | Pass: 4.27 MB history and 4.44 MB working tree, no leaks  | Gitleaks rules, three commits, and current tracked candidate files                                                |
 
 ### Unit test executions by workspace
 
 | Workspace          | Passing |
 | ------------------ | ------: |
-| Auth service       |      19 |
+| Auth service       |      24 |
 | Feed service       |      29 |
 | Indexer            |      70 |
 | Media worker       |      57 |
 | Moderation service |      41 |
 | Relay              |      24 |
-| Web                |      54 |
+| Web                |      61 |
 | Configuration      |      20 |
 | Crypto             |      12 |
 | Messaging          |      13 |
 | Protocol           |      40 |
-| SDK                |      26 |
+| SDK                |      30 |
 | Storage            |      14 |
 | Test fixtures      |       3 |
-| **Total**          | **422** |
+| **Total**          | **438** |
 
 ### Integration executions by surface
 
 | Surface               | Passing |
 | --------------------- | ------: |
-| Auth PostgreSQL       |       2 |
+| Auth PostgreSQL       |       3 |
 | Indexer PostgreSQL    |       9 |
 | Media processors      |       3 |
 | Moderation PostgreSQL |       3 |
 | Relay real WebSocket  |      11 |
 | Messaging real WASM   |      13 |
 | Kubo/IPFS             |       1 |
-| **Total executions**  |  **42** |
+| **Total executions**  |  **43** |
 
 ## Build results
 
@@ -259,15 +284,17 @@ native audit.
   passed type checking. The UI package is typechecked and consumed by the web
   build but has no separate build script.
 - Final Next.js 16.2.12 run:
-  - optimized compilation: 1.532 seconds;
-  - TypeScript phase: 1.608 seconds;
-  - 35 static-generation entries: 168 milliseconds;
-  - 46 application page files, with 33 static build entries including
-    `_not-found` and 14 dynamic routes.
-- The SBF artifact is `1,587,768` bytes with SHA-256
-  `096fb121207efbc7a68a4126462e2d4ae2d715e5d788b33dba72e81531ab9d18`.
-- The generated IDL is `284,414` bytes and declares program
-  `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`.
+  - optimized compilation: 1.461 seconds;
+  - TypeScript phase: 1.535 seconds;
+  - 34 static-generation pages: 154 milliseconds;
+  - 46 application page files, with 32 static route entries including
+    `_not-found` and 15 dynamic routes.
+- The SBF artifact rebuilt after the `wokesocial` PDA namespace change is
+  `1,587,776` bytes with SHA-256
+  `daab7ac9c7717422c5d6f458bb38e5c88b08b3ac6a078580c132e11e1c48e3b1`.
+- The regenerated IDL is `311,163` bytes with SHA-256
+  `ed335e9e08ffd979fb193544208470338e46ca32b13851199cc6c8d9c7ade397`
+  and declares program `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`.
 - No native Firedancer binary was built or launched on the macOS verification
   host. The Linux checker exists but is a separate, currently incomplete
   evidence gate.
@@ -281,14 +308,23 @@ Passing local checks:
 - `pnpm audit --audit-level moderate` reported no known vulnerabilities.
 - Gitleaks reported no leaked secrets.
 - Formatting, lint, strict type checking, protocol schema drift, IDL event
-  drift, canonical-domain policy, and production redirect probes passed.
+  drift, repository naming, canonical-domain policy, and local
+  production-server redirect probes passed.
 - Protocol, storage, auth, indexer, relay, moderation, media, recovery,
   governance, and payment suites include malformed input, substitution,
   authorization, replay, stale-state, alias, balance-conservation, and
   corruption cases.
-- WebAuthn is exact-origin/RP bound; the service stores ciphertext rather than a
-  plaintext account key.
-- Woke binary tooling sanitizes child environments, disables ambient Git
+- WebAuthn is exact-origin/RP bound and requires user verification,
+  discoverability, resident-key semantics, no attestation, canonical binary
+  encodings, and PRF support before initial account verification. The service
+  stores only a credential-bound encrypted root wrapper, commits initial
+  credential/wrapper/activation atomically, and commits authentication counter
+  update/session issuance atomically against revocation.
+- Additional service passkeys must wrap the same root, revocation requires fresh
+  step-up and revokes service sessions, cross-tab CSRF state is recoverable from
+  the bound session, and sensitive browser buffers are cleared on best effort.
+  These controls do not claim to revoke WokeNet delegation authority.
+- WokeNet binary tooling sanitizes child environments, disables ambient Git
   configuration/replacements, uses pinned source/dependencies, builds in fresh
   roots, and verifies defined ELF symbols and native-only topology.
 
@@ -329,11 +365,11 @@ an unthrottled headless Chromium browser. Values are per-route medians.
 
 | Route       |   TTFB | DOM content loaded |    Load | LCP observation | CLS observation |
 | ----------- | -----: | -----------------: | ------: | --------------: | --------------: |
-| `/`         | 3.1 ms |            52.3 ms | 52.3 ms |           64 ms |               0 |
-| `/home`     | 6.5 ms |            28.1 ms | 45.9 ms |           68 ms |               0 |
-| `/feeds`    | 2.8 ms |            30.5 ms | 48.9 ms |           44 ms |               0 |
-| `/protocol` | 5.2 ms |            28.3 ms | 46.2 ms |           40 ms |               0 |
-| `/settings` | 6.6 ms |            35.2 ms | 52.6 ms |           48 ms |               0 |
+| `/`         | 2.8 ms |            29.7 ms | 47.6 ms |           52 ms |               0 |
+| `/home`     | 6.9 ms |            25.9 ms | 43.7 ms |           68 ms |               0 |
+| `/feeds`    | 2.5 ms |            26.2 ms | 43.9 ms |           40 ms |               0 |
+| `/protocol` | 3.5 ms |            23.9 ms | 42.6 ms |           36 ms |               0 |
+| `/settings` | 3.4 ms |            26.1 ms | 44.9 ms |           40 ms |               0 |
 
 This is a laboratory observation, not field Core Web Vitals. It excludes INP,
 network throttling, production RPC/indexer/auth/media/storage latency, regional
@@ -342,18 +378,18 @@ edges, load, long-feed behavior, and capacity.
 Compatibility-validator cost observations keep the tested program
 transactions below the Solana packet/compute ceilings. The largest recorded
 transaction in the current suite was an 892-byte subscription settlement; the
-largest recorded compute use was 59,966 units. These are Agave
+largest recorded compute use was 64,523 units. These are Agave
 compatibility-oracle measurements, not native Firedancer performance evidence.
 
 ## Program IDs and deployments
 
-| Environment                  | Program ID                                     | Status                          |
-| ---------------------------- | ---------------------------------------------- | ------------------------------- |
-| Agave compatibility localnet | `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD` | Ephemerally deployed and tested |
-| Native Woke localnet         | None                                           | Not deployed                    |
-| Solana/Woke devnet           | None                                           | Not deployed                    |
-| Woke public testnet/staging  | None                                           | Not deployed                    |
-| Woke mainnet                 | None                                           | Not deployed                    |
+| Environment                    | Program ID                                     | Status                          |
+| ------------------------------ | ---------------------------------------------- | ------------------------------- |
+| Agave compatibility localnet   | `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD` | Ephemerally deployed and tested |
+| Native WokeNet localnet        | None                                           | Not deployed                    |
+| WokeNet devnet                 | None                                           | Not deployed                    |
+| WokeNet public testnet/staging | None                                           | Not deployed                    |
+| WokeNet mainnet                | None                                           | Not deployed                    |
 
 There is no WOKE mint address because WOKE is specified as the network’s native
 currency rather than an SPL token.
@@ -385,9 +421,10 @@ currency rather than an SPL token.
   consensus, restart, replay, finality, fee, or failure evidence.
 - Production WOKE supply, allocation, inflation, rewards, fees, validator
   economics, public-sale policy, and genesis ceremony are unapproved.
-- The WOKE SDK stops at instruction and proof helpers; concrete RPC response
-  decoding, compiled-message/blockhash equality, signing, broadcasting, wallet
-  prompts, and sponsorship are absent.
+- The WOKE SDK now has operation-scoped publication signing and pre-publication
+  verification, but concrete payment RPC decoding, compiled-message/blockhash
+  equality, payment-transaction signing/broadcasting, wallet prompts, and
+  sponsorship are absent.
 - Native payment settlement, wallet onboarding, protocol-identity/passkey
   integration, production recovery UX, and real-funds operation are absent.
 - Messaging state is volatile; group messaging is absent.
@@ -396,8 +433,9 @@ currency rather than an SPL token.
   surfaces rather than production services.
 - Manual accessibility, field performance, load, resilience, provider-loss,
   restore, and disaster-recovery evidence is absent.
-- No production deployment, independent client/operator, independent security
-  audit, or legal approval exists.
+- No production deployment evidence or artifact exists in this repository; no
+  independent client/operator, independent security audit, or legal approval is
+  represented.
 
 ## Mainnet-readiness assessment
 
@@ -413,7 +451,7 @@ Minimum blocking work:
    and clean-machine attestations.
 4. Complete semantic genesis/economic policy, ceremony, independent review,
    and multi-operator launch.
-5. Deploy and validate the social program and SDK on native Woke Network.
+5. Deploy and validate the social program and SDK on native WokeNet.
 6. Repeat program, indexer, payment, replay, restart, failover, and connected UI
    tests against native validator/RPC nodes.
 7. Complete wallet/key/recovery/payment product UX, security review, Node
@@ -436,7 +474,7 @@ The following qualification evidence is absent:
 
 - an independent native validator/RPC operator;
 - an independent native indexer and independent reference client;
-- a public Woke network and reproducible native genesis;
+- a public WokeNet and reproducible native genesis;
 - end-to-end provider migration and community export/import;
 - full infrastructure-loss and provider-failure exercises;
 - transparent production authority/multisig and signed release artifacts;
@@ -474,8 +512,9 @@ Individual evidence:
 
 ```sh
 pnpm workspace:check
+pnpm naming:check
 pnpm domain:check
-pnpm network:woke:check
+pnpm wokenet:check
 pnpm format:check
 pnpm lint
 pnpm typecheck
@@ -487,7 +526,7 @@ pnpm test:e2e
 pnpm measure:performance
 pnpm test:programs
 pnpm test:vertical-slice
-pnpm --filter @socially-woke/indexer check:anchor-events
+pnpm --filter @wokesocial/indexer check:anchor-events
 pnpm security:audit
 pnpm security:secrets
 ```
@@ -495,14 +534,14 @@ pnpm security:secrets
 Native source and supported-Linux attestation commands:
 
 ```sh
-pnpm network:woke:materialize -- /absolute/path/to/woke-firedancer
-pnpm network:woke:source-check -- /absolute/path/to/woke-firedancer
-pnpm network:woke:binary-check -- /absolute/path/to/woke-firedancer
-pnpm network:woke:verify-genesis -- /absolute/path/to/genesis.bin EXPECTED_BASE58_HASH
+pnpm wokenet:materialize -- /absolute/path/to/wokenet-firedancer
+pnpm wokenet:source-check -- /absolute/path/to/wokenet-firedancer
+pnpm wokenet:binary-check -- /absolute/path/to/wokenet-firedancer
+pnpm wokenet:verify-genesis -- /absolute/path/to/genesis.bin EXPECTED_BASE58_HASH
 ```
 
-`network:woke:binary-check` requires supported Linux x64 and does not itself
-establish a connected cluster. `network:woke:verify-genesis` proves only the
+`wokenet:binary-check` requires supported Linux x64 and does not itself
+establish a connected cluster. `wokenet:verify-genesis` proves only the
 exact byte hash supplied by the operator.
 
 ## Recommended independent security-audit scope

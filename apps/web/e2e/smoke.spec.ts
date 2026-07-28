@@ -168,7 +168,7 @@ test('local export downloads only the scoped device JSON', async ({ page }) => {
   await page.getByRole('button', { name: 'Download local device export' }).click();
   const download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toBe('socially-woke-device-export.json');
+  expect(download.suggestedFilename()).toBe('wokesocial-device-export.json');
   await expect(page.getByText(/No identity, post history, relationships/u)).toBeVisible();
 });
 

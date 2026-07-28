@@ -15,13 +15,13 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json .
 COPY patches ./patches
 COPY apps/feed-service/package.json ./apps/feed-service/package.json
 
-RUN --mount=type=cache,id=socially-woke-pnpm,target=/opt/pnpm/store \
-    pnpm install --frozen-lockfile --filter @socially-woke/feed-service
+RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
+    pnpm install --frozen-lockfile --filter @wokesocial/feed-service
 
 COPY apps/feed-service ./apps/feed-service
 
-RUN pnpm --filter @socially-woke/feed-service build \
-    && pnpm --filter @socially-woke/feed-service deploy \
+RUN pnpm --filter @wokesocial/feed-service build \
+    && pnpm --filter @wokesocial/feed-service deploy \
       --prod \
       --legacy \
       --strict-peer-dependencies=false \
@@ -34,10 +34,10 @@ ENV NODE_ENV=production \
     FEED_SERVICE_PORT=4100
 WORKDIR /app
 
-RUN groupadd --system --gid 10002 socially-woke \
-    && useradd --system --uid 10002 --gid socially-woke --home-dir /nonexistent socially-woke
+RUN groupadd --system --gid 10002 wokesocial \
+    && useradd --system --uid 10002 --gid wokesocial --home-dir /nonexistent wokesocial
 
-COPY --from=build --chown=socially-woke:socially-woke /opt/feed-service ./
+COPY --from=build --chown=wokesocial:wokesocial /opt/feed-service ./
 
 USER 10002:10002
 EXPOSE 4100

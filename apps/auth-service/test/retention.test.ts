@@ -6,7 +6,9 @@ import {
   type AccountRecord,
   type CeremonyRecord,
   type SessionRecord,
+  type StoredKeyBundle,
 } from '../src/index.js';
+import { credentialId, wrappedKeyBundle } from './fixtures.js';
 
 const now = new Date('2026-07-28T20:00:00.000Z');
 
@@ -28,19 +30,22 @@ describe('authentication record retention', () => {
       active,
       ceremony('C', active.accountId, '2026-07-28T17:05:00.000Z'),
     );
+    const activeCredentialId = credentialId(70);
+    const activatedAt = '2026-07-28T17:01:00.000Z';
     await store.finalizeFirstCredential(
       active.accountId,
       {
-        credentialId: 'credential-active',
+        credentialId: activeCredentialId,
         accountId: active.accountId,
         publicKey: Uint8Array.of(1),
         counter: 0,
         transports: ['internal'],
         deviceType: 'multiDevice',
         backedUp: false,
-        createdAt: '2026-07-28T17:01:00.000Z',
+        createdAt: activatedAt,
       },
-      '2026-07-28T17:01:00.000Z',
+      await storedRootBundle(active.accountId, activeCredentialId, activatedAt),
+      activatedAt,
     );
     await store.putCeremony(ceremony('D', undefined, '2026-07-28T18:00:00.000Z'));
     await store.putCeremony(ceremony('E', undefined, '2026-07-28T19:30:00.000Z'));
@@ -158,4 +163,20 @@ function session(
 
 function sessionId(seed: string): string {
   return `ses_${seed.repeat(22)}`;
+}
+
+async function storedRootBundle(
+  accountId: string,
+  credentialIdValue: string,
+  updatedAt: string,
+): Promise<StoredKeyBundle> {
+  const bundle = await wrappedKeyBundle(credentialIdValue);
+  return {
+    accountId,
+    credentialId: credentialIdValue,
+    keyKind: bundle.keyKind,
+    publicKey: bundle.publicKey,
+    bundle,
+    updatedAt,
+  };
 }

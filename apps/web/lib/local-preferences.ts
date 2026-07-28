@@ -1,4 +1,4 @@
-export const DEVICE_PREFERENCES_STORAGE_KEY = 'socially-woke:device-preferences:v1';
+export const DEVICE_PREFERENCES_STORAGE_KEY = 'wokesocial:device-preferences:v1';
 export const DEVICE_PREFERENCES_VERSION = 1 as const;
 
 export type LocalSafetyMode = 'hide-from-feeds' | 'mute-live-signals';

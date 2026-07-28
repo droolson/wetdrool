@@ -16,19 +16,19 @@ import { createTestDevice, TestAuthorizationResolver, TestKeyDirectory } from '.
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const aliceAddress = {
-  identityId: 'did:sw:alice',
+  identityId: 'did:wokesocial:alice',
   deviceId: 'alice-phone-1',
 } as const;
 const bobAddress = {
-  identityId: 'did:sw:bob',
+  identityId: 'did:wokesocial:bob',
   deviceId: 'bob-phone-1',
 } as const;
 const bobRotatedAddress = {
-  identityId: 'did:sw:bob',
+  identityId: 'did:wokesocial:bob',
   deviceId: 'bob-phone-2',
 } as const;
 const charlieAddress = {
-  identityId: 'did:sw:charlie',
+  identityId: 'did:wokesocial:charlie',
   deviceId: 'charlie-phone-1',
 } as const;
 
@@ -55,7 +55,7 @@ function expectCode(
     (error: unknown) => {
       expect(error).toBeInstanceOf(PairwiseMessagingError);
       expect((error as PairwiseMessagingError).code).toBe(code);
-      expect((error as Error).message).not.toContain('did:sw:');
+      expect((error as Error).message).not.toContain('did:wokesocial:');
     },
   );
 }
@@ -149,7 +149,7 @@ describe('real matrix-rust-sdk WASM pairwise adapter', () => {
       'curve25519PublicKey',
       'ed25519PublicKey',
     ]);
-    expect(JSON.stringify(binding)).not.toContain('@sw_');
+    expect(JSON.stringify(binding)).not.toContain('@wokesocial_');
     expect(JSON.stringify(binding)).not.toContain('messaging.invalid');
   });
 
@@ -242,7 +242,7 @@ describe('real matrix-rust-sdk WASM pairwise adapter', () => {
     });
     const changedMessageId = {
       ...envelope,
-      messageId: 'swm_AAAAAAAAAAAAAAAAAAAAAA',
+      messageId: 'wokesocial-message_AAAAAAAAAAAAAAAAAAAAAA',
     };
     const changedSender = {
       ...envelope,
@@ -428,10 +428,10 @@ describe('real matrix-rust-sdk WASM pairwise adapter', () => {
     const directory = new TestKeyDirectory();
     const resolver = new TestAuthorizationResolver();
     const invalidAddresses: SocialDeviceAddress[] = [
-      { identityId: 'did:sw:invalid-\ud800', deviceId: 'phone' },
-      { identityId: 'did:sw:invalid-\udfff', deviceId: 'phone' },
-      { identityId: 'did:sw:valid', deviceId: 'phone-\ud800' },
-      { identityId: 'did:sw:valid', deviceId: 'phone-\udfff' },
+      { identityId: 'did:wokesocial:invalid-\ud800', deviceId: 'phone' },
+      { identityId: 'did:wokesocial:invalid-\udfff', deviceId: 'phone' },
+      { identityId: 'did:wokesocial:valid', deviceId: 'phone-\ud800' },
+      { identityId: 'did:wokesocial:valid', deviceId: 'phone-\udfff' },
     ];
 
     for (const address of invalidAddresses) {

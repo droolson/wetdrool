@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ButtonLink, InfoCard, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, InfoCard, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { PasskeyAuthPanel } from '@/components/passkey-auth-panel';
@@ -37,7 +37,7 @@ const STEPS = [
 
 export default function OnboardingPage() {
   const authServiceUrl =
-    process.env['SOCIALLY_WOKE_AUTH_URL'] ??
+    process.env['WOKESOCIAL_AUTH_URL'] ??
     process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
     'http://localhost:4300';
 
@@ -49,9 +49,9 @@ export default function OnboardingPage() {
         title="Your identity should start with consent."
       >
         <p>
-          Passkey approval can now create an authentication-service account and synchronize only an
-          encrypted key wrapper. Profile publication, recovery, and protocol identity creation are
-          still unavailable.
+          Passkey approval can now atomically create an authentication-service account and its
+          credential-bound encrypted key wrapper. Profile publication, recovery, and protocol
+          identity creation are still unavailable.
         </p>
       </AppPageHeader>
 
@@ -95,9 +95,10 @@ export default function OnboardingPage() {
           <p className="section-kicker">Replaceable authentication</p>
           <h2 id="create-account-title">Create a service account with your passkey.</h2>
           <p>
-            The browser asks for a discoverable, user-verifying credential. If its PRF extension is
-            available, a new Ed25519 seed is encrypted locally and only the ciphertext bundle is
-            synchronized. No protocol identity is created.
+            The browser requires a discoverable, user-verifying credential with the PRF extension. A
+            new Ed25519 seed is encrypted locally, then the credential and ciphertext-only wrapper
+            are committed together. If either part fails, no service account is activated. No
+            protocol identity is created.
           </p>
           <div className="product-cta__actions">
             <ButtonLink href="/signin" variant="secondary">

@@ -58,7 +58,7 @@ export async function buildMediaWorkerApp(
         ? false
         : {
             level: 'info',
-            base: { service: '@socially-woke/media-worker' },
+            base: { service: '@wokesocial/media-worker' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -112,7 +112,7 @@ export async function buildMediaWorkerApp(
 
   app.get('/healthz', async () => ({
     ok: true,
-    service: '@socially-woke/media-worker',
+    service: '@wokesocial/media-worker',
     canonical: false,
     signsForUsers: false,
   }));

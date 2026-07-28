@@ -9,7 +9,7 @@ badges, provider cards, headings, and state panels. Playwright verifies the
 high-contrast control on implemented routes. Full product-state coverage,
 originality/legal review, and production asset packaging remain open.
 
-Socially Woke should feel bold, joyful, intelligent, defiant, welcoming, human,
+WokeSocial should feel bold, joyful, intelligent, defiant, welcoming, human,
 contemporary, and trustworthy. The experience is explicitly LGBTQ+ affirming
 without treating queer identity as a decorative motif or restricting the
 network to LGBTQ+ people.

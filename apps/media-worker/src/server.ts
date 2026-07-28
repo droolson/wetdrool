@@ -1,4 +1,4 @@
-import { LocalContentAddressedStorage } from '@socially-woke/storage';
+import { LocalContentAddressedStorage } from '@wokesocial/storage';
 
 import { buildMediaWorkerApp } from './app.js';
 import { ClamdScanner } from './clamd-scanner.js';

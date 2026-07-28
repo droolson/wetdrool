@@ -4,7 +4,7 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
-import { secureRandomBytes } from '@socially-woke/crypto';
+import { secureRandomBytes } from '@wokesocial/crypto';
 
 import { validateKeyBundle } from './bundle-validator.js';
 import { CeremonyManager } from './ceremony-manager.js';
@@ -14,7 +14,12 @@ import {
   discoverableUserHandleMatches,
 } from './credential-state.js';
 import { AuthServiceError } from './errors.js';
-import type { CredentialRecord, SessionRecord, StoredKeyBundle } from './models.js';
+import type {
+  CredentialAuthenticationUpdate,
+  CredentialRecord,
+  SessionRecord,
+  StoredKeyBundle,
+} from './models.js';
 import { randomAccountId } from './security.js';
 import {
   type AuthenticatedSession,
@@ -124,6 +129,7 @@ export class AuthService {
     readonly accountId: string;
     readonly ceremonyId: string;
     readonly response: RegistrationResponseJSON;
+    readonly bundle: unknown;
   }): Promise<{ readonly credential: CredentialRecord; readonly session: IssuedSession }> {
     const now = this.#now();
     const account = await this.store.getAccount(input.accountId);
@@ -138,7 +144,18 @@ export class AuthService {
     }
     const verified = await this.#ceremonies.verifyRegistration(input.response, ceremony);
     const credential = credentialFromVerification(account.accountId, verified, now);
-    await this.store.finalizeFirstCredential(account.accountId, credential, now.toISOString());
+    const rootBundle = await requiredRootBundle(
+      account.accountId,
+      credential.credentialId,
+      input.bundle,
+      now,
+    );
+    await this.store.finalizeFirstCredential(
+      account.accountId,
+      credential,
+      rootBundle,
+      now.toISOString(),
+    );
     return {
       credential,
       session: await this.#sessions.create(account.accountId, now, true),
@@ -189,10 +206,14 @@ export class AuthService {
       ceremony,
       credential,
     );
-    const updated = await this.#updateCredential(credential, verified, now);
+    const session = this.#sessions.issue(account.accountId, now, false);
+    const updated = await this.store.completeAuthentication(
+      this.#credentialAuthenticationUpdate(credential, verified, now),
+      session.session,
+    );
     return {
       credential: updated,
-      session: await this.#sessions.create(account.accountId, now, false),
+      session,
     };
   }
 
@@ -290,6 +311,7 @@ export class AuthService {
     input: {
       readonly ceremonyId: string;
       readonly response: RegistrationResponseJSON;
+      readonly bundle: unknown;
     },
   ): Promise<CredentialRecord> {
     this.assertFreshStepUp(authenticated.session);
@@ -303,7 +325,20 @@ export class AuthService {
     if (ceremony === undefined) throw ceremonyUnavailable();
     const verified = await this.#ceremonies.verifyRegistration(input.response, ceremony);
     const credential = credentialFromVerification(authenticated.account.accountId, verified, now);
-    await this.store.addCredential(authenticated.account.accountId, credential);
+    const rootBundle = await requiredRootBundle(
+      authenticated.account.accountId,
+      credential.credentialId,
+      input.bundle,
+      now,
+    );
+    const existingRootBundles = (
+      await this.store.listKeyBundles(authenticated.account.accountId)
+    ).filter((bundle) => bundle.keyKind === 'solana-ed25519-root-seed');
+    const rootPublicKeys = new Set(existingRootBundles.map((bundle) => bundle.publicKey));
+    if (rootPublicKeys.size !== 1 || !rootPublicKeys.has(rootBundle.publicKey)) {
+      throw rootBundleMismatch();
+    }
+    await this.store.addCredential(authenticated.account.accountId, credential, rootBundle);
     return credential;
   }
 
@@ -320,9 +355,13 @@ export class AuthService {
   }
 
   validateSessionCsrf(authenticated: AuthenticatedSession, token: string): void {
-    if (!this.#sessions.validateCsrf(authenticated.session, token)) {
+    if (!this.matchesSessionCsrf(authenticated, token)) {
       throw new AuthServiceError('CSRF token is invalid.', 'csrf-invalid');
     }
+  }
+
+  matchesSessionCsrf(authenticated: AuthenticatedSession, token: string): boolean {
+    return this.#sessions.validateCsrf(authenticated.session, token);
   }
 
   assertFreshStepUp(session: SessionRecord): void {
@@ -354,32 +393,6 @@ export class AuthService {
     await this.#sessions.revoke(authenticated.session.sessionId, this.#now());
   }
 
-  async putKeyBundle(
-    authenticated: AuthenticatedSession,
-    credentialId: string,
-    input: unknown,
-  ): Promise<StoredKeyBundle> {
-    const credential = await this.store.getCredential(credentialId);
-    if (
-      credential === undefined ||
-      credential.accountId !== authenticated.account.accountId ||
-      credential.revokedAt !== undefined
-    ) {
-      throw new AuthServiceError('Credential is unavailable.', 'credential-unavailable');
-    }
-    const bundle = await validateKeyBundle(input, credentialId);
-    const stored: StoredKeyBundle = {
-      accountId: authenticated.account.accountId,
-      credentialId,
-      keyKind: bundle.keyKind,
-      publicKey: bundle.publicKey,
-      bundle,
-      updatedAt: this.#now().toISOString(),
-    };
-    await this.store.putKeyBundle(stored);
-    return stored;
-  }
-
   listKeyBundles(accountId: string): Promise<readonly StoredKeyBundle[]> {
     return this.store.listKeyBundles(accountId);
   }
@@ -401,15 +414,25 @@ export class AuthService {
     verified: VerifiedAuthentication,
     now: Date,
   ): Promise<CredentialRecord> {
+    return this.store.updateCredentialAfterAuthentication(
+      this.#credentialAuthenticationUpdate(credential, verified, now),
+    );
+  }
+
+  #credentialAuthenticationUpdate(
+    credential: CredentialRecord,
+    verified: VerifiedAuthentication,
+    now: Date,
+  ): CredentialAuthenticationUpdate {
     assertAuthenticationResult(verified);
-    return this.store.updateCredentialAfterAuthentication({
+    return {
       credentialId: credential.credentialId,
       previousCounter: credential.counter,
       newCounter: verified.newCounter,
       deviceType: verified.deviceType,
       backedUp: verified.backedUp,
       usedAt: now.toISOString(),
-    });
+    };
   }
 }
 
@@ -418,6 +441,33 @@ function positiveDuration(value: number, label: string): number {
     throw new TypeError(`${label} must be between one second and one day.`);
   }
   return value;
+}
+
+async function requiredRootBundle(
+  accountId: string,
+  credentialId: string,
+  input: unknown,
+  now: Date,
+): Promise<StoredKeyBundle> {
+  const bundle = await validateKeyBundle(input, credentialId);
+  if (bundle.keyKind !== 'solana-ed25519-root-seed') {
+    throw rootBundleMismatch();
+  }
+  return {
+    accountId,
+    credentialId,
+    keyKind: bundle.keyKind,
+    publicKey: bundle.publicKey,
+    bundle,
+    updatedAt: now.toISOString(),
+  };
+}
+
+function rootBundleMismatch(): AuthServiceError {
+  return new AuthServiceError(
+    'Every active passkey must wrap the same encrypted account root.',
+    'bundle-invalid',
+  );
 }
 
 function ceremonyUnavailable(): AuthServiceError {

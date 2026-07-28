@@ -1,17 +1,19 @@
-name = "woke-rpc-01"
+name = "wokenet-validator-01"
 telemetry = false
 
 [paths]
-    base = "/srv/woke-network/rpc-01"
-    identity_key = "/run/woke-network-secrets/rpc-identity.json"
-    genesis = "/srv/woke-network/network/genesis.bin"
-    snapshots = "/srv/woke-network/snapshots"
-    accounts = "/srv/woke-network/accounts.db"
-    shredb = "/srv/woke-network/shreds.db"
+    base = "/srv/wokenet/validator-01"
+    identity_key = "/run/wokenet-secrets/validator-identity.json"
+    vote_account = "/run/wokenet-secrets/vote-account.json"
+    authorized_voter_paths = ["/run/wokenet-secrets/authorized-voter.json"]
+    genesis = "/srv/wokenet/network/genesis.bin"
+    snapshots = "/srv/wokenet/snapshots"
+    accounts = "/srv/wokenet/accounts.db"
+    shredb = "/srv/wokenet/shreds.db"
 
 [gossip]
     entrypoints = ["entrypoint-01.network.woke.social:8001", "entrypoint-02.network.woke.social:8001"]
-    port = 8101
+    port = 8001
 
 [snapshots]
     genesis_download = false
@@ -27,19 +29,13 @@ telemetry = false
 [consensus]
     expected_genesis_hash = "REPLACE_WITH_CEREMONY_GENESIS_HASH"
     expected_shred_version = "REPLACE_WITH_CEREMONY_SHRED_VERSION"
-    wait_for_vote_to_start_leader = false
+    wait_for_vote_to_start_leader = true
 
 [tiles.gui]
     enabled = false
 
 [tiles.rpc]
-    enabled = true
-    rpc_listen_address = "127.0.0.1"
-    rpc_listen_port = 8899
-    max_http_connections = 1024
-    max_websocket_connections = 128
-    max_http_request_length = 8192
-    send_buffer_size_mb = 1024
+    enabled = false
 
 [development]
     no_agave = true

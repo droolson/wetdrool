@@ -188,10 +188,10 @@ export class RelayMetrics {
     keyAuthorization: RelayKeyAuthorizationMode,
   ): string {
     const values = this.snapshot(retainedEvents);
-    const prefix = 'socially_woke_relay_';
+    const prefix = 'wokesocial_relay_';
     const lines = [
-      '# HELP socially_woke_relay_info Relay service metadata.',
-      '# TYPE socially_woke_relay_info gauge',
+      '# HELP wokesocial_relay_info Relay service metadata.',
+      '# TYPE wokesocial_relay_info gauge',
       `${prefix}info{relay_id="${escapePrometheus(relayId)}",canonical="false",key_authorization="${keyAuthorization}"} 1`,
     ];
     for (const [name, value] of Object.entries(values)) {

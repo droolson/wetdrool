@@ -99,14 +99,17 @@ export class MemoryAuthStore implements AuthStore {
   async finalizeFirstCredential(
     accountId: string,
     credential: CredentialRecord,
+    rootBundle: StoredKeyBundle,
     activatedAt: string,
   ): Promise<void> {
     const account = this.#accounts.get(accountId);
+    assertRootBundleAssociation(rootBundle, accountId, credential.credentialId);
     if (
       account === undefined ||
       account.status !== 'pending' ||
       credential.accountId !== accountId ||
-      this.#credentials.has(credential.credentialId)
+      this.#credentials.has(credential.credentialId) ||
+      [...this.#bundles.values()].some((bundle) => bundle.accountId === accountId)
     ) {
       throw new AuthServiceError(
         'Credential ID is already registered or the account is unavailable.',
@@ -114,6 +117,7 @@ export class MemoryAuthStore implements AuthStore {
       );
     }
     this.#credentials.set(credential.credentialId, cloneCredential(credential));
+    this.#bundles.set(bundleKey(rootBundle), cloneBundle(rootBundle));
     this.#accounts.set(accountId, {
       ...account,
       status: 'active',
@@ -121,19 +125,70 @@ export class MemoryAuthStore implements AuthStore {
     });
   }
 
-  async addCredential(accountId: string, credential: CredentialRecord): Promise<void> {
+  async addCredential(
+    accountId: string,
+    credential: CredentialRecord,
+    rootBundle: StoredKeyBundle,
+  ): Promise<void> {
     const account = this.#accounts.get(accountId);
+    assertRootBundleAssociation(rootBundle, accountId, credential.credentialId);
+    const rootPublicKeys = this.#activeRootPublicKeys(accountId);
     if (
       account?.status !== 'active' ||
       credential.accountId !== accountId ||
-      this.#credentials.has(credential.credentialId)
+      this.#credentials.has(credential.credentialId) ||
+      rootPublicKeys.size !== 1 ||
+      !rootPublicKeys.has(rootBundle.publicKey)
     ) {
+      if (
+        account?.status === 'active' &&
+        credential.accountId === accountId &&
+        !this.#credentials.has(credential.credentialId)
+      ) {
+        throw rootBundleMismatch();
+      }
       throw new AuthServiceError(
         'Credential ID is already registered or the account is unavailable.',
         'credential-duplicate',
       );
     }
     this.#credentials.set(credential.credentialId, cloneCredential(credential));
+    this.#bundles.set(bundleKey(rootBundle), cloneBundle(rootBundle));
+  }
+
+  async completeAuthentication(
+    update: CredentialAuthenticationUpdate,
+    session: SessionRecord,
+  ): Promise<CredentialRecord> {
+    const credential = this.#credentials.get(update.credentialId);
+    const account = credential === undefined ? undefined : this.#accounts.get(credential.accountId);
+    if (
+      credential === undefined ||
+      credential.revokedAt !== undefined ||
+      credential.counter !== update.previousCounter ||
+      !counterAdvances(update.previousCounter, update.newCounter) ||
+      account?.status !== 'active' ||
+      session.accountId !== credential.accountId ||
+      session.revokedAt !== undefined ||
+      this.#sessions.has(session.sessionId)
+    ) {
+      throw new AuthServiceError(
+        'Credential state no longer permits an authenticated session.',
+        'verification-failed',
+      );
+    }
+    const updated: CredentialRecord = {
+      ...credential,
+      counter: update.newCounter,
+      deviceType: update.deviceType,
+      backedUp: update.backedUp,
+      lastUsedAt: update.usedAt,
+    };
+    const storedCredential = cloneCredential(updated);
+    const storedSession = cloneSession(session);
+    this.#credentials.set(credential.credentialId, storedCredential);
+    this.#sessions.set(session.sessionId, storedSession);
+    return cloneCredential(storedCredential);
   }
 
   async updateCredentialAfterAuthentication(
@@ -238,18 +293,6 @@ export class MemoryAuthStore implements AuthStore {
     }
   }
 
-  async putKeyBundle(bundle: StoredKeyBundle): Promise<void> {
-    const credential = this.#credentials.get(bundle.credentialId);
-    if (
-      credential === undefined ||
-      credential.accountId !== bundle.accountId ||
-      credential.revokedAt !== undefined
-    ) {
-      throw new AuthServiceError('Credential is unavailable.', 'credential-unavailable');
-    }
-    this.#bundles.set(bundleKey(bundle), cloneBundle(bundle));
-  }
-
   async listKeyBundles(accountId: string): Promise<readonly StoredKeyBundle[]> {
     return [...this.#bundles.values()]
       .filter((bundle) => bundle.accountId === accountId)
@@ -323,6 +366,21 @@ export class MemoryAuthStore implements AuthStore {
     return Promise.resolve();
   }
 
+  #activeRootPublicKeys(accountId: string): Set<string> {
+    return new Set(
+      [...this.#bundles.values()]
+        .filter((bundle) => {
+          const credential = this.#credentials.get(bundle.credentialId);
+          return (
+            bundle.accountId === accountId &&
+            bundle.keyKind === 'solana-ed25519-root-seed' &&
+            credential?.revokedAt === undefined
+          );
+        })
+        .map((bundle) => bundle.publicKey),
+    );
+  }
+
   #deleteAccountCascade(accountId: string): void {
     this.#accounts.delete(accountId);
     for (const [ceremonyId, ceremony] of this.#ceremonies) {
@@ -353,6 +411,29 @@ export function counterAdvances(previous: number, next: number): boolean {
 
 function bundleKey(bundle: StoredKeyBundle): string {
   return `${bundle.credentialId}\u0000${bundle.keyKind}\u0000${bundle.publicKey}`;
+}
+
+function assertRootBundleAssociation(
+  bundle: StoredKeyBundle,
+  accountId: string,
+  credentialId: string,
+): void {
+  if (
+    bundle.accountId !== accountId ||
+    bundle.credentialId !== credentialId ||
+    bundle.keyKind !== 'solana-ed25519-root-seed' ||
+    bundle.bundle.keyKind !== 'solana-ed25519-root-seed' ||
+    bundle.publicKey !== bundle.bundle.publicKey
+  ) {
+    throw rootBundleMismatch();
+  }
+}
+
+function rootBundleMismatch(): AuthServiceError {
+  return new AuthServiceError(
+    'Every active passkey must wrap the same encrypted account root.',
+    'bundle-invalid',
+  );
 }
 
 function cloneAccount(account: AccountRecord): AccountRecord {

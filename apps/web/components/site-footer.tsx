@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BrandMark } from '@socially-woke/ui';
+import { BrandMark } from '@wokesocial/ui';
 
 export function SiteFooter() {
   return (
@@ -45,7 +45,7 @@ export function SiteFooter() {
           Foundation preview. Protocol publishing, wallet actions, and production claims remain
           disabled until their verification gates pass.
         </p>
-        <p>© {new Date().getUTCFullYear()} Socially Woke</p>
+        <p>© {new Date().getUTCFullYear()} WokeSocial</p>
       </div>
     </footer>
   );

@@ -1,4 +1,4 @@
-# `@socially-woke/test-fixtures`
+# `@wokesocial/test-fixtures`
 
 Deterministic identities and signed canonical manifests for unit, integration, interoperability, and demo-data tests.
 
@@ -12,8 +12,8 @@ All private keys in this package are intentionally public test vectors. They are
 - a tombstone for Bob's reply.
 
 All identities use the canonical
-`woke:v1:<genesis-hash-base58-32>:<program-id-base58-32>` network namespace.
+`wokenet:v1:<genesis-hash-base58-32>:<program-id-base58-32>` network namespace.
 Because the namespace is signed content, its migration intentionally repinned
 every fixture object ID and CID.
 
-Consumers should verify the envelopes using the real `@socially-woke/protocol` verifier. The fixture package does not weaken or replace authorization checks.
+Consumers should verify the envelopes using the real `@wokesocial/protocol` verifier. The fixture package does not weaken or replace authorization checks.

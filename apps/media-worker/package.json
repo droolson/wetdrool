@@ -1,5 +1,5 @@
 {
-  "name": "@socially-woke/media-worker",
+  "name": "@wokesocial/media-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,8 +22,8 @@
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/rate-limit": "11.1.0",
-    "@socially-woke/protocol": "workspace:*",
-    "@socially-woke/storage": "workspace:*",
+    "@wokesocial/protocol": "workspace:*",
+    "@wokesocial/storage": "workspace:*",
     "fastify": "5.10.0",
     "file-type": "22.0.1",
     "sharp": "0.35.3",

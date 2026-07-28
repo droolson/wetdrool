@@ -20,7 +20,7 @@ describe('signed envelopes', () => {
     const envelope = signPayload(payload, privateKey);
     const verified = await verifyEnvelope(canonicalizeEnvelope(envelope), () => true);
 
-    expect(verified.objectId).toMatch(/^swobj:v1:post:/u);
+    expect(verified.objectId).toMatch(/^wokesocialobj:v1:post:/u);
     expect(verified.cid).toMatch(/^bafk/u);
     expect(verified.envelope).toEqual(envelope);
   });

@@ -24,18 +24,18 @@ export function StatePanel({
 
   return (
     <section
-      className={`sw-state-panel sw-state-panel--${tone}`}
+      className={`wokesocial-state-panel wokesocial-state-panel--${tone}`}
       aria-live={isUrgent ? 'assertive' : 'polite'}
       aria-busy={tone === 'loading' ? 'true' : undefined}
     >
-      <div className="sw-state-panel__signal" aria-hidden="true">
+      <div className="wokesocial-state-panel__signal" aria-hidden="true">
         <span />
       </div>
-      <div className="sw-state-panel__body">
-        {eyebrow ? <p className="sw-eyebrow">{eyebrow}</p> : null}
+      <div className="wokesocial-state-panel__body">
+        {eyebrow ? <p className="wokesocial-eyebrow">{eyebrow}</p> : null}
         <Heading>{title}</Heading>
-        <div className="sw-state-panel__copy">{children}</div>
-        {action ? <div className="sw-state-panel__action">{action}</div> : null}
+        <div className="wokesocial-state-panel__copy">{children}</div>
+        {action ? <div className="wokesocial-state-panel__action">{action}</div> : null}
       </div>
     </section>
   );

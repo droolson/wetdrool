@@ -1,4 +1,4 @@
-import { StatePanel } from '@socially-woke/ui';
+import { StatePanel } from '@wokesocial/ui';
 
 export default function HomeLoading() {
   return (

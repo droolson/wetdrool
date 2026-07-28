@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from './app-page-header';
 

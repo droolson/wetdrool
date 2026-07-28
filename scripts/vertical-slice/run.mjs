@@ -171,14 +171,14 @@ async function main() {
   await runChecked('Anchor SBF build', anchorBinary, ['build'], { env: chainEnv });
   await runChecked('Anchor event decoder drift check', 'pnpm', [
     '--filter',
-    '@socially-woke/indexer',
+    '@wokesocial/indexer',
     'check:anchor-events',
   ]);
   await runChecked('Production application build', 'pnpm', [
     '--filter',
-    '@socially-woke/indexer...',
+    '@wokesocial/indexer...',
     '--filter',
-    '@socially-woke/web...',
+    '@wokesocial/web...',
     'build',
   ]);
   await runChecked('Playwright Chromium installation', process.execPath, [
@@ -272,11 +272,11 @@ async function main() {
   if (typeof genesisHash !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]+$/u.test(genesisHash)) {
     throw new Error('Local validator returned an invalid genesis hash.');
   }
-  const networkId = `woke:v1:${genesisHash}:${PROGRAM_ID}`;
+  const networkId = `wokenet:v1:${genesisHash}:${PROGRAM_ID}`;
 
   step('Starting an isolated disposable PostgreSQL projection');
   const database = await startPostgres();
-  const databaseUrl = `postgresql://socially_woke_vertical:vertical-slice-local-only@127.0.0.1:${database.port}/socially_woke_vertical`;
+  const databaseUrl = `postgresql://wokesocial_vertical:vertical-slice-local-only@127.0.0.1:${database.port}/wokesocial_vertical`;
 
   step('Publishing canonical signed manifests and finalized protocol transactions');
   await runChecked(
@@ -318,13 +318,13 @@ async function main() {
     NEXT_PUBLIC_APP_ORIGIN: webUrl,
     NEXT_PUBLIC_INDEXER_URL: indexerUrl,
     NEXT_PUBLIC_PROGRAM_ID: PROGRAM_ID,
-    NEXT_PUBLIC_WOKE_NETWORK: 'localnet',
-    NEXT_PUBLIC_WOKE_RPC_URL: rpcUrl,
+    NEXT_PUBLIC_WOKENET: 'localnet',
+    NEXT_PUBLIC_WOKENET_RPC_URL: rpcUrl,
     NODE_ENV: 'production',
     SESSION_SECRET: 'vertical-slice-local-session-secret-only',
-    WOKE_COMMITMENT: 'finalized',
-    WOKE_RPC_URLS: rpcUrl,
-    WOKE_WS_URLS: websocketUrl,
+    WOKENET_COMMITMENT: 'finalized',
+    WOKENET_RPC_URLS: rpcUrl,
+    WOKENET_WS_URLS: websocketUrl,
   };
 
   step('Running the production indexer sync and asserting its public feed contract');
@@ -396,7 +396,7 @@ async function verifyProductionWeb(environment, webPort, webUrl, indexerUrl, fix
     {
       env: {
         ...environment,
-        SOCIALLY_WOKE_INDEXER_URL: indexerUrl,
+        WOKESOCIAL_INDEXER_URL: indexerUrl,
       },
     },
   );
@@ -440,7 +440,7 @@ function startIndexer(environment) {
 }
 
 async function startPostgres() {
-  state.containerName = `socially-woke-vertical-${process.pid}-${randomUUID().slice(0, 8)}`;
+  state.containerName = `wokesocial-vertical-${process.pid}-${randomUUID().slice(0, 8)}`;
   const result = await capture('docker', [
     'run',
     '--detach',
@@ -448,9 +448,9 @@ async function startPostgres() {
     '--name',
     state.containerName,
     '--env',
-    'POSTGRES_DB=socially_woke_vertical',
+    'POSTGRES_DB=wokesocial_vertical',
     '--env',
-    'POSTGRES_USER=socially_woke_vertical',
+    'POSTGRES_USER=wokesocial_vertical',
     '--env',
     'POSTGRES_PASSWORD=vertical-slice-local-only',
     '--publish',
@@ -458,7 +458,7 @@ async function startPostgres() {
     '--tmpfs',
     '/var/lib/postgresql:rw,nosuid,nodev,size=512m',
     '--health-cmd',
-    'pg_isready -U socially_woke_vertical -d socially_woke_vertical -h 127.0.0.1',
+    'pg_isready -U wokesocial_vertical -d wokesocial_vertical -h 127.0.0.1',
     '--health-interval',
     '1s',
     '--health-timeout',
@@ -897,7 +897,7 @@ function assertLocalOnlyEnvironment() {
     PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL,
     SOLANA_RPC_URL: process.env.SOLANA_RPC_URL,
     SOLANA_RPC_URLS: process.env.SOLANA_RPC_URLS,
-    WOKE_RPC_URLS: process.env.WOKE_RPC_URLS,
+    WOKENET_RPC_URLS: process.env.WOKENET_RPC_URLS,
   })) {
     if (value !== undefined && /\b(?:api\.mainnet-beta|mainnet|devnet|testnet)\b/iu.test(value)) {
       throw new Error(`${name} points at a non-local network; vertical-slice execution refused.`);

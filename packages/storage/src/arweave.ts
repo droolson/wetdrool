@@ -3,7 +3,7 @@ import {
   encodeMultibaseBase64Url,
   getContentCid,
   verifyContentCid,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 import { CID } from 'multiformats/cid';
 import * as raw from 'multiformats/codecs/raw';
 
@@ -148,11 +148,11 @@ export class ArweavePermanentStorage implements ContentAddressedStorage {
             byteLength: bytes.byteLength,
             consentId,
             tags: [
-              { name: 'App-Name', value: 'Socially-Woke' },
+              { name: 'App-Name', value: 'WokeSocial' },
               { name: 'App-Version', value: '1' },
               { name: 'Content-Type', value: 'application/octet-stream' },
-              { name: 'Socially-Woke-CID', value: contentCid },
-              { name: 'Socially-Woke-SHA256', value: contentSha256 },
+              { name: 'WokeSocial-CID', value: contentCid },
+              { name: 'WokeSocial-SHA256', value: contentSha256 },
             ],
             signal,
           }),

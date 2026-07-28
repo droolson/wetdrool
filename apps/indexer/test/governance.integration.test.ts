@@ -3,8 +3,8 @@ import { randomBytes } from 'node:crypto';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@socially-woke/protocol';
-import { MemoryContentAddressedStorage } from '@socially-woke/storage';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
+import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   GOVERNANCE_APPROVAL_BPS,
@@ -28,18 +28,18 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke';
+  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL governance projection integration', () => {
   it('rolls back invalid transitions and deterministically rebuilds proposal and vote state', async () => {
     await migrate(databaseUrl);
     const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-    const networkId = `woke:v1:${publicKey()}:${programId}` as NetworkId;
-    const secondNetworkId = `woke:v1:${publicKey()}:${programId}` as NetworkId;
+    const networkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
+    const secondNetworkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
     const creatorAddress = publicKey();
     const voterAddress = publicKey();
-    const creatorIdentityId = `swid:v1:${networkId}:${creatorAddress}`;
-    const voterIdentityId = `swid:v1:${networkId}:${voterAddress}`;
+    const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
+    const voterIdentityId = `wokesocialid:v1:${networkId}:${voterAddress}`;
     const creatorAuthority = publicKey();
     const voterAuthority = publicKey();
     const communityAddress = publicKey();

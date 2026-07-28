@@ -1,4 +1,4 @@
-name: Woke Network native Firedancer
+name: WokeNet native Firedancer
 
 on:
   workflow_dispatch:
@@ -7,13 +7,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: woke-network-native-${{ github.ref }}
+  group: wokenet-native-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   native-firedancer:
     name: Native Firedancer build and unit checks
-    runs-on: [self-hosted, linux, x64, woke-firedancer]
+    runs-on: [self-hosted, linux, x64, wokenet-firedancer]
     timeout-minutes: 120
     steps:
       - name: Check out source
@@ -36,13 +36,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify pinned policy and patch checksums
-        run: pnpm network:woke:check
+        run: pnpm wokenet:check
 
       - name: Materialize pinned downstream fork
-        run: pnpm network:woke:materialize -- "$RUNNER_TEMP/woke-firedancer"
+        run: pnpm wokenet:materialize -- "$RUNNER_TEMP/wokenet-firedancer"
 
       - name: Fetch pinned dependency source and install host packages
-        working-directory: ${{ runner.temp }}/woke-firedancer
+        working-directory: ${{ runner.temp }}/wokenet-firedancer
         env:
           FD_AUTO_INSTALL_PACKAGES: '1'
         run: |
@@ -50,7 +50,7 @@ jobs:
           ./deps.sh check
 
       - name: Build and attest native binaries in a disposable tracked checkout
-        run: pnpm network:woke:binary-check -- "$RUNNER_TEMP/woke-firedancer"
+        run: pnpm wokenet:binary-check -- "$RUNNER_TEMP/wokenet-firedancer"
 
       - name: Reject forbidden runtime processes
         shell: bash
@@ -67,4 +67,4 @@ jobs:
           done
 
       - name: Recheck patched source
-        run: pnpm network:woke:source-check -- "$RUNNER_TEMP/woke-firedancer"
+        run: pnpm wokenet:source-check -- "$RUNNER_TEMP/wokenet-firedancer"

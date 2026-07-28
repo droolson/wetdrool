@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BrandMark, ButtonLink } from '@socially-woke/ui';
+import { BrandMark, ButtonLink } from '@wokesocial/ui';
 
 import { ThemePicker } from './theme-picker';
 
@@ -31,7 +31,7 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link className="site-header__brand" href="/" aria-label="Socially Woke home">
+        <Link className="site-header__brand" href="/" aria-label="WokeSocial home">
           <BrandMark />
         </Link>
 

@@ -26,7 +26,7 @@ The portable object ID is the SHA-256 digest of `JCS(payload)` and excludes the
 detached proof:
 
 ```text
-swobj:v1:<type>:<base64url-no-padding(SHA-256(JCS(payload)))>
+wokesocialobj:v1:<type>:<base64url-no-padding(SHA-256(JCS(payload)))>
 ```
 
 The signature covers a JCS proof descriptor containing a fixed domain,

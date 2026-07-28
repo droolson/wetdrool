@@ -8,12 +8,12 @@ This document specifies the intended provider-neutral deployment model. The
 local development foundation exists and has been tested: an environment
 template, digest-pinned PostgreSQL/Redis/Kubo Compose stack, project-local pinned
 chain toolchains, PostgreSQL migrations, Next.js and service applications, an
-experimental Woke Network social program, a reproducibly pinned native
+experimental WokeNet social program, a reproducibly pinned native
 Firedancer downstream, hardened OCI builds, a private patched ClamAV profile,
 and CI workflows are present.
 
 Everything beyond the explicitly verified local procedures remains **Planned**.
-There is no native Firedancer cluster, public Woke test network, staging
+There is no native Firedancer cluster, public WokeNet test network, staging
 network, production genesis, production service, DNS, TLS, backup,
 artifact-promotion, or provider deployment.
 
@@ -21,15 +21,15 @@ artifact-promotion, or provider deployment.
 
 - `pnpm setup` installs checksum-verified Rust 1.89.0, Anchor 0.32.1, and Agave
   2.3.0 below the ignored `.local/toolchains` directory. Agave is used only by
-  the Solana-wire compatibility harness; it is not Woke Network runtime
+  the Solana-wire compatibility harness; it is not WokeNet runtime
   software.
 - `pnpm test:programs` builds the Anchor program to native SBF and runs it on a
   fresh compatibility validator using development program ID
   `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`.
-- `pnpm network:woke:check` verifies the fail-closed native-Firedancer source,
+- `pnpm wokenet:check` verifies the fail-closed native-Firedancer source,
   exact patch checksum, parsed TOML/genesis allocation, currency, native-only
   build declarations, and RPC capability policy.
-- `pnpm network:woke:materialize -- /absolute/path` has been exercised against
+- `pnpm wokenet:materialize -- /absolute/path` has been exercised against
   the exact pinned official Firedancer commit and exact checked patch-queue
   diff. The manual Linux workflow additionally clones a disposable tracked
   checkout, reapplies only the pinned patch queue, clones and rebuilds OpenSSL
@@ -59,7 +59,7 @@ artifact-promotion, or provider deployment.
 - PostgreSQL is a replayable projection; Redis is disposable coordination.
 - Services use immutable artifacts promoted between environments.
 - Production credentials are never available to pull-request builds.
-- Woke Network production genesis, deployment, and real-fund operations are
+- WokeNet production genesis, deployment, and real-fund operations are
   manual, separately approved actions. General CI MUST stop before that
   boundary.
 - Rollback, backup, provider evacuation, and degraded mode are designed before
@@ -82,8 +82,8 @@ flowchart TB
     AUTH["Replaceable WebAuthn service"]
     PG["PostgreSQL projection"]
     REDIS["Redis cache / queues / limits"]
-    RPC["Multiple native Woke RPC providers"]
-    WN["Woke Network / native Firedancer"]
+    RPC["Multiple native WokeNet RPC providers"]
+    WN["WokeNet / native Firedancer"]
     STORAGE["Multiple content storage providers"]
     OBS["Metrics, logs, traces, alerts"]
 
@@ -123,15 +123,15 @@ semantics.
 
 | Environment | Network runtime | Funds and data | Purpose | Deployment authority |
 | --- | --- | --- | --- | --- |
-| Compatibility local/CI | Ephemeral Agave validator, explicitly not Woke Network | Generated test keys and fixtures only | Anchor/Solana-wire compatibility and connected application proof | Developer or restricted CI identity |
+| Compatibility local/CI | Ephemeral Agave validator, explicitly not WokeNet | Generated test keys and fixtures only | Anchor/Solana-wire compatibility and connected application proof | Developer or restricted CI identity |
 | Native localnet | `firedancer-dev` on dedicated Linux | Disposable WOKE fixtures and synthetic data only | Native runtime development after required RPC methods exist | Network developer |
 | Public test network | Native `firedancer`, independently operated | Valueless test WOKE and synthetic/non-sensitive data | Interoperability, consensus, failover, and deployment rehearsal | Test-network multisig |
 | Staging | Separate native Firedancer genesis | Synthetic data; staging-specific secrets only | Production-like release, recovery, and provider validation | Protected staging quorum |
-| Production | Native Firedancer, only after the activation and genesis gates | Real WOKE and minimum necessary private service data | Live Woke Network | Hardware-backed production quorums |
+| Production | Native Firedancer, only after the activation and genesis gates | Real WOKE and minimum necessary private service data | Live WokeNet | Hardware-backed production quorums |
 
 Every environment has a distinct genesis, keys, program IDs, databases,
 buckets, DNS names, API tokens, telemetry projects, and authority set. A visible
-network indicator and exact `woke:v1:<genesis>:<program>` verification are
+network indicator and exact `wokenet:v1:<genesis>:<program>` verification are
 required in operator and end-user flows.
 
 ## Toolchain and bootstrap contract
@@ -197,7 +197,7 @@ toolchains, starts or validates local PostgreSQL/Redis/Kubo, applies local
 migrations, validates safe configuration, and prints progress. The local
 validator and deterministic development wallet are prepared on demand by
 `pnpm test:programs`; setup does not leave a validator running. Neither command
-contacts a public Woke Network, publishes permanent content, changes DNS, or
+contacts a public WokeNet, publishes permanent content, changes DNS, or
 spends real funds.
 
 This sequence has been verified in the current development environment. A clean
@@ -231,7 +231,7 @@ The planned release pipeline is:
 Target repository commands:
 
 ```sh
-pnpm network:woke:check
+pnpm wokenet:check
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -263,8 +263,8 @@ Expected configuration groups include:
 
 | Group | Example names | Requirements |
 | --- | --- | --- |
-| Public web | `NEXT_PUBLIC_APP_ORIGIN`, `NEXT_PUBLIC_WOKE_NETWORK`, `NEXT_PUBLIC_WOKE_RPC_URL`, `NEXT_PUBLIC_PROGRAM_ID` | Values are public; validate origin, explicit environment, genesis-bound network, and program consistency |
-| RPC | `WOKE_RPC_URLS`, `WOKE_WS_URLS`, `WOKE_COMMITMENT` | Ordered list with health scoring, native capability evidence, and failover; credentials redacted; retired `SOLANA_*` runtime variables are rejected |
+| Public web | `NEXT_PUBLIC_APP_ORIGIN`, `NEXT_PUBLIC_WOKENET`, `NEXT_PUBLIC_WOKENET_RPC_URL`, `NEXT_PUBLIC_PROGRAM_ID` | Values are public; validate origin, explicit environment, genesis-bound network, and program consistency |
+| RPC | `WOKENET_RPC_URLS`, `WOKENET_WS_URLS`, `WOKENET_COMMITMENT` | Ordered list with health scoring, native capability evidence, and failover; credentials redacted; retired `SOLANA_*` runtime variables are rejected |
 | Native network | Expected genesis hash, shred version, source/patch/build digests, validator/snapshot allowlists | Exact ceremony values; no arbitrary snapshot provider or Agave fallback |
 | Indexer | `INDEXER_DEPLOYMENT_SLOT`, `INDEXER_CONFIRMATION_DEPTH`, `INDEXER_BATCH_SIZE` | Validate ranges; deployment slot is immutable per program deployment |
 | Database | `DATABASE_URL`, `DATABASE_MIGRATION_URL` | Separate runtime and migration roles; TLS in nonlocal environments |
@@ -278,8 +278,8 @@ Expected configuration groups include:
 | Operations | health/admin bind addresses, feature flags, release digest | Admin endpoints private; flags audited and versioned |
 
 Startup MUST fail with a clear error when required configuration is missing,
-malformed, internally inconsistent, or points at the wrong genesis-bound Woke
-Network. Secrets MUST never appear in startup dumps, errors, traces, or client
+malformed, internally inconsistent, or points at the wrong genesis-bound
+WokeNet. Secrets MUST never appear in startup dumps, errors, traces, or client
 bundles.
 
 ## Provider-neutral infrastructure contract
@@ -307,7 +307,7 @@ No service may require a provider-specific runtime API for protocol correctness.
   rollback or roll-forward procedure.
 - Destructive migrations require a backup/restore rehearsal and a compatibility
   window for old and new application versions.
-- A fresh database MUST be rebuildable from the deployment slot, Woke Network data,
+- A fresh database MUST be rebuildable from the deployment slot, WokeNet data,
   signed manifests, and portable operator configuration.
 
 ### Redis
@@ -329,7 +329,7 @@ No service may require a provider-specific runtime API for protocol correctness.
 - Permanent publication is a separately consented policy and not the ordinary
   default.
 
-### Native Woke Network RPC
+### Native WokeNet RPC
 
 - Configure multiple RPC and WebSocket endpoints with health, latency, error,
   rate-limit, slot-lag, exact genesis, program, and native capability checks.
@@ -338,7 +338,7 @@ No service may require a provider-specific runtime API for protocol correctness.
   slot/block identity for replay.
 - A provider change requires no protocol migration.
 - A process or endpoint backed by Frankendancer or Agave cannot be advertised as
-  a Woke Network RPC.
+  a WokeNet RPC.
 - Submission, simulation, status, transaction-history, address-history, and
   program-account reads fail closed until the native Firedancer implementation
   and conformance evidence exist.
@@ -362,10 +362,10 @@ Database rollback MUST NOT be improvised. If an irreversible migration fails,
 operators use the rehearsed restore or roll-forward plan in
 [OPERATIONS.md](./OPERATIONS.md).
 
-## Native Woke test-network deployment
+## Native WokeNet test-network deployment
 
 A separate native Firedancer test genesis is the mandatory public rehearsal
-boundary. Solana devnet is not Woke Network and cannot satisfy this gate.
+boundary. Solana devnet is not WokeNet and cannot satisfy this gate.
 
 The planned process is:
 
@@ -388,7 +388,7 @@ The planned process is:
 Automation may fund accounts only from the valueless test-network faucet. It
 MUST NOT fall back to a production-fund source.
 
-## Manual Woke Network production boundary
+## Manual WokeNet production boundary
 
 Production deployment is not a continuation of test-network automation. It is
 a distinct operator action and MUST remain disabled until every gate below has
@@ -419,7 +419,7 @@ recorded evidence:
 - A named release manager and security approver authorize a time-bounded change
   window.
 
-General CI MUST NOT possess Woke Network production authority or execute a
+General CI MUST NOT possess WokeNet production authority or execute a
 program deployment against production. A production wrapper MUST require the
 exact network ID, expected genesis hash, expected authorities, expected program
 ID, reviewed artifact digests, and interactive quorum confirmation. There is no

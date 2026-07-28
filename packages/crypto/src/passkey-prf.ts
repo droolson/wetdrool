@@ -18,7 +18,7 @@ export async function createPasskeyPrfEvaluationInput(): Promise<PasskeyPrfEvalu
   return {
     version: PASSKEY_PRF_EVALUATION_INPUT_VERSION,
     first: await sha256({
-      domain: 'socially-woke/auth/webauthn-prf-evaluation-input/v1',
+      domain: 'wokesocial/auth/webauthn-prf-evaluation-input/v1',
       data: PURPOSE,
     }),
   };

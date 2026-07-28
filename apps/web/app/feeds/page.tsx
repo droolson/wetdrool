@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { ButtonLink, InfoCard, StatusBadge } from '@socially-woke/ui';
+import { ButtonLink, InfoCard, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 
 export const metadata: Metadata = {
   title: 'Feed directory',
-  description: 'Choose between connected and planned Socially Woke feed recipes.',
+  description: 'Choose between connected and planned WokeSocial feed recipes.',
 };
 
 const FEEDS = [

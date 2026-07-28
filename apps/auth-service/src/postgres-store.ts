@@ -1,7 +1,7 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres';
 
 import type { AuthenticatorTransportFuture, CredentialDeviceType } from '@simplewebauthn/server';
-import type { PasskeyWrappedKeyBundle } from '@socially-woke/crypto';
+import type { PasskeyWrappedKeyBundle } from '@wokesocial/crypto';
 
 import { AuthServiceError } from './errors.js';
 import { counterAdvances } from './memory-store.js';
@@ -105,8 +105,10 @@ export class PostgresAuthStore implements AuthStore {
   async finalizeFirstCredential(
     accountId: string,
     credential: CredentialRecord,
+    rootBundle: StoredKeyBundle,
     activatedAt: string,
   ): Promise<void> {
+    assertRootBundleAssociation(rootBundle, accountId, credential.credentialId);
     try {
       await this.#sql.begin(async (sql) => {
         const activated = await sql`
@@ -120,6 +122,7 @@ export class PostgresAuthStore implements AuthStore {
           throw new AuthServiceError('Account is unavailable.', 'account-unavailable');
         }
         await insertCredential(sql, credential);
+        await insertKeyBundle(sql, rootBundle);
       });
     } catch (error) {
       if (error instanceof AuthServiceError) throw error;
@@ -130,7 +133,12 @@ export class PostgresAuthStore implements AuthStore {
     }
   }
 
-  async addCredential(accountId: string, credential: CredentialRecord): Promise<void> {
+  async addCredential(
+    accountId: string,
+    credential: CredentialRecord,
+    rootBundle: StoredKeyBundle,
+  ): Promise<void> {
+    assertRootBundleAssociation(rootBundle, accountId, credential.credentialId);
     try {
       await this.#sql.begin(async (sql) => {
         const account = await sql`
@@ -143,7 +151,13 @@ export class PostgresAuthStore implements AuthStore {
         if (account.length !== 1 || credential.accountId !== accountId) {
           throw new AuthServiceError('Account is unavailable.', 'account-unavailable');
         }
+        const rootRows = await activeRootBundleRows(sql, accountId);
+        const rootPublicKeys = new Set(rootRows.map((row) => row.public_key));
+        if (rootPublicKeys.size !== 1 || !rootPublicKeys.has(rootBundle.publicKey)) {
+          throw rootBundleMismatch();
+        }
         await insertCredential(sql, credential);
+        await insertKeyBundle(sql, rootBundle);
       });
     } catch (error) {
       if (error instanceof AuthServiceError) throw error;
@@ -151,6 +165,59 @@ export class PostgresAuthStore implements AuthStore {
         throw new AuthServiceError('Credential ID is already registered.', 'credential-duplicate');
       }
       throw databaseFailure('Credential could not be registered.', error);
+    }
+  }
+
+  async completeAuthentication(
+    update: CredentialAuthenticationUpdate,
+    session: SessionRecord,
+  ): Promise<CredentialRecord> {
+    if (
+      !counterAdvances(update.previousCounter, update.newCounter) ||
+      session.revokedAt !== undefined
+    ) {
+      throw new AuthServiceError(
+        'Credential state no longer permits an authenticated session.',
+        'verification-failed',
+      );
+    }
+    try {
+      return await this.#sql.begin(async (sql) => {
+        const rows = await sql<CredentialRow[]>`
+          UPDATE auth_credentials AS credential
+          SET counter = ${update.newCounter},
+              device_type = ${update.deviceType},
+              backed_up = ${update.backedUp},
+              last_used_at = ${update.usedAt}
+          WHERE credential.credential_id = ${update.credentialId}
+            AND credential.account_id = ${session.accountId}
+            AND credential.revoked_at IS NULL
+            AND credential.counter = ${update.previousCounter}
+            AND (
+              (${update.previousCounter} = 0 AND ${update.newCounter} >= 0)
+              OR ${update.newCounter} > ${update.previousCounter}
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM auth_accounts AS account
+              WHERE account.account_id = credential.account_id
+                AND account.status = 'active'
+            )
+          RETURNING credential.*
+        `;
+        const row = rows[0];
+        if (row === undefined) {
+          throw new AuthServiceError(
+            'Credential state no longer permits an authenticated session.',
+            'verification-failed',
+          );
+        }
+        await insertSession(sql, session);
+        return credentialFromRow(row);
+      });
+    } catch (error) {
+      if (error instanceof AuthServiceError) throw error;
+      throw databaseFailure('Authenticated session could not be committed.', error);
     }
   }
 
@@ -239,17 +306,7 @@ export class PostgresAuthStore implements AuthStore {
   }
 
   async putSession(session: SessionRecord): Promise<void> {
-    await this.#sql`
-      INSERT INTO auth_sessions (
-        session_id, account_id, secret_hash, csrf_hash, created_at, expires_at,
-        last_authenticated_at, step_up_at, revoked_at
-      ) VALUES (
-        ${session.sessionId}, ${session.accountId}, ${session.secretHash},
-        ${session.csrfHash}, ${session.createdAt}, ${session.expiresAt},
-        ${session.lastAuthenticatedAt}, ${session.stepUpAt ?? null},
-        ${session.revokedAt ?? null}
-      )
-    `;
+    await insertSession(this.#sql, session);
   }
 
   async getSession(sessionId: string): Promise<SessionRecord | undefined> {
@@ -289,35 +346,6 @@ export class PostgresAuthStore implements AuthStore {
       WHERE session_id = ${sessionId}
         AND revoked_at IS NULL
     `;
-  }
-
-  async putKeyBundle(bundle: StoredKeyBundle): Promise<void> {
-    await this.#sql.begin(async (sql) => {
-      const credential = await sql`
-        SELECT 1
-        FROM auth_credentials
-        WHERE credential_id = ${bundle.credentialId}
-          AND account_id = ${bundle.accountId}
-          AND revoked_at IS NULL
-        FOR UPDATE
-      `;
-      if (credential.length !== 1) {
-        throw new AuthServiceError('Credential is unavailable.', 'credential-unavailable');
-      }
-      await sql`
-        INSERT INTO auth_key_bundles (
-          account_id, credential_id, key_kind, public_key, bundle, updated_at
-        ) VALUES (
-          ${bundle.accountId}, ${bundle.credentialId}, ${bundle.keyKind},
-          ${bundle.publicKey}, ${sql.json(toJsonValue(bundle.bundle))}, ${bundle.updatedAt}
-        )
-        ON CONFLICT (credential_id, key_kind, public_key)
-        DO UPDATE SET
-          account_id = EXCLUDED.account_id,
-          bundle = EXCLUDED.bundle,
-          updated_at = EXCLUDED.updated_at
-      `;
-    });
   }
 
   async listKeyBundles(accountId: string): Promise<readonly StoredKeyBundle[]> {
@@ -449,6 +477,10 @@ interface KeyBundleRow {
   updated_at: Date | string;
 }
 
+interface RootPublicKeyRow {
+  public_key: string;
+}
+
 function accountFromRow(row: AccountRow): AccountRecord {
   return {
     accountId: row.account_id,
@@ -538,6 +570,72 @@ function insertCredential(sql: Sql | TransactionSql, credential: CredentialRecor
       ${credential.lastUsedAt ?? null}, ${credential.revokedAt ?? null}
     )
   `;
+}
+
+function insertSession(sql: Sql | TransactionSql, session: SessionRecord) {
+  return sql`
+    INSERT INTO auth_sessions (
+      session_id, account_id, secret_hash, csrf_hash, created_at, expires_at,
+      last_authenticated_at, step_up_at, revoked_at
+    ) VALUES (
+      ${session.sessionId}, ${session.accountId}, ${session.secretHash},
+      ${session.csrfHash}, ${session.createdAt}, ${session.expiresAt},
+      ${session.lastAuthenticatedAt}, ${session.stepUpAt ?? null},
+      ${session.revokedAt ?? null}
+    )
+  `;
+}
+
+function insertKeyBundle(sql: Sql | TransactionSql, bundle: StoredKeyBundle) {
+  return sql`
+    INSERT INTO auth_key_bundles (
+      account_id, credential_id, key_kind, public_key, bundle, updated_at
+    ) VALUES (
+      ${bundle.accountId}, ${bundle.credentialId}, ${bundle.keyKind},
+      ${bundle.publicKey}, ${sql.json(toJsonValue(bundle.bundle))}, ${bundle.updatedAt}
+    )
+  `;
+}
+
+function activeRootBundleRows(
+  sql: Sql | TransactionSql,
+  accountId: string,
+): Promise<RootPublicKeyRow[]> {
+  return sql<RootPublicKeyRow[]>`
+    SELECT bundle.public_key
+    FROM auth_key_bundles AS bundle
+    JOIN auth_credentials AS credential
+      ON credential.account_id = bundle.account_id
+     AND credential.credential_id = bundle.credential_id
+    WHERE bundle.account_id = ${accountId}
+      AND bundle.key_kind = 'solana-ed25519-root-seed'
+      AND credential.revoked_at IS NULL
+    FOR UPDATE OF bundle, credential
+  `;
+}
+
+function assertRootBundleAssociation(
+  bundle: StoredKeyBundle,
+  accountId: string,
+  credentialId: string,
+): void {
+  if (
+    bundle.accountId !== accountId ||
+    bundle.credentialId !== credentialId ||
+    bundle.keyKind !== 'solana-ed25519-root-seed' ||
+    bundle.bundle.keyKind !== 'solana-ed25519-root-seed' ||
+    bundle.publicKey !== bundle.bundle.publicKey
+  ) {
+    throw rootBundleMismatch();
+  }
+}
+
+function rootBundleMismatch(cause?: unknown): AuthServiceError {
+  return new AuthServiceError(
+    'Every active passkey must wrap the same encrypted account root.',
+    'bundle-invalid',
+    cause === undefined ? undefined : { cause },
+  );
 }
 
 function dateString(value: Date | string): string {

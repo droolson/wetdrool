@@ -15,7 +15,7 @@ const buildId = resolve(webRoot, '.next/BUILD_ID');
 
 await access(buildId).catch(() => {
   throw new Error(
-    'The production web build is missing. Run `pnpm --filter @socially-woke/web build`.',
+    'The production web build is missing. Run `pnpm --filter @wokesocial/web build`.',
   );
 });
 

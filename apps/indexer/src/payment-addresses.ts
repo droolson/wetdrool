@@ -1,7 +1,7 @@
 import { address, getProgramDerivedAddress } from '@solana/kit';
 import bs58 from 'bs58';
 
-const PDA_PREFIX = Uint8Array.of(0x73, 0x77);
+const PDA_PREFIX = Uint8Array.from(Buffer.from('wokesocial', 'ascii'));
 const PDA_VERSION = Uint8Array.of(1);
 const PAYMENT_CONFIG_SEED = Uint8Array.from(Buffer.from('payment_config', 'ascii'));
 const SUBSCRIPTION_OFFERING_SEED = Uint8Array.from(Buffer.from('subscription_offering', 'ascii'));

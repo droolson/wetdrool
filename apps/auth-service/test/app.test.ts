@@ -15,6 +15,7 @@ import {
   credentialId,
   FakeCeremonyVerifier,
   registrationResponse,
+  wrappedKeyBundle,
 } from './fixtures.js';
 
 const origin = 'http://localhost:4300';
@@ -47,13 +48,26 @@ describe('authentication HTTP contract', () => {
       expect(policy.headers['strict-transport-security']).toContain('max-age=');
 
       const openApi = await fixture.app.inject({ method: 'GET', url: '/openapi.json' });
-      expect(openApi.json()).toMatchObject({
+      const openApiBody = openApi.json<{
+        paths: Record<string, unknown>;
+      }>();
+      expect(openApiBody).toMatchObject({
         paths: {
           '/v1/registration/options': { post: { summary: expect.any(String) } },
           '/v1/authentication/options': { post: { summary: expect.any(String) } },
-          '/v1/key-bundles/{credentialId}': { put: { summary: expect.any(String) } },
+          '/v1/key-bundles': { get: { summary: expect.any(String) } },
         },
       });
+      expect(openApiBody.paths['/v1/key-bundles/{credentialId}']).toBeUndefined();
+
+      const csrf = await bootstrapCsrf(fixture.app);
+      const retiredMutation = await fixture.app.inject({
+        method: 'PUT',
+        url: `/v1/key-bundles/${credentialId(30)}`,
+        headers: mutationHeaders(csrf),
+        payload: { bundle: await wrappedKeyBundle(credentialId(30)) },
+      });
+      expect(retiredMutation.statusCode).toBe(404);
     } finally {
       await fixture.app.close();
     }
@@ -101,6 +115,36 @@ describe('authentication HTTP contract', () => {
     }
   });
 
+  it('recovers the existing session-bound CSRF token for a new browser tab', async () => {
+    const fixture = await appFixture();
+    try {
+      const registered = await registerThroughApi(fixture.app, credentialId(30));
+      const recovered = await fixture.app.inject({
+        method: 'GET',
+        url: '/v1/csrf',
+        headers: { cookie: serializeCookies(registered.cookies) },
+      });
+
+      expect(recovered.statusCode).toBe(200);
+      expect(recovered.json()).toEqual({ csrfToken: registered.csrfToken });
+      expect(normalizedSetCookie(recovered)).toBe('');
+
+      const stepUp = await fixture.app.inject({
+        method: 'POST',
+        url: '/v1/step-up/options',
+        headers: authenticatedMutationHeaders(
+          registered.cookies,
+          recovered.json<{ csrfToken: string }>().csrfToken,
+        ),
+        payload: {},
+      });
+      expect(stepUp.statusCode).toBe(200);
+      expect(stepUp.json()).toMatchObject({ ceremonyId: expect.stringMatching(/^cer_/u) });
+    } finally {
+      await fixture.app.close();
+    }
+  });
+
   it('registers, rotates secure session cookies, adds a passkey, and blocks last-key revocation', async () => {
     const fixture = await appFixture();
     try {
@@ -120,6 +164,7 @@ describe('authentication HTTP contract', () => {
       expect(issued.accountId).toMatch(/^acct_/u);
 
       const firstId = credentialId(31);
+      const firstBundle = await wrappedKeyBundle(firstId);
       const verified = await fixture.app.inject({
         method: 'POST',
         url: '/v1/registration/verify',
@@ -128,6 +173,7 @@ describe('authentication HTTP contract', () => {
           accountId: issued.accountId,
           ceremonyId: issued.ceremonyId,
           response: registrationResponse(firstId),
+          bundle: firstBundle,
         },
       });
       expect(verified.statusCode).toBe(201);
@@ -192,6 +238,7 @@ describe('authentication HTTP contract', () => {
         payload: {
           ceremonyId: add.ceremonyId,
           response: registrationResponse(secondId),
+          bundle: await wrappedKeyBundle(secondId),
         },
       });
       expect(added.statusCode).toBe(201);
@@ -373,6 +420,76 @@ describe('authentication HTTP contract', () => {
       await fixture.app.close();
     }
   });
+
+  it('requires the initial root wrapper before activation', async () => {
+    const fixture = await appFixture();
+    try {
+      const csrf = await bootstrapCsrf(fixture.app);
+      const optionsResponse = await fixture.app.inject({
+        method: 'POST',
+        url: '/v1/registration/options',
+        headers: mutationHeaders(csrf),
+        payload: {},
+      });
+      const issued = optionsResponse.json<{ accountId: string; ceremonyId: string }>();
+      const id = credentialId(34);
+      const verified = await fixture.app.inject({
+        method: 'POST',
+        url: '/v1/registration/verify',
+        headers: mutationHeaders(csrf),
+        payload: {
+          accountId: issued.accountId,
+          ceremonyId: issued.ceremonyId,
+          response: registrationResponse(id),
+        },
+      });
+
+      expect(verified.statusCode).toBe(400);
+      expect(verified.json()).toMatchObject({ error: { code: 'invalid-request' } });
+      expect(fixture.verifier.registrationCalls).toHaveLength(0);
+      await expect(fixture.store.getAccount(issued.accountId)).resolves.toMatchObject({
+        status: 'pending',
+      });
+      await expect(fixture.store.getCredential(id)).resolves.toBeUndefined();
+    } finally {
+      await fixture.app.close();
+    }
+  });
+
+  it('rejects an added passkey for a different root without persisting it', async () => {
+    const fixture = await appFixture();
+    try {
+      const registered = await registerThroughApi(fixture.app, credentialId(35));
+      const addOptions = await fixture.app.inject({
+        method: 'POST',
+        url: '/v1/credentials/registration/options',
+        headers: authenticatedMutationHeaders(registered.cookies, registered.csrfToken),
+        payload: {},
+      });
+      const issued = addOptions.json<{ ceremonyId: string }>();
+      const secondId = credentialId(36);
+      const added = await fixture.app.inject({
+        method: 'POST',
+        url: '/v1/credentials/registration/verify',
+        headers: authenticatedMutationHeaders(registered.cookies, registered.csrfToken),
+        payload: {
+          ceremonyId: issued.ceremonyId,
+          response: registrationResponse(secondId),
+          bundle: await wrappedKeyBundle(secondId, {
+            publicKey: Uint8Array.from({ length: 32 }, (_, index) => 120 + index),
+          }),
+        },
+      });
+
+      expect(added.statusCode).toBe(400);
+      expect(added.json()).toMatchObject({ error: { code: 'bundle-invalid' } });
+      await expect(fixture.store.getCredential(secondId)).resolves.toBeUndefined();
+      await expect(fixture.store.listCredentials(registered.accountId)).resolves.toHaveLength(1);
+      await expect(fixture.store.listKeyBundles(registered.accountId)).resolves.toHaveLength(1);
+    } finally {
+      await fixture.app.close();
+    }
+  });
 });
 
 async function appFixture() {
@@ -381,7 +498,7 @@ async function appFixture() {
   const service = new AuthService({
     store,
     verifier,
-    rpName: 'Socially Woke Test',
+    rpName: 'WokeSocial Test',
     rpId: 'localhost',
     origin,
   });
@@ -410,10 +527,18 @@ async function registerThroughApi(app: FastifyInstance, id: string) {
       accountId: issued.accountId,
       ceremonyId: issued.ceremonyId,
       response: registrationResponse(id),
+      bundle: await wrappedKeyBundle(id),
     },
   });
   expect(verified.statusCode).toBe(201);
-  return { credentialId: id, userHandle: issued.options.user.id };
+  const body = verified.json<{ csrfToken: string }>();
+  return {
+    accountId: issued.accountId,
+    credentialId: id,
+    userHandle: issued.options.user.id,
+    csrfToken: body.csrfToken,
+    cookies: cookieJar(verified),
+  };
 }
 
 async function bootstrapCsrf(app: FastifyInstance) {

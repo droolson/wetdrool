@@ -5,9 +5,9 @@ import { decodeBase64Url, encodeBase64Url, frameDomain, requireBytes } from './i
 import { type SealedEnvelope, openAes256Gcm, sealAes256Gcm } from './sealed-envelope.js';
 import { secureRandomBytes } from './random.js';
 
-const CREDENTIAL_BINDING_DOMAIN = 'socially-woke/auth/passkey-credential-binding';
-const KEY_DERIVATION_DOMAIN = 'socially-woke/auth/passkey-key-wrap';
-const KEY_ENVELOPE_DOMAIN = 'socially-woke/auth/account-key-bundle';
+const CREDENTIAL_BINDING_DOMAIN = 'wokesocial/auth/passkey-credential-binding';
+const KEY_DERIVATION_DOMAIN = 'wokesocial/auth/passkey-key-wrap';
+const KEY_ENVELOPE_DOMAIN = 'wokesocial/auth/account-key-bundle';
 const encoder = new TextEncoder();
 
 export type PasskeyAccountKeyKind = 'solana-ed25519-root-seed' | 'solana-ed25519-delegation-seed';
@@ -53,7 +53,7 @@ export interface UnwrapPasskeyAccountKeyInput {
 /**
  * Wraps a locally generated Ed25519 seed with a key derived from a WebAuthn PRF
  * output. WebAuthn assertions authenticate a user but cannot directly sign
- * Woke Network's Solana-compatible transactions, so the two key roles remain
+ * WokeNet's Solana-compatible transactions, so the two key roles remain
  * explicit and separate.
  *
  * The returned object may be stored by an untrusted synchronization provider:

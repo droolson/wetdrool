@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { StatusBadge } from '@socially-woke/ui';
+import { StatusBadge } from '@wokesocial/ui';
 
 import type { IndexedPost, VerificationState } from '@/lib/indexer';
 import { abbreviate, formatUtcDate, verificationLabel } from '@/lib/presentation';
@@ -86,7 +86,7 @@ export function PostCard({ post, prominent = false }: PostCardProps) {
             <dd>{proof.contentHashValid ? 'Valid' : 'Not valid'}</dd>
           </div>
           <div>
-            <dt>Woke Network anchor</dt>
+            <dt>WokeNet anchor</dt>
             <dd>
               {proof.anchor
                 ? `Slot ${proof.anchor.slot.toLocaleString('en')} · ${proof.anchor.finality}`

@@ -3,14 +3,14 @@ import {
   getContentCid,
   mediaManifestContentSchema,
   type MediaManifestContent,
-} from '@socially-woke/protocol';
+} from '@wokesocial/protocol';
 import {
   MultiProviderStorage,
   type ContentAddressedStorage,
   type StorageHealth,
   type StoragePolicy,
   type StorageReceipt,
-} from '@socially-woke/storage';
+} from '@wokesocial/storage';
 
 import { MediaWorkerError } from './errors.js';
 import type {
@@ -124,7 +124,7 @@ export class MediaPublisher {
     if (processed.waveform !== undefined) {
       waveform = await this.#publishBytes(
         processed.waveform,
-        'application/vnd.socially-woke.waveform+json',
+        'application/vnd.wokesocial.waveform+json',
         policy,
       );
       publications.push(waveform);

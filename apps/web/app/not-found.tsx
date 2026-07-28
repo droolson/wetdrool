@@ -1,4 +1,4 @@
-import { ButtonLink, StatePanel } from '@socially-woke/ui';
+import { ButtonLink, StatePanel } from '@wokesocial/ui';
 
 export default function NotFound() {
   return (
@@ -6,7 +6,7 @@ export default function NotFound() {
       <StatePanel
         action={
           <ButtonLink href="/" variant="secondary">
-            Return to Socially Woke
+            Return to WokeSocial
           </ButtonLink>
         }
         eyebrow="404"

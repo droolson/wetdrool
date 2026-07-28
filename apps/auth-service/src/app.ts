@@ -25,12 +25,11 @@ import { authOpenApiDocument } from './openapi.js';
 import {
   additionalRegistrationVerificationSchema,
   authenticationVerificationSchema,
-  bundleBodySchema,
   credentialIdParamSchema,
   emptyBodySchema,
   registrationVerificationSchema,
 } from './request-schemas.js';
-import { randomToken } from './security.js';
+import { CSRF_COOKIE_NAME, randomToken, SESSION_COOKIE_NAME } from './security.js';
 import type { AuthService } from './service.js';
 
 const MAXIMUM_BODY_BYTES = 128 * 1_024;
@@ -49,7 +48,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
         ? false
         : {
             level: 'info',
-            base: { service: '@socially-woke/auth-service' },
+            base: { service: '@wokesocial/auth-service' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -85,7 +84,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
 
   app.get('/healthz', async () => ({
     ok: true,
-    service: '@socially-woke/auth-service',
+    service: '@wokesocial/auth-service',
     replaceable: true,
     canonical: false,
     storage: options.service.store.kind,
@@ -104,7 +103,18 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
   app.get('/openapi.json', async () => authOpenApiDocument);
   app.get('/v1/policy', async () => policyBody(options.service));
 
-  app.get('/v1/csrf', async (_request, reply) => {
+  app.get('/v1/csrf', async (request, reply) => {
+    const authenticated = await options.service.resolveSession(
+      request.cookies[SESSION_COOKIE_NAME],
+    );
+    const sessionToken = request.cookies[CSRF_COOKIE_NAME];
+    if (
+      authenticated !== undefined &&
+      sessionToken !== undefined &&
+      options.service.matchesSessionCsrf(authenticated, sessionToken)
+    ) {
+      return { csrfToken: sessionToken };
+    }
     const csrfToken = randomToken();
     setCsrfCookie(reply, csrfToken);
     return { csrfToken };
@@ -121,6 +131,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
       accountId: body.accountId,
       ceremonyId: body.ceremonyId,
       response: body.response as RegistrationResponseJSON,
+      bundle: body.bundle,
     });
     setIssuedSession(reply, result.session);
     void reply.code(201);
@@ -201,6 +212,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
     const credential = await options.service.verifyAdditionalCredential(authenticated, {
       ceremonyId: body.ceremonyId,
       response: body.response as RegistrationResponseJSON,
+      bundle: body.bundle,
     });
     void reply.code(201);
     return { credential: publicCredential(credential) };
@@ -219,28 +231,6 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
         synchronizedWrappersDeleted: true,
         sessionsRevoked: true,
         onchainDelegationRevocationRequiredSeparately: true,
-      };
-    },
-  );
-
-  app.put<{ Params: { credentialId: string } }>(
-    '/v1/key-bundles/:credentialId',
-    async (request) => {
-      const params = credentialParamsSchema.parse(request.params);
-      const body = bundleBodySchema.parse(request.body);
-      const authenticated = await authenticatedRequest(options.service, request);
-      requireSessionCsrf(options.service, authenticated, request);
-      const stored = await options.service.putKeyBundle(
-        authenticated,
-        params.credentialId,
-        body.bundle,
-      );
-      return {
-        credentialId: stored.credentialId,
-        keyKind: stored.keyKind,
-        publicKey: stored.publicKey,
-        updatedAt: stored.updatedAt,
-        ciphertextOnly: true,
       };
     },
   );

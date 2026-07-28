@@ -1,7 +1,7 @@
 import type { ComposerDraft } from './composer-draft';
 import type { DevicePreferences } from './local-preferences';
 
-export const LOCAL_EXPORT_FORMAT = 'socially-woke-device-export/v1';
+export const LOCAL_EXPORT_FORMAT = 'wokesocial-device-export/v1';
 
 export interface LocalDeviceExport {
   data: {

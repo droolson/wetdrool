@@ -33,11 +33,11 @@ const base58PublicKey = z
 const optionalPublicKey = z.preprocess(emptyToUndefined, base58PublicKey.optional());
 const legacyRedirectHostnames = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
 const retiredNetworkEnvironmentKeys = new Map([
-  ['NEXT_PUBLIC_SOLANA_CLUSTER', 'NEXT_PUBLIC_WOKE_NETWORK'],
-  ['NEXT_PUBLIC_SOLANA_RPC_URL', 'NEXT_PUBLIC_WOKE_RPC_URL'],
-  ['SOLANA_COMMITMENT', 'WOKE_COMMITMENT'],
-  ['SOLANA_RPC_URLS', 'WOKE_RPC_URLS'],
-  ['SOLANA_WS_URLS', 'WOKE_WS_URLS'],
+  ['NEXT_PUBLIC_SOLANA_CLUSTER', 'NEXT_PUBLIC_WOKENET'],
+  ['NEXT_PUBLIC_SOLANA_RPC_URL', 'NEXT_PUBLIC_WOKENET_RPC_URL'],
+  ['SOLANA_COMMITMENT', 'WOKENET_COMMITMENT'],
+  ['SOLANA_RPC_URLS', 'WOKENET_RPC_URLS'],
+  ['SOLANA_WS_URLS', 'WOKENET_WS_URLS'],
 ]);
 
 function booleanFromEnvironment(defaultValue: boolean) {
@@ -133,8 +133,8 @@ export const publicEnvironmentSchema = z.object({
   NEXT_PUBLIC_RELAY_URL: credentialFreeProtocolUrl(['ws:', 'wss:']).default(
     'ws://localhost:4200/v1/relay',
   ),
-  NEXT_PUBLIC_WOKE_NETWORK: z.enum(['localnet', 'public-test']).default('localnet'),
-  NEXT_PUBLIC_WOKE_RPC_URL: credentialFreeProtocolUrl(['http:', 'https:']).default(
+  NEXT_PUBLIC_WOKENET: z.enum(['localnet', 'public-test']).default('localnet'),
+  NEXT_PUBLIC_WOKENET_RPC_URL: credentialFreeProtocolUrl(['http:', 'https:']).default(
     'http://127.0.0.1:8899',
   ),
 });
@@ -149,7 +149,7 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
       protocolUrl(['postgres:', 'postgresql:']).optional(),
     ),
     DATABASE_URL: protocolUrl(['postgres:', 'postgresql:']).default(
-      'postgresql://socially_woke:local-development-only@127.0.0.1:5432/socially_woke',
+      'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial',
     ),
     INDEXER_HOST: z.string().min(1).default('127.0.0.1'),
     INDEXER_BATCH_SIZE: z.coerce.number().int().min(1).max(10_000).default(100),
@@ -160,14 +160,14 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     OTEL_EXPORTER_OTLP_ENDPOINT: optionalUrl,
-    OTEL_SERVICE_NAMESPACE: z.string().min(1).default('socially-woke'),
+    OTEL_SERVICE_NAMESPACE: z.string().min(1).default('wokesocial'),
     REDIS_URL: protocolUrl(['redis:', 'rediss:']).default(
       'redis://:local-development-only@127.0.0.1:6379',
     ),
     SESSION_SECRET: optionalSecret,
-    WOKE_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('finalized'),
-    WOKE_RPC_URLS: urlList(['http://127.0.0.1:8899']),
-    WOKE_WS_URLS: urlList(['ws://127.0.0.1:8900']),
+    WOKENET_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('finalized'),
+    WOKENET_RPC_URLS: urlList(['http://127.0.0.1:8899']),
+    WOKENET_WS_URLS: urlList(['ws://127.0.0.1:8900']),
     SPONSOR_DAILY_LAMPORT_LIMIT: z.coerce.number().int().nonnegative().default(0),
     SPONSOR_ENABLED: booleanFromEnvironment(false),
     SPONSOR_SIGNER_URI: optionalString.refine(
@@ -268,17 +268,17 @@ export function summarizeEnvironment(environment: ServerEnvironment) {
     appEnvironment: environment.APP_ENV,
     appOrigin: environment.NEXT_PUBLIC_APP_ORIGIN,
     authServiceOrigin: new URL(environment.NEXT_PUBLIC_AUTH_SERVICE_URL).origin,
-    commitment: environment.WOKE_COMMITMENT,
+    commitment: environment.WOKENET_COMMITMENT,
     feedServiceOrigin: new URL(environment.NEXT_PUBLIC_FEED_SERVICE_URL).origin,
     hasProgramId: environment.NEXT_PUBLIC_PROGRAM_ID !== undefined,
     indexerOrigin: `http://${environment.INDEXER_HOST}:${environment.INDEXER_PORT}`,
     ipfsGatewayOrigin: new URL(environment.IPFS_GATEWAY_URL).origin,
     mediaWorkerOrigin: new URL(environment.NEXT_PUBLIC_MEDIA_WORKER_URL).origin,
     moderationServiceOrigin: new URL(environment.NEXT_PUBLIC_MODERATION_SERVICE_URL).origin,
-    rpcProviderCount: environment.WOKE_RPC_URLS.length,
+    rpcProviderCount: environment.WOKENET_RPC_URLS.length,
     sponsorEnabled: environment.SPONSOR_ENABLED,
     telemetryEnabled: environment.OTEL_EXPORTER_OTLP_ENDPOINT !== undefined,
-    websocketProviderCount: environment.WOKE_WS_URLS.length,
-    wokeNetwork: environment.NEXT_PUBLIC_WOKE_NETWORK,
+    websocketProviderCount: environment.WOKENET_WS_URLS.length,
+    wokeNet: environment.NEXT_PUBLIC_WOKENET,
   } as const;
 }

@@ -1,4 +1,4 @@
-import { getObjectId } from '@socially-woke/protocol';
+import { getObjectId } from '@wokesocial/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildModerationApp, type ModerationAppOptions } from '../src/app.js';

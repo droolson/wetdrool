@@ -1,4 +1,9 @@
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
+import {
+  wrapPasskeyAccountKey,
+  type PasskeyAccountKeyKind,
+  type PasskeyWrappedKeyBundle,
+} from '@wokesocial/crypto';
 
 import type {
   AuthenticationVerificationInput,
@@ -91,4 +96,25 @@ export function authenticationResponse(
       ...(userHandle === undefined ? {} : { userHandle }),
     },
   };
+}
+
+export async function wrappedKeyBundle(
+  id: string,
+  options: {
+    readonly keyKind?: PasskeyAccountKeyKind;
+    readonly publicKey?: Uint8Array;
+    readonly seed?: Uint8Array;
+  } = {},
+): Promise<PasskeyWrappedKeyBundle> {
+  return wrapPasskeyAccountKey({
+    prfOutput: fixtureBytes(1, 32),
+    credentialId: Uint8Array.from(Buffer.from(id, 'base64url')),
+    accountKeySeed: options.seed ?? fixtureBytes(40, 32),
+    publicKey: options.publicKey ?? fixtureBytes(80, 32),
+    keyKind: options.keyKind ?? 'solana-ed25519-root-seed',
+  });
+}
+
+function fixtureBytes(seed: number, length: number): Uint8Array {
+  return Uint8Array.from({ length }, (_, index) => (seed + index) & 0xff);
 }
