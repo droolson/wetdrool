@@ -29,7 +29,7 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: `AUTH_DANGEROUSLY_USE_MEMORY_STORE=1 AUTH_ORIGIN=${baseURL} AUTH_RP_ID=localhost AUTH_PORT=${authPort} pnpm --filter @wokesocial/auth-service exec tsx src/server.ts`,
+          command: `WOKESOCIAL_WEB_ORIGIN=${baseURL} WOKESOCIAL_AUTH_PORT=${authPort} pnpm --filter @wokesocial/auth-service exec tsx ../web/e2e/auth-service-fixture.ts`,
           reuseExistingServer: false,
           timeout: 120_000,
           url: `${authServiceURL}/healthz`,

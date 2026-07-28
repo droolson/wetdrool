@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@solana/kit": "7.0.0",
+    "@solana/rpc-spec-types": "7.0.0",
     "@wokesocial/protocol": "workspace:*",
     "@wokesocial/storage": "workspace:*"
   },

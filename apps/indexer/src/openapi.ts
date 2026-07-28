@@ -19,6 +19,28 @@ const solanaPublicKeyParameterSchema = {
   description: 'Base58 value that must decode to exactly 32 bytes.',
 } as const;
 
+const searchParameters = [
+  {
+    name: 'q',
+    in: 'query',
+    required: true,
+    description:
+      'NFKC-normalized public search term with locale-independent ASCII A–Z folding. Non-ASCII text is case-sensitive. The canonical value must contain 3–120 Unicode code points; control characters are rejected and the normalized term is echoed in the response. Contains matching requires an ASCII alphanumeric run of at least three characters; other valid terms are exact/prefix-only.',
+    schema: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 512,
+      'x-normalizedMinLength': 3,
+      'x-normalizedMaxLength': 120,
+    },
+  },
+  {
+    name: 'limit',
+    in: 'query',
+    schema: { type: 'integer', minimum: 1, maximum: 50, default: 30 },
+  },
+] as const;
+
 export const openApiDocument = {
   openapi: '3.1.0',
   info: {
@@ -89,6 +111,42 @@ export const openApiDocument = {
             description: 'Verified, non-tombstoned projected posts',
           },
           '400': { description: 'Invalid query' },
+        },
+      },
+    },
+    '/v1/search/public': {
+      get: {
+        summary: 'Search the configured network’s public projection',
+        description:
+          'Searches current public profile fields, canonical active handles, and verified non-tombstoned public posts. Communities remain excluded until a signed public manifest is verified. Private fields are never indexed.',
+        parameters: searchParameters,
+        responses: {
+          '200': {
+            description:
+              'Bounded results with checkpoint metadata and the deterministic public-match-v1 ranking version',
+          },
+          '400': { description: 'Invalid or unknown query input' },
+          '429': { description: 'Search rate limit exceeded' },
+          '503': {
+            description:
+              'The operator has not configured a default network or bounded search capacity is temporarily exhausted',
+          },
+        },
+      },
+    },
+    '/v1/search': {
+      get: {
+        summary: 'Search one explicit WokeNet public projection',
+        description:
+          'Low-level replaceable search endpoint. The index is rebuildable and is not canonical protocol state.',
+        parameters: [networkParameter, ...searchParameters],
+        responses: {
+          '200': {
+            description: 'Bounded current-profile and verified-public-post results',
+          },
+          '400': { description: 'Invalid or unknown query input' },
+          '429': { description: 'Search rate limit exceeded' },
+          '503': { description: 'Bounded search capacity is temporarily exhausted' },
         },
       },
     },

@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  getHomeFeed,
+  getPostById,
   IndexerPayloadError,
   isValidPostId,
   parseFeedResponse,
   parseIndexedPost,
+  parseSearchResponse,
+  searchPublic,
+  validatePublicSearchQuery,
 } from '../lib/indexer';
 
 const VERIFIED_POST = {
@@ -126,4 +131,334 @@ describe('post identifiers', () => {
       expect(isValidPostId(identifier)).toBe(false);
     },
   );
+});
+
+describe('typed public-search response parsing', () => {
+  const originalIndexerUrl = process.env['WOKESOCIAL_INDEXER_URL'];
+  const communityResult = {
+    kind: 'community',
+    matchedBy: 'exact-identifier',
+    communityAddress: '11111111111111111111111111111111',
+    creatorIdentityId: VERIFIED_POST.author.identityId,
+    manifestHash: 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+    manifestUri: 'ipfs://bafy-community',
+    metadataVerified: false,
+    governanceVersion: 1,
+    updatedAt: '2026-07-28T12:00:00.000Z',
+  } as const;
+  const response = {
+    canonical: false,
+    meta: {
+      checkpointSlot: 42,
+      indexedAt: '2026-07-28T12:01:00.000Z',
+      source: 'WokeNet open indexer',
+    },
+    query: 'river',
+    ranking: {
+      deterministic: true,
+      version: 'public-match-v1',
+    },
+    scope: 'public-finalized-projection',
+    results: [
+      {
+        kind: 'person',
+        matchedBy: 'handle',
+        identityId: VERIFIED_POST.author.identityId,
+        displayName: 'River Chen',
+        handle: 'river',
+        bio: '',
+        updatedAt: '2026-07-28T12:00:00.000Z',
+      },
+      {
+        kind: 'post',
+        matchedBy: 'post-body',
+        post: {
+          ...VERIFIED_POST,
+          visibility: 'public',
+        },
+      },
+    ],
+  } as const;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (originalIndexerUrl === undefined) {
+      delete process.env['WOKESOCIAL_INDEXER_URL'];
+    } else {
+      process.env['WOKESOCIAL_INDEXER_URL'] = originalIndexerUrl;
+    }
+  });
+
+  it('accepts bounded public-only result variants and proof-bearing posts', () => {
+    const parsed = parseSearchResponse(response);
+    expect(parsed.results.map((result) => result.kind)).toEqual(['person', 'post']);
+    expect(parsed.results[0]).toMatchObject({ handle: 'river', matchedBy: 'handle' });
+  });
+
+  it('accepts the protocol display-name byte limit and rejects values beyond it', () => {
+    expect(
+      parseSearchResponse({
+        ...response,
+        results: [{ ...response.results[0], displayName: 'a'.repeat(160) }],
+      }).results[0],
+    ).toMatchObject({ displayName: 'a'.repeat(160) });
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [{ ...response.results[0], displayName: 'a'.repeat(161) }],
+      }),
+    ).toThrow('no longer than 160 characters');
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [{ ...response.results[0], displayName: '😀'.repeat(41) }],
+      }),
+    ).toThrow('no longer than 160 UTF-8 bytes');
+  });
+
+  it.each([
+    ['a pending post', { state: 'pending' }],
+    ['an invalid signature', { signatureValid: false }],
+    ['an invalid content hash', { contentHashValid: false }],
+    [
+      'a merely confirmed anchor',
+      {
+        anchor: {
+          ...VERIFIED_POST.verification.anchor,
+          finality: 'confirmed',
+        },
+      },
+    ],
+  ])('rejects %s from public post results', (_label, verificationChange) => {
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [
+          {
+            ...response.results[1],
+            post: {
+              ...response.results[1].post,
+              verification: {
+                ...VERIFIED_POST.verification,
+                ...verificationChange,
+              },
+            },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it.each([undefined, 'private', 'unlisted'])(
+    'rejects a missing or nonpublic visibility claim (%s) on a post result',
+    (visibility) => {
+      const post = { ...response.results[1].post } as Record<string, unknown>;
+      if (visibility === undefined) {
+        delete post.visibility;
+      } else {
+        post.visibility = visibility;
+      }
+
+      expect(() =>
+        parseSearchResponse({
+          ...response,
+          results: [
+            {
+              ...response.results[1],
+              post,
+            },
+          ],
+        }),
+      ).toThrow('explicit public visibility');
+    },
+  );
+
+  it('rejects a nonpublic visibility claim even when proofs are otherwise valid', () => {
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [
+          {
+            ...response.results[1],
+            post: {
+              ...response.results[1].post,
+              visibility: 'private',
+            },
+          },
+        ],
+      }),
+    ).toThrow('explicit public visibility');
+  });
+
+  it('rejects community results without verified metadata and public visibility proof', () => {
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [communityResult],
+      }),
+    ).toThrow('verified metadata and an explicit public visibility proof');
+  });
+
+  it('rejects cross-kind ranking reasons and oversized result arrays', () => {
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [
+          {
+            ...response.results[0],
+            matchedBy: 'post-body',
+          },
+        ],
+      }),
+    ).toThrow('invalid match reason');
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: Array.from({ length: 51 }, () => response.results[0]),
+      }),
+    ).toThrow('metadata is invalid');
+  });
+
+  it('sends a bounded canonical query only to the configured indexer', async () => {
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/operator/';
+    const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+      Response.json({ ...response, query: 'river chen' }),
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(searchPublic('  River Chen  ')).resolves.toMatchObject({
+      endpoint: 'https://indexer.example',
+      kind: 'ready',
+      value: { query: 'river chen' },
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      'https://indexer.example/operator/v1/search/public?q=river%20chen&limit=30',
+    );
+  });
+
+  it('rejects a two-code-point local query without transmitting it', async () => {
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(searchPublic('xy')).resolves.toMatchObject({
+      detail: 'Use at least 3 normalized Unicode code points.',
+      kind: 'degraded',
+      reason: 'invalid-response',
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('normalizes and counts Unicode code points before enforcing canonical query length', async () => {
+    expect(validatePublicSearchQuery('ﬃ')).toEqual({ kind: 'valid', query: 'ffi' });
+    expect(validatePublicSearchQuery('ÄBC')).toEqual({ kind: 'valid', query: 'Äbc' });
+    expect(validatePublicSearchQuery('😀😀')).toMatchObject({
+      kind: 'invalid',
+      reason: 'too-short',
+    });
+    expect(validatePublicSearchQuery('😀😀😀')).toEqual({
+      kind: 'valid',
+      query: '😀😀😀',
+    });
+    expect(validatePublicSearchQuery('😀'.repeat(120))).toMatchObject({ kind: 'valid' });
+    expect(validatePublicSearchQuery('😀'.repeat(121))).toMatchObject({
+      kind: 'invalid',
+      reason: 'too-long',
+    });
+
+    const compatibilityExpansion = 'ﬃ'.repeat(41);
+    expect(compatibilityExpansion).toHaveLength(41);
+    expect(validatePublicSearchQuery(compatibilityExpansion)).toMatchObject({
+      kind: 'invalid',
+      query: 'ffi'.repeat(41),
+      reason: 'too-long',
+    });
+
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(searchPublic('x'.repeat(121))).resolves.toMatchObject({
+      detail: 'Use no more than 120 normalized Unicode code points.',
+      kind: 'degraded',
+      reason: 'invalid-response',
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('classifies ambiguous and control-character URL queries as invalid', () => {
+    expect(validatePublicSearchQuery(['river', 'private-term'])).toMatchObject({
+      kind: 'invalid',
+      reason: 'ambiguous',
+    });
+    expect(validatePublicSearchQuery('river\nprivate-term')).toMatchObject({
+      kind: 'invalid',
+      reason: 'control-characters',
+    });
+  });
+
+  it('rejects oversized declared responses for every indexer fetch', async () => {
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () =>
+        new Response('{}', {
+          headers: {
+            'content-length': '999999999',
+            'content-type': 'application/json',
+          },
+        }),
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(getHomeFeed()).resolves.toMatchObject({
+      kind: 'degraded',
+      reason: 'invalid-response',
+    });
+    await expect(getPostById('post:example_1')).resolves.toMatchObject({
+      kind: 'degraded',
+      reason: 'invalid-response',
+    });
+    await expect(searchPublic('river')).resolves.toMatchObject({
+      kind: 'degraded',
+      reason: 'invalid-response',
+    });
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('stops an oversized streamed JSON body before parsing ignored properties', async () => {
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    const encoder = new TextEncoder();
+    let part = 0;
+    const cancel = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      cancel,
+      pull(controller) {
+        if (part === 0) {
+          controller.enqueue(encoder.encode('{"ignored":"'));
+        } else if (part <= 7) {
+          controller.enqueue(new Uint8Array(1024 * 1024).fill(97));
+        } else {
+          controller.enqueue(encoder.encode('"}'));
+          controller.close();
+        }
+        part += 1;
+      },
+    });
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      async () =>
+        new Response(body, {
+          headers: {
+            'content-type': 'application/json',
+          },
+        }),
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(searchPublic('river')).resolves.toMatchObject({
+      kind: 'degraded',
+      reason: 'invalid-response',
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
 });

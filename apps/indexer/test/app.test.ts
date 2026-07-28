@@ -1,6 +1,6 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
 import bs58 from 'bs58';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildPostPayload,
@@ -23,6 +23,7 @@ import {
   ManifestVerifier,
   MemoryProjectionStore,
   OpenIndexer,
+  ProjectionError,
   ProjectionRootKeyAuthorizer,
 } from '../src/index.js';
 
@@ -62,6 +63,36 @@ const postContent: PostContent = {
 };
 
 describe('indexer HTTP contract', () => {
+  it('returns a retryable 503 when bounded public-search capacity is unavailable', async () => {
+    const projection = new MemoryProjectionStore();
+    vi.spyOn(projection, 'searchPublic').mockRejectedValue(
+      new ProjectionError('Search capacity exhausted.', 'search-capacity'),
+    );
+    const app = await buildIndexerApp({
+      projection,
+      defaultNetworkId: networkId,
+      logger: false,
+    });
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=portable',
+      });
+      expect(response.statusCode).toBe(503);
+      expect(response.headers['retry-after']).toBe('1');
+      expect(response.json()).toEqual({
+        error: {
+          code: 'search-unavailable',
+          message: 'Public search is temporarily at capacity. Retry shortly.',
+        },
+      });
+    } finally {
+      await app.close();
+      await projection.close();
+    }
+  });
+
   it('fails honestly when no default network is configured', async () => {
     const projection = new MemoryProjectionStore();
     const app = await buildIndexerApp({ projection, logger: false });
@@ -71,6 +102,14 @@ describe('indexer HTTP contract', () => {
 
       expect(response.statusCode).toBe(503);
       expect(response.json()).toMatchObject({
+        error: { code: 'network-not-configured' },
+      });
+      const searchResponse = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=portable',
+      });
+      expect(searchResponse.statusCode).toBe(503);
+      expect(searchResponse.json()).toMatchObject({
         error: { code: 'network-not-configured' },
       });
     } finally {
@@ -135,17 +174,109 @@ describe('indexer HTTP contract', () => {
         post: { id: fixture.post.objectId },
       });
 
+      const personSearch = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=River&limit=10',
+      });
+      expect(personSearch.statusCode).toBe(200);
+      expect(personSearch.json()).toMatchObject({
+        canonical: false,
+        query: 'river',
+        ranking: { deterministic: true, version: 'public-match-v1' },
+        scope: 'public-finalized-projection',
+        results: [
+          {
+            kind: 'person',
+            matchedBy: 'display-name',
+            identityId,
+            displayName: profileContent.displayName,
+            handle: null,
+          },
+        ],
+      });
+
+      const postSearch = await app.inject({
+        method: 'GET',
+        url: `/v1/search?q=finalized&limit=10&network=${encodeURIComponent(networkId)}`,
+      });
+      expect(postSearch.statusCode).toBe(200);
+      expect(postSearch.json()).toMatchObject({
+        query: 'finalized',
+        results: [
+          {
+            kind: 'post',
+            matchedBy: 'post-body',
+            post: {
+              id: fixture.post.objectId,
+              visibility: 'public',
+              verification: { state: 'verified' },
+            },
+          },
+        ],
+      });
+
       const unknownQuery = await app.inject({
         method: 'GET',
         url: '/v1/feed/home?limit=20&operatorOverride=true',
       });
       expect(unknownQuery.statusCode).toBe(400);
+      const invalidSearch = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=x&private=true',
+      });
+      expect(invalidSearch.statusCode).toBe(400);
+      const normalizedTooShort = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=%EF%BC%A1%EF%BC%A2',
+      });
+      expect(normalizedTooShort.statusCode).toBe(400);
+      expect(normalizedTooShort.json()).toMatchObject({
+        error: {
+          issues: [
+            {
+              path: 'q',
+              message: 'Normalized search queries must contain at least 3 characters.',
+            },
+          ],
+        },
+      });
+      const compatibilityExpansion = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=%EF%AC%83',
+      });
+      expect(compatibilityExpansion.statusCode).toBe(200);
+      expect(compatibilityExpansion.json()).toMatchObject({ query: 'ffi', results: [] });
+      const controlSearch = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=abc%09def',
+      });
+      expect(controlSearch.statusCode).toBe(400);
 
       const invalidObjectId = await app.inject({
         method: 'GET',
         url: '/v1/posts/not-an-object-id',
       });
       expect(invalidObjectId.statusCode).toBe(400);
+    } finally {
+      await app.close();
+      await fixture.projection.close();
+    }
+  });
+
+  it('serializes a valid empty profile display name with the consumer fallback', async () => {
+    const fixture = await indexedFixture({ ...profileContent, displayName: '' });
+    const app = await buildIndexerApp({
+      projection: fixture.projection,
+      defaultNetworkId: networkId,
+      logger: false,
+    });
+
+    try {
+      const response = await app.inject({ method: 'GET', url: '/v1/feed/home?limit=1' });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        posts: [{ author: { displayName: 'Unnamed member', identityId } }],
+      });
     } finally {
       await app.close();
       await fixture.projection.close();
@@ -181,6 +312,13 @@ describe('indexer HTTP contract', () => {
         url: `/v1/posts/${encodeURIComponent(fixture.post.objectId)}`,
       });
       expect(postResponse.statusCode).toBe(404);
+
+      const searchResponse = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=finalized',
+      });
+      expect(searchResponse.statusCode).toBe(200);
+      expect(searchResponse.json()).toMatchObject({ results: [] });
     } finally {
       await app.close();
       await fixture.projection.close();
@@ -274,6 +412,14 @@ describe('indexer HTTP contract', () => {
         url: `/v1/communities/${communityAddress}`,
       });
       expect(communityWithoutNetwork.statusCode).toBe(400);
+      const communitySearch = await app.inject({
+        method: 'GET',
+        url: `/v1/search?network=${encodeURIComponent(networkId)}&q=${encodeURIComponent(
+          communityAddress,
+        )}`,
+      });
+      expect(communitySearch.statusCode).toBe(200);
+      expect(communitySearch.json()).toMatchObject({ results: [] });
 
       const reactions = await app.inject({
         method: 'GET',
@@ -296,7 +442,7 @@ describe('indexer HTTP contract', () => {
   });
 });
 
-async function indexedFixture() {
+async function indexedFixture(selectedProfileContent: ProfileContent = profileContent) {
   const storage = new MemoryContentAddressedStorage();
   const projection = new MemoryProjectionStore();
   const indexer = new OpenIndexer(
@@ -313,7 +459,7 @@ async function indexedFixture() {
 
   const profile = await publish(
     storage,
-    buildProfilePayload(builderIdentity, profileContent, {
+    buildProfilePayload(builderIdentity, selectedProfileContent, {
       createdAt: new Date('2026-07-28T14:02:00.000Z'),
       nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 1),
     }),

@@ -626,6 +626,107 @@
   font-size: 0.75rem;
 }
 
+.search-results {
+  display: grid;
+  gap: 1rem;
+}
+
+.search-results > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+  padding-block-end: 1rem;
+  border-block-end: 1px solid var(--wokesocial-line);
+}
+
+.search-results > header h2 {
+  margin: 0.2rem 0 0;
+  font-family: var(--wokesocial-font-display);
+}
+
+.search-results > header dl {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem 1.25rem;
+  margin: 0;
+}
+
+.search-results > header dl div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.search-results > header dt {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.search-results > header dd {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.search-results > ol {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.search-result-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: clamp(1.15rem, 3vw, 1.6rem);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
+}
+
+.search-result-card h3,
+.search-result-card p {
+  margin: 0;
+}
+
+.search-result-card h3 {
+  margin-block-start: 0.55rem;
+  font-family: var(--wokesocial-font-display);
+}
+
+.search-result-card > p {
+  max-width: 58rem;
+  color: var(--wokesocial-ink-muted);
+  line-height: 1.65;
+}
+
+.search-result-card__handle {
+  color: var(--wokesocial-plum);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.search-result-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block-start: 0.8rem;
+  border-block-start: 1px solid var(--wokesocial-line);
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.8rem;
+}
+
+.search-result-card footer a {
+  color: var(--wokesocial-plum);
+  font-weight: 800;
+}
+
 .filter-strip,
 .feed-tabs {
   overflow-x: auto;
@@ -1264,6 +1365,15 @@
 
   .search-bar button {
     width: 100%;
+  }
+
+  .search-results > header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .search-results > header dl {
+    justify-content: flex-start;
   }
 
   .compose-actions {

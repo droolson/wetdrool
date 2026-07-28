@@ -431,6 +431,9 @@ importers:
       '@solana/kit':
         specifier: 7.0.0
         version: 7.0.0(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
+      '@solana/rpc-spec-types':
+        specifier: 7.0.0
+        version: 7.0.0(typescript@6.0.3)
       '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../protocol

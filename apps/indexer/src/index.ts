@@ -13,6 +13,7 @@ export * from './payment-validation.js';
 export * from './postgres-projection.js';
 export * from './projection.js';
 export * from './projection-key-authorizer.js';
+export * from './public-search.js';
 export * from './recovery-addresses.js';
 export * from './solana-materializer.js';
 export * from './solana-rpc.js';

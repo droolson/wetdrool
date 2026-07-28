@@ -22,9 +22,9 @@ foundation and experimental subsets across phases 2–4:
 - independently replaceable crypto, fixture, and seven-mode feed-engine
   packages;
 - signed relay and moderation-provider service subsets; and
-- a production-built complete required web route surface with 203
-  desktop/mobile browser cases and 90 automated axe checks across 45 route
-  fixtures.
+- a production-built complete required web route surface with 206 passing
+  desktop/mobile browser cases, two intentional mobile lifecycle skips, and 90
+  automated axe checks across 45 route fixtures.
 
 WokeNet is now the sovereign runtime target. It is forked from Solana,
 uses native WOKE with 9 decimals, and retains `lamports` only as the compatible

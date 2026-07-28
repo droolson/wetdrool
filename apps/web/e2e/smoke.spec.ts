@@ -85,6 +85,27 @@ test('theme picker exposes high contrast without hiding content', async ({ page 
   await expect(page.locator('h1')).toBeVisible();
 });
 
+test('public search validates locally and degrades without fabricating results', async ({
+  page,
+}) => {
+  await page.goto('/search?q=xy');
+  await expect(
+    page.getByRole('heading', { name: 'Use at least 3 normalized Unicode code points.' }),
+  ).toBeVisible();
+  await expect(page.getByText('was rejected in full and was not truncated')).toBeVisible();
+
+  await page.goto(`/search?q=${'x'.repeat(121)}`);
+  await expect(
+    page.getByRole('heading', { name: 'Use no more than 120 normalized Unicode code points.' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Search public posts or people')).toHaveValue('');
+
+  await page.goto('/search?q=portable');
+  await expect(page.getByRole('heading', { name: 'Connect an indexer to search.' })).toBeVisible();
+  await expect(page.locator('body')).not.toContainText('Sponsored result');
+  await expect(page.locator('.post-card')).toHaveCount(0);
+});
+
 test('mobile navigation opens with keyboard-accessible links', async ({ page }) => {
   await page.setViewportSize({ height: 844, width: 390 });
   await page.goto('/');

@@ -115,6 +115,20 @@ describe('open indexer', () => {
       throw new Error('Expected one feed entry.');
     }
     expect(firstEntry.post.verified).toBe(true);
+    const firstSearch = (
+      await projection.searchPublic({
+        networkId,
+        term: 'signed manifest',
+        limit: 10,
+      })
+    ).results;
+    expect(firstSearch).toMatchObject([
+      {
+        kind: 'post',
+        matchedBy: 'post-body',
+        entry: { post: { objectId: postEvent.objectId } },
+      },
+    ]);
 
     const events = [postEvent, identityEvent];
     await indexer.rebuild(networkId, events);
@@ -124,6 +138,48 @@ describe('open indexer', () => {
       limit: 20,
     });
     expect(rebuilt).toEqual(first);
+    expect(
+      (
+        await projection.searchPublic({
+          networkId,
+          term: 'signed manifest',
+          limit: 10,
+        })
+      ).results,
+    ).toEqual(firstSearch);
+
+    const unlistedPayload = buildPostPayload(
+      identity,
+      {
+        ...content,
+        body: 'private-search-marker must remain undiscoverable',
+        visibility: { kind: 'unlisted' },
+      },
+      {
+        createdAt: new Date('2026-07-28T12:02:00.000Z'),
+        nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 32),
+      },
+    );
+    const unlistedEnvelope = signPayload(unlistedPayload, privateKey);
+    const unlistedReceipt = await storage.put(canonicalizeEnvelope(unlistedEnvelope), {
+      permanence: 'deletion-compatible',
+    });
+    await indexer.ingest({
+      ...base,
+      type: 'post-published',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 4)),
+      slot: 3n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:02:01.000Z',
+      identityId,
+      objectId: getObjectId(unlistedPayload),
+      cid: unlistedReceipt.cid,
+      payloadHash: unlistedEnvelope.proof.payloadHash,
+      sequence: 2n,
+    });
+    await expect(
+      projection.searchPublic({ networkId, term: 'private-search-marker', limit: 10 }),
+    ).resolves.toMatchObject({ results: [] });
   });
 
   it('rejects a content-address mismatch', async () => {

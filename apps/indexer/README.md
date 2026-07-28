@@ -100,6 +100,30 @@ Receipts and entitlements retain finalized transaction/log provenance. They are 
 projections only: the API does not infer a broader settlement outcome, refund status, or current
 eligibility from their presence.
 
+Migration `0011_public_search.sql` adds stored normalized search columns, exact/prefix B-tree
+indexes, and `pg_trgm` GIN indexes for the bounded public-search projection. Search includes only
+current profile display names and bios, one deterministic canonical active handle per identity,
+and verified non-tombstoned public posts. It never indexes private messages, recovery state,
+private profile fields, obsolete profile revisions, or community anchors. Communities remain
+excluded until the indexer can verify a signed community manifest whose visibility is public.
+
+The deterministic `public-match-v1` order ranks exact public identifiers and canonical handles
+before current public text, then uses recency and Unicode code-point order for ties. Identifiers
+are eligible only by exact or prefix match. Normalization is NFKC, collapses Unicode Separator
+runs, trims surrounding spaces, and folds ASCII `A-Z` only; non-ASCII text is intentionally
+case-sensitive so JavaScript behavior cannot vary with the database locale. The normalized query
+must contain 3–120 Unicode code points and cannot contain control characters. Contains matching is
+enabled only when the normalized term has an ASCII alphanumeric run of at least three characters,
+which guarantees an extractable `pg_trgm` key; other valid terms, including punctuation-only,
+emoji-only, and short `@` handle terms, remain exact/prefix-only on B-tree indexes.
+
+Both HTTP routes cap results at 50, reject unknown input, apply a stricter search rate limit, and
+echo the normalized query. Results and the projection checkpoint come from one repeatable-read
+snapshot. PostgreSQL search has a dedicated two-connection read pool, an equal fail-fast
+concurrency cap, and a 750 ms statement timeout; capacity exhaustion and cancellation return a
+retryable `503` without consuming ingestion connections. Large operators should still measure
+their own data and publish query-log retention before enabling public traffic.
+
 ## Rebuild safety
 
 `OpenIndexer.rebuild` verifies and orders the complete immutable raw event set before replacing
@@ -120,6 +144,8 @@ exactly; any mismatch is reported as an immutable event conflict before projecti
 
 In addition to verified feed and post routes, the service exposes replaceable projections at:
 
+- `GET /v1/search/public?q=...` for the operator-configured network
+- `GET /v1/search?network=...&q=...` for an explicit WokeNet
 - `GET /v1/identities/{identityId}/security`
 - `GET /v1/handles/{handle}?network=...`
 - `GET /v1/identities/{identityId}/handles`

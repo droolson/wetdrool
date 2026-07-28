@@ -372,3 +372,37 @@ export interface FeedQuery {
   readonly limit: number;
   readonly before?: string;
 }
+
+export type PublicSearchMatch =
+  'display-name' | 'exact-identifier' | 'handle' | 'post-body' | 'profile-bio';
+
+export interface PublicSearchPersonCandidate {
+  readonly kind: 'person';
+  readonly identityId: string;
+  readonly displayName: string;
+  readonly bio: string;
+  readonly handle?: string;
+  readonly updatedAt: string;
+}
+
+export interface PublicSearchPostCandidate {
+  readonly kind: 'post';
+  readonly entry: FeedEntry;
+}
+
+export type PublicSearchCandidate = PublicSearchPersonCandidate | PublicSearchPostCandidate;
+
+export type PublicSearchResult = PublicSearchCandidate & {
+  readonly matchedBy: PublicSearchMatch;
+};
+
+export interface PublicSearchQuery {
+  readonly networkId: string;
+  readonly term: string;
+  readonly limit: number;
+}
+
+export interface PublicSearchSnapshot {
+  readonly checkpoint: bigint | undefined;
+  readonly results: readonly PublicSearchResult[];
+}

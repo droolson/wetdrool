@@ -451,7 +451,7 @@ No row is satisfied until evidence is linked from a release report.
 | Source and dependency integrity | Frozen clean install, lockfile review, secret/dependency/code scans, SBOM | Partial: frozen install, exact patched overrides, a no-known-vulnerability audit result, and pinned CI/Gitleaks workflows exist; SBOM/release provenance and complete scan evidence remain |
 | Web/API security | Header test, CSP report review, authz/CSRF/SSRF/XSS/SQLi tests, rate-limit tests | Partial: read-only indexer rate limiting and basic headers exist; the full adversarial/CSP suite does not |
 | WokeNet runtime and program security | Native-Firedancer build/conformance/consensus gates, formatting, Clippy, unit and compatibility-validator tests, verifiable builds, independent audit findings resolved | Blocked: source/patch/capability policy and SBF/local compatibility evidence exist; native Firedancer lacks required RPC methods and a production release, and no native cluster, verifiable release, or independent audit exists |
-| Transaction safety | Golden instruction decodes, substitution tests, simulation comparison tests, wallet UX review | Partial: exact account/data tests, substitution/allocation/replay tests, strict caller-parsed simulation comparison, and finalized-account proof validation exist; concrete RPC decoding, compiled-message/blockhash comparison, wallet integration, sponsorship policy, and native evidence remain open |
+| Transaction safety | Golden instruction decodes, substitution tests, simulation comparison tests, wallet UX review | Partial: exact account/data tests, substitution/allocation/replay tests, exact-byte version-0/legacy compilation, detached-signature verification, bounded strict RPC simulation/status parsing, fee and balance reconciliation, same-byte broadcast/rebroadcast, finalized transaction confirmation, and finalized-account proof validation exist; flagship wallet/passkey signer integration, executable-artifact attestation, post-finality receipt/entitlement proof orchestration, sponsorship policy, and native Firedancer evidence remain open |
 | Identity and recovery | WebAuthn origin tests, nonce/replay tests, delegation/revocation/recovery abuse tests | Partial: real browser WebAuthn, durable challenges/sessions, delegation epochs, and delayed guardian recovery adversarial paths pass; protocol onboarding, email/notification UX, full device lifecycle, and review remain |
 | Content integrity | Canonical vectors, signature/hash/CID substitution tests, gateway failover tests | Partial: TypeScript canonical/signature/hash/CID and storage corruption tests pass; shared vectors and comprehensive failover do not |
 | Messaging | Published protocol/library, interoperability vectors, device/replay/revocation tests, independent review | Partial: pinned real-WASM pairwise adapter and 13 envelope/device/replay/revocation/non-disclosure cases pass; persistent browser/relay interoperability and independent review remain |
@@ -497,11 +497,14 @@ The following remain explicit blockers until implementation and evidence exist:
   delayed guardian recovery subsets exist; protocol onboarding, complete
   device/email recovery UX, wider authorization/payment instructions, and a
   production authority model remain absent.
-- No concrete RPC transaction/account decoder, full message
-  compiler/signer/broadcaster, compiled-message/blockhash comparison, wallet UX,
-  or sponsor policy. Strict caller-parsed simulation comparison and finalized
-  receipt/entitlement proof validators exist, but have no native Firedancer
-  evidence.
+- The SDK has exact-byte version-0/legacy transaction compilation, strict RPC
+  simulation/status decoding, detached-signature verification, fee/balance
+  reconciliation, same-byte broadcast/rebroadcast, finalized transaction
+  confirmation, and injected finalized-account proof validation. A complete
+  generated account client, flagship wallet/passkey signer integration,
+  executable-artifact attestation, post-finality receipt/entitlement proof
+  orchestration, sponsor policy, wallet UX, and native Firedancer evidence
+  remain absent.
 - Manifest/storage integrity and a hardened media-worker/ClamAV subset exist;
   shared cross-language vectors, production storage orchestration, and stronger
   codec sandbox evidence remain absent.

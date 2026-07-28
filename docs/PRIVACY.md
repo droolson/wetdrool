@@ -127,6 +127,14 @@ An indexer database is a replaceable projection, not canonical protocol truth. I
 
 It must not silently convert private preferences, recovery data, or message content into public projections.
 
+The implemented `public-match-v1` search projection is limited to current public display
+names/bios, active handles, and verified posts whose visibility is `public`. Unlisted/restricted
+posts and tombstoned posts are excluded in both memory and PostgreSQL implementations. Anchored
+community references are also excluded until the indexer can verify a signed public-visibility
+manifest. Canonical queries contain 3–120 normalized Unicode code points. The web client warns
+that a query is transmitted to the selected indexer and retained in the URL; operators must
+disclose and bound any reverse-proxy/application query logging before public use.
+
 ## 6. Identity and account privacy
 
 ### 6.1 Public identity

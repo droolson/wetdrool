@@ -281,7 +281,21 @@ The initial recommendation model may use declared interests, follows, freshness,
 
 ### 8.2 Search and discovery
 
-**PS-SRCH-001 — Planned.** Search supports public handles, current profile fields, posts, communities, events, and discoverable creators while respecting tombstones, visibility, blocks, and current-name rules.
+**PS-SRCH-001 — Partially integrated.** The open indexer and flagship now share a strict,
+replaceable public-search contract for active handles, current public profile names/bios, verified
+non-tombstoned public posts. Canonical queries contain 3–120 NFKC-normalized Unicode code points;
+queries and results are network-scoped, rate-limited, checkpointed, database-time-bounded, and
+ordered by the published deterministic `public-match-v1` policy. Contains matching requires an
+ASCII alphanumeric run of at least three characters; other valid terms, including punctuation-only,
+emoji-only, and short `@` handle terms, remain exact/prefix-only. The web client validates every
+result variant and proof-bearing post, caps provider response bytes, shows honest empty/degraded
+states, and never substitutes sample or sponsored results.
+
+Private fields are excluded and tombstones remove posts from both memory and PostgreSQL search.
+Community results fail closed because the current anchored community references do not verify
+manifest visibility. Event/creator-specific discovery, viewer-aware block/mute enforcement,
+verified public-community manifests, visibility variants beyond public posts, independent provider
+conformance, and production-scale relevance/load evidence remain open.
 
 - Search results state which indexer produced them.
 - Deleted or access-revoked content is removed from official results once the relevant update is ingested.
@@ -445,10 +459,11 @@ Every surface must provide relevant loading, empty, permission-denied, validatio
 ## 15. Accessibility, localization, and responsive behavior
 
 **PS-A11Y-001 — Automated route coverage implemented; conformance review
-pending.** Two hundred three desktop/mobile browser cases pass, including 90
-axe A/AA scans over 45 route fixtures, keyboard navigation, high contrast, and
-local state flows. The connected post-detail route has semantic browser
-coverage but is not yet in the axe matrix. The documented manual
+pending.** Two hundred six desktop/mobile browser cases pass, with two
+intentional duplicate mobile passkey lifecycle cases skipped. The passing set
+includes 90 axe A/AA scans over 45 route fixtures, keyboard navigation, high
+contrast, and local state flows. The connected post-detail route has semantic
+browser coverage but is not yet in the axe matrix. The documented manual
 assistive-technology matrix remains required before a WCAG 2.2 AA conformance
 claim.
 
@@ -512,10 +527,10 @@ The product cannot be described as production-ready until:
 
 | Capability group | Status | Evidence |
 |---|---|---|
-| Public experience and onboarding | Partial | Complete route surface, 203 passing desktop/mobile browser cases, and real passkey service-account registration/sign-in; wallet and protocol-identity onboarding remain fail-closed |
+| Public experience and onboarding | Partial | Complete route surface, 206 passing desktop/mobile browser cases, bounded provider-backed public search, and real passkey service-account lifecycle coverage; wallet and protocol-identity onboarding remain fail-closed |
 | Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass the compatibility oracle; durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and sessions pass, while protocol onboarding, WokeNet delegation lifecycle, recovery product UX, sponsorship, and native Firedancer execution remain open |
 | Signed publishing and social graph | Verified text-post vertical slice; broader interactions partial | Nine finalized transactions, signed CAS manifest, exact PostgreSQL replay, root/delegated social program tests |
-| Feeds, search, and discovery | Partial | Seven-mode replaceable feed contract with 29 tests and complete web surfaces; production source integration remains |
+| Feeds, search, and discovery | Partial | Seven-mode replaceable feed contract with 29 tests plus indexed, bounded profile/post search with memory/PostgreSQL parity; viewer-aware filtering, independent-provider conformance, and production-scale evidence remain |
 | Communities and governance | Partial | Community/membership plus immutable one-member-one-vote proposal, vote, and finalization accounts pass 16 validator flows; other models, execution, and enabled web mutations remain open |
 | Moderation and appeals | Partial | Strict signed provider intake/active labels/restricted reads plus an encrypted append-only PostgreSQL case/appeal ledger, retention/legal holds, due/expiry transitions, and transparency aggregation pass; production object authorization/SSO and complete specialist product workflows remain blocked |
 | One-to-one encrypted messaging | Experimental subset | Pairwise real-WASM Olm adapter passes 13 envelope/device/revocation/lifecycle adversarial cases; volatile storage and absent browser/relay/product integration keep it non-production |

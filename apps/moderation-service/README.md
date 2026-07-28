@@ -1,7 +1,7 @@
-# woke.social moderation service
+# WokeSocial moderation service
 
 This package is a replaceable, non-authoritative moderation provider for
-woke.social. It verifies signed public moderation labels, accepts signed
+WokeSocial. It verifies signed public moderation labels, accepts signed
 restricted reports and appeals, and maintains a durable operator case ledger.
 It does not edit signed user content or make a moderation provider’s decision
 universal protocol truth.

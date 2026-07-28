@@ -21,6 +21,12 @@ const CONTRACTS = [
     purpose: 'One typed post response with content and anchor proof metadata.',
     state: 'Consumed when an indexer is configured',
   },
+  {
+    method: 'GET',
+    path: '/v1/search/public?q=:term&limit=30',
+    purpose: 'Bounded public people and verified-post results with ranking/checkpoint metadata.',
+    state: 'Consumed when a public query and indexer are configured',
+  },
 ] as const;
 
 export default function DevelopersPage() {
@@ -40,7 +46,7 @@ export default function DevelopersPage() {
       <section className="developer-contracts" aria-labelledby="developer-contracts-title">
         <div>
           <p className="section-kicker">Current web consumers</p>
-          <h2 id="developer-contracts-title">Two reads, no browser writes.</h2>
+          <h2 id="developer-contracts-title">Three reads, no browser writes.</h2>
           <p>
             Base URLs come from deployment-owned provider configuration. The web layer validates
             response shape and never treats a successful HTTP status alone as verified content.

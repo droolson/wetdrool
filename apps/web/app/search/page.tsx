@@ -3,11 +3,70 @@ import Link from 'next/link';
 import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { PostCard } from '@/components/post-card';
+import {
+  searchPublic,
+  type PublicSearchQueryState,
+  type SearchItem,
+  type SearchResult,
+  validatePublicSearchQuery,
+} from '@/lib/indexer';
+import { formatUtcDate } from '@/lib/presentation';
 
 export const metadata: Metadata = {
   title: 'Search',
-  description: 'Prepare a network search without substituting fabricated results.',
+  description: 'Search a typed, replaceable WokeNet public projection.',
 };
+
+export const dynamic = 'force-dynamic';
+
+function statusFor(result: SearchResult | null, queryState: PublicSearchQueryState) {
+  if (queryState.kind === 'empty') {
+    return <StatusBadge tone="neutral">Awaiting a public query</StatusBadge>;
+  }
+  if (queryState.kind === 'invalid') {
+    return <StatusBadge tone="degraded">Invalid query rejected</StatusBadge>;
+  }
+  if (result?.kind === 'ready') {
+    return <StatusBadge tone="verified">Typed search response accepted</StatusBadge>;
+  }
+  return <StatusBadge tone="degraded">Search safely degraded</StatusBadge>;
+}
+
+function matchLabel(result: SearchItem): string {
+  const labels = {
+    'display-name': 'Current display name',
+    'exact-identifier': 'Exact public identifier',
+    handle: 'Active handle',
+    'manifest-reference': 'Anchored manifest reference',
+    'post-body': 'Verified public post',
+    'profile-bio': 'Current public bio',
+  } as const;
+  return labels[result.matchedBy];
+}
+
+function SearchResultCard({ result }: { result: SearchItem }) {
+  if (result.kind === 'post') {
+    return <PostCard post={result.post} />;
+  }
+
+  return (
+    <article className="search-result-card">
+      <div>
+        <StatusBadge tone="neutral">{matchLabel(result)}</StatusBadge>
+        <h3>{result.displayName}</h3>
+        <p className="search-result-card__handle">
+          {result.handle === null ? 'No active handle' : `@${result.handle}`}
+        </p>
+      </div>
+      {result.bio ? <p>{result.bio}</p> : <p>No public bio is present in this projection.</p>}
+      <footer>
+        <time dateTime={result.updatedAt}>Updated {formatUtcDate(result.updatedAt)}</time>
+        <Link href={`/profile/${encodeURIComponent(result.identityId)}`}>Open profile</Link>
+      </footer>
+    </article>
+  );
+}
 
 export default async function SearchPage({
   searchParams,
@@ -15,54 +74,138 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string | string[] }>;
 }) {
   const rawQuery = (await searchParams).q;
-  const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery)?.trim().slice(0, 120) ?? '';
+  const queryState = validatePublicSearchQuery(rawQuery);
+  const query = queryState.kind === 'valid' ? queryState.query : '';
+  const inputValue =
+    queryState.kind === 'valid' ||
+    (queryState.kind === 'invalid' && queryState.reason === 'too-short')
+      ? queryState.query
+      : '';
+  const result = queryState.kind === 'valid' ? await searchPublic(query) : null;
 
   return (
     <div className="product-page page-shell">
       <AppPageHeader
-        actions={<StatusBadge tone="degraded">Search provider unavailable</StatusBadge>}
+        actions={statusFor(result, queryState)}
         eyebrow="Portable discovery"
-        title="Search without surrendering context."
+        title="Search public network state."
       >
         <p>
-          A compatible service can index public protocol data, publish its policy, and be replaced.
-          This interface does not claim results before that service exists.
+          The configured indexer can search current public profiles and verified posts. It is
+          replaceable, and its result order is never canonical.
         </p>
       </AppPageHeader>
 
       <form action="/search" className="search-bar" method="get" role="search">
-        <label htmlFor="network-search">Search public posts, people, or communities</label>
+        <label htmlFor="network-search">Search public posts or people</label>
         <div>
           <input
             autoComplete="off"
-            defaultValue={query}
+            defaultValue={inputValue}
             id="network-search"
-            maxLength={120}
             name="q"
-            placeholder="Try a name, phrase, or community"
+            placeholder="Try a name, phrase, handle, or public identifier"
+            required
             type="search"
           />
-          <button type="submit">Check search readiness</button>
+          <button type="submit">Search the public index</button>
         </div>
-        <p>Queries are shown in the address bar. Do not enter private or sensitive information.</p>
+        <p>
+          Queries must normalize to 3–120 Unicode code points. A valid query is sent to your
+          configured indexer and remains in the address bar. Do not enter private or sensitive
+          information.
+        </p>
       </form>
 
-      <StatePanel
-        action={
-          <ButtonLink href="/settings/providers" variant="secondary">
-            Review providers
-          </ButtonLink>
-        }
-        eyebrow={query ? 'Query not sent' : 'Awaiting a query'}
-        title={query ? `No provider received “${query}”.` : 'Search is ready for a real endpoint.'}
-        tone="empty"
-      >
-        <p>
-          {query
-            ? 'The interface retained the query locally in this URL, but did not transmit it or invent matching accounts and posts.'
-            : 'Enter a public term to exercise this local interface. Results remain unavailable until a typed search contract is integrated.'}
-        </p>
-      </StatePanel>
+      {queryState.kind === 'empty' ? (
+        <StatePanel
+          action={
+            <ButtonLink href="/settings/providers" variant="secondary">
+              Review providers
+            </ButtonLink>
+          }
+          eyebrow="No query sent"
+          title="Enter a public term to search."
+          tone="empty"
+        >
+          <p>No sample accounts or posts are substituted before a provider responds.</p>
+        </StatePanel>
+      ) : queryState.kind === 'invalid' ? (
+        <StatePanel eyebrow="Invalid query not sent" title={queryState.detail} tone="degraded">
+          <p>
+            The supplied URL query was rejected in full and was not truncated or transmitted to an
+            indexer.
+          </p>
+        </StatePanel>
+      ) : result?.kind === 'degraded' ? (
+        <StatePanel
+          action={
+            <ButtonLink href="/settings/providers" variant="secondary">
+              Review providers
+            </ButtonLink>
+          }
+          eyebrow="No search data accepted"
+          title={
+            result.reason === 'unconfigured'
+              ? 'Connect an indexer to search.'
+              : 'The search provider is safely degraded.'
+          }
+          tone="degraded"
+        >
+          <p>{result.detail}</p>
+        </StatePanel>
+      ) : result?.kind === 'ready' && result.value.results.length === 0 ? (
+        <StatePanel
+          eyebrow="Accepted empty response"
+          title={`The provider returned no matches for “${query}”.`}
+          tone="empty"
+        >
+          <p>
+            The configured indexer responded successfully at checkpoint{' '}
+            {result.value.meta.checkpointSlot === null
+              ? 'not reported'
+              : result.value.meta.checkpointSlot.toLocaleString('en')}
+            . No nearby or sponsored results were inserted.
+          </p>
+        </StatePanel>
+      ) : result?.kind === 'ready' ? (
+        <section className="search-results" aria-labelledby="search-results-title">
+          <header>
+            <div>
+              <p className="section-kicker">Replaceable projection</p>
+              <h2 id="search-results-title">
+                {result.value.results.length} public{' '}
+                {result.value.results.length === 1 ? 'result' : 'results'} for “{query}”
+              </h2>
+            </div>
+            <dl>
+              <div>
+                <dt>Provider</dt>
+                <dd>{result.endpoint}</dd>
+              </div>
+              <div>
+                <dt>Checkpoint</dt>
+                <dd>
+                  {result.value.meta.checkpointSlot === null
+                    ? 'Not reported'
+                    : `Slot ${result.value.meta.checkpointSlot.toLocaleString('en')}`}
+                </dd>
+              </div>
+              <div>
+                <dt>Ranking</dt>
+                <dd>{result.value.ranking.version}</dd>
+              </div>
+            </dl>
+          </header>
+          <ol>
+            {result.value.results.map((item) => (
+              <li key={item.kind === 'post' ? `post:${item.post.id}` : `person:${item.identityId}`}>
+                <SearchResultCard result={item} />
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <nav className="discovery-directory" aria-label="Browse without search">
         <p>Browse a known surface instead</p>
@@ -82,8 +225,10 @@ export default async function SearchPage({
             Private messages, recovery data, and nonpublic profile fields never belong in search.
           </p>
         </InfoCard>
-        <InfoCard eyebrow="Policy" title="Operator rules disclosed" tone="coral">
-          <p>Each search service should publish indexing, removal, ranking, and retention rules.</p>
+        <InfoCard eyebrow="Policy" title="Deterministic ranking" tone="coral">
+          <p>
+            Exact identifiers and handles rank before current public text, then recency breaks ties.
+          </p>
         </InfoCard>
         <InfoCard eyebrow="Portability" title="Replace the index" tone="sky">
           <p>A client can change providers without changing the identity or public source data.</p>

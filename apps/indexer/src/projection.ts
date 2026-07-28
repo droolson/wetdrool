@@ -14,6 +14,8 @@ import type {
   PostProjection,
   ProfileProjection,
   ProtocolConfigProjection,
+  PublicSearchQuery,
+  PublicSearchSnapshot,
   ReactionProjection,
   RecoveryPolicyProjection,
   RecoveryRequestProjection,
@@ -110,6 +112,7 @@ export interface ProjectionStore {
     networkId: string,
     entitlementAddress: string,
   ): Promise<SubscriptionEntitlementProjection | undefined>;
+  searchPublic(query: PublicSearchQuery): Promise<PublicSearchSnapshot>;
   getFeed(query: FeedQuery): Promise<readonly FeedEntry[]>;
   clearProjection(networkId: string): Promise<void>;
   checkpoint(networkId: string): Promise<bigint | undefined>;
@@ -161,6 +164,8 @@ export class ProjectionError extends Error {
       | 'missing-identity'
       | 'stale-event'
       | 'event-conflict'
+      | 'search-capacity'
+      | 'search-timeout'
       | 'database-error',
     options?: ErrorOptions,
   ) {

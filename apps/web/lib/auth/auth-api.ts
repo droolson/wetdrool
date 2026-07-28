@@ -321,7 +321,7 @@ export class AuthApiClient {
   ): Promise<unknown> {
     return this.#json(path, {
       method,
-      headers: mutationHeaders(await this.#csrfForMutation()),
+      headers: mutationHeaders(await this.#csrfForMutation(), body !== undefined),
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   }
@@ -429,11 +429,15 @@ function browserSessionStorage(): TokenStorage {
   };
 }
 
-function mutationHeaders(csrfToken: string): HeadersInit {
-  return {
-    'content-type': 'application/json',
-    'x-csrf-token': csrfToken,
-  };
+function mutationHeaders(csrfToken: string, hasJsonBody = true): HeadersInit {
+  return hasJsonBody
+    ? {
+        'content-type': 'application/json',
+        'x-csrf-token': csrfToken,
+      }
+    : {
+        'x-csrf-token': csrfToken,
+      };
 }
 
 function creationOptionsValue(value: unknown): PublicKeyCredentialCreationOptionsJSON {

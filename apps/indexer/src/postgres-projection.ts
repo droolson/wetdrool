@@ -35,6 +35,9 @@ import type {
   PostProjection,
   ProfileProjection,
   ProtocolConfigProjection,
+  PublicSearchCandidate,
+  PublicSearchQuery,
+  PublicSearchSnapshot,
   ReactionProjection,
   RecoveryPolicyProjection,
   RecoveryRequestProjection,
@@ -51,17 +54,57 @@ import {
   type ProjectionStore,
   type VerifiedManifest,
 } from './projection.js';
+import {
+  isIndexablePublicSearchContainsTerm,
+  isValidPublicSearchTerm,
+  normalizePublicSearchTerm,
+  rankPublicSearchCandidates,
+} from './public-search.js';
 
 const ZERO_DIGEST = 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const DEFAULT_SEARCH_POOL_SIZE = 2;
+const DEFAULT_SEARCH_STATEMENT_TIMEOUT_MS = 750;
+
+export interface PostgresProjectionOptions {
+  readonly searchConcurrency?: number;
+  readonly searchPoolSize?: number;
+  readonly searchStatementTimeoutMs?: number;
+}
 
 export class PostgresProjectionStore implements ProjectionStore, IngestionStateStore {
   readonly #sql: Sql;
+  readonly #searchSql: Sql;
+  readonly #searchConcurrency: number;
+  readonly #searchStatementTimeoutMs: number;
+  #activeSearches = 0;
 
-  constructor(databaseUrl: string) {
+  constructor(databaseUrl: string, options: PostgresProjectionOptions = {}) {
+    const searchPoolSize = positiveInteger(
+      options.searchPoolSize ?? DEFAULT_SEARCH_POOL_SIZE,
+      'searchPoolSize',
+    );
+    this.#searchConcurrency = positiveInteger(
+      options.searchConcurrency ?? searchPoolSize,
+      'searchConcurrency',
+    );
+    if (this.#searchConcurrency > searchPoolSize) {
+      throw new RangeError('searchConcurrency cannot exceed searchPoolSize.');
+    }
+    this.#searchStatementTimeoutMs = positiveInteger(
+      options.searchStatementTimeoutMs ?? DEFAULT_SEARCH_STATEMENT_TIMEOUT_MS,
+      'searchStatementTimeoutMs',
+    );
     this.#sql = postgres(databaseUrl, {
       max: 10,
       idle_timeout: 20,
       connect_timeout: 10,
+      transform: { undefined: null },
+    });
+    this.#searchSql = postgres(databaseUrl, {
+      max: searchPoolSize,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      prepare: false,
       transform: { undefined: null },
     });
   }
@@ -2450,6 +2493,201 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     return rows[0] === undefined ? undefined : subscriptionEntitlementFromRow(rows[0]);
   }
 
+  async searchPublic(query: PublicSearchQuery): Promise<PublicSearchSnapshot> {
+    const term = normalizePublicSearchTerm(query.term);
+    if (!isValidPublicSearchTerm(term) || query.limit <= 0) {
+      return {
+        checkpoint: await this.checkpoint(query.networkId),
+        results: [],
+      };
+    }
+    if (this.#activeSearches >= this.#searchConcurrency) {
+      throw new ProjectionError(
+        'Public search read capacity is currently exhausted.',
+        'search-capacity',
+      );
+    }
+
+    const handleTerm = term.startsWith('@') ? term.slice(1) : term;
+    const candidateLimit = Math.min(Math.max(query.limit * 4, 50), 200);
+    const termPrefix = `${escapeLikePattern(term)}%`;
+    const termContains = `%${escapeLikePattern(term)}%`;
+    const handlePrefix = `${escapeLikePattern(handleTerm)}%`;
+    const handleContains = `%${escapeLikePattern(handleTerm)}%`;
+    const containsIsIndexable = isIndexablePublicSearchContainsTerm(term);
+
+    this.#activeSearches += 1;
+    try {
+      return await this.#searchSql.begin(
+        'isolation level repeatable read read only',
+        async (sql) => {
+          await sql`
+            SELECT set_config(
+              'statement_timeout',
+              ${`${this.#searchStatementTimeoutMs}ms`},
+              true
+            )
+          `;
+          const profileNameMatch = containsIsIndexable
+            ? sql`pr.search_display_name LIKE ${termContains} ESCAPE E'\\\\'`
+            : sql`pr.search_display_name LIKE ${termPrefix} ESCAPE E'\\\\'`;
+          const profileBioMatch = containsIsIndexable
+            ? sql`pr.search_bio LIKE ${termContains} ESCAPE E'\\\\'`
+            : sql`pr.search_bio_prefix LIKE ${termPrefix} ESCAPE E'\\\\'`;
+          const handleMatch = containsIsIndexable
+            ? sql`hc.search_handle LIKE ${handleContains} ESCAPE E'\\\\'`
+            : sql`hc.search_handle LIKE ${handlePrefix} ESCAPE E'\\\\'`;
+          const postBodyMatch = containsIsIndexable
+            ? sql`p.search_body LIKE ${termContains} ESCAPE E'\\\\'`
+            : sql`p.search_body_prefix LIKE ${termPrefix} ESCAPE E'\\\\'`;
+          const checkpointRows = await sql<{ finalized_slot: string }[]>`
+            SELECT finalized_slot
+            FROM indexer_checkpoints
+            WHERE network_id = ${query.networkId}
+          `;
+          const [personRows, postRows] = await Promise.all([
+            sql<PublicSearchPersonRow[]>`
+              WITH matching_identity_ids AS MATERIALIZED (
+                SELECT i.identity_id
+                FROM identities i
+                WHERE i.network_id = ${query.networkId}
+                  AND i.search_identity_id LIKE ${termPrefix} ESCAPE E'\\\\'
+                UNION
+                SELECT pr.identity_id
+                FROM profiles pr
+                JOIN identities i ON i.identity_id = pr.identity_id
+                WHERE i.network_id = ${query.networkId}
+                  AND (
+                    ${profileNameMatch}
+                    OR ${profileBioMatch}
+                  )
+                UNION
+                SELECT hc.identity_id
+                FROM handle_claims hc
+                WHERE hc.network_id = ${query.networkId}
+                  AND hc.active
+                  AND ${handleTerm} <> ''
+                  AND ${handleMatch}
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM handle_claims earlier
+                    WHERE earlier.network_id = hc.network_id
+                      AND earlier.identity_id = hc.identity_id
+                      AND earlier.active
+                      AND earlier.handle COLLATE "C" < hc.handle COLLATE "C"
+                  )
+              )
+              SELECT
+                i.identity_id,
+                COALESCE(pr.display_name, '') AS display_name,
+                COALESCE(pr.bio, '') AS bio,
+                h.handle,
+                COALESCE(pr.updated_at, i.updated_at) AS updated_at
+              FROM matching_identity_ids matched
+              JOIN identities i ON i.identity_id = matched.identity_id
+              LEFT JOIN profiles pr ON pr.identity_id = i.identity_id
+              LEFT JOIN LATERAL (
+                SELECT hc.handle, hc.search_handle
+                FROM handle_claims hc
+                WHERE hc.network_id = i.network_id
+                  AND hc.identity_id = i.identity_id
+                  AND hc.active
+                ORDER BY hc.handle COLLATE "C"
+                LIMIT 1
+              ) h ON TRUE
+              ORDER BY
+                CASE
+                  WHEN i.search_identity_id = ${term} THEN 1000
+                  WHEN COALESCE(h.search_handle, '') = ${handleTerm} THEN 980
+                  WHEN COALESCE(h.search_handle, '') LIKE ${handlePrefix} ESCAPE E'\\\\'
+                    THEN 900
+                  WHEN COALESCE(pr.search_display_name, '') = ${term} THEN 880
+                  WHEN ${containsIsIndexable}
+                    AND COALESCE(h.search_handle, '') LIKE ${handleContains} ESCAPE E'\\\\'
+                    THEN 820
+                  WHEN COALESCE(pr.search_display_name, '') LIKE ${termPrefix} ESCAPE E'\\\\'
+                    THEN 800
+                  WHEN i.search_identity_id LIKE ${termPrefix} ESCAPE E'\\\\' THEN 780
+                  WHEN ${containsIsIndexable}
+                    AND COALESCE(pr.search_display_name, '') LIKE ${termContains} ESCAPE E'\\\\'
+                    THEN 720
+                  ELSE 520
+                END DESC,
+                COALESCE(pr.updated_at, i.updated_at) DESC,
+                i.identity_id COLLATE "C"
+              LIMIT ${candidateLimit}
+            `,
+            sql<FeedRow[]>`
+              SELECT
+                p.*,
+                i.identity_address, i.root_authority, i.root_rotation_count, i.created_slot,
+                i.created_at AS identity_created_at,
+                i.updated_slot AS identity_updated_slot,
+                i.updated_at AS identity_updated_at,
+                pr.object_id AS profile_object_id, pr.cid AS profile_cid,
+                pr.payload_hash AS profile_payload_hash,
+                pr.display_name, pr.bio, pr.pronouns,
+                pr.updated_slot, pr.updated_at
+              FROM posts p
+              JOIN identities i ON i.identity_id = p.author_identity_id
+              LEFT JOIN profiles pr ON pr.identity_id = p.author_identity_id
+              WHERE p.network_id = ${query.networkId}
+                AND p.tombstoned_at IS NULL
+                AND p.content -> 'visibility' ->> 'kind' = 'public'
+                AND (
+                  p.search_object_id LIKE ${termPrefix} ESCAPE E'\\\\'
+                  OR ${postBodyMatch}
+                )
+              ORDER BY
+                CASE
+                  WHEN p.search_object_id = ${term} THEN 1000
+                  WHEN p.search_object_id LIKE ${termPrefix} ESCAPE E'\\\\' THEN 780
+                  WHEN p.search_body = ${term} THEN 760
+                  WHEN p.search_body LIKE ${termPrefix} ESCAPE E'\\\\' THEN 700
+                  ELSE 640
+                END DESC,
+                p.created_at DESC,
+                p.object_id COLLATE "C"
+              LIMIT ${candidateLimit}
+            `,
+          ]);
+
+          const candidates: PublicSearchCandidate[] = [
+            ...personRows.map((row) => ({
+              kind: 'person' as const,
+              identityId: row.identity_id,
+              displayName: row.display_name,
+              bio: row.bio,
+              ...(row.handle === null ? {} : { handle: row.handle }),
+              updatedAt: dateString(row.updated_at),
+            })),
+            ...postRows.map((row) => ({
+              kind: 'post' as const,
+              entry: feedEntryFromRow(row, 'chronological'),
+            })),
+          ];
+          const checkpointRow = checkpointRows[0];
+          return {
+            checkpoint:
+              checkpointRow === undefined ? undefined : BigInt(checkpointRow.finalized_slot),
+            results: rankPublicSearchCandidates(term, candidates, query.limit),
+          };
+        },
+      );
+    } catch (error) {
+      if (postgresErrorCode(error) === '57014') {
+        throw new ProjectionError(
+          'Public search exceeded its bounded database statement timeout.',
+          'search-timeout',
+          { cause: error },
+        );
+      }
+      throw projectionError(error);
+    } finally {
+      this.#activeSearches -= 1;
+    }
+  }
+
   async getFeed(query: FeedQuery): Promise<readonly FeedEntry[]> {
     const before = query.before ?? '9999-12-31T23:59:59.999Z';
     let rows: FeedRow[];
@@ -2504,62 +2742,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
           `;
     }
 
-    return rows.map((row) => {
-      const entry: FeedEntry = {
-        post: postFromRow(row),
-        author: {
-          identityId: row.author_identity_id,
-          networkId: row.network_id,
-          identityAddress: row.identity_address,
-          rootAuthority: row.root_authority,
-          rootRotationCount: BigInt(row.root_rotation_count),
-          createdSlot: BigInt(row.created_slot),
-          createdAt: dateString(row.identity_created_at),
-          updatedSlot: BigInt(row.identity_updated_slot),
-          updatedAt: dateString(row.identity_updated_at),
-        },
-        reason:
-          query.mode === 'following'
-            ? {
-                kind: 'following',
-                followedIdentityId: row.author_identity_id,
-              }
-            : { kind: 'chronological' },
-      };
-
-      if (
-        row.profile_object_id === null ||
-        row.profile_cid === null ||
-        row.profile_payload_hash === null ||
-        row.display_name === null ||
-        row.bio === null ||
-        row.pronouns === null ||
-        row.updated_slot === null ||
-        row.updated_at === null
-      ) {
-        return entry;
-      }
-
-      return {
-        ...entry,
-        profile: {
-          identityId: row.author_identity_id,
-          objectId: row.profile_object_id,
-          cid: row.profile_cid,
-          payloadHash: row.profile_payload_hash,
-          content: {
-            displayName: row.display_name,
-            bio: row.bio,
-            pronouns: row.pronouns,
-            genderVisibility: 'private' as const,
-            chosenFamilyLabels: [],
-            links: [],
-          },
-          updatedSlot: BigInt(row.updated_slot),
-          updatedAt: dateString(row.updated_at),
-        },
-      };
-    });
+    return rows.map((row) => feedEntryFromRow(row, query.mode));
   }
 
   async clearProjection(networkId: string): Promise<void> {
@@ -2678,7 +2861,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
   }
 
   async close(): Promise<void> {
-    await this.#sql.end({ timeout: 5 });
+    await Promise.all([this.#sql.end({ timeout: 5 }), this.#searchSql.end({ timeout: 5 })]);
   }
 }
 
@@ -3283,6 +3466,14 @@ interface ProfileRow {
   updated_at: Date | string;
 }
 
+interface PublicSearchPersonRow {
+  identity_id: string;
+  display_name: string;
+  bio: string;
+  handle: string | null;
+  updated_at: Date | string;
+}
+
 interface PostRow {
   object_id: string;
   network_id: string;
@@ -3735,6 +3926,63 @@ function postFromRow(row: PostRow): PostProjection {
     : { ...post, tombstonedAt: dateString(row.tombstoned_at) };
 }
 
+function feedEntryFromRow(row: FeedRow, mode: FeedQuery['mode']): FeedEntry {
+  const entry: FeedEntry = {
+    post: postFromRow(row),
+    author: {
+      identityId: row.author_identity_id,
+      networkId: row.network_id,
+      identityAddress: row.identity_address,
+      rootAuthority: row.root_authority,
+      rootRotationCount: BigInt(row.root_rotation_count),
+      createdSlot: BigInt(row.created_slot),
+      createdAt: dateString(row.identity_created_at),
+      updatedSlot: BigInt(row.identity_updated_slot),
+      updatedAt: dateString(row.identity_updated_at),
+    },
+    reason:
+      mode === 'following'
+        ? {
+            kind: 'following',
+            followedIdentityId: row.author_identity_id,
+          }
+        : { kind: 'chronological' },
+  };
+
+  if (
+    row.profile_object_id === null ||
+    row.profile_cid === null ||
+    row.profile_payload_hash === null ||
+    row.display_name === null ||
+    row.bio === null ||
+    row.pronouns === null ||
+    row.updated_slot === null ||
+    row.updated_at === null
+  ) {
+    return entry;
+  }
+
+  return {
+    ...entry,
+    profile: {
+      identityId: row.author_identity_id,
+      objectId: row.profile_object_id,
+      cid: row.profile_cid,
+      payloadHash: row.profile_payload_hash,
+      content: {
+        displayName: row.display_name,
+        bio: row.bio,
+        pronouns: row.pronouns,
+        genderVisibility: 'private',
+        chosenFamilyLabels: [],
+        links: [],
+      },
+      updatedSlot: BigInt(row.updated_slot),
+      updatedAt: dateString(row.updated_at),
+    },
+  };
+}
+
 function dateString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
@@ -3862,6 +4110,26 @@ function projectionError(error: unknown): ProjectionError {
     : new ProjectionError('PostgreSQL projection update failed.', 'database-error', {
         cause: error,
       });
+}
+
+function postgresErrorCode(error: unknown): string | undefined {
+  return typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof error.code === 'string'
+    ? error.code
+    : undefined;
+}
+
+function positiveInteger(value: number, name: string): number {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new RangeError(`${name} must be a positive safe integer.`);
+  }
+  return value;
+}
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/gu, (character) => `\\${character}`);
 }
 
 function programMatchesNetwork(networkId: string, programId: string): boolean {

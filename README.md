@@ -94,9 +94,9 @@ not evidence of a native WokeNet deployment.
 - Container integration tests pass against PostgreSQL and Kubo. The PostgreSQL
   test projects signed profile/post/tombstone manifests, a follow edge, duplicate
   delivery, feed filtering, and deterministic rebuild.
-- The 46-page Next.js route surface builds for production; 61 web unit tests and
-  203 desktop/mobile Playwright cases pass, with one deliberate duplicate
-  mobile passkey case skipped. The suite includes automated axe WCAG A/AA
+- The 46-page Next.js route surface builds for production; 79 web unit tests and
+  206 desktop/mobile Playwright cases pass, with two deliberate duplicate
+  mobile passkey lifecycle cases skipped. The suite includes automated axe WCAG A/AA
   checks across 45 route fixtures in both desktop and mobile projects, plus
   semantic connected-post coverage and a real virtual-authenticator
   atomic-registration, logout, and discoverable-sign-in journey.

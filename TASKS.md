@@ -100,7 +100,7 @@ Dependencies: repository audit.
   - Evidence: `pnpm setup` installs checksum-verified toolchains under `.local`,
     starts healthy PostgreSQL/Redis/Kubo containers, validates configuration, and
     applies the ordered projection migrations through
-    `0010_payment_projection.sql`.
+    `0011_public_search.sql`.
 
 ### Phase 1 exit evidence
 
@@ -130,8 +130,9 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
     capabilities, and a labeled Linux native-build workflow.
   - Blocker: full native Firedancer has no production release and lacks required
     submission, simulation, status, history, address-history, and
-    program-account RPC methods. No native cluster or connected slice has been
-    verified, and no Agave fallback is permitted.
+    program-account RPC methods; the capability record also does not yet attest
+    the SDK's rent-exemption query. No native cluster or connected slice has
+    been verified, and no Agave fallback is permitted.
 
 - [ ] Implement protocol configuration and versioning.
   - Implemented subset: the versioned configuration PDA is initialized once and
@@ -250,17 +251,32 @@ Dependencies: phase 2 protocol identifiers and events.
     additions, removals, field/discriminator changes, and unhandled
     program-data events. Identity, handles, social/governance/recovery, and
     payment configuration/offerings/receipts/entitlements retain exact-network
-    and raw-event provenance. Seventy unit and nine fresh-PostgreSQL cases pass.
-    Native Firedancer RPC, fork/provider reconciliation, and production metrics
-    remain incomplete.
+    and raw-event provenance. Seventy-nine unit and thirteen fresh-PostgreSQL cases
+    pass. Native Firedancer RPC, fork/provider reconciliation, and production
+    metrics remain incomplete.
 - [ ] Publish OpenAPI and an independently runnable indexer.
   - Implemented subset: the Fastify service exposes liveness, readiness,
-    OpenAPI, feed, and post endpoints backed by PostgreSQL with CORS, rate
-    limiting, security headers, structured logging, and tracing hooks.
+    OpenAPI, feed, post, and bounded public-search endpoints backed by PostgreSQL
+    with CORS, rate limiting, security headers, structured logging, and tracing
+    hooks.
   - The production server can run the WokeNet synchronizer when explicit
     network, deployment-slot, `WOKENET_*` RPC, storage, and database configuration
     is supplied; it remains honestly disabled when that configuration is absent
     and rejects retired `SOLANA_*` runtime variables.
+- [ ] Implement complete search and discovery with visibility and personal-safety enforcement.
+  - Implemented subset: memory and PostgreSQL projections search current public
+    display names/bios, canonical active handles, and verified public posts. The
+    deterministic `public-match-v1` response is network-scoped, checkpointed in
+    the same repeatable-read snapshot, rate/concurrency/statement-time bounded,
+    and excludes unlisted and tombstoned posts. Indexed NFKC/ASCII-folded
+    PostgreSQL fields and prefix-only fallback for terms without an extractable
+    ASCII trigram avoid non-indexable unauthenticated substring predicates.
+    Unverified community references fail closed. The flagship strictly parses
+    this replaceable contract, caps provider response bytes, and renders real,
+    empty, invalid-query, and unavailable states without fabricated results.
+    Event/creator and verified public-community discovery, viewer-aware
+    block/mute enforcement, production-scale relevance/load evidence, and
+    independent-provider conformance remain open.
 - [x] Implement non-authoritative multi-relay protocol and failover.
   - Evidence: `apps/relay` verifies strict signed advisory events and
     subscriptions, starts locked without a finalized-state key authorizer,
@@ -294,12 +310,14 @@ Dependencies: phases 1-3 public interfaces.
   - Evidence: the original CSS-based mark and shared UI tokens render in the
     implemented Next.js routes; Playwright verifies high-contrast state and
     content visibility.
-- [x] Deliver every required public, onboarding, feed, community, messaging,
+- [ ] Deliver every required public, onboarding, feed, community, messaging,
   creator, settings, safety, data, developer, and status screen.
-  - Evidence: 46 App Router page files cover the complete required route surface.
-    The current production build emits 32 static route entries, including the
-    framework `_not-found` entry, plus 15 dynamic routes. Unsupported mutations
-    are visibly disabled rather than reporting false success.
+  - Implemented subset: 46 App Router page files cover the complete required
+    route-shell surface. The current production build emits 32 static route
+    entries, including the framework `_not-found` entry, plus 15 dynamic routes.
+    Unsupported mutations are visibly disabled rather than reporting false
+    success. Route presence alone does not satisfy the production-quality
+    interaction, data, and end-to-end acceptance criteria for every screen.
 - [ ] Implement responsive navigation and polished loading, empty, error,
   offline, and degraded-network states.
   - Implemented subset: responsive navigation, skip link, loading/error
@@ -324,8 +342,9 @@ Dependencies: phases 1-3 public interfaces.
     service implements the actual algorithms, but live client integration and
     cross-device enforcement remain open.
 - [x] Add WCAG 2.2 AA automated checks and manual critical-flow procedures.
-  - Evidence: 203 desktop/mobile Chromium tests pass, including 90 axe A/AA
-    scans over 45 route fixtures, keyboard skip-link and navigation,
+  - Evidence: 206 desktop/mobile Chromium tests pass with two intentional
+    desktop-only passkey-lifecycle skips, including 90 axe A/AA scans over 45
+    route fixtures, keyboard skip-link and navigation,
     high-contrast state, responsive layouts, local preference/export flows,
     semantic connected-post coverage, and disabled destructive/report
     mutations. The manual matrix in
@@ -398,8 +417,8 @@ threat-model mitigations.
     supports discoverable sign-in plus list/add/revoke service passkeys. Each
     additional passkey unwraps and rewraps the same root, and revocation requires
     fresh step-up, deletes that wrapper, and revokes service sessions. Twenty-four
-    auth unit, three isolated PostgreSQL, one auth-browser, 61 web unit, and one
-    desktop web virtual-authenticator flow pass.
+    auth unit, three isolated PostgreSQL, one auth-service browser integration,
+    79 web unit, and two desktop web virtual-authenticator lifecycle flows pass.
   - Remaining scope: create the actual protocol identity/delegation through a
     simulated and confirmed WokeNet transaction, connect service-passkey
     revocation to the separate WokeNet delegation/device-authority lifecycle,
@@ -500,11 +519,15 @@ security review.
     IDL-aligned payment/config/offering instructions; derives golden-tested
     PDAs; plans exact integer WOKE transfers; strictly compares caller-parsed
     simulations; verifies injected finalized receipt/entitlement records; and
-    accepts an operation-scoped publication signer while rejecting payload,
-    identity, public-key, or signature substitution before storage or chain
-    submission. A concrete RPC parser/account decoder, payment-message compiler,
-    payment transaction signer/broadcaster, wallet UX, and native WokeNet
-    execution remain open.
+    accepts operation-scoped publication and transaction signers. The concrete
+    transaction executor compiles version-0 or legacy messages, verifies every
+    detached Ed25519 signature locally, simulates and rebroadcasts one immutable
+    wire snapshot, checks decoded settlement effects and exact rent-funded
+    System Program account-creation inputs, and waits within fixed bounds for
+    explicit transaction finalization.
+    A complete generated account decoder/client, wallet and passkey signer
+    integration, executable-artifact/upgrade-authority attestation, post-finality
+    account-proof orchestration, and native WokeNet execution remain open.
 - [ ] Test recipient substitution, double payment, replay, rounding,
   unsupported-token spoofing, fake entitlement, and simulation mismatch.
   - Implemented program subset: Rust allocation and boundary tests cover
@@ -518,10 +541,14 @@ security review.
   - Implemented SDK subset: tests freeze all seven discriminators, account
     order/roles, Borsh layouts, and golden PDAs; reject context, address,
     overflow, alias, split, substitution, transfer, event, and proof mismatch;
-    and exercise finalized receipt/entitlement verification. Compatibility
-    validator flows cover same-kind and cross-kind replay, duplicate settlement,
-    and stale-entitlement barriers. Native Firedancer and public-network
-    evidence remain open.
+    exercise finalized receipt/entitlement verification; and adversarially test
+    exact signer sets, message mutation, provider/genesis drift, blockhash
+    substitution and expiry, simulation/account/event mismatch, signature
+    mismatch, deterministic same-byte rebroadcast, terminal transaction errors,
+    request cancellation, and bounded confirmation. Compatibility validator
+    flows cover same-kind and cross-kind replay, duplicate settlement, and
+    stale-entitlement barriers. Native Firedancer and public-network evidence
+    remain open.
 - [ ] Keep production WokeNet deployment and every real-fund action manual
   and documented.
 
@@ -583,15 +610,17 @@ request interception. It is not native WokeNet evidence.
 - [x] Build gate passes from a clean checkout.
   - Evidence: a separate local `git clone --no-hardlinks` of the final committed
     source state passed `pnpm install --frozen-lockfile`, naming/domain/network
-    policy, formatting, lint, typecheck, 438 unit executions, and all 14
+    policy, formatting, lint, typecheck, 489 unit executions, and all 14
     production builds. This is same-host isolation evidence, not an independent
     clean-machine attestation.
-- [x] Unit, program, integration, E2E, accessibility, and critical security
+- [ ] Unit, program, integration, E2E, accessibility, and critical security
   suites pass.
-  - Evidence: 438 unit executions, 43 integration executions, 21 Rust tests, 33
-    compatibility-validator flows, 204 browser passes with one intentional
-    duplicate skip, four connected-slice browser passes, dependency audit, and
-    Gitleaks passed in the renamed working tree.
+  - Implemented subset: every currently implemented suite passes, including the
+    isolated PostgreSQL, real browser passkey lifecycle, compatibility-validator,
+    connected-slice, dependency-audit, and secret-scan gates. The objective’s
+    complete consumer-journey, native Firedancer, manual accessibility,
+    load/failure/restore, and critical-security matrices are not yet implemented,
+    so this umbrella completion gate remains open.
 - [ ] Essential consumer flows work without manual database editing.
 - [ ] Protocol schemas, signatures, hashes, alternate endpoints, rebuild, and
   migration are verified.

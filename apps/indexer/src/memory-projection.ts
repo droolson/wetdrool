@@ -34,6 +34,9 @@ import type {
   PostProjection,
   ProfileProjection,
   ProtocolConfigProjection,
+  PublicSearchCandidate,
+  PublicSearchQuery,
+  PublicSearchSnapshot,
   ReactionProjection,
   RecoveryPolicyProjection,
   RecoveryRequestProjection,
@@ -50,6 +53,12 @@ import {
   type ProjectionStore,
   type VerifiedManifest,
 } from './projection.js';
+import {
+  comparePublicSearchText,
+  isValidPublicSearchTerm,
+  normalizePublicSearchTerm,
+  rankPublicSearchCandidates,
+} from './public-search.js';
 
 interface EventPosition {
   readonly slot: bigint;
@@ -1771,6 +1780,68 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     entitlementAddress: string,
   ): Promise<SubscriptionEntitlementProjection | undefined> {
     return this.#subscriptionEntitlements.get(paymentAddressKey(networkId, entitlementAddress));
+  }
+
+  async searchPublic(query: PublicSearchQuery): Promise<PublicSearchSnapshot> {
+    const term = normalizePublicSearchTerm(query.term);
+    const checkpoint = this.#checkpoints.get(query.networkId);
+    if (!isValidPublicSearchTerm(term) || query.limit <= 0) {
+      return { checkpoint, results: [] };
+    }
+    const candidates: PublicSearchCandidate[] = [];
+
+    for (const identity of this.#identities.values()) {
+      if (identity.networkId !== query.networkId) continue;
+      const profile = this.#profiles.get(identity.identityId);
+      const handle = [...this.#handlesByAddress.values()]
+        .filter(
+          (candidate) =>
+            candidate.active &&
+            candidate.networkId === query.networkId &&
+            candidate.identityId === identity.identityId,
+        )
+        .sort((left, right) => comparePublicSearchText(left.handle, right.handle))[0]?.handle;
+      candidates.push({
+        kind: 'person',
+        identityId: identity.identityId,
+        displayName: profile?.content.displayName ?? '',
+        bio: profile?.content.bio ?? '',
+        ...(handle === undefined ? {} : { handle }),
+        updatedAt: profile?.updatedAt ?? identity.updatedAt,
+      });
+    }
+
+    for (const post of this.#posts.values()) {
+      if (
+        post.networkId !== query.networkId ||
+        post.tombstonedAt !== undefined ||
+        post.content.visibility.kind !== 'public'
+      ) {
+        continue;
+      }
+      const author = this.#identities.get(post.authorIdentityId);
+      if (author === undefined) {
+        throw new ProjectionError(
+          `Post ${post.objectId} has no indexed author.`,
+          'missing-identity',
+        );
+      }
+      const profile = this.#profiles.get(post.authorIdentityId);
+      candidates.push({
+        kind: 'post',
+        entry: {
+          post,
+          author,
+          ...(profile === undefined ? {} : { profile }),
+          reason: { kind: 'chronological' },
+        },
+      });
+    }
+
+    return {
+      checkpoint,
+      results: rankPublicSearchCandidates(term, candidates, query.limit),
+    };
   }
 
   async getFeed(query: FeedQuery): Promise<readonly FeedEntry[]> {

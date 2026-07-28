@@ -1,6 +1,6 @@
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import {
@@ -11,9 +11,10 @@ import {
   solanaPublicKeySchema,
 } from '@wokesocial/protocol';
 
-import type { FeedEntry, PostProjection } from './models.js';
-import type { ProjectionStore } from './projection.js';
+import type { FeedEntry, PostProjection, PublicSearchResult } from './models.js';
+import { ProjectionError, type ProjectionStore } from './projection.js';
 import { openApiDocument } from './openapi.js';
+import { normalizePublicSearchTerm } from './public-search.js';
 
 const feedQuerySchema = z
   .object({
@@ -34,6 +35,46 @@ const homeFeedQuerySchema = z
     limit: z.coerce.number().int().min(1).max(50).default(20),
   })
   .strict();
+const searchTermSchema = z
+  .string()
+  .max(512, 'Raw search input cannot exceed 512 characters.')
+  .transform(normalizePublicSearchTerm)
+  .pipe(
+    z.string().superRefine((term, context) => {
+      const length = [...term].length;
+      if (length < 3) {
+        context.addIssue({
+          code: 'too_small',
+          origin: 'string',
+          minimum: 3,
+          inclusive: true,
+          message: 'Normalized search queries must contain at least 3 characters.',
+        });
+      }
+      if (length > 120) {
+        context.addIssue({
+          code: 'too_big',
+          origin: 'string',
+          maximum: 120,
+          inclusive: true,
+          message: 'Normalized search queries cannot exceed 120 characters.',
+        });
+      }
+      if (/\p{Cc}/u.test(term)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Control characters are not allowed.',
+        });
+      }
+    }),
+  );
+const publicSearchQuerySchema = z
+  .object({
+    q: searchTermSchema,
+    limit: z.coerce.number().int().min(1).max(50).default(30),
+  })
+  .strict();
+const searchQuerySchema = publicSearchQuerySchema.extend({ network: networkIdSchema }).strict();
 const postParamsSchema = z.object({ objectId: objectIdSchema }).strict();
 const identityParamsSchema = z.object({ identityId: identityIdSchema }).strict();
 const handleParamsSchema = z
@@ -108,6 +149,60 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     }
   });
   app.get('/openapi.json', async () => openApiDocument);
+
+  app.get(
+    '/v1/search/public',
+    { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      if (defaultNetworkId === undefined) {
+        void reply.code(503);
+        return {
+          error: {
+            code: 'network-not-configured',
+            message:
+              'This indexer has no default network. Use /v1/search with an explicit network query.',
+          },
+        };
+      }
+      const parsed = publicSearchQuerySchema.safeParse(request.query);
+      if (!parsed.success) {
+        void reply.code(400);
+        return invalidQuery(parsed.error, 'Search query is invalid.');
+      }
+      try {
+        return await publicSearchResponse(
+          options.projection,
+          defaultNetworkId,
+          parsed.data.q,
+          parsed.data.limit,
+        );
+      } catch (error) {
+        return searchFailure(reply, error);
+      }
+    },
+  );
+
+  app.get(
+    '/v1/search',
+    { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const parsed = searchQuerySchema.safeParse(request.query);
+      if (!parsed.success) {
+        void reply.code(400);
+        return invalidQuery(parsed.error, 'Search query is invalid.');
+      }
+      try {
+        return await publicSearchResponse(
+          options.projection,
+          parsed.data.network,
+          parsed.data.q,
+          parsed.data.limit,
+        );
+      } catch (error) {
+        return searchFailure(reply, error);
+      }
+    },
+  );
 
   app.get('/v1/feed/home', async (request, reply) => {
     if (defaultNetworkId === undefined) {
@@ -674,17 +769,81 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
   return app;
 }
 
-function invalidQuery(error: z.ZodError) {
+function invalidQuery(error: z.ZodError, message = 'Feed query is invalid.') {
   return {
     error: {
       code: 'invalid-query',
-      message: 'Feed query is invalid.',
+      message,
       issues: error.issues.map((issue) => ({
         path: issue.path.join('.'),
         message: issue.message,
       })),
     },
   };
+}
+
+async function publicSearchResponse(
+  projection: ProjectionStore,
+  networkId: string,
+  query: string,
+  limit: number,
+) {
+  const snapshot = await projection.searchPublic({
+    networkId,
+    term: query,
+    limit,
+  });
+  return {
+    canonical: false,
+    meta: responseMetaForCheckpoint(snapshot.checkpoint),
+    query,
+    ranking: {
+      deterministic: true,
+      version: 'public-match-v1',
+    },
+    scope: 'public-finalized-projection',
+    results: snapshot.results.map(serializePublicSearchResult),
+  };
+}
+
+function serializePublicSearchResult(result: PublicSearchResult) {
+  switch (result.kind) {
+    case 'person':
+      return {
+        kind: result.kind,
+        matchedBy: result.matchedBy,
+        identityId: result.identityId,
+        displayName: result.displayName || 'Unnamed member',
+        bio: result.bio,
+        handle: result.handle ?? null,
+        updatedAt: result.updatedAt,
+      };
+    case 'post':
+      return {
+        kind: result.kind,
+        matchedBy: result.matchedBy,
+        post: {
+          ...serializeConsumerPost(result.entry),
+          visibility: 'public' as const,
+        },
+      };
+  }
+}
+
+function searchFailure(reply: FastifyReply, error: unknown) {
+  if (
+    error instanceof ProjectionError &&
+    (error.code === 'search-capacity' || error.code === 'search-timeout')
+  ) {
+    void reply.code(503).header('retry-after', '1');
+    return {
+      error: {
+        code: 'search-unavailable',
+        message: 'Public search is temporarily at capacity. Retry shortly.',
+      },
+    };
+  }
+  throw error;
 }
 
 function paymentQueryError(message: string) {
@@ -719,7 +878,7 @@ function serializePost(post: PostProjection) {
 function serializeConsumerPost(entry: FeedEntry) {
   return {
     author: {
-      displayName: entry.profile?.content.displayName ?? 'Unnamed member',
+      displayName: entry.profile?.content.displayName || 'Unnamed member',
       handle: null,
       identityId: entry.author.identityId,
     },
@@ -744,7 +903,10 @@ function serializeConsumerPost(entry: FeedEntry) {
 }
 
 async function responseMeta(projection: ProjectionStore, networkId: string) {
-  const checkpoint = await projection.checkpoint(networkId);
+  return responseMetaForCheckpoint(await projection.checkpoint(networkId));
+}
+
+function responseMetaForCheckpoint(checkpoint: bigint | undefined) {
   return {
     checkpointSlot:
       checkpoint === undefined ? null : safeInteger(checkpoint, 'projection checkpoint slot'),

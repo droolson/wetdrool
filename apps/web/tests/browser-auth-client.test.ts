@@ -317,6 +317,9 @@ describe('browser passkey authentication boundary', () => {
     expect(headerValue(recorder.calls, `/v1/credentials/${newCredentialId}`, 'x-csrf-token')).toBe(
       sessionCsrf,
     );
+    expect(
+      headerValue(recorder.calls, `/v1/credentials/${newCredentialId}`, 'content-type'),
+    ).toBeNull();
     expect(storage.values.size).toBe(0);
     assertNoKeyMaterial(recorder.calls);
   });

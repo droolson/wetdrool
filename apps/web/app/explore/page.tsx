@@ -11,7 +11,7 @@ export default function ExplorePage() {
   return (
     <ProductState
       actionHref="/search"
-      actionLabel="Open honest search"
+      actionLabel="Open public search"
       cards={[
         {
           copy: 'Every suggested post should name its source, scoring recipe, and the signals that placed it in view.',
@@ -35,9 +35,9 @@ export default function ExplorePage() {
           tone: 'sky',
         },
       ]}
-      detail="No compatible discovery or recommendation endpoint is configured, so this page will not manufacture trends, people, or engagement counts."
+      detail="Public search is connected through the configured indexer, but no compatible recommendation endpoint is configured. This page will not manufacture trends, people, or engagement counts."
       eyebrow="Network discovery"
-      intro="Explore should widen a world without hiding why something appeared. This surface is ready for provider-backed results and their explanations."
+      intro="Explore should widen a world without hiding why something appeared. Public search is available separately; this surface still awaits provider-backed recommendations and their explanations."
       stateEyebrow="No discovery response"
       stateTitle="There are no synthetic trends here."
       title="Find a wider conversation."
