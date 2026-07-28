@@ -18,6 +18,7 @@ const ignoredDirectories = new Set([
 ]);
 const intentionalLegacyReferences = new Set([
   '.env.example',
+  'FINAL_REPORT.md',
   'README.md',
   'apps/auth-service/README.md',
   'apps/auth-service/src/config.ts',
