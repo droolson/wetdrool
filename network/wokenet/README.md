@@ -50,10 +50,11 @@ The WokeNet
 [`getSignatureStatuses` native design and test plan](firedancer/GET_SIGNATURE_STATUSES_DESIGN.md)
 records why a replay-only RPC cache is not safe to promote: snapshot restore
 currently loses the complete transaction result needed by RPC and native tower
-does not publish the cluster block-commitment confirmation count. The plan
-keeps the capability false and production fail-closed while specifying the
-shared snapshot/live cache, execution-event, commitment, fork, and direct C
-test work required for a correct implementation.
+does not publish the cluster block-commitment confirmation count. Downstream
+patch 0006 now preserves complete live execution-result metadata from execrp
+through scheduler and replay, completing only the design's four transport
+steps. The cache, snapshot, dead-fork, commitment, and RPC JSON work remains
+open, so the capability stays false and production remains fail-closed.
 
 ## Reproducible downstream fork
 
@@ -77,6 +78,22 @@ the genesis patch and makes the direct tower test deterministic in
 containerized x86-64 CI: it registers the captured voters, replays the one
 additional slot needed to cross the root threshold, and uses an mmap-backed
 unit workspace instead of NUMA policy syscalls.
+The sixth patch,
+`0006-wokenet-preserve-replay-execution-result-metadata.patch` (SHA-256
+`674166cbe90ff0b6982cbdf8de19856cb776efea82a26bea76ad2520116de0d0`),
+preserves slot/bank identity and the complete execution-error tuple from
+execrp through scheduler metadata into the replay transaction event. It
+hard-fails identity mismatches and resets reused scheduler entries. It does not
+add a signature-status cache or implement any RPC method. The retained
+[execution-result propagation evidence](firedancer/EXECUTION_RESULT_PROPAGATION_EVIDENCE.md)
+records its exact provenance, focused native test matrix, layout measurements,
+resident-memory impact, and explicit evidence gaps.
+
+The sixth patch changes internal tile layouts: the execrp completion message
+grows by 16 bytes and crosses its dcache slot from 384 to 512 bytes, scheduler
+transaction metadata grows by 40 bytes, and the replay event grows by 64 bytes
+to 2,304 bytes. Default resident memory grows by 22.5 MiB. A full validator
+rebuild and restart is required, and mixed tile versions are forbidden.
 Any non-local, non-development `FD_CLUSTER_UNKNOWN` configuration must enable
 that mode; omitting its one-bit switch fails closed. Local/development and
 recognized built-in clusters may retain upstream classification. Enabled mode
@@ -105,7 +122,7 @@ temporary checkout, reapplies only the pinned patch queue, clones the separately
 pinned dependency source at its exact commit, rebuilds the required static
 OpenSSL artifacts inside that checkout, and creates the object directory there.
 It never builds from pre-existing ignored source, dependency artifacts, or
-`build/` files. It builds the two native binaries and five pinned unit-test
+`build/` files. It builds the two native binaries and eight pinned unit-test
 targets, executes the tests, parses the WokeNet localnet configuration through
 the freshly linked `firedancer-dev mem --json` path, verifies the ELF target and
 native symbols,
@@ -128,13 +145,16 @@ pnpm wokenet:materialize -- /opt/wokenet-firedancer
 cd /opt/wokenet-firedancer
 ./deps.sh
 source activate
-make -j"$(nproc)" firedancer firedancer-dev test_genesis_create test_accdb test_rpc_tile test_config_parse test_tower_tile
+make -j"$(nproc)" firedancer firedancer-dev test_genesis_create test_accdb test_rpc_tile test_config_parse test_tower_tile test_sched test_execrp_tile test_replay_tile
 test_genesis_create
 test_accdb
 test_rpc_tile
 test_config_parse
-ulimit -n 200000
+ulimit -n 1048576
 test_tower_tile --page-sz normal --page-cnt 1048576
+test_sched
+test_execrp_tile --page-sz normal --page-cnt 1572864
+test_replay_tile --page-sz normal --page-cnt 1048576
 pnpm --dir /path/to/repository wokenet:binary-check -- /opt/wokenet-firedancer
 sudo ./build/native/gcc/bin/firedancer-dev \
   --config /path/to/repository/network/wokenet/config/localnet.toml \
@@ -148,7 +168,7 @@ dedicated machine and review the upstream initialization instructions first.
 The repository’s manual `WokeNet native Firedancer` workflow repeats the
 policy and materialization checks, installs upstream dependencies, then lets
 the attestation command own the disposable tracked checkout, pinned OpenSSL
-source rebuild, isolated object directory, five direct test executables, native
+source rebuild, isolated object directory, eight direct test executables, native
 TOML topology parse, ELF/symbol/hash, forbidden-process, and exact-source checks
 on a labeled Linux x64 runner. A green workflow is build evidence, not a
 production-readiness claim or a substitute for the connected and
@@ -210,6 +230,24 @@ own vote account, and hard-disables vote-transaction construction. Direct
 suppression, reconciliation skip, virtual-root advancement, and pre-root
 tower/ghost pruning. This is source and native C unit evidence only; no
 connected native observer boot has been demonstrated.
+
+The reviewed execution-result propagation evidence covers
+execution-before-signature-success, execution-before-signature-failure, and
+signature-failure-before-execution in `test_sched`, `test_execrp_tile`, and
+`test_replay_tile`. It does not cover
+signature-success-before-execution, live `Custom(0)`, or a fatal
+identity-mismatch death test. No cache, snapshot, dead-fork, commitment, RPC
+JSON, full-validator, connected-cluster, or RPC-endpoint result is inferred
+from those focused tests.
+
+The complete repository binary/topology gate also passed from a fresh exact
+six-patch checkout under Linux/x86-64 Docker emulation. It rebuilt pinned
+OpenSSL, built both branded ELF binaries, ran all eight declared native tests,
+verified exact symbol types and memory JSON, and confirmed native
+replay/execrp/RPC topology with an empty Agave affinity. It ran as an
+unprivileged user against a synthetic 128-CPU/one-NUMA-node sysfs fixture while
+retaining `layout.affinity=auto`, so it is not native-hardware, performance,
+signed-release, full-validator, or connected-cluster evidence.
 
 The pinned tower code opens checkpoint/restore file descriptors but this source
 audit found no implemented tower serialization or restore path. A non-voting

@@ -97,8 +97,9 @@ Dependencies: repository audit.
   - Evidence: `@wokesocial/rate-limit` uses one atomic Redis fixed-window Lua
     operation, HMAC-derived keys that never send raw client identities to
     Redis, abortable finite-time commands, active command/ACL readiness, and
-    stable fail-closed `503` errors. All five Fastify services and the relay
-    wire the shared limiter into readiness and shutdown while exempting only
+    stable fail-closed `503` errors. Twenty-five unit cases and six real-Redis
+    integration cases pass. All five Fastify services and the relay wire the
+    shared limiter into readiness and shutdown while exempting only
     liveness/readiness reporting. A pinned Redis 8.8.1 integration creates two
     independent clients with one deployment/service identity and proves a
     shared quota, namespace/service/deployment isolation, expiry, and raw-key
@@ -161,14 +162,24 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
     genesis-file hash verifier, and machine-readable RPC capabilities. The
     downstream implements a bounded native `getProgramAccounts` owner scan with
     direct account-database/RPC C tests, explicit supported and unsupported
-    filters/configuration, and hard scan/result/data ceilings. The labeled Linux
-    native-build workflow compiles and runs those tests.
+    filters/configuration, and hard scan/result/data ceilings. A sixth pinned
+    patch preserves slot/bank identity and the complete execution-error tuple
+    from execrp through scheduler into the replay event. The labeled Linux
+    native-build gate covers eight focused executables: the existing five plus
+    `test_sched`, `test_execrp_tile`, and `test_replay_tile`. The complete
+    repository binary/topology gate passed from a fresh exact six-patch
+    checkout under Linux/x86-64 Docker emulation as an unprivileged user with a
+    synthetic 128-CPU/one-NUMA-node sysfs fixture, rebuilding pinned OpenSSL
+    and both branded ELF binaries and confirming native replay/execrp/RPC
+    topology.
   - Blocker: full native Firedancer has no production release and lacks required
     submission, simulation, status, transaction-history, and address-history
     RPC methods; the bounded program-account subset is not production-complete,
-    and the capability record also does not yet attest the SDK's rent-exemption
-    query. No native cluster or connected slice has been verified, and no Agave
-    fallback is permitted.
+    the execution-result substrate does not implement cache, snapshot,
+    dead-fork, commitment, or RPC JSON handling, and the capability record also
+    does not yet attest the SDK's rent-exemption query. No full-validator,
+    native-hardware, connected-cluster, performance, or signed-release result
+    has been verified, and no Agave fallback is permitted.
 
 - [ ] Implement protocol configuration and versioning.
   - Implemented subset: the versioned configuration PDA is initialized once and
@@ -365,7 +376,7 @@ Dependencies: phase 2 protocol identifiers and events.
     failover, reconnect, deduplication, and gap tests across multiple relay
     endpoints. A separate bounded adapter authorizes opaque-topic subscriptions
     against finalized policy, expires community delivery grants, and joins
-    dependency readiness. Eighty-one unit cases and 29 real-WebSocket
+    dependency readiness. Eighty-one unit cases and 34 real-WebSocket
     integration cases pass. Deploying the independent key and
     policy/membership authorities remains an operational integration.
 - [x] Implement chronological, following, community, trending, media,
@@ -376,7 +387,7 @@ Dependencies: phase 2 protocol identifiers and events.
     transparent recommendation scores; and reconciles versioned third-party
     order metadata without allowing it to bypass local safety filters. Stable
     cursors bind mode/provider/policy inputs, responses carry source checkpoints
-    and provider provenance, and 36 unit/API cases pass. Production source
+    and provider provenance, and 38 unit/API cases pass. Production source
     collection and a curated discovery registry remain replaceable integrations,
     not ranking-engine gaps.
 - [ ] Test full projection rebuild and alternate-provider reconciliation.

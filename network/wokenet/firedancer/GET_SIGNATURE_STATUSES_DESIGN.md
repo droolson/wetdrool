@@ -1,6 +1,7 @@
 # Native `getSignatureStatuses` design for WokeNet
 
-Status: **blocked; do not implement as an RPC-tile-only cache**
+Status: **blocked at cache, commitment, and RPC; live propagation substrate
+implemented**
 
 Audited upstream:
 
@@ -10,8 +11,15 @@ Audited upstream:
 - forbidden substitutes: Agave, Frankendancer, `agave-validator`, `fdctl`,
   `fddev`, and `solana-test-validator`
 
-This document is an implementation and test plan, not passing native
-conformance evidence. `NATIVE_RPC_CAPABILITIES.json` must continue to list
+This document is an implementation and test plan with one implemented
+substrate, not passing RPC conformance evidence. Downstream patch
+`0006-wokenet-preserve-replay-execution-result-metadata.patch`, SHA-256
+`674166cbe90ff0b6982cbdf8de19856cb776efea82a26bea76ad2520116de0d0`,
+preserves the live execution result through replay. It does not implement a
+signature-status cache, snapshot restoration, dead-fork removal, native
+block-commitment counts, or RPC JSON.
+
+`NATIVE_RPC_CAPABILITIES.json` must continue to list
 `getSignatureStatuses` as missing, and production traffic must remain disabled,
 until every acceptance gate below passes on the exact pinned native source plus
 the checksum-pinned downstream patch queue.
@@ -33,6 +41,44 @@ Do not add a bounded transaction-status map only to
 Those shortcuts can return plausible but incorrect finality and transaction
 results. An explicit `501` remains safer until the native data path is complete.
 
+## Implemented live-propagation substrate
+
+Patch 0006 completes only steps 1–4 of the live propagation path in
+[section 3](#3-enrich-the-live-execution-to-replay-event). It carries
+`slot`, `bank_idx`, `bank_seq`, `txn_err`, `exec_err`, `exec_err_kind`,
+`exec_err_idx`, and `custom_err` through execrp completion, scheduler metadata,
+and `REPLAY_SIG_TXN_EXECUTED`. It also:
+
+- hard-fails completion, scheduler, and live-bank identity mismatches;
+- resets identity, result, flag, and timing fields when scheduler pool entries
+  are reused;
+- makes signature failure authoritative in either covered completion order; and
+- normalizes nested execution fields for signature and non-instruction
+  failures.
+
+The focused Linux/x86-64 evidence builds and passes `test_sched`,
+`test_execrp_tile`, and `test_replay_tile`. It covers execution followed by
+successful signature verification, execution followed by failed signature
+verification, and failed signature verification followed by execution. It also
+covers exact custom-error propagation at the `UINT_MAX` boundary. This is not a full
+ordering cross-product: successful signature verification followed by
+execution, a live `Custom(0)` case, and a fatal identity-mismatch death test are
+not covered.
+
+Patch 0006 changes internal tile layouts:
+
+- the execrp completion message grows by 16 bytes, crossing the completion
+  dcache slot from 384 to 512 bytes;
+- scheduler transaction metadata grows by 40 bytes;
+- the replay transaction event grows by 64 bytes, from 2,240 to 2,304 bytes;
+  and
+- default resident memory grows by 22.5 MiB: 20 MiB across ten execrp
+  completion rings and 2.5 MiB at the default scheduler depth.
+
+These are internal tile ABI/layout changes, not a wire or RPC ABI. Integrating
+the patch requires a full validator rebuild and restart; mixed tile versions
+must not be operated.
+
 ## Pinned-source findings
 
 ### The live replay stream is necessary but insufficient
@@ -42,8 +88,9 @@ results. An explicit `501` remains safer until the native data path is complete.
 `fd_replay_txn_executed_t` in
 `src/discof/replay/fd_replay_tile.h`.
 
-The current message carries the parsed transaction, `is_committable`,
-`is_fees_only`, and a flattened `txn_err`. It does not carry:
+Before downstream patch 0006, the pinned upstream message carries the parsed
+transaction, `is_committable`, `is_fees_only`, and a flattened `txn_err`. It
+does not carry:
 
 - `slot`, `bank_idx`, and the non-reusable `bank_seq` together;
 - `exec_err`, `exec_err_kind`, `exec_err_idx`, or `custom_err`; or
@@ -55,8 +102,11 @@ The richer execution result exists earlier in the native path:
 - `src/discof/execrp/fd_execrp_tile.c::publish_txn_finalized_msg`
 - `src/discof/replay/fd_execrp.h::fd_execrp_txn_exec_done_msg_t`
 
-`fd_execrp_txn_exec_done_msg_t` already carries `slot` and `bank_seq`, but it
-currently flattens the error before replay publishes the transaction event.
+On the pinned upstream,
+`fd_execrp_txn_exec_done_msg_t` carries `slot` and `bank_seq`, but flattens the
+error before replay publishes the transaction event. Patch 0006 closes this
+specific live-transport gap without claiming to close the cache, snapshot,
+dead-fork, commitment, or RPC gaps below.
 
 ### Snapshot restore is a hard correctness blocker
 
@@ -198,20 +248,23 @@ custom_err
 
 Required edit path:
 
-1. Populate the fields from `fd_txn_out_t.err` in
+1. **Complete in patch 0006:** populate the fields from `fd_txn_out_t.err` in
    `src/discof/execrp/fd_execrp_tile.c::publish_txn_finalized_msg`.
-2. Extend `fd_execrp_txn_exec_done_msg_t` in
+2. **Complete in patch 0006:** extend `fd_execrp_txn_exec_done_msg_t` in
    `src/discof/replay/fd_execrp.h`.
-3. Preserve the fields in `fd_sched_txn_info_t` in
+3. **Complete in patch 0006:** preserve the fields in `fd_sched_txn_info_t` in
    `src/discof/replay/fd_sched.h` and its initialization/completion paths in
    `fd_sched.c` and `fd_replay_tile.c`.
-4. Extend `fd_replay_txn_executed_t` and populate it in
+4. **Complete in patch 0006:** extend `fd_replay_txn_executed_t` and populate it
+   in
    `fd_replay_tile.c::publish_txn_executed`.
-5. Insert only committable transactions into the signature-status cache.
+5. **Open:** insert only committable transactions into the signature-status
+   cache.
    Transactions from a bank that later dies must never become queryable.
 
-Extend the dead-bank notification with `(bank_idx, bank_seq)` or another
-equally durable fork identity. Slot alone is not sufficient under equivocation.
+Also open: extend the dead-bank notification with `(bank_idx, bank_seq)` or
+another equally durable fork identity. Slot alone is not sufficient under
+equivocation.
 
 ### 4. Add native block-commitment counts
 
@@ -274,13 +327,16 @@ Add direct C fixtures covering:
 
 ### Live propagation
 
-Extend `src/discof/execrp/test_execrp_tile.c` and replay/scheduler tests to
-assert exact preservation of slot, bank index, bank sequence, transaction
-error, instruction index, and custom error from `fd_txn_out_t` through
-`REPLAY_SIG_TXN_EXECUTED`.
+The current `test_sched`, `test_execrp_tile`, and `test_replay_tile` coverage
+asserts the live metadata substrate through `REPLAY_SIG_TXN_EXECUTED`. Covered
+orderings are execution-before-signature-success,
+execution-before-signature-failure, and
+signature-failure-before-execution.
 
-Cover both execution-before-signature-verification and
-signature-verification-before-execution ordering.
+Still add successful-signature-before-execution coverage, a live
+`InstructionError::Custom(0)` case, and a fatal identity-mismatch death test.
+Those gaps mean the current evidence is not the full completion-order
+cross-product.
 
 ### Cache and forks
 

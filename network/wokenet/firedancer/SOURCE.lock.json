@@ -40,6 +40,10 @@
       {
         "path": "patches/0005-native-c-test-execution-fixes.patch",
         "sha256": "aea19cf90e32eaddfa95ed4fda0a0add68c818216308717ab327ca89015356ca"
+      },
+      {
+        "path": "patches/0006-wokenet-preserve-replay-execution-result-metadata.patch",
+        "sha256": "674166cbe90ff0b6982cbdf8de19856cb776efea82a26bea76ad2520116de0d0"
       }
     ]
   }

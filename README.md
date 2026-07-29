@@ -30,7 +30,7 @@ requirement may contain a tested subset without being complete.
 | --- | --- |
 | Architecture and specifications | Initial baseline implemented; v1 conformance work remains |
 | Monorepo and local infrastructure | Implemented and verified locally with PostgreSQL, Redis, Kubo, and hardened service-container profiles |
-| WokeNet | Sovereign network identity, native WOKE policy, pinned native-Firedancer downstream, deterministic genesis patch, a bounded native `getProgramAccounts` subset with direct C tests, native-only configurations, and fail-closed capability gates are implemented; five required RPC methods and native-cluster evidence remain missing, so production activation is blocked |
+| WokeNet | Sovereign network identity, native WOKE policy, a pinned six-patch native-Firedancer downstream, deterministic genesis patch, a bounded native `getProgramAccounts` subset, and execution-result propagation through replay have direct C tests; five required RPC methods and native-cluster evidence remain missing, so production activation is blocked |
 | Social protocol | The Solana-wire compatibility oracle verifies 41 instructions, 19 account layouts, and 33 events covering identity/profile references, root-authorized one-way identity deactivation, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, native WOKE tips, subscriptions, receipts, and entitlements; this is not native WokeNet evidence |
 | Signed content and storage | A strict 29-family portable object registry, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
 | Open indexer | Finalized Solana-format RPC synchronization tested against the Agave compatibility oracle, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical onchain profile-v2 commitments plus an immutable legacy cutoff, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, sixteen PostgreSQL migrations, failover, DLQ, provenance, and REST APIs are implemented; native Firedancer RPC, fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
@@ -56,9 +56,18 @@ not evidence of a native WokeNet deployment.
   and resource ceilings, the five still-missing required RPC methods, WOKE unit
   policy, TOML safety settings, and local genesis allocations.
   `pnpm wokenet:materialize -- /absolute/path` produces the exact downstream
-  source tree. The supported-Linux binary gate builds and runs the native
-  account-database and RPC C tests; a connected native cluster is still
-  required.
+  source tree. The supported-Linux binary gate builds and runs eight focused
+  native executables: `test_genesis_create`, `test_accdb`, `test_rpc_tile`,
+  `test_config_parse`, `test_tower_tile`, `test_sched`, `test_execrp_tile`, and
+  `test_replay_tile`. The last three prove only execution-result propagation
+  through replay; cache, snapshot, dead-fork, commitment, RPC JSON, and
+  connected-cluster work remain open. The complete gate passed from a fresh
+  exact six-patch checkout under Linux/x86-64 Docker emulation as an
+  unprivileged user with a synthetic 128-CPU/one-NUMA-node sysfs fixture,
+  retaining `layout.affinity=auto`, rebuilding pinned OpenSSL and both branded
+  ELF binaries, and verifying native replay/execrp/RPC topology. This is not
+  native-hardware, performance, signed-release, full-validator, or
+  connected-cluster evidence.
 - `pnpm setup` installs checksum-verified, project-local Rust 1.89.0, Agave
   2.3.0, and Anchor 0.32.1 compatibility toolchains; starts the pinned local
   containers; and applies PostgreSQL migrations. Agave is never WokeNet
@@ -79,10 +88,11 @@ not evidence of a native WokeNet deployment.
   verification across 29 portable object families, local CAS integrity, storage
   replication, recoverable SDK publication, manifest verification, exhaustive
   current-IDL indexing, and in-memory rebuild. The current focused evidence
-  includes 144 configuration unit cases plus four verified-database-TLS
-  integration cases, 184 indexer unit cases across 20 files, 27 isolated
-  indexer PostgreSQL cases across 11 files, and 36 feed-service cases.
-- Relay tests exercise 81 unit cases and 29 real-loopback WebSocket integration
+  includes 149 configuration unit cases plus four verified-database-TLS
+  integration cases, 185 indexer unit cases across 20 files, 27 isolated
+  indexer PostgreSQL cases across 11 files, 38 feed-service cases, and 25
+  shared rate-limiter unit cases plus six real-Redis integration cases.
+- Relay tests exercise 81 unit cases and 34 real-loopback WebSocket integration
   cases, including signed envelopes, locked-by-default authorization, bounded
   retention, backpressure, failover, reconnect, deduplication, subscription
   scope enforcement, and relay-local gap detection.

@@ -232,6 +232,68 @@ function loadPolicy() {
         ]),
     'native WokeNet non-voting RPC observer evidence is incomplete or unsafe',
   );
+  const executionResultPropagation = capabilities.nativeRpc.executionResultPropagation;
+  assert(
+    executionResultPropagation?.sourceImplemented === true &&
+      executionResultPropagation.productionComplete === false &&
+      JSON.stringify(executionResultPropagation.rpcMethodsPromoted) === JSON.stringify([]) &&
+      executionResultPropagation.boundary ===
+        'execrp completion through scheduler metadata to replay transaction event' &&
+      JSON.stringify(executionResultPropagation.identityFields) ===
+        JSON.stringify(['slot', 'bank_idx', 'bank_seq']) &&
+      JSON.stringify(executionResultPropagation.resultFields) ===
+        JSON.stringify(['txn_err', 'exec_err', 'exec_err_kind', 'exec_err_idx', 'custom_err']) &&
+      executionResultPropagation.schedulerPoolReuseReset === true &&
+      executionResultPropagation.signatureFailureAuthoritative === true &&
+      executionResultPropagation.nonInstructionNestedErrorsNormalized === true &&
+      executionResultPropagation.fullCustomErrorRangePreserved === true &&
+      executionResultPropagation.directNativeCTestExecution?.passed === true &&
+      executionResultPropagation.directNativeCTestExecution.environment ===
+        'linux-x86_64-docker-emulation' &&
+      executionResultPropagation.directNativeCTestExecution.nativeHardware === false &&
+      JSON.stringify(executionResultPropagation.directNativeCTestExecution.tests) ===
+        JSON.stringify(['test_sched', 'test_execrp_tile', 'test_replay_tile']) &&
+      JSON.stringify(executionResultPropagation.directNativeCTestExecution.arguments) ===
+        JSON.stringify({
+          test_sched: [],
+          test_execrp_tile: ['--page-sz', 'normal', '--page-cnt', '1572864'],
+          test_replay_tile: ['--page-sz', 'normal', '--page-cnt', '1048576'],
+        }) &&
+      JSON.stringify(
+        executionResultPropagation.directNativeCTestExecution.attestedNofileSoftLimit,
+      ) ===
+        JSON.stringify({
+          test_execrp_tile: 1_048_576,
+          test_replay_tile: 1_048_576,
+        }) &&
+      JSON.stringify(executionResultPropagation.testedCompletionOrders) ===
+        JSON.stringify([
+          'execution-before-signature-success',
+          'execution-before-signature-failure',
+          'signature-failure-before-execution',
+        ]) &&
+      JSON.stringify(executionResultPropagation.untestedCompletionOrders) ===
+        JSON.stringify(['signature-success-before-execution']) &&
+      JSON.stringify(executionResultPropagation.directNativeCTestCoverage) ===
+        JSON.stringify([
+          'test_sched:scheduler-pool-reuse-reset',
+          'test_execrp_tile:execution-and-signature-completion-metadata',
+          'test_replay_tile:identity-and-result-propagation',
+          'test_replay_tile:signature-failure-both-tested-orders',
+          'test_replay_tile:non-instruction-error-normalization',
+          'test_replay_tile:custom-error-uint-max',
+        ]) &&
+      JSON.stringify(executionResultPropagation.remainingProductionWork) ===
+        JSON.stringify([
+          'signature-status-cache',
+          'snapshot-restore',
+          'dead-fork-eviction',
+          'commitment-confirmations',
+          'rpc-json-implementation',
+          'connected-native-validator-integration',
+        ]),
+    'native execution-result propagation evidence is incomplete or overstates RPC readiness',
+  );
   const programAccounts = capabilities.nativeRpc.getProgramAccounts;
   assert(
     programAccounts?.productionComplete === false &&
@@ -668,6 +730,42 @@ function sourceState(sourceRoot, lock) {
     join(sourceRoot, 'src', 'discof', 'tower', 'test_tower_tile.c'),
     'utf8',
   );
+  const execrpHeader = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'replay', 'fd_execrp.h'),
+    'utf8',
+  );
+  const execrpTileSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'execrp', 'fd_execrp_tile.c'),
+    'utf8',
+  );
+  const execrpTestSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'execrp', 'test_execrp_tile.c'),
+    'utf8',
+  );
+  const schedulerSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'replay', 'fd_sched.c'),
+    'utf8',
+  );
+  const schedulerHeader = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'replay', 'fd_sched.h'),
+    'utf8',
+  );
+  const schedulerTestSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'replay', 'test_sched.c'),
+    'utf8',
+  );
+  const replayTileSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'replay', 'fd_replay_tile.c'),
+    'utf8',
+  );
+  const replayTileHeader = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'replay', 'fd_replay_tile.h'),
+    'utf8',
+  );
+  const replayTestSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'replay', 'test_replay_tile.c'),
+    'utf8',
+  );
   const clusterHeader = readFileSync(
     join(sourceRoot, 'src', 'disco', 'genesis', 'fd_genesis_cluster.h'),
     'utf8',
@@ -740,6 +838,62 @@ function sourceState(sourceRoot, lock) {
       compatibilityDefaultConfigSource.includes('faucet_balance_lamports = 500000000000000000') &&
       compatibilityDefaultConfigSource.includes('identity_balance_lamports = 500000000000'),
     'native WokeNet non-voting RPC observer policy, topology, tower, or direct C tests changed',
+  );
+  assert(
+    execrpHeader.includes('struct fd_execrp_txn_exec_done_msg') &&
+      execrpHeader.includes('int exec_err;') &&
+      execrpHeader.includes('int exec_err_kind;') &&
+      execrpHeader.includes('uint exec_err_idx;') &&
+      execrpHeader.includes('uint custom_err;') &&
+      execrpHeader.includes('struct fd_execrp_txn_sigverify_done_msg') &&
+      execrpHeader.includes('ulong slot;') &&
+      execrpHeader.includes('ulong bank_seq;') &&
+      execrpTileSource.includes('msg->txn_exec->exec_err        = ctx->txn_out.err.exec_err;') &&
+      execrpTileSource.includes('msg->txn_exec->custom_err      = ctx->txn_out.err.custom_err;') &&
+      execrpTileSource.includes('out_msg->txn_sigverify->slot    = bank->f.slot;') &&
+      execrpTileSource.includes('out_msg->txn_sigverify->bank_seq = bank->bank_seq;') &&
+      execrpTestSource.includes('FD_UNIT_TEST( execrp_result_metadata )') &&
+      execrpTestSource.includes('out_msg->txn_exec->custom_err==UINT_MAX') &&
+      execrpTestSource.includes('out_msg->txn_sigverify->bank_seq==bank->bank_seq'),
+    'native execrp completion identity, full result metadata, or direct C tests changed',
+  );
+  assert(
+    schedulerHeader.includes('#define FD_SCHED_TXN_SIGVERIFY_FAIL (0x0010UL)') &&
+      schedulerHeader.includes('fd_sched_txn_info_reset(') &&
+      schedulerHeader.includes('.bank_seq            = ULONG_MAX,') &&
+      schedulerHeader.includes('.tick_sigverify_disp = LONG_MAX,') &&
+      schedulerHeader.includes('.tick_exec_done      = LONG_MAX,') &&
+      schedulerHeader.includes('.exec_err_idx        = UINT_MAX,') &&
+      schedulerHeader.includes('.custom_err          = 0U,') &&
+      schedulerSource.includes('fd_sched_txn_info_reset( sched->txn_info_pool + txn_idx,') &&
+      schedulerTestSource.includes('run_txn_info_reuse_case();') &&
+      schedulerTestSource.includes('FD_TEST( info->bank_seq==ULONG_MAX );') &&
+      schedulerTestSource.includes('FD_TEST( info->exec_err_idx==UINT_MAX );'),
+    'native scheduler identity/result reset semantics or direct C test changed',
+  );
+  assert(
+    replayTileHeader.includes('struct fd_replay_txn_executed') &&
+      replayTileHeader.includes('ulong bank_seq;') &&
+      replayTileHeader.includes('uint custom_err;') &&
+      replayTileSource.includes('txn_info_validate_exec_identity(') &&
+      replayTileSource.includes('txn_info_validate_sigverify_identity(') &&
+      replayTileSource.includes('txn_info->txn_err = FD_RUNTIME_TXN_ERR_SIGNATURE_FAILURE;') &&
+      replayTileSource.includes(
+        'if( FD_UNLIKELY( txn_info->flags&FD_SCHED_TXN_SIGVERIFY_FAIL ) ) return;',
+      ) &&
+      replayTileSource.includes('txn_executed->bank_seq        = txn_info->bank_seq;') &&
+      replayTileSource.includes('txn_executed->custom_err      = txn_info->custom_err;') &&
+      replayTestSource.includes('test_txn_result_propagation();') &&
+      replayTestSource.includes(
+        'Execution before failed signature verification: signature failure',
+      ) &&
+      replayTestSource.includes(
+        'Failed signature verification before execution: the later worker',
+      ) &&
+      replayTestSource.includes('executed->custom_err==UINT_MAX') &&
+      replayTestSource.includes('info->txn_err==FD_RUNTIME_TXN_ERR_ACCOUNT_NOT_FOUND') &&
+      replayTestSource.includes('info->exec_err_idx==UINT_MAX'),
+    'native replay execution-result propagation, normalization, ordering, or C test changed',
   );
   for (const policyEvidence of [
     'FD_CONFIG_WOKENET_LIVE_OK',
@@ -888,7 +1042,11 @@ function inspectBinaries(sourceRoot, objectRoot, lock) {
   const version = firedancerVersion(sourceRoot);
   const expectedVersionOutput = `${lock.downstream.versionMarker} ${version} (${lock.upstream.commit})`;
   const binaryDigests = new Set();
-  const commonNativeSymbols = ['fd_tile_replay', 'fd_tile_execrp', 'fd_tile_rpc'];
+  const commonNativeSymbols = [
+    { name: 'fd_tile_replay', type: 'OBJECT' },
+    { name: 'fd_tile_execrp', type: 'OBJECT' },
+    { name: 'fd_tile_rpc', type: 'OBJECT' },
+  ];
   for (const binary of [lock.downstream.validatorBinary, lock.downstream.developmentBinary]) {
     const binaryPath = join(resolvedObjectRoot, 'bin', binary);
     assert(existsSync(binaryPath), `missing built binary ${binaryPath}`);
@@ -930,19 +1088,22 @@ function inspectBinaries(sourceRoot, objectRoot, lock) {
     const requiredSymbols = [
       ...commonNativeSymbols,
       ...(binary === lock.downstream.validatorBinary
-        ? ['fd_main']
-        : ['fd_dev_main', 'firedancer_dev_dev_cmd_fn']),
+        ? [{ name: 'fd_main', type: 'FUNC' }]
+        : [
+            { name: 'fd_dev_main', type: 'FUNC' },
+            { name: 'firedancer_dev_dev_cmd_fn', type: 'FUNC' },
+          ]),
     ];
     for (const symbol of requiredSymbols) {
       assert(
         symbols.some(
           (entry) =>
-            entry.name === symbol &&
-            entry.type === 'FUNC' &&
+            entry.name === symbol.name &&
+            entry.type === symbol.type &&
             entry.binding === 'GLOBAL' &&
             entry.sectionIndex !== 'UND',
         ),
-        `${binary} is missing defined global native Firedancer function ${symbol}`,
+        `${binary} is missing defined global native Firedancer ${symbol.type.toLowerCase()} ${symbol.name}`,
       );
     }
     const dynamicSection = run('readelf', ['--dynamic', '--wide', binaryPath]);
@@ -969,7 +1130,10 @@ function inspectBinaries(sourceRoot, objectRoot, lock) {
         data: "2's complement, little endian",
         machine: 'Advanced Micro Devices X86-64',
       },
-      requiredNativeSymbols: requiredSymbols,
+      requiredNativeSymbols: requiredSymbols.map(({ name }) => name),
+      requiredNativeSymbolTypes: Object.fromEntries(
+        requiredSymbols.map(({ name, type }) => [name, type]),
+      ),
       versionOutput,
     });
   }
@@ -1211,48 +1375,105 @@ function checkBinaries(sourceRoot) {
       realpathSync(objectRoot) === realpathSync(buildRoot),
       'Firedancer build output escaped the fresh attestation directory',
     );
+    const testInvocations = [
+      { name: 'test_genesis_create', arguments: [] },
+      { name: 'test_accdb', arguments: [] },
+      { name: 'test_rpc_tile', arguments: [] },
+      { name: 'test_config_parse', arguments: [] },
+      {
+        name: 'test_tower_tile',
+        arguments: ['--page-sz', 'normal', '--page-cnt', '1048576'],
+        rlimitNofileSoft: 200_000,
+      },
+      { name: 'test_sched', arguments: [] },
+      {
+        name: 'test_execrp_tile',
+        arguments: ['--page-sz', 'normal', '--page-cnt', '1572864'],
+        rlimitNofileSoft: 1_048_576,
+      },
+      {
+        name: 'test_replay_tile',
+        arguments: ['--page-sz', 'normal', '--page-cnt', '1048576'],
+        rlimitNofileSoft: 1_048_576,
+      },
+    ];
+    const buildTargets = [
+      lock.downstream.validatorBinary,
+      lock.downstream.developmentBinary,
+      ...testInvocations.map(({ name }) => name),
+    ];
+    assert(
+      testInvocations.length === 8 &&
+        new Set(testInvocations.map(({ name }) => name)).size === testInvocations.length &&
+        new Set(buildTargets).size === buildTargets.length,
+      'native attestation targets must contain exactly eight unique focused tests',
+    );
     run(
       'bash',
       [
         '-c',
         [
           'source ./activate "BUILDDIR=$1" CC=gcc >/dev/null',
-          'make -j"$2" firedancer firedancer-dev test_genesis_create test_accdb test_rpc_tile test_config_parse test_tower_tile',
+          'parallelism="$2"',
+          'shift 2',
+          'make "-j$parallelism" "$@"',
         ].join(' && '),
         '--',
         buildDirectory,
         parallelism,
+        ...buildTargets,
       ],
       { cwd: freshSourceRoot, stdio: 'inherit' },
     );
 
-    for (const testBinary of [
-      'test_genesis_create',
-      'test_accdb',
-      'test_rpc_tile',
-      'test_config_parse',
-      'test_tower_tile',
-    ]) {
-      const testPath = join(objectRoot, 'unit-test', testBinary);
+    const unitTestEvidence = [];
+    for (const testInvocation of testInvocations) {
+      const testPath = join(objectRoot, 'unit-test', testInvocation.name);
       assert(existsSync(testPath), `missing freshly built test executable ${testPath}`);
       assert(
         realpathSync(testPath) === testPath,
-        `${testBinary} must be a regular in-tree build output, not a symlink`,
+        `${testInvocation.name} must be a regular in-tree build output, not a symlink`,
       );
-      if (testBinary === 'test_tower_tile') {
+      const testMetadata = lstatSync(testPath);
+      assert(
+        testMetadata.isFile() &&
+          !testMetadata.isSymbolicLink() &&
+          (testMetadata.mode & 0o111) !== 0,
+        `${testInvocation.name} is not a regular executable`,
+      );
+      if (testInvocation.rlimitNofileSoft !== undefined) {
         run(
           'bash',
           [
             '-c',
-            'ulimit -n 200000 && exec "$1" --page-sz normal --page-cnt 1048576',
+            [
+              'requested_nofile="$1"',
+              'shift',
+              'ulimit -Sn "$requested_nofile"',
+              'effective_nofile="$(ulimit -Sn)"',
+              'test "$effective_nofile" -ge "$requested_nofile"',
+              'exec "$@"',
+            ].join(' && '),
             '--',
+            String(testInvocation.rlimitNofileSoft),
             testPath,
+            ...testInvocation.arguments,
           ],
           { cwd: freshSourceRoot, stdio: 'inherit' },
         );
       } else {
-        run(testPath, [], { cwd: freshSourceRoot, stdio: 'inherit' });
+        run(testPath, testInvocation.arguments, {
+          cwd: freshSourceRoot,
+          stdio: 'inherit',
+        });
       }
+      unitTestEvidence.push({
+        name: testInvocation.name,
+        arguments: [...testInvocation.arguments],
+        rlimitNofileSoft: testInvocation.rlimitNofileSoft ?? null,
+        bytes: testMetadata.size,
+        sha256: sha256(testPath),
+      });
     }
 
     const manifest = inspectBinaries(freshSourceRoot, objectRoot, lock);
@@ -1313,25 +1534,25 @@ function checkBinaries(sourceRoot) {
         make: run('make', ['--version']).split('\n')[0],
         kernel: run('uname', ['-srmo']),
       },
-      targets: [
-        'firedancer',
-        'firedancer-dev',
-        'test_genesis_create',
-        'test_accdb',
-        'test_rpc_tile',
-        'test_config_parse',
-        'test_tower_tile',
-      ],
-      unitTestsExecuted: [
-        'test_genesis_create',
-        'test_accdb',
-        'test_rpc_tile',
-        'test_config_parse',
-        'test_tower_tile',
-      ],
-      unitTestArguments: {
-        test_tower_tile: ['--page-sz', 'normal', '--page-cnt', '1048576'],
+      buildInvocation: {
+        program: 'make',
+        activationEnvironment: {
+          BUILDDIR: buildDirectory,
+          CC: 'gcc',
+        },
+        arguments: [`-j${parallelism}`, ...buildTargets],
       },
+      targets: buildTargets,
+      unitTestsExecuted: testInvocations.map(({ name }) => name),
+      unitTestArguments: Object.fromEntries(
+        testInvocations.map(({ name, arguments: testArguments }) => [name, [...testArguments]]),
+      ),
+      unitTestResourceLimits: Object.fromEntries(
+        testInvocations
+          .filter(({ rlimitNofileSoft }) => rlimitNofileSoft !== undefined)
+          .map(({ name, rlimitNofileSoft }) => [name, { rlimitNofileSoft }]),
+      ),
+      unitTestEvidence,
       localnetConfigParsed: true,
       localnetConfigParsedBy: lock.downstream.developmentBinary,
       nativeTopologyTilesVerified: ['replay', 'execrp', 'rpc'],

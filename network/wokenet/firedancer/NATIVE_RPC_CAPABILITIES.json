@@ -73,6 +73,55 @@
         "test_tower_tile:observer-virtual-tower-replay-root-and-pruning"
       ]
     },
+    "executionResultPropagation": {
+      "sourceImplemented": true,
+      "productionComplete": false,
+      "rpcMethodsPromoted": [],
+      "boundary": "execrp completion through scheduler metadata to replay transaction event",
+      "identityFields": ["slot", "bank_idx", "bank_seq"],
+      "resultFields": ["txn_err", "exec_err", "exec_err_kind", "exec_err_idx", "custom_err"],
+      "schedulerPoolReuseReset": true,
+      "signatureFailureAuthoritative": true,
+      "nonInstructionNestedErrorsNormalized": true,
+      "fullCustomErrorRangePreserved": true,
+      "directNativeCTestExecution": {
+        "passed": true,
+        "environment": "linux-x86_64-docker-emulation",
+        "nativeHardware": false,
+        "tests": ["test_sched", "test_execrp_tile", "test_replay_tile"],
+        "arguments": {
+          "test_sched": [],
+          "test_execrp_tile": ["--page-sz", "normal", "--page-cnt", "1572864"],
+          "test_replay_tile": ["--page-sz", "normal", "--page-cnt", "1048576"]
+        },
+        "attestedNofileSoftLimit": {
+          "test_execrp_tile": 1048576,
+          "test_replay_tile": 1048576
+        }
+      },
+      "testedCompletionOrders": [
+        "execution-before-signature-success",
+        "execution-before-signature-failure",
+        "signature-failure-before-execution"
+      ],
+      "untestedCompletionOrders": ["signature-success-before-execution"],
+      "directNativeCTestCoverage": [
+        "test_sched:scheduler-pool-reuse-reset",
+        "test_execrp_tile:execution-and-signature-completion-metadata",
+        "test_replay_tile:identity-and-result-propagation",
+        "test_replay_tile:signature-failure-both-tested-orders",
+        "test_replay_tile:non-instruction-error-normalization",
+        "test_replay_tile:custom-error-uint-max"
+      ],
+      "remainingProductionWork": [
+        "signature-status-cache",
+        "snapshot-restore",
+        "dead-fork-eviction",
+        "commitment-confirmations",
+        "rpc-json-implementation",
+        "connected-native-validator-integration"
+      ]
+    },
     "directNativeCTestCoverage": ["getMultipleAccounts", "getProgramAccounts"],
     "implementedRequiredReads": [
       "getAccountInfo",
