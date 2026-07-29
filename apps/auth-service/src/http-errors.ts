@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { RATE_LIMIT_BACKEND_UNAVAILABLE, RATE_LIMITER_CLOSED } from '@wokesocial/rate-limit';
+
 import { AuthServiceError } from './errors.js';
 
 export function installAuthErrorHandler(app: FastifyInstance, maximumBodyBytes: number): void {
@@ -34,6 +36,12 @@ export function installAuthErrorHandler(app: FastifyInstance, maximumBodyBytes: 
       void reply
         .code(429)
         .send(errorBody('rate-limit-exceeded', 'The request rate limit was exceeded.'));
+      return;
+    }
+    if (hasCode(error, RATE_LIMIT_BACKEND_UNAVAILABLE, RATE_LIMITER_CLOSED)) {
+      void reply
+        .code(503)
+        .send(errorBody('dependency-unavailable', 'A required service dependency is unavailable.'));
       return;
     }
     if (hasCode(error, 'FST_ERR_CTP_INVALID_JSON_BODY', 'FST_ERR_CTP_EMPTY_JSON_BODY')) {

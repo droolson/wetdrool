@@ -40,7 +40,7 @@ policy and membership.
 
 Isolated loopback development may explicitly set `RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE=1` (or the matching constructor option). The hello, publish, event, health, readiness, and metrics surfaces label that mode `unverified-local`. It must never be used for a shared or Internet-reachable relay.
 
-Replay nonces, retained events, rate-limit buckets, subscriptions, and presence are memory-only and bounded. Typing, presence, and livestream signals are never retained. Other eligible events expire after at most two minutes even if their signed expiry is later. Encrypted-message ciphertext may be retained briefly for delivery, but delivery is not guaranteed.
+Replay nonces, retained events, subscriptions, presence, per-IP transport/connection leases, relay sequence, and fanout are process-local and bounded. The deployed relay uses the shared fail-closed Redis rate limiter; process-local rate-limit state is available only to explicit loopback tests/development. Shared quotas alone do not make the relay horizontally safe: until replay/connection coordination and cross-replica pubsub are externalized and tested, run one relay replica. Typing, presence, and livestream signals are never retained. Other eligible events expire after at most two minutes even if their signed expiry is later. Encrypted-message ciphertext may be retained briefly for delivery, but delivery is not guaranteed.
 
 Message confidentiality belongs to the upstream E2EE format. This relay validates only bounded ciphertext metadata; it does not encrypt, decrypt, escrow, inspect, or recover messages. Direct audiences necessarily expose the minimum recipient identity list required for routing, but that list is never retained separately or logged. Use opaque digest topics created with `relayTopicFor`, not human-readable relationship names.
 
@@ -77,6 +77,10 @@ Environment:
 - `RELAY_PORT` defaults to `4200`
 - `RELAY_ID` defaults to `wokesocial-relay`
 - `RELAY_ALLOWED_ORIGINS` is a comma-separated HTTP(S) origin allowlist; empty denies browser `Origin` headers while still allowing non-browser clients
+- `REDIS_URL` is authenticated; nonlocal deployments require a nonlocal `rediss://` endpoint
+- `RATE_LIMIT_KEY_SECRET` is one private canonical base64url 32-byte HMAC key, identical across replicas and stable through rolling deploys
+- `RATE_LIMIT_DEPLOYMENT_ID` is the stable lowercase deployment namespace shared by replicas
+- `RATE_LIMIT_DANGEROUSLY_USE_MEMORY_STORE=1` is a mutually exclusive loopback-development-only fallback
 - `RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE` defaults to `0`; only exact `1` unlocks structural-only local test mode
 - `RELAY_KEY_AUTHORIZER_URL` optionally enables the shipped finalized-state authorizer adapter; production requires HTTPS
 - `RELAY_KEY_AUTHORIZER_READINESS_URL` optionally overrides the default `/readyz` URL derived from the authorizer URL; production requires HTTPS

@@ -16,6 +16,7 @@ COPY patches ./patches
 COPY apps/auth-service/package.json ./apps/auth-service/package.json
 COPY packages/config/package.json ./packages/config/package.json
 COPY packages/crypto/package.json ./packages/crypto/package.json
+COPY packages/rate-limit/package.json ./packages/rate-limit/package.json
 
 RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
     pnpm install --frozen-lockfile --filter @wokesocial/auth-service...
@@ -23,9 +24,11 @@ RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
 COPY apps/auth-service ./apps/auth-service
 COPY packages/config ./packages/config
 COPY packages/crypto ./packages/crypto
+COPY packages/rate-limit ./packages/rate-limit
 
 RUN pnpm --filter @wokesocial/config build \
     && pnpm --filter @wokesocial/crypto build \
+    && pnpm --filter @wokesocial/rate-limit build \
     && pnpm --filter @wokesocial/auth-service build \
     && pnpm --filter @wokesocial/auth-service deploy \
       --prod \

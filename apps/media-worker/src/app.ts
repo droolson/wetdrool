@@ -4,6 +4,12 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { z } from 'zod';
 
 import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import {
+  RATE_LIMIT_BACKEND_UNAVAILABLE,
+  RATE_LIMITER_CLOSED,
+  createFastifyRateLimitStore,
+  type RateLimiter,
+} from '@wokesocial/rate-limit';
 
 import { mediaWorkerOriginSchema } from './config.js';
 import { MediaWorkerError } from './errors.js';
@@ -34,6 +40,7 @@ export interface MediaWorkerAppOptions {
   readonly logger?: boolean;
   readonly allowedOrigins?: readonly string[];
   readonly rateLimitMax?: number;
+  readonly rateLimiter?: RateLimiter;
   readonly trustedProxyCidrs?: readonly string[];
   readonly authorizeRequest?: (input: {
     readonly action: 'create' | 'claim' | 'read' | 'append' | 'cancel' | 'finalize';
@@ -103,8 +110,20 @@ export async function buildMediaWorkerApp(
   await app.register(rateLimit, {
     keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 120,
+    ...(options.rateLimiter === undefined
+      ? {}
+      : {
+          store: createFastifyRateLimitStore({
+            limiter: options.rateLimiter,
+            namespace: 'http:media-worker',
+          }),
+        }),
+    skipOnError: false,
     timeWindow: '1 minute',
   });
+  if (options.rateLimiter !== undefined) {
+    app.addHook('onClose', async () => options.rateLimiter?.close());
+  }
   app.addHook('onSend', async (_request, reply, payload) => {
     void reply
       .header('cache-control', 'no-store')
@@ -116,15 +135,19 @@ export async function buildMediaWorkerApp(
     return payload;
   });
 
-  app.get('/healthz', async () => ({
+  app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
     service: '@wokesocial/media-worker',
     canonical: false,
     signsForUsers: false,
   }));
-  app.get('/readyz', async (_request, reply) => {
+  app.get('/readyz', { config: { rateLimit: false } }, async (_request, reply) => {
     const readiness = await options.service.readiness();
-    const ready = readiness.ok && options.authorizeRequest !== undefined;
+    const rateLimitHealth = await options.rateLimiter?.readiness();
+    const ready =
+      readiness.ok &&
+      options.authorizeRequest !== undefined &&
+      (rateLimitHealth === undefined || rateLimitHealth.ready);
     if (!ready) {
       void reply.code(503);
     }
@@ -245,6 +268,12 @@ export async function buildMediaWorkerApp(
       void reply
         .code(429)
         .send(errorBody('rate-limit-exceeded', 'The request rate limit was exceeded.'));
+      return;
+    }
+    if (hasCode(error, RATE_LIMIT_BACKEND_UNAVAILABLE, RATE_LIMITER_CLOSED)) {
+      void reply
+        .code(503)
+        .send(errorBody('dependency-unavailable', 'A required service dependency is unavailable.'));
       return;
     }
     if (hasCode(error, 'FST_ERR_CTP_INVALID_MEDIA_TYPE')) {

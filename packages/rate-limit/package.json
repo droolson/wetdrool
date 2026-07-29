@@ -1,0 +1,36 @@
+{
+  "name": "@wokesocial/rate-limit",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Fail-closed distributed rate limiting for WokeSocial services",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "lint": "eslint src test",
+    "test": "vitest run --exclude 'dist/**' --exclude 'test/**/*.integration.test.ts'",
+    "test:coverage": "vitest run --coverage --exclude 'dist/**' --exclude 'test/**/*.integration.test.ts'",
+    "test:integration": "vitest run --no-file-parallelism test/runtime.integration.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "redis": "6.1.0"
+  },
+  "devDependencies": {
+    "@fastify/rate-limit": "11.1.0",
+    "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

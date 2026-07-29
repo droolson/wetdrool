@@ -215,6 +215,10 @@ evidence, note, or object identifier is returned.
 | `MODERATION_DATABASE_MIGRATION_URL` | unset | Dedicated DDL URL used only by the migration command |
 | `MODERATION_DATA_KEYS` | unset | Strict key-ring JSON; must be paired with PostgreSQL |
 | `MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE` | `0` | `1` forbidden in staging and production |
+| `REDIS_URL` | unset | Authenticated; nonlocal deployments require a nonlocal `rediss://` endpoint |
+| `RATE_LIMIT_KEY_SECRET` | unset | Private canonical base64url 32-byte HMAC key; identical across replicas and stable through rolling deploys |
+| `RATE_LIMIT_DEPLOYMENT_ID` | `local-development` locally | Stable lowercase deployment namespace shared by replicas; explicit outside development |
+| `RATE_LIMIT_DANGEROUSLY_USE_MEMORY_STORE` | `0` | `1` is mutually exclusive with Redis and restricted to loopback development |
 | `MODERATION_MAINTENANCE_INTERVAL_MS` | `300000` | 60 seconds–24 hours |
 | `MODERATION_DUE_ACTION_BATCH_SIZE` | `500` | 1–5000 |
 | `MODERATION_RETENTION_BATCH_SIZE` | `100` | 1–5000 |

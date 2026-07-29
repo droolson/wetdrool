@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import { createFastifyRateLimitStore, type RateLimiter } from '@wokesocial/rate-limit';
 
 import { installAuthErrorHandler } from './http-errors.js';
 import {
@@ -40,6 +41,7 @@ export interface AuthAppOptions {
   readonly service: AuthService;
   readonly logger?: boolean;
   readonly rateLimitMax?: number;
+  readonly rateLimiter?: RateLimiter;
   readonly trustedProxyCidrs?: readonly string[];
 }
 
@@ -82,12 +84,24 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
   await app.register(rateLimit, {
     keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 30,
+    ...(options.rateLimiter === undefined
+      ? {}
+      : {
+          store: createFastifyRateLimitStore({
+            limiter: options.rateLimiter,
+            namespace: 'http:auth-service',
+          }),
+        }),
+    skipOnError: false,
     timeWindow: '1 minute',
   });
+  if (options.rateLimiter !== undefined) {
+    app.addHook('onClose', async () => options.rateLimiter?.close());
+  }
 
   installHttpSecurity(app, options.service.origin);
 
-  app.get('/healthz', async () => ({
+  app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
     service: '@wokesocial/auth-service',
     replaceable: true,
@@ -95,9 +109,13 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
     storage: options.service.store.kind,
   }));
 
-  app.get('/readyz', async (_request, reply) => {
+  app.get('/readyz', { config: { rateLimit: false } }, async (_request, reply) => {
     try {
       await options.service.store.readiness();
+      const rateLimitHealth = await options.rateLimiter?.readiness();
+      if (rateLimitHealth !== undefined && !rateLimitHealth.ready) {
+        throw new Error('The shared rate limiter is unavailable.');
+      }
       return { ok: true, storage: options.service.store.kind };
     } catch {
       void reply.code(503);

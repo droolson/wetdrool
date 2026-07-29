@@ -55,10 +55,15 @@ Indexer configuration accepts `APP_ENV=staging` or `production` only with
 `NODE_ENV=production`, and rejects production Node mode for local application
 tiers. Both nonlocal tiers require `INDEXER_NETWORK_ID`,
 `NEXT_PUBLIC_PROGRAM_ID`, nonlocal HTTPS origins and RPC URLs, verified
-PostgreSQL TLS, and live synchronization. The runtime parser is indexer-only:
-it does not load browser, Redis, sponsor, or IPFS-write settings, and it rejects
-shared database passwords, moderation keys, media tokens, and relay bearer
-tokens in nonlocal deployments. Local Compose explicitly sets both modes to
+PostgreSQL TLS, and live synchronization. The projection parser is
+indexer-only: it does not load browser, sponsor, or IPFS-write settings, and it
+rejects shared database passwords, moderation keys, media tokens, and relay
+bearer tokens in nonlocal deployments. The server separately parses the shared
+admission contract: authenticated `REDIS_URL`, a stable lowercase
+`RATE_LIMIT_DEPLOYMENT_ID`, and one private canonical base64url 32-byte
+`RATE_LIMIT_KEY_SECRET` that is identical across replicas and stable through
+rolling deploys. The mutually exclusive memory backend is restricted to
+explicit loopback development. Local Compose explicitly sets both modes to
 development.
 
 ## Profile schema activation

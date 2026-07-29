@@ -5,6 +5,12 @@ import { z } from 'zod';
 
 import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
 import {
+  RATE_LIMIT_BACKEND_UNAVAILABLE,
+  RATE_LIMITER_CLOSED,
+  createFastifyRateLimitStore,
+  type RateLimiter,
+} from '@wokesocial/rate-limit';
+import {
   handleSchema,
   identityIdSchema,
   networkIdSchema,
@@ -110,6 +116,7 @@ export interface IndexerAppOptions {
   readonly logger?: boolean;
   readonly allowedOrigins?: readonly string[];
   readonly defaultNetworkId?: string;
+  readonly rateLimiter?: RateLimiter;
   readonly runtimeReadiness?: IndexerRuntimeReadiness;
   readonly trustedProxyCidrs?: readonly string[];
 }
@@ -141,7 +148,36 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
   await app.register(rateLimit, {
     keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: 120,
+    ...(options.rateLimiter === undefined
+      ? {}
+      : {
+          store: createFastifyRateLimitStore({
+            limiter: options.rateLimiter,
+            namespace: 'http:indexer',
+          }),
+        }),
+    skipOnError: false,
     timeWindow: '1 minute',
+  });
+  if (options.rateLimiter !== undefined) {
+    app.addHook('onClose', async () => options.rateLimiter?.close());
+  }
+  app.setErrorHandler((error, _request, reply) => {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error.code === RATE_LIMIT_BACKEND_UNAVAILABLE || error.code === RATE_LIMITER_CLOSED)
+    ) {
+      void reply.code(503).send({
+        error: {
+          code: 'dependency-unavailable',
+          message: 'A required service dependency is unavailable.',
+        },
+      });
+      return;
+    }
+    void reply.send(error);
   });
 
   app.addHook('onSend', async (_request, reply, payload) => {
@@ -152,8 +188,13 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     return payload;
   });
 
-  app.get('/healthz', async () => ({ ok: true }));
-  app.get('/readyz', async (_request, reply) => {
+  app.get('/healthz', { config: { rateLimit: false } }, async () => ({ ok: true }));
+  app.get('/readyz', { config: { rateLimit: false } }, async (_request, reply) => {
+    const rateLimitHealth = await options.rateLimiter?.readiness();
+    if (rateLimitHealth !== undefined && !rateLimitHealth.ready) {
+      void reply.code(503);
+      return { ok: false, reason: 'rate-limit-unavailable' };
+    }
     const runtimeStatus = options.runtimeReadiness?.status();
     if (runtimeStatus !== undefined && !runtimeStatus.ok) {
       void reply.code(503);

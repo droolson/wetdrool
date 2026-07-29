@@ -13,6 +13,7 @@ import {
   createTrustedProxyPolicy,
   type TrustedProxyPolicy,
 } from '@wokesocial/config/trusted-proxy';
+import type { RateLimiter } from '@wokesocial/rate-limit';
 
 import {
   RELAY_PATH,
@@ -77,6 +78,7 @@ export interface RelayServerOptions {
     input: RelaySubscriptionAuthorization,
   ) => RelaySubscriptionAuthorizationDecision | Promise<RelaySubscriptionAuthorizationDecision>;
   readonly readinessCheck?: () => void | Promise<void>;
+  readonly rateLimiter?: RateLimiter;
   readonly now?: () => Date;
   readonly trustedProxyCidrs?: readonly string[];
 }
@@ -97,6 +99,13 @@ interface ConnectionState {
 interface QueuedClientFrame {
   readonly bytes: Uint8Array;
   readonly isBinary: boolean;
+}
+
+class RelayRateLimitDependencyError extends Error {
+  constructor() {
+    super('The relay rate-limit dependency is unavailable.');
+    this.name = 'RelayRateLimitDependencyError';
+  }
 }
 
 export class RelayServer {
@@ -284,6 +293,7 @@ export class RelayServer {
         this.#http.close((error) => (error === undefined ? resolve() : reject(error)));
       });
     }
+    await this.options.rateLimiter?.close();
     this.#started = false;
     this.#logger.info({ relayId: this.#relayId }, 'relay stopped');
   }
@@ -332,7 +342,12 @@ export class RelayServer {
     if (pathname === '/readyz') {
       try {
         await this.options.readinessCheck?.();
-        const ready = this.#started && !this.#stopping && this.#keyAuthorizationMode !== 'locked';
+        const rateLimitHealth = await this.options.rateLimiter?.readiness();
+        const ready =
+          this.#started &&
+          !this.#stopping &&
+          this.#keyAuthorizationMode !== 'locked' &&
+          (rateLimitHealth === undefined || rateLimitHealth.ready);
         sendJson(response, ready ? 200 : 503, {
           ok: ready,
           relayId: this.#relayId,
@@ -539,7 +554,7 @@ export class RelayServer {
     }
     const now = this.#now();
     state.lastSeenAt = now.getTime();
-    if (!this.#ipLimiter.allow(privacyHash(state.ip), now.getTime())) {
+    if (!(await this.#allowIpMessage(state.ip, now.getTime()))) {
       this.#metrics.rateLimitRejections += 1;
       this.#rejectFrame(state, 'rate-limit', 'The per-IP message rate limit was exceeded.', true);
       return;
@@ -759,7 +774,7 @@ export class RelayServer {
         );
         return;
       }
-      if (!this.#identityLimiter.allow(privacyHash(message.identity), acceptedAt.getTime())) {
+      if (!(await this.#allowIdentityPublish(message.identity, acceptedAt.getTime()))) {
         this.#metrics.rateLimitRejections += 1;
         this.#rejectFrame(
           state,
@@ -819,11 +834,50 @@ export class RelayServer {
         'advisory relay event accepted',
       );
     } catch (error) {
+      if (error instanceof RelayRateLimitDependencyError) {
+        throw error;
+      }
       if (!this.#connectionOpen(state)) {
         return;
       }
       this.#metrics.rejectedFrames += 1;
       this.#rejectProtocolError(state, error);
+    }
+  }
+
+  async #allowIpMessage(ip: string, now: number): Promise<boolean> {
+    if (this.options.rateLimiter === undefined) {
+      return this.#ipLimiter.allow(privacyHash(ip), now);
+    }
+    try {
+      return (
+        await this.options.rateLimiter.consume({
+          namespace: 'relay:message:ip',
+          key: ip,
+          limit: RELAY_POLICY.rateLimit.ipMessagesPerMinute,
+          windowMs: 60_000,
+        })
+      ).allowed;
+    } catch {
+      throw new RelayRateLimitDependencyError();
+    }
+  }
+
+  async #allowIdentityPublish(identity: string, now: number): Promise<boolean> {
+    if (this.options.rateLimiter === undefined) {
+      return this.#identityLimiter.allow(privacyHash(identity), now);
+    }
+    try {
+      return (
+        await this.options.rateLimiter.consume({
+          namespace: 'relay:publish:identity',
+          key: identity,
+          limit: RELAY_POLICY.rateLimit.identityMessagesPerMinute,
+          windowMs: 60_000,
+        })
+      ).allowed;
+    } catch {
+      throw new RelayRateLimitDependencyError();
     }
   }
 

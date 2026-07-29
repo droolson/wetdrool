@@ -34,7 +34,6 @@ export type IndexerConfig = Readonly<{
 
 export const INDEXER_FORBIDDEN_RUNTIME_VARIABLES = [
   'DATABASE_MIGRATION_URL',
-  'REDIS_URL',
   'SESSION_SECRET',
   'SPONSOR_SIGNER_URI',
 ] as const;

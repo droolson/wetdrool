@@ -67,6 +67,14 @@ These variables are required:
 | `MEDIA_WORKER_CLAMD_HOST` | DNS name or IP whose resolved addresses are all loopback, RFC 1918, or IPv6 ULA; link-local and public targets are rejected |
 | `MEDIA_WORKER_STATIC_BEARER_TOKEN` | Canonical unpadded base64url encoding of 32–128 random bytes |
 
+The packaged server also uses the shared admission contract: authenticated
+`REDIS_URL`, a stable lowercase `RATE_LIMIT_DEPLOYMENT_ID`, and one private
+canonical base64url 32-byte `RATE_LIMIT_KEY_SECRET` that is identical across
+replicas and stable through rolling deploys. Nonlocal deployments require a
+nonlocal `rediss://` endpoint. The mutually exclusive
+`RATE_LIMIT_DANGEROUSLY_USE_MEMORY_STORE=1` fallback is restricted to loopback
+development.
+
 Generate a 48-byte operator token without printing it into application logs:
 
 ```sh

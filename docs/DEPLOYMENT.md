@@ -291,7 +291,7 @@ Expected configuration groups include:
 | Native network | Expected genesis hash, shred version, source/patch/build digests, validator/snapshot allowlists | Exact ceremony values; no arbitrary snapshot provider or Agave fallback |
 | Indexer | `INDEXER_DEPLOYMENT_SLOT`, `INDEXER_PROFILE_V2_ACTIVATION_SLOT`, `INDEXER_BATCH_SIZE`, `INDEXER_POLL_INTERVAL_MS`, `INDEXER_RETRY_*`, `INDEXER_SYNC_STALE_AFTER_MS`, `CONTENT_STORAGE_PATH` | Validate ranges; deployment and profile-v2 activation slots are immutable per network/program deployment; only a pre-activation legacy event without the appended commitment may reference v1, while current root/delegated events and every event at/after activation commit v2; every poll drains a checkpoint-independent, batch-bounded due-hydration queue; rebuild must reuse the cutoff, preserve accepted/pending/terminal raw disposition, and suppress provider I/O only for durably accepted obsolete post/profile manifests proven by the complete ordered ledger; readiness requires current finalized polling; mount durable referenced content read-only beside the event ledger |
 | Database | `DATABASE_URL` / `DATABASE_MIGRATION_URL`, `AUTH_DATABASE_URL` / `AUTH_DATABASE_MIGRATION_URL`, `MODERATION_DATABASE_URL` / `MODERATION_DATABASE_MIGRATION_URL` | Run schema changes as explicit advisory-locked one-shot jobs; never grant DDL or a migration URL to a long-running runtime; require verified TLS in nonlocal environments |
-| Redis | `REDIS_URL`, queue and rate-limit namespaces | Noncanonical; environment-specific; TLS/auth outside local |
+| Redis | `REDIS_URL`, `RATE_LIMIT_KEY_SECRET`, `RATE_LIMIT_DEPLOYMENT_ID`, queue namespaces | Noncanonical; environment-specific; authenticated in every mode, `rediss://` and a nonlocal endpoint outside development; the rate-limit key is exactly 32 random bytes in canonical base64url, identical across replicas and stable through rolling deploys |
 | Storage | gateway lists, pinning endpoints, Arweave adapter settings, local root | Multiple providers supported; write credentials server-only |
 | Relay | public relay URLs; `RELAY_KEY_AUTHORIZER_*` and `RELAY_SUBSCRIPTION_AUTHORIZER_*` endpoint, readiness, credential, and timeout settings | Multiple client endpoints; independently deployed finalized key and opaque-topic policy/membership authorities; HTTPS in production; short-lived nonce/network/checkpoint-bound decisions |
 | Media | `MEDIA_WORKER_*` listener/origins, byte/type limits, private roots, strong bearer secret, private `CLAMD_*` endpoint, scan/database-age limits | No cloud metadata or unrelated secrets in workers; clamd TCP never public; UTC required for bounded database timestamp checks |
@@ -319,10 +319,20 @@ Each long-running service MUST have:
 - A termination grace period long enough to checkpoint work.
 
 No service may require a provider-specific runtime API for protocol correctness.
-The current HTTP and relay rate limiters are process-local. Affected services
-MUST remain single-replica behind an independently enforced edge limit until a
-fail-closed shared limiter has passed two-instance tests; multiplying limits by
-adding replicas is not an acceptable production configuration.
+The five HTTP services and relay use the shared Redis limiter in deployed
+entrypoints. Two independent Redis clients with one deployment/service identity
+must consume one quota before horizontal scaling is enabled; the checked-in
+integration gate proves that behavior. Edge limits remain defense in depth, not
+a substitute for application admission. The explicit memory backend is
+loopback-development-only and MUST NOT be used for multi-replica or nonlocal
+deployments.
+
+That shared quota removes the rate-limit multiplication blocker for HTTP
+replicas. It does not make the relay horizontally safe: replay nonces,
+per-IP transport/connection leases, relay sequence, retained events,
+subscriptions, and fanout remain process-local. Run one relay replica until
+shared replay/connection coordination and cross-replica pubsub are implemented
+and independently tested.
 
 ### PostgreSQL
 
@@ -361,7 +371,18 @@ adding replicas is not an acceptable production configuration.
 
 - Redis is limited to cache, queues, rate limiting, and ephemeral coordination.
 - Loss of Redis MUST not corrupt protocol truth.
-- Sensitive authorization does not fail open when Redis is unavailable.
+- Rate-limit admission and sensitive authorization do not fail open when Redis
+  is unavailable. Protected requests receive a stable dependency `503`, while
+  liveness stays reachable and readiness becomes `503`.
+- Rate-limit keys include clear bounded deployment/service prefixes for ACL and
+  operational isolation, followed only by HMAC-SHA-256 namespace/client
+  digests. Raw IP addresses and identities are never sent to Redis.
+- Runtime clients disable the offline queue, bound command buffering, propagate
+  abort signals and command timeouts, use bounded reconnect delay, and actively
+  probe the exact Lua/GET/SET/INCR/PEXPIRE/PTTL/DEL command capability required
+  for admission. Redis ACLs must also allow the connection handshake and
+  heartbeat operations used by the pinned client (`AUTH`, `HELLO`, bounded
+  `CLIENT SETINFO`/`SETNAME`, and `PING`, as applicable).
 - Persistence may improve recovery but is not treated as the only durable queue
   or audit record for high-impact actions.
 

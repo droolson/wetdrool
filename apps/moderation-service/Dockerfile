@@ -16,6 +16,7 @@ COPY patches ./patches
 COPY apps/moderation-service/package.json ./apps/moderation-service/package.json
 COPY packages/config/package.json ./packages/config/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
+COPY packages/rate-limit/package.json ./packages/rate-limit/package.json
 COPY packages/test-fixtures/package.json ./packages/test-fixtures/package.json
 
 RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
@@ -24,9 +25,11 @@ RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
 COPY apps/moderation-service ./apps/moderation-service
 COPY packages/config ./packages/config
 COPY packages/protocol ./packages/protocol
+COPY packages/rate-limit ./packages/rate-limit
 
 RUN pnpm --filter @wokesocial/config build \
     && pnpm --filter @wokesocial/protocol build \
+    && pnpm --filter @wokesocial/rate-limit build \
     && pnpm --filter @wokesocial/moderation-service build \
     && pnpm --filter @wokesocial/moderation-service deploy \
       --prod \

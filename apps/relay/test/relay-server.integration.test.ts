@@ -1,7 +1,16 @@
+import { randomBytes } from 'node:crypto';
 import { connect as connectTcp, type Socket } from 'node:net';
 
 import WebSocket, { type RawData } from 'ws';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  createRuntimeRateLimiter,
+  type RateLimitDecision,
+  type RateLimiter,
+  type RateLimiterHealth,
+  type RateLimitRequest,
+} from '@wokesocial/rate-limit';
 
 import { combineRelayReadinessChecks } from '../src/http-authorizer-client.js';
 import { HttpRelaySubscriptionAuthorizer } from '../src/http-subscription-authorizer.js';
@@ -76,6 +85,135 @@ describe('relay server over loopback WebSockets', () => {
       acceptedConnections: 0,
     });
   });
+
+  it('uses the shared limiter for the exact IP and identity policy buckets', async () => {
+    const requests: RateLimitRequest[] = [];
+    const limiter = testRateLimiter({
+      consume: (request) => {
+        requests.push(request);
+        return decision(request, request.namespace !== 'relay:publish:identity');
+      },
+    });
+    const { address } = await startRelay({ rateLimiter: limiter });
+    expect((await fetch(`${address.httpUrl}/healthz`)).status).toBe(200);
+    expect((await fetch(`${address.httpUrl}/readyz`)).status).toBe(200);
+    const socket = await connect(address.webSocketUrl);
+    await authenticate(socket, makeSubscription(alice));
+
+    socket.send({ op: 'publish', envelope: makeEvent('presence') });
+    expect(await socket.waitFor((frame) => frame.op === 'error')).toMatchObject({
+      code: 'rate-limit',
+      retryable: true,
+    });
+    expect(requests).toEqual([
+      {
+        namespace: 'relay:message:ip',
+        key: '127.0.0.1',
+        limit: RELAY_POLICY.rateLimit.ipMessagesPerMinute,
+        windowMs: 60_000,
+      },
+      {
+        namespace: 'relay:message:ip',
+        key: '127.0.0.1',
+        limit: RELAY_POLICY.rateLimit.ipMessagesPerMinute,
+        windowMs: 60_000,
+      },
+      {
+        namespace: 'relay:publish:identity',
+        key: alice.identityId,
+        limit: RELAY_POLICY.rateLimit.identityMessagesPerMinute,
+        windowMs: 60_000,
+      },
+    ]);
+  });
+
+  it.each(['ip', 'identity'] as const)(
+    'closes with 1011 when the shared %s limiter path rejects',
+    async (failurePath) => {
+      const limiter = testRateLimiter({
+        consume: (request) => {
+          if (
+            (failurePath === 'ip' && request.namespace === 'relay:message:ip') ||
+            (failurePath === 'identity' && request.namespace === 'relay:publish:identity')
+          ) {
+            throw new Error('private backend failure');
+          }
+          return decision(request, true);
+        },
+      });
+      const { address } = await startRelay({ rateLimiter: limiter });
+      const socket = await connect(address.webSocketUrl);
+      if (failurePath === 'identity') {
+        await authenticate(socket, makeSubscription(alice));
+      }
+
+      const closed = socket.waitForClose();
+      socket.send(
+        failurePath === 'ip'
+          ? { op: 'subscribe', authorization: makeSubscription(alice) }
+          : { op: 'publish', envelope: makeEvent('presence') },
+      );
+      await expect(closed).resolves.toBe(1011);
+      expect(
+        socket.frames().some((frame) => frame.op === 'error' && frame.code === 'invalid-signature'),
+      ).toBe(false);
+    },
+  );
+
+  it('keeps liveness reachable and readiness closed when the shared limiter is unavailable', async () => {
+    const limiter = testRateLimiter({ ready: false });
+    const { address } = await startRelay({ rateLimiter: limiter });
+
+    expect((await fetch(`${address.httpUrl}/healthz`)).status).toBe(200);
+    expect((await fetch(`${address.httpUrl}/readyz`)).status).toBe(503);
+  });
+
+  it('shares an identity publish quota through two relay replicas and two Redis clients', async () => {
+    const suffix = randomBytes(6).toString('hex');
+    const deploymentId = `relay-${suffix}`;
+    const redisUrl =
+      process.env['RATE_LIMIT_INTEGRATION_REDIS_URL'] ??
+      'redis://:local-development-only@127.0.0.1:6379';
+    const config = {
+      backend: 'redis',
+      deploymentId,
+      keySecret: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI',
+      redisUrl,
+    } as const;
+    const [limiterA, limiterB] = await Promise.all([
+      createRuntimeRateLimiter({ config, serviceId: 'relay-integration' }),
+      createRuntimeRateLimiter({ config, serviceId: 'relay-integration' }),
+    ]);
+    const [{ address: addressA }, { address: addressB }] = await Promise.all([
+      startRelay({ rateLimiter: limiterA }),
+      startRelay({ rateLimiter: limiterB }),
+    ]);
+    const socketA = await connect(addressA.webSocketUrl);
+    const socketB = await connect(addressB.webSocketUrl);
+    await Promise.all([
+      authenticate(socketA, makeSubscription(alice)),
+      authenticate(socketB, makeSubscription(alice)),
+    ]);
+
+    const halfLimit = RELAY_POLICY.rateLimit.identityMessagesPerMinute / 2;
+    expect(Number.isInteger(halfLimit)).toBe(true);
+    for (let index = 0; index < halfLimit; index += 1) {
+      socketA.send({ op: 'publish', envelope: makeEvent('presence') });
+      socketB.send({ op: 'publish', envelope: makeEvent('presence') });
+      await Promise.all([
+        socketA.waitFor((frame) => frame.op === 'published', 2_000, index + 1),
+        socketB.waitFor((frame) => frame.op === 'published', 2_000, index + 1),
+      ]);
+    }
+
+    socketB.send({ op: 'publish', envelope: makeEvent('presence') });
+    await expect(
+      socketB.waitFor((frame) => frame.op === 'error' && frame.code === 'rate-limit', 5_000),
+    ).resolves.toMatchObject({
+      code: 'rate-limit',
+      retryable: true,
+    });
+  }, 30_000);
 
   it(
     'closes an incomplete HTTP upgrade within the explicit header deadline',
@@ -697,7 +835,7 @@ describe('relay server over loopback WebSockets', () => {
   });
 });
 
-async function startRelay() {
+async function startRelay(options: Readonly<{ rateLimiter?: RateLimiter }> = {}) {
   const server = new RelayServer({
     host: '127.0.0.1',
     port: 0,
@@ -705,9 +843,49 @@ async function startRelay() {
     logger: false,
     now: () => testNow,
     dangerouslyAllowUnverifiedLocalMode: true,
+    ...(options.rateLimiter === undefined ? {} : { rateLimiter: options.rateLimiter }),
   });
   servers.push(server);
   return { server, address: await server.start() };
+}
+
+function testRateLimiter(
+  options: Readonly<{
+    consume?: (request: RateLimitRequest) => RateLimitDecision | Promise<RateLimitDecision>;
+    ready?: boolean;
+  }> = {},
+): RateLimiter {
+  const ready = options.ready ?? true;
+  const health = (): RateLimiterHealth => ({
+    mode: 'redis',
+    status: ready ? 'ready' : 'not-ready',
+    ready,
+    consecutiveFailures: ready ? 0 : 1,
+    checkedAt: Date.now(),
+    lastSuccessAt: ready ? Date.now() : null,
+    lastFailureAt: ready ? null : Date.now(),
+    errorCode: ready ? null : 'RATE_LIMIT_BACKEND_UNAVAILABLE',
+  });
+  return {
+    consume: async (request) =>
+      options.consume === undefined ? decision(request, true) : options.consume(request),
+    read: async (request) => decision(request, true),
+    readiness: async () => health(),
+    health,
+    close: async () => undefined,
+  };
+}
+
+function decision(request: RateLimitRequest, allowed: boolean): RateLimitDecision {
+  const count = allowed ? 1 : request.limit + 1;
+  return {
+    allowed,
+    reason: allowed ? 'allowed' : 'limit-exceeded',
+    count,
+    limit: request.limit,
+    remaining: Math.max(0, request.limit - count),
+    resetAt: Date.now() + request.windowMs,
+  };
 }
 
 async function openTransportSocket(port: number): Promise<Socket> {

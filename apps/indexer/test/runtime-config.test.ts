@@ -108,7 +108,7 @@ describe('indexer runtime configuration', () => {
     expect(() => readIndexerConfig(missingIdentity)).toThrow(/are required in staging/u);
   });
 
-  it.each(['REDIS_URL', 'SESSION_SECRET', 'SPONSOR_SIGNER_URI'])(
+  it.each(['SESSION_SECRET', 'SPONSOR_SIGNER_URI'])(
     'rejects unrelated sensitive runtime variable %s',
     (name) => {
       expect(() =>
@@ -118,6 +118,23 @@ describe('indexer runtime configuration', () => {
       ).toThrow(`${name} must not be injected`);
     },
   );
+
+  it('retains the shared limiter runtime connection while scrubbing setup secrets', () => {
+    const environment = {
+      DATABASE_MIGRATION_URL: 'postgresql://migration:secret@localhost/wokesocial',
+      DATABASE_URL: 'postgresql://indexer:secret@localhost/wokesocial',
+      RATE_LIMIT_DEPLOYMENT_ID: 'local-development',
+      RATE_LIMIT_KEY_SECRET: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI',
+      REDIS_URL: 'redis://:secret@127.0.0.1:6379',
+    };
+    removeIndexerSetupOnlyVariables(environment);
+    expect(environment).toEqual({
+      DATABASE_URL: 'postgresql://indexer:secret@localhost/wokesocial',
+      RATE_LIMIT_DEPLOYMENT_ID: 'local-development',
+      RATE_LIMIT_KEY_SECRET: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI',
+      REDIS_URL: 'redis://:secret@127.0.0.1:6379',
+    });
+  });
 
   it.each([
     'AUTH_DATABASE_RUNTIME_PASSWORD',

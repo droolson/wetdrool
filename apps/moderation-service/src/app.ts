@@ -5,6 +5,12 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import { z } from 'zod';
 
 import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import {
+  RATE_LIMIT_BACKEND_UNAVAILABLE,
+  RATE_LIMITER_CLOSED,
+  createFastifyRateLimitStore,
+  type RateLimiter,
+} from '@wokesocial/rate-limit';
 
 import { ModerationServiceError } from './errors.js';
 import { operatorAssertionSchema, type OperatorAssertion } from './models.js';
@@ -45,6 +51,7 @@ export interface ModerationAppOptions {
   readonly logger?: boolean;
   readonly allowedOrigins?: readonly string[];
   readonly rateLimitMax?: number;
+  readonly rateLimiter?: RateLimiter;
   readonly readinessCheck?: () => void | Promise<void>;
   readonly authorizeCaseRead?: (input: ModerationCaseAccess) => boolean | Promise<boolean>;
   readonly authorizeOperator?: (
@@ -88,8 +95,20 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
   await app.register(rateLimit, {
     keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 30,
+    ...(options.rateLimiter === undefined
+      ? {}
+      : {
+          store: createFastifyRateLimitStore({
+            limiter: options.rateLimiter,
+            namespace: 'http:moderation-service',
+          }),
+        }),
+    skipOnError: false,
     timeWindow: '1 minute',
   });
+  if (options.rateLimiter !== undefined) {
+    app.addHook('onClose', async () => options.rateLimiter?.close());
+  }
 
   app.addHook('onRequest', async (request, reply) => {
     if (request.method === 'POST' && !isJsonMediaType(request.headers['content-type'])) {
@@ -109,7 +128,7 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
     return payload;
   });
 
-  app.get('/healthz', async () => ({
+  app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
     service: '@wokesocial/moderation-service',
     advisory: true,
@@ -118,14 +137,17 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
     storage: options.service.store.kind,
   }));
 
-  app.get('/readyz', async (_request, reply) => {
+  app.get('/readyz', { config: { rateLimit: false } }, async (_request, reply) => {
     try {
       await options.readinessCheck?.();
-      if (!options.service.ready) {
+      const rateLimitHealth = await options.rateLimiter?.readiness();
+      const ready =
+        options.service.ready && (rateLimitHealth === undefined || rateLimitHealth.ready);
+      if (!ready) {
         void reply.code(503);
       }
       return {
-        ok: options.service.ready,
+        ok: ready,
         authorization: options.service.authorizationMode,
         storage: options.service.store.kind,
       };
@@ -449,6 +471,12 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
       void reply
         .code(429)
         .send(errorBody('rate-limit-exceeded', 'The request rate limit was exceeded.'));
+      return;
+    }
+    if (hasCode(error, RATE_LIMIT_BACKEND_UNAVAILABLE, RATE_LIMITER_CLOSED)) {
+      void reply
+        .code(503)
+        .send(errorBody('dependency-unavailable', 'A required service dependency is unavailable.'));
       return;
     }
     if (hasStatus(error, 415)) {

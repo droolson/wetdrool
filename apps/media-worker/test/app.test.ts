@@ -337,10 +337,11 @@ describe('media worker HTTP API', () => {
 
   it('enforces the configured request rate limit', async () => {
     const { app } = await makeApp({ rateLimitMax: 1 });
-    expect((await app.inject({ method: 'GET', url: '/healthz' })).statusCode).toBe(200);
-    const limited = await app.inject({ method: 'GET', url: '/healthz' });
+    expect((await app.inject({ method: 'GET', url: '/v1/policy' })).statusCode).toBe(200);
+    const limited = await app.inject({ method: 'GET', url: '/v1/policy' });
     expect(limited.statusCode).toBe(429);
     expect(limited.json()).toMatchObject({ error: { code: 'rate-limit-exceeded' } });
+    expect((await app.inject({ method: 'GET', url: '/healthz' })).statusCode).toBe(200);
   });
 });
 

@@ -209,6 +209,12 @@ jobs:
             --env-file .env.example \
             --project-name wokesocial-ci \
             --file infra/compose.yaml \
+            --profile indexer \
+            build indexer
+          docker compose \
+            --env-file .env.example \
+            --project-name wokesocial-ci \
+            --file infra/compose.yaml \
             --profile services \
             build auth-service feed-service
           docker compose \

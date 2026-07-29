@@ -4,6 +4,12 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import {
+  RATE_LIMIT_BACKEND_UNAVAILABLE,
+  RATE_LIMITER_CLOSED,
+  createFastifyRateLimitStore,
+  type RateLimiter,
+} from '@wokesocial/rate-limit';
 
 import { FeedCursorError, publicFeedPolicy, rankFeed } from './engine.js';
 import { openApiDocument } from './openapi.js';
@@ -14,6 +20,7 @@ export interface FeedServiceAppOptions {
   readonly logger?: boolean;
   readonly allowedOrigins?: readonly string[];
   readonly rateLimitMax?: number;
+  readonly rateLimiter?: RateLimiter;
   readonly readinessCheck?: () => Promise<void>;
   readonly trustedProxyCidrs?: readonly string[];
 }
@@ -56,8 +63,20 @@ export async function buildFeedServiceApp(
   await app.register(rateLimit, {
     keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 60,
+    ...(options.rateLimiter === undefined
+      ? {}
+      : {
+          store: createFastifyRateLimitStore({
+            limiter: options.rateLimiter,
+            namespace: 'http:feed-service',
+          }),
+        }),
+    skipOnError: false,
     timeWindow: '1 minute',
   });
+  if (options.rateLimiter !== undefined) {
+    app.addHook('onClose', async () => options.rateLimiter?.close());
+  }
 
   app.addHook('onSend', async (_request, reply, payload) => {
     void reply
@@ -68,15 +87,19 @@ export async function buildFeedServiceApp(
     return payload;
   });
 
-  app.get('/healthz', async () => ({
+  app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
     service: '@wokesocial/feed-service',
     policyVersion: FEED_POLICY_VERSION,
   }));
 
-  app.get('/readyz', async (_request, reply) => {
+  app.get('/readyz', { config: { rateLimit: false } }, async (_request, reply) => {
     try {
       await options.readinessCheck?.();
+      const rateLimitHealth = await options.rateLimiter?.readiness();
+      if (rateLimitHealth !== undefined && !rateLimitHealth.ready) {
+        throw new Error('The shared rate limiter is unavailable.');
+      }
       return { ok: true, policyVersion: FEED_POLICY_VERSION };
     } catch (error) {
       _request.log.warn({ error }, 'Feed readiness check failed');
@@ -152,6 +175,21 @@ export async function buildFeedServiceApp(
         error: {
           code: 'rate-limit-exceeded',
           message: 'The per-client request rate limit was exceeded.',
+        },
+      });
+      return;
+    }
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error.code === RATE_LIMIT_BACKEND_UNAVAILABLE || error.code === RATE_LIMITER_CLOSED)
+    ) {
+      void reply.code(503).send({
+        canonical: false,
+        error: {
+          code: 'dependency-unavailable',
+          message: 'A required service dependency is unavailable.',
         },
       });
       return;

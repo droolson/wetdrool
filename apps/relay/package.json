@@ -21,7 +21,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist coverage",
-    "dev": "node ../../scripts/run-scoped-runtime.mjs -- tsx watch src/main.ts",
+    "dev": "node ../../scripts/run-scoped-runtime.mjs --rate-limit -- tsx watch src/main.ts",
     "lint": "eslint src test",
     "start": "node dist/src/main.js",
     "test": "vitest run --exclude 'dist/**' --exclude 'test/**/*.integration.test.ts'",
@@ -33,6 +33,7 @@
     "@noble/curves": "2.2.0",
     "@wokesocial/config": "workspace:*",
     "@wokesocial/protocol": "workspace:*",
+    "@wokesocial/rate-limit": "workspace:*",
     "bs58": "6.0.0",
     "json-canonicalize": "2.0.0",
     "ws": "8.21.1",

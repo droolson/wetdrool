@@ -16,6 +16,7 @@ COPY patches ./patches
 COPY apps/relay/package.json ./apps/relay/package.json
 COPY packages/config/package.json ./packages/config/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
+COPY packages/rate-limit/package.json ./packages/rate-limit/package.json
 
 RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
     pnpm install --frozen-lockfile --filter @wokesocial/relay...
@@ -23,9 +24,11 @@ RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
 COPY apps/relay ./apps/relay
 COPY packages/config ./packages/config
 COPY packages/protocol ./packages/protocol
+COPY packages/rate-limit ./packages/rate-limit
 
 RUN pnpm --filter @wokesocial/config build \
     && pnpm --filter @wokesocial/protocol build \
+    && pnpm --filter @wokesocial/rate-limit build \
     && pnpm --filter @wokesocial/relay build \
     && pnpm --filter @wokesocial/relay deploy \
       --prod \

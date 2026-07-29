@@ -20,6 +20,10 @@
       "types": "./dist/runtime-security.d.ts",
       "import": "./dist/runtime-security.js"
     },
+    "./rate-limit": {
+      "types": "./dist/rate-limit.d.ts",
+      "import": "./dist/rate-limit.js"
+    },
     "./migration-integrity": {
       "types": "./dist/migration-integrity.d.ts",
       "import": "./dist/migration-integrity.js"

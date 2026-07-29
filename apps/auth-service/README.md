@@ -53,6 +53,10 @@ The long-running server never runs DDL and never reads the migration-role URL.
 - `AUTH_CLEANUP_INTERVAL_MS` / `AUTH_CLEANUP_BATCH_SIZE` — bounded, nonoverlapping cleanup cadence
 - `AUTH_PENDING_ACCOUNT_RETENTION_MS` — abandoned provisional-account retention, minimum five minutes
 - `AUTH_CEREMONY_RETENTION_MS` / `AUTH_SESSION_RETENTION_MS` — stale challenge/session retention
+- `REDIS_URL` — authenticated Redis endpoint; nonlocal deployments require a nonlocal `rediss://` endpoint
+- `RATE_LIMIT_KEY_SECRET` — one private canonical base64url 32-byte HMAC key, identical across replicas and stable through rolling deploys
+- `RATE_LIMIT_DEPLOYMENT_ID` — stable lowercase deployment namespace shared by replicas
+- `RATE_LIMIT_DANGEROUSLY_USE_MEMORY_STORE=1` — mutually exclusive Redis bypass restricted to loopback development
 
 The OpenAPI description is available from `GET /openapi.json`; explicit custody and recovery
 capabilities are available from `GET /v1/policy`.

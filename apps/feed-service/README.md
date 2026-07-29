@@ -71,3 +71,7 @@ Environment:
 - `FEED_SERVICE_HOST` defaults to `127.0.0.1`
 - `FEED_SERVICE_PORT` defaults to `4100`
 - `FEED_SERVICE_CORS_ORIGINS` is a comma-separated allowlist; empty disables browser CORS
+- `REDIS_URL` is authenticated; nonlocal deployments require a nonlocal `rediss://` endpoint
+- `RATE_LIMIT_KEY_SECRET` is one private canonical base64url 32-byte HMAC key, identical across replicas and stable through rolling deploys
+- `RATE_LIMIT_DEPLOYMENT_ID` is the stable lowercase deployment namespace shared by replicas
+- `RATE_LIMIT_DANGEROUSLY_USE_MEMORY_STORE=1` is a mutually exclusive loopback-development-only fallback

@@ -16,6 +16,7 @@ import {
   type ProfileContent,
   type SignedEnvelope,
 } from '@wokesocial/protocol';
+import { RateLimitBackendUnavailableError, type RateLimiter } from '@wokesocial/rate-limit';
 import { MemoryContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
 import { createProtocolFixtureSet } from '@wokesocial/test-fixtures';
 
@@ -64,6 +65,52 @@ const postContent: PostContent = {
 };
 
 describe('indexer HTTP contract', () => {
+  it('fails protected requests closed without hiding liveness when admission is unavailable', async () => {
+    const projection = new MemoryProjectionStore();
+    const unavailableHealth = {
+      mode: 'redis',
+      status: 'not-ready',
+      ready: false,
+      consecutiveFailures: 1,
+      checkedAt: Date.now(),
+      lastSuccessAt: null,
+      lastFailureAt: Date.now(),
+      errorCode: 'RATE_LIMIT_BACKEND_UNAVAILABLE',
+    } as const;
+    const rateLimiter: RateLimiter = {
+      consume: async () => {
+        throw new RateLimitBackendUnavailableError('consume', 1);
+      },
+      read: async () => {
+        throw new RateLimitBackendUnavailableError('read', 1);
+      },
+      readiness: async () => unavailableHealth,
+      health: () => unavailableHealth,
+      close: async () => undefined,
+    };
+    const app = await buildIndexerApp({ projection, logger: false, rateLimiter });
+
+    try {
+      const [health, readiness, protectedResponse] = await Promise.all([
+        app.inject({ method: 'GET', url: '/healthz' }),
+        app.inject({ method: 'GET', url: '/readyz' }),
+        app.inject({ method: 'GET', url: '/openapi.json' }),
+      ]);
+      expect(health.statusCode).toBe(200);
+      expect(readiness.statusCode).toBe(503);
+      expect(protectedResponse.statusCode).toBe(503);
+      expect(protectedResponse.json()).toEqual({
+        error: {
+          code: 'dependency-unavailable',
+          message: 'A required service dependency is unavailable.',
+        },
+      });
+    } finally {
+      await app.close();
+      await projection.close();
+    }
+  });
+
   it('verifies and publicly projects the immutable signed profile-v1 fixture', async () => {
     const fixtures = createProtocolFixtureSet();
     const historicalProfile = fixtures.manifests.aliceProfileV1;

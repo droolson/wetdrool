@@ -16,6 +16,7 @@ COPY patches ./patches
 COPY apps/indexer/package.json ./apps/indexer/package.json
 COPY packages/config/package.json ./packages/config/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
+COPY packages/rate-limit/package.json ./packages/rate-limit/package.json
 COPY packages/storage/package.json ./packages/storage/package.json
 COPY packages/test-fixtures/package.json ./packages/test-fixtures/package.json
 
@@ -25,11 +26,13 @@ RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
 COPY apps/indexer ./apps/indexer
 COPY packages/config ./packages/config
 COPY packages/protocol ./packages/protocol
+COPY packages/rate-limit ./packages/rate-limit
 COPY packages/storage ./packages/storage
 COPY packages/test-fixtures ./packages/test-fixtures
 
 RUN pnpm --filter @wokesocial/config build \
     && pnpm --filter @wokesocial/protocol build \
+    && pnpm --filter @wokesocial/rate-limit build \
     && pnpm --filter @wokesocial/storage build \
     && pnpm --filter @wokesocial/indexer build \
     && pnpm --filter @wokesocial/indexer deploy \

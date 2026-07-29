@@ -45,7 +45,7 @@ if (checkOnly) {
         containerProfiles: LOCAL_DEV_CONTAINER_PROFILES,
         localEnvironmentOverrides: Object.keys(LOCAL_DEV_ENVIRONMENT_OVERRIDES),
         runtimeSecretPolicy:
-          'remove bootstrap/migration/raw-password variables, then scope each runtime to at most its own database URL',
+          'remove bootstrap/migration/raw-password variables, then scope database URLs and rate-limit credentials only to the runtimes that need them',
         excludedLocalProcesses: LOCAL_DEV_EXCLUDED_PACKAGES,
         turboArguments: localDevTurboArguments(),
       },

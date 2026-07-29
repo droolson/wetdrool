@@ -164,6 +164,8 @@ describe('local development plan', () => {
           moderation: process.env.MODERATION_DATABASE_URL,
           runtimePassword: process.env.AUTH_DATABASE_RUNTIME_PASSWORD,
           bootstrap: process.env.POSTGRES_PASSWORD,
+          rateLimitKey: process.env.RATE_LIMIT_KEY_SECRET,
+          redis: process.env.REDIS_URL,
           safe: process.env.SAFE_RUNTIME_VALUE
         }))`,
       ],
@@ -174,6 +176,8 @@ describe('local development plan', () => {
           AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wokesocial',
           MODERATION_DATABASE_URL: 'postgresql://moderation:secret@localhost/wokesocial',
           POSTGRES_PASSWORD: 'sentinel-bootstrap-password',
+          RATE_LIMIT_KEY_SECRET: 'sentinel-rate-limit-key',
+          REDIS_URL: 'redis://:sentinel-redis-password@localhost:6379',
           SAFE_RUNTIME_VALUE: 'retained',
         },
       },
@@ -181,6 +185,43 @@ describe('local development plan', () => {
     assert.equal(child.status, 0, child.stderr);
     assert.deepEqual(JSON.parse(child.stdout), {
       auth: 'postgresql://auth:secret@localhost/wokesocial',
+      safe: 'retained',
+    });
+    assert.doesNotMatch(child.stdout + child.stderr, /sentinel-/u);
+  });
+
+  it('passes rate-limit credentials only to an explicitly scoped service runtime', () => {
+    const wrapper = fileURLToPath(new URL('../run-scoped-runtime.mjs', import.meta.url));
+    const child = spawnSync(
+      process.execPath,
+      [
+        wrapper,
+        '--rate-limit',
+        '--',
+        process.execPath,
+        '--eval',
+        `console.log(JSON.stringify({
+          authDatabase: 'AUTH_DATABASE_URL' in process.env,
+          rateLimitKey: 'RATE_LIMIT_KEY_SECRET' in process.env,
+          redis: 'REDIS_URL' in process.env,
+          safe: process.env.SAFE_RUNTIME_VALUE
+        }))`,
+      ],
+      {
+        encoding: 'utf8',
+        env: {
+          AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wokesocial',
+          RATE_LIMIT_KEY_SECRET: 'sentinel-rate-limit-key',
+          REDIS_URL: 'redis://:sentinel-redis-password@localhost:6379',
+          SAFE_RUNTIME_VALUE: 'retained',
+        },
+      },
+    );
+    assert.equal(child.status, 0, child.stderr);
+    assert.deepEqual(JSON.parse(child.stdout), {
+      authDatabase: false,
+      rateLimitKey: true,
+      redis: true,
       safe: 'retained',
     });
     assert.doesNotMatch(child.stdout + child.stderr, /sentinel-/u);

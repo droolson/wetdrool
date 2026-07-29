@@ -92,12 +92,21 @@ Dependencies: repository audit.
     indexer creates API spans. Uniform route names, dependency/lag readiness,
     service-wide metrics, explicit indexer redaction, and an SDK/exporter wired
     to `OTEL_EXPORTER_OTLP_ENDPOINT` remain open.
-- [ ] Implement a fail-closed shared rate-limit store and verify limits across
+- [x] Implement a fail-closed shared rate-limit store and verify limits across
   multiple replicas.
-  - Current boundary: HTTP services and relay enforcement use process-local
-    state. Until a Redis-backed or edge-enforced shared limiter passes
-    two-instance tests, each affected service is limited to one replica and
-    multi-replica production deployment is blocked.
+  - Evidence: `@wokesocial/rate-limit` uses one atomic Redis fixed-window Lua
+    operation, HMAC-derived keys that never send raw client identities to
+    Redis, abortable finite-time commands, active command/ACL readiness, and
+    stable fail-closed `503` errors. All five Fastify services and the relay
+    wire the shared limiter into readiness and shutdown while exempting only
+    liveness/readiness reporting. A pinned Redis 8.8.1 integration creates two
+    independent clients with one deployment/service identity and proves a
+    shared quota, namespace/service/deployment isolation, expiry, and raw-key
+    privacy. Memory state requires an explicit loopback-only development flag.
+    This closes quota multiplication for HTTP replicas but does not make the
+    relay horizontally safe: replay nonces, transport/connection leases,
+    sequence, retention/subscriptions, and fanout remain process-local until
+    shared coordination and cross-replica pubsub pass dedicated tests.
 - [x] Fail closed on local/insecure production configuration and dangerous
   standalone service modes.
   - Evidence: staging and production parsing require aligned runtime mode, finalized
@@ -287,7 +296,7 @@ Dependencies: phase 2 protocol identifiers and events.
     historical authorization and replay invariants. Identity, handles,
     social/governance/recovery, and
     payment configuration/offerings/receipts/entitlements retain exact-network
-    and raw-event provenance. Sixteen ordered, checksummed migrations, 184 unit
+    and raw-event provenance. Sixteen ordered, checksummed migrations, 185 unit
     cases across 20 files, and 27 fresh-PostgreSQL cases across 11 files pass.
     Native Firedancer RPC, fork/reorg handling, independent-provider
     reconciliation, production metrics, and production-scale rebuilds above
