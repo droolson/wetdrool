@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Resumable, bounded, non-custodial media processing and publication worker",
+  "license": "MIT",
   "files": [
     "dist",
     "README.md",

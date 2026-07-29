@@ -1,0 +1,71 @@
+name: Contribution proposal
+description: Propose a bounded, non-security contribution to WokeSocial or WokeNet.
+title: 'proposal: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping build WokeSocial. Keep proposals focused on one user,
+        contributor, protocol, or operator outcome.
+
+        Do not include vulnerabilities, credentials, private keys, passkey material,
+        private user content, personal data, or production connection details.
+        Follow SECURITY.md for sensitive reports.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: Who benefits, and what should be measurably better when this is complete?
+      placeholder: Describe the concrete outcome, not only the files you expect to change.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Web and product
+        - Solana program and protocol
+        - Indexer, SDK, or provider
+        - Solana Seeker and Android
+        - Security and privacy
+        - Trust and safety
+        - Accessibility and design
+        - Infrastructure and reliability
+        - Testing and developer experience
+        - Documentation and community
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach
+      description: Explain the smallest useful scope, important alternatives, and affected public contracts.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk and compatibility
+      description: Note authority, custody, migration, privacy, security, moderation, accessibility, permanence, or decentralization impact.
+      placeholder: Write “No expected impact” only after checking each relevant boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: List the exact tests, builds, review, or evidence that should prove the outcome.
+    validations:
+      required: true
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Contributor checks
+      options:
+        - label: I read CONTRIBUTING.md and the Code of Conduct.
+          required: true
+        - label: This is not a security vulnerability report.
+          required: true
+        - label: I removed secrets, private content, and personal data.
+          required: true

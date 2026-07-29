@@ -28,10 +28,10 @@ Documentation, screenshots, mock data, disabled controls, and successful API-sha
 
 ## 2. Product vision
 
-WokeSocial is a polished, inclusive, LGBTQ+ affirming, trans-owned social
-platform powered by WokeNet, its protocol and smart-contract deployment layer
-on Solana. WokeNet is not a blockchain or validator network. People should be
-able to own and move their identity, social graph,
+WokeSocial is a polished, inclusive social platform for everyone, powered by
+WokeNet, its protocol and smart-contract deployment layer on Solana. WokeNet is
+not a blockchain or validator network. People should be able to own and move
+their identity, social graph,
 public content relationships, communities, and choice of algorithm without
 needing to understand cryptocurrency.
 WokeNet does not operate Firedancer/Agave validators or an application-chain

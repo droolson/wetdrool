@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Replaceable, explainable WokeSocial feed-ranking service",
+  "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist coverage",

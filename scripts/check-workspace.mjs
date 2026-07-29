@@ -23,6 +23,10 @@ for (const { manifest, manifestPath } of manifests) {
     names.set(manifest.name, manifestPath);
   }
 
+  if (manifest.license !== 'MIT') {
+    errors.push(`${manifestPath}: first-party workspace packages must declare the MIT license.`);
+  }
+
   for (const group of dependencyGroups) {
     const dependencies = manifest[group];
     if (!dependencies || typeof dependencies !== 'object') {

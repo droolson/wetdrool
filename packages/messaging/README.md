@@ -105,3 +105,9 @@ The pinned dependency publishes separate Node and browser module paths. Browser
 packaging must preserve and serve its `.wasm` asset at the URL resolved by the
 upstream entry point and permit that fetch under the deployment CSP; this
 repository does not yet contain a production browser packaging integration.
+
+## License
+
+The WokeSocial adapter is licensed under the [MIT License](LICENSE). The pinned
+Matrix Rust crypto WebAssembly dependency remains Apache-2.0 licensed; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for provenance.

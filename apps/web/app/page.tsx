@@ -198,9 +198,8 @@ export default function MarketingPage() {
         </h2>
         <div>
           <p>
-            Explicitly LGBTQ+ affirming. Open to everyone who honors the community’s safety
-            standards. Never dependent on disclosing gender, sexuality, a legal name, or a visible
-            wallet address.
+            Open to everyone who honors the community’s safety standards. Never dependent on
+            disclosing personal identity details, a legal name, or a visible wallet address.
           </p>
           <ButtonLink href="/about" variant="quiet">
             Read the principles →

@@ -2,11 +2,12 @@
 
 ## Our commitment
 
-WokeSocial is explicitly LGBTQ+ affirming and open to anyone who follows its community and
-safety standards. We are committed to a harassment-free experience regardless of gender
-identity or expression, sexual orientation, sex characteristics, race, ethnicity, disability,
-age, body size, religion, nationality, caste, pregnancy, family structure, socioeconomic
-status, technical experience, or other protected or marginalized status.
+WokeSocial is open to everyone who follows its community and safety standards.
+We are committed to a harassment-free experience regardless of identity or
+expression, sexual orientation, sex characteristics, race, ethnicity,
+disability, age, body size, religion, nationality, caste, pregnancy, family
+structure, socioeconomic status, technical experience, or other protected or
+marginalized status.
 
 ## Expected behavior
 

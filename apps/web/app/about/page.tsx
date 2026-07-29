@@ -25,9 +25,9 @@ export default function AboutPage() {
           <em>without being fully exposed.</em>
         </h1>
         <p>
-          WokeSocial is a trans-owned, LGBTQ+ affirming social network in development. Its ambition
-          is simple to say and hard to fake: make a beautiful public square whose people can leave
-          with their identity, relationships, and choices intact.
+          WokeSocial is an inclusive social network for everyone. Its ambition is simple to say and
+          hard to fake: make a beautiful public square whose people can leave with their identity,
+          relationships, and choices intact.
         </p>
       </header>
 

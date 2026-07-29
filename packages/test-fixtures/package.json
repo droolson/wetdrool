@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Deterministic, public test identities and canonical protocol manifests",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",

@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "description": "Runtime-neutral, strictly validated WokeSocial indexer client",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",

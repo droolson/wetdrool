@@ -1,26 +1,68 @@
-# WokeSocial and WokeNet
+# WokeSocial
 
-This `wokenet` repository contains WokeSocial, the open, LGBTQ+ affirming,
-trans-owned social platform at `woke.social`, and WokeNet, its portable
-protocol and smart-contract deployment layer on the Solana blockchain. WokeNet
-is not a blockchain, Solana fork, validator implementation, or separate
-consensus network. Solana validators and RPC providers are external; this
-repository does not ship a Firedancer/Agave topology or operate WokeNet nodes.
+**An inclusive, portable social platform with verifiable protocol state on
+Solana.**
 
-The flagship experience is intended to feel like a polished consumer product.
-Users should not need cryptocurrency knowledge, a visible wallet address, or a
-token to explore the social network. Compact, verifiable protocol state targets
-the WokeSocial program deployed to a selected Solana cluster. Content, media,
-private messages, search, recommendations, and other high-volume concerns live
-in independently operable offchain layers.
+[![License: MIT](https://img.shields.io/badge/license-MIT-6f42c1.svg)](LICENSE)
+![Status: pre-release](https://img.shields.io/badge/status-pre--release-f59e0b.svg)
+![Network: Solana dapp](https://img.shields.io/badge/network-Solana%20dapp-14f195.svg)
 
-Primary domain: `woke.social`. The legacy `sociallywoke.com` hostname is
-redirect-only and must never be treated as a distinct application or WebAuthn
-origin.
+WokeSocial is an open social platform for everyone, being built for
+`woke.social`. WokeNet is its portable protocol and Anchor smart-contract layer
+on Solana. Together, they aim to make public identity, social relationships,
+and signed content independently verifiable without forcing ordinary people to
+understand wallets, addresses, or tokens just to participate.
+
+> [!IMPORTANT]
+> This is active pre-release development, not a production service. No WokeNet
+> program has been published to Solana devnet or mainnet-beta, no `$WOKE` mint
+> exists, and no release-grade Solana Seeker application has been published.
+
+> [!TIP]
+> **Contributors are wanted.** Product engineers, protocol and Solana
+> developers, security reviewers, accessibility specialists, designers,
+> safety practitioners, technical writers, test engineers, and community
+> builders can all make a meaningful contribution. Start with
+> [CONTRIBUTING.md](CONTRIBUTING.md) and the
+> [contributor guide](docs/DEVELOPMENT.md). The source repository is currently
+> private and access is invite-only. People who already have a direct channel
+> to [@AlexBTC420](https://github.com/AlexBTC420) may request access there; a
+> public contributor-intake channel has not yet opened.
+
+## At a glance
+
+| Name                   | Meaning                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **WokeSocial**         | The social product, flagship web application, services, and planned native clients                                  |
+| **WokeNet**            | The portable WokeSocial protocol, Anchor program, identifiers, SDK boundaries, and exact Solana deployment metadata |
+| **`woke.social`**      | The canonical product origin                                                                                        |
+| **`sociallywoke.com`** | A legacy redirect-only hostname; never a separate app or WebAuthn origin                                            |
+
+WokeNet is **not** a blockchain, Solana fork, validator implementation, RPC
+network, or separate consensus system. Solana validators and RPC providers are
+external and replaceable. This repository does not ship a Firedancer/Agave
+topology or operate “WokeNet nodes.”
+
+The flagship experience is designed to feel like a polished consumer product.
+Compact public state targets the WokeSocial program on a selected Solana
+cluster. Signed content, media, private messages, search, recommendations, and
+other high-volume concerns remain in independently operable offchain layers.
 
 The configured source remote is the private GitHub repository
-`AlexBTC420/wokesocial`. The local repository/workspace identity remains
-`wokenet`; source hosting is not a public deployment or release record.
+`AlexBTC420/wokesocial`; the local workspace remains named `wokenet`. Source
+hosting is not a public deployment, audit, or release record.
+
+## Explore the project
+
+| If you want to…                  | Start here                                                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Understand the product           | [Product specification](docs/PRODUCT_SPEC.md) and [roadmap](docs/ROADMAP.md)                                                                     |
+| Understand the system            | [Architecture](docs/ARCHITECTURE.md), [protocol](docs/PROTOCOL.md), and [ADRs](docs/DECISIONS/)                                                  |
+| Set up a development environment | [Development guide](docs/DEVELOPMENT.md)                                                                                                         |
+| Find work and contribute         | [Contributing guide](CONTRIBUTING.md) and [task evidence](TASKS.md)                                                                              |
+| Review security or privacy       | [Security policy](SECURITY.md), [security design](docs/SECURITY.md), [threat model](docs/THREAT_MODEL.md), and [privacy design](docs/PRIVACY.md) |
+| Operate or evaluate a deployment | [Deployment](docs/DEPLOYMENT.md), [operations](docs/OPERATIONS.md), and [final report](FINAL_REPORT.md)                                          |
+| Browse all documentation         | [Documentation index](docs/README.md)                                                                                                            |
 
 ## Project status
 
@@ -131,6 +173,29 @@ not evidence of a devnet or mainnet-beta deployment.
   patched-version overrides; a checksum-pinned Gitleaks wrapper and CI security
   workflow are configured.
 
+## How it fits together
+
+```mermaid
+flowchart LR
+    People["People using WokeSocial"] --> Clients["Web and Seeker clients"]
+    Clients --> Auth["Passkey and wallet boundaries"]
+    Clients --> Providers["Replaceable indexer, feed, storage, relay, media, and moderation providers"]
+    Auth --> Program["WokeNet Anchor program"]
+    Program --> Solana["Solana ledger"]
+    Providers --> Signed["Signed, content-addressed objects"]
+    Providers --> Program
+    Program --> Indexer["Rebuildable finalized-state projection"]
+    Signed --> Indexer
+    Indexer --> Clients
+```
+
+Solana is the ledger and execution environment. WokeNet commits compact,
+verifiable public facts and content references. Replaceable providers handle
+querying and high-volume data, while clients verify the network, program,
+signatures, hashes, and provider provenance appropriate to each operation. See
+the [architecture document](docs/ARCHITECTURE.md) for trust boundaries,
+authority, failure behavior, and data placement.
+
 ## Architectural commitments
 
 - Identity and the social graph must survive the flagship client and database.
@@ -163,20 +228,18 @@ not evidence of a devnet or mainnet-beta deployment.
   provenance, security review, secure update/rollback evidence, and explicit
   distribution approval.
 
-The detailed design is in:
+## Documentation
 
-- [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md)
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- [`docs/PROTOCOL.md`](docs/PROTOCOL.md)
-- [`docs/SECURITY.md`](docs/SECURITY.md)
-- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md)
-- [`docs/MODERATION.md`](docs/MODERATION.md)
-- [`docs/PRIVACY.md`](docs/PRIVACY.md)
-- [`docs/DECENTRALIZATION.md`](docs/DECENTRALIZATION.md)
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
-- [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
-- [`docs/ROADMAP.md`](docs/ROADMAP.md)
-- [`docs/DECISIONS/`](docs/DECISIONS/)
+The [documentation index](docs/README.md) is the canonical map of project
+documentation. Its main collections are:
+
+| Collection                | Documents                                                                                                                                                                           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product and experience    | [Product specification](docs/PRODUCT_SPEC.md), [brand](docs/BRAND.md), [accessibility](docs/ACCESSIBILITY.md), [roadmap](docs/ROADMAP.md)                                           |
+| Architecture and protocol | [Architecture](docs/ARCHITECTURE.md), [protocol](docs/PROTOCOL.md), [decentralization](docs/DECENTRALIZATION.md), [architecture decisions](docs/DECISIONS/)                         |
+| Trust and safety          | [Security design](docs/SECURITY.md), [threat model](docs/THREAT_MODEL.md), [privacy](docs/PRIVACY.md), [moderation](docs/MODERATION.md), [legal review scope](docs/LEGAL_REVIEW.md) |
+| Build and verification    | [Development](docs/DEVELOPMENT.md), [testing](docs/TESTING.md), [deployment](docs/DEPLOYMENT.md), [operations](docs/OPERATIONS.md)                                                  |
+| Evidence and delivery     | [Task record](TASKS.md) and [final verification report](FINAL_REPORT.md)                                                                                                            |
 
 ## Repository layout
 
@@ -215,14 +278,39 @@ quarantined payment-program/SDK/indexer, and media paths are implemented
 subsets, not claims that the full safety, protocol identity, account-recovery,
 messaging, creator-economy, mobile, or publication products are complete.
 
-## Developer commands
+## Quick start
 
-The following root interfaces are implemented:
+### Prerequisites
+
+- Node.js `22.23.1`
+- pnpm `11.2.2` through Corepack
+- A running Docker daemon with Docker Compose
+- Git
+
+Rust `1.89.0`, Solana `2.3.0`, and Anchor `0.32.1` are installed into the
+project-local `.local/toolchains` directory by `pnpm setup`. Do not silently
+substitute other versions: program builds and evidence are tied to the pinned
+toolchain.
+
+### Install and run
 
 ```sh
+corepack enable
 pnpm install --frozen-lockfile
 pnpm setup
 pnpm dev
+```
+
+The checked-in `.env.example` contains intentionally public,
+development-only values. Copy it to `.env` only when you need local overrides,
+and never commit real credentials or production endpoints. `pnpm setup`
+validates the exact Node/pnpm toolchain, installs the project-local chain
+toolchain, starts PostgreSQL, Redis, and Kubo/IPFS, validates configuration, and
+applies workspace migrations.
+
+Useful root commands:
+
+```sh
 pnpm test
 pnpm test:integration
 pnpm test:e2e
@@ -261,6 +349,33 @@ environments and non-loopback service binds before it enables those two
 development-only overrides. Standalone services remain locked by default. Stop
 persistent containers with `pnpm infra:down`.
 
+For focused workflows, troubleshooting, testing layers, and contribution
+expectations, continue with [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Contributing
+
+WokeSocial is actively looking for contributors. Valuable work is not limited
+to writing application code:
+
+- web, mobile, protocol, indexer, provider, and infrastructure engineering;
+- Solana program review, transaction safety, and independent conformance work;
+- threat modeling, privacy engineering, abuse prevention, and moderation
+  operations;
+- accessibility auditing, inclusive design, UX research, and content design;
+- deterministic testing, developer experience, documentation, and release
+  evidence; and
+- community stewardship, governance research, and contributor onboarding.
+
+Because the GitHub repository is currently private, access is invite-only.
+Prospective contributors who already have a direct channel to
+[@AlexBTC420](https://github.com/AlexBTC420) may request access there; a public
+contributor-intake channel has not yet opened.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md), the
+[Code of Conduct](CODE_OF_CONDUCT.md), and the
+[development guide](docs/DEVELOPMENT.md) before proposing a change. Never put
+vulnerabilities, secrets, private user content, or personal data in an issue or
+pull request.
+
 ## Security and privacy
 
 Do not report a security vulnerability in a public issue. The private reporting
@@ -276,4 +391,8 @@ before a public launch.
 
 ## Licensing
 
-The repository is licensed under Apache License 2.0. See [`LICENSE`](LICENSE).
+WokeSocial and WokeNet first-party source and documentation are licensed under
+the [MIT License](LICENSE), unless a file or package says otherwise.
+Third-party dependencies retain their own copyright and license terms. For
+example, the messaging adapter's Matrix crypto dependency is documented in its
+[third-party notices](packages/messaging/THIRD_PARTY_NOTICES.md).

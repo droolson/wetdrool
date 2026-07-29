@@ -12,9 +12,9 @@ artifact. Full product-state coverage, mobile parity, originality/legal review,
 and production asset packaging remain open.
 
 WokeSocial should feel bold, joyful, intelligent, defiant, welcoming, human,
-contemporary, and trustworthy. The experience is explicitly LGBTQ+ affirming
-without treating queer identity as a decorative motif or restricting the
-network to LGBTQ+ people.
+contemporary, and trustworthy. The experience is open to everyone without
+treating anyone's identity as a decorative motif or restricting the network to
+a particular group.
 
 ## Core idea
 

@@ -9,8 +9,11 @@ Repository controls can support compliance; they cannot establish it alone.
 
 ## Required review areas
 
-- Entity, ownership, open-source licensing, trademarks, brand clearance, and
-  contributor terms.
+- Entity, ownership, the repository's current MIT licensing and contributor
+  grant, third-party notices, trademarks, brand clearance, and contributor
+  terms. Before publicly representing the Apache-2.0-to-MIT change as a
+  completed relicensing of repository history, confirm that the owner holds the
+  necessary rights or obtain consent from every applicable copyright holder.
 - Terms of service, privacy notice, cookie notice, community guidelines,
   acceptable-use policy, appeals policy, transparency reporting, and law
   enforcement request policy.

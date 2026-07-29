@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "description": "Fail-closed pairwise E2EE adapter for WokeSocial devices",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "engines": {
     "node": ">=20.19.0"
   },
@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

@@ -45,7 +45,8 @@ deep-link, wallet-handoff, notification, and device-level abuse testing.
 The moderation model must:
 
 - Give people immediate, comprehensible control over what reaches them.
-- Protect LGBTQ+ people and other frequently targeted groups without requiring disclosure of protected identity.
+- Protect people who are frequently targeted without requiring disclosure of
+  protected identity.
 - Let communities adopt and export their own lawful rules and scoped moderator roles.
 - Let clients and indexers publish different lawful policies without pretending that one company controls all protocol speech.
 - Restrict protocol validity only for narrow technical abuse.
