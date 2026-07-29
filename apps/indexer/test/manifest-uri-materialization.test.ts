@@ -156,6 +156,10 @@ function communityCreated(manifestUri: string): DecodedAnchorEvent {
     manifestUri,
     governanceVersion: 1,
     governanceStrategyHash: Uint8Array.from({ length: 32 }, () => 10),
+    visibility: 'public',
+    membershipPolicy: 'open',
+    membershipPolicySequence: 1n,
+    membershipSequence: 0n,
     createdAtSlot: 42n,
   };
 }

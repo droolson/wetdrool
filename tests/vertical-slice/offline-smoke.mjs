@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 
 import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
@@ -48,6 +49,21 @@ const communityPayload = buildCommunityPayload(
 const communityGovernance = communityGovernanceStrategyCommitment(communityPayload.content);
 assert.equal(communityGovernance.governanceVersion, 1);
 assert.equal(communityGovernance.bytes.byteLength, 32);
+const membershipPayload = buildCommunityMembershipPayload(
+  builder,
+  {
+    action: 'join',
+    communityAddress: deterministicTestKeypair(73).publicKey.toBase58(),
+    member: identityId,
+    replacement: { sequence: 1 },
+    roles: ['member'],
+    state: 'active',
+  },
+  {
+    createdAt: new Date('2026-07-28T14:03:00.000Z'),
+    nonce: deterministicNonce(4),
+  },
+);
 
 for (const payload of [
   buildProfilePayload(
@@ -69,6 +85,7 @@ for (const payload of [
     nonce: deterministicNonce(2),
   }),
   communityPayload,
+  membershipPayload,
 ]) {
   const envelope = signPayload(payload, privateKey);
   const bytes = canonicalizeEnvelope(envelope);

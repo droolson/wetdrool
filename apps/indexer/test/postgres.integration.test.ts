@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
@@ -33,6 +34,7 @@ import { LocalContentAddressedStorage, type StorageReceipt } from '@wokesocial/s
 
 import {
   buildIndexerApp,
+  deriveCommunityMembershipAddress,
   loadDurableRawEventLedger,
   EXPECTED_INDEXER_MIGRATION_COUNT,
   LATEST_INDEXER_MIGRATION,
@@ -1009,6 +1011,30 @@ describe('PostgreSQL indexer integration', () => {
       );
       const postReference = bs58.encode(randomBytes(32));
       const communityAddress = bs58.encode(randomBytes(32));
+      const membershipAddress = await deriveCommunityMembershipAddress(
+        programId,
+        communityAddress,
+        viewer.identityAddress,
+      );
+      const membership = await publish(
+        storage,
+        buildCommunityMembershipPayload(
+          viewer.builder,
+          {
+            communityAddress,
+            member: viewer.identityId,
+            action: 'join',
+            state: 'active',
+            roles: ['member'],
+            replacement: { sequence: 1 },
+          },
+          {
+            createdAt: new Date('2026-07-28T13:11:00.000Z'),
+            nonce: nonce(11),
+          },
+        ),
+        viewer.privateKey,
+      );
       const strategy1 = communityGovernance.digest;
       const strategy2 = encodeMultibaseBase64Url(randomBytes(32));
       const nextRootAuthority = bs58.encode(randomBytes(32));
@@ -1074,7 +1100,7 @@ describe('PostgreSQL indexer integration', () => {
           delegateAuthority,
           delegationSequence: 1n,
           identitySequence: 4n,
-          scopes: 3,
+          scopes: 11,
           issuedAtRootRotationCount: 0n,
           expiresAtSlot: 100n,
         },
@@ -1101,6 +1127,10 @@ describe('PostgreSQL indexer integration', () => {
           manifestHash: community.envelope.proof.payloadHash,
           governanceVersion: 1,
           governanceStrategyHash: strategy1,
+          visibility: 'public',
+          membershipPolicy: 'open',
+          membershipPolicySequence: 1n,
+          membershipSequence: 0n,
         },
         {
           ...eventBase(networkId, 10n, 10, '2026-07-28T13:10:00.000Z'),
@@ -1118,14 +1148,22 @@ describe('PostgreSQL indexer integration', () => {
           ...eventBase(networkId, 11n, 11, '2026-07-28T13:11:00.000Z'),
           type: 'community-membership-changed',
           communityAddress,
-          membershipAddress: bs58.encode(randomBytes(32)),
+          membershipAddress,
           memberIdentityId: viewer.identityId,
-          assignedByIdentityId: author.identityId,
-          authority: authorAuthority,
-          authoritySequence: 7n,
+          actorIdentityId: viewer.identityId,
+          authority: bs58.encode(viewer.publicKey),
+          action: 'join',
+          state: 'active',
+          actorSequence: 3n,
+          memberActionSequence: 3n,
+          membershipPolicySequence: 1n,
+          communityMembershipSequence: 1n,
+          activeSinceMembershipSequence: 1n,
           membershipStateSequence: 1n,
           roles: 1,
-          active: true,
+          manifestCid: membership.receipt.cid,
+          manifestHash: membership.envelope.proof.payloadHash,
+          manifestUri: `ipfs://${membership.receipt.cid}`,
         },
         {
           ...eventBase(networkId, 12n, 12, '2026-07-28T13:12:00.000Z'),
@@ -1135,7 +1173,7 @@ describe('PostgreSQL indexer integration', () => {
           targetPostReference: postReference,
           authority: authorAuthority,
           reactionKind: 1,
-          reactorSequence: 8n,
+          reactorSequence: 7n,
           reactionStateSequence: 1n,
           active: true,
         },
@@ -1145,7 +1183,7 @@ describe('PostgreSQL indexer integration', () => {
           identityId: author.identityId,
           previousRootAuthority: authorAuthority,
           newRootAuthority: nextRootAuthority,
-          identitySequence: 9n,
+          identitySequence: 8n,
           rotationCount: 1n,
         },
         {
@@ -1155,7 +1193,7 @@ describe('PostgreSQL indexer integration', () => {
           delegationAddress: currentDelegationAddress,
           delegateAuthority: currentDelegateAuthority,
           delegationSequence: 2n,
-          identitySequence: 10n,
+          identitySequence: 9n,
           scopes: 1,
           issuedAtRootRotationCount: 1n,
           expiresAtSlot: 100n,
@@ -1167,7 +1205,7 @@ describe('PostgreSQL indexer integration', () => {
           delegationAddress: currentDelegationAddress,
           delegateAuthority: currentDelegateAuthority,
           delegationSequence: 2n,
-          identitySequence: 11n,
+          identitySequence: 10n,
           delegationStateSequence: 2n,
         },
       ] as const satisfies readonly ProtocolEvent[];
@@ -1378,6 +1416,17 @@ describe('PostgreSQL indexer integration', () => {
           identityId: author.identityId,
           authority: delegateAuthority,
           kind: 'delegation',
+          objectType: 'community-membership',
+          slot: 12n,
+          transactionSignature: events[12].transactionSignature,
+          logIndex: 0,
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        projection.authorizeSigningKey({
+          identityId: author.identityId,
+          authority: delegateAuthority,
+          kind: 'delegation',
           objectType: 'profile',
           slot: 14n,
           transactionSignature: events[14].transactionSignature,
@@ -1392,6 +1441,17 @@ describe('PostgreSQL indexer integration', () => {
           objectType: 'profile',
           slot: 15n,
           transactionSignature: events[15].transactionSignature,
+          logIndex: 0,
+        }),
+      ).resolves.toBe(false);
+      await expect(
+        projection.authorizeSigningKey({
+          identityId: author.identityId,
+          authority: currentDelegateAuthority,
+          kind: 'delegation',
+          objectType: 'community-membership',
+          slot: 14n,
+          transactionSignature: events[14].transactionSignature,
           logIndex: 0,
         }),
       ).resolves.toBe(false);

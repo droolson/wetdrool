@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import anchor from '@coral-xyz/anchor';
 import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   PROFILE_SCHEMA_VERSION,
   buildPostPayload,
@@ -37,6 +38,7 @@ const CONFIG_SEED = Buffer.from('config');
 const IDENTITY_SEED = Buffer.from('identity');
 const POST_SEED = Buffer.from('post');
 const COMMUNITY_SEED = Buffer.from('community');
+const MEMBERSHIP_SEED = Buffer.from('membership');
 const FOLLOW_SEED = Buffer.from('follow');
 const TOMBSTONE_SEED = Buffer.from('tombstone');
 const AUTHOR_DISPLAY_NAME = 'Avery Sol';
@@ -85,6 +87,11 @@ const viewerIdentity = identityAddress(program.programId, viewerAuthority.public
 const postReference = postAddress(program.programId, authorIdentity, postNonce);
 const tombstonedPostReference = postAddress(program.programId, authorIdentity, tombstonedPostNonce);
 const communityReference = communityAddress(program.programId, authorIdentity, communityNonce);
+const membershipReference = communityMembershipAddress(
+  program.programId,
+  communityReference,
+  viewerIdentity,
+);
 const followEdge = PublicKey.findProgramAddressSync(
   [PDA_PREFIX, PDA_VERSION, FOLLOW_SEED, viewerIdentity.toBuffer(), authorIdentity.toBuffer()],
   program.programId,
@@ -106,6 +113,12 @@ const authorBuilder = createPayloadBuilderIdentity(
   networkId,
   authorIdentityId,
   authorAuthority.publicKey.toBytes(),
+  'root',
+);
+const viewerBuilder = createPayloadBuilderIdentity(
+  networkId,
+  viewerIdentityId,
+  viewerAuthority.publicKey.toBytes(),
   'root',
 );
 const storage = new LocalContentAddressedStorage({
@@ -180,6 +193,27 @@ const community = await publishEnvelope(
 );
 const communityGovernance = communityGovernanceStrategyCommitment(
   community.envelope.payload.content,
+);
+const membership = await publishEnvelope(
+  storage,
+  signPayload(
+    buildCommunityMembershipPayload(
+      viewerBuilder,
+      {
+        action: 'join',
+        communityAddress: communityReference.toBase58(),
+        member: viewerIdentityId,
+        replacement: { sequence: 1 },
+        roles: ['member'],
+        state: 'active',
+      },
+      {
+        createdAt: new Date('2026-07-28T14:04:00.000Z'),
+        nonce: nonce(223),
+      },
+    ),
+    viewerAuthority.secretKey.subarray(0, 32),
+  ),
 );
 
 const transactionSignatures = [];
@@ -343,6 +377,8 @@ transactionSignatures.push(
       manifestUri: `ipfs://${community.cid}`,
       governanceVersion: communityGovernance.governanceVersion,
       governanceStrategyHash: Array.from(communityGovernance.bytes),
+      visibility: { public: {} },
+      membershipPolicy: { open: {} },
     })
     .accountsStrict({
       config,
@@ -353,6 +389,29 @@ transactionSignatures.push(
       systemProgram: SystemProgram.programId,
     })
     .signers([authorAuthority])
+    .rpc(),
+);
+transactionSignatures.push(
+  await program.methods
+    .joinCommunity({
+      expectedMemberSequence: new BN(1),
+      expectedStateSequence: new BN(0),
+      expectedMembershipPolicySequence: new BN(1),
+      expectedCommunityMembershipSequence: new BN(0),
+      manifestHash: digestBytes(membership.envelope.proof.payloadHash),
+      manifestUri: `ipfs://${membership.cid}`,
+    })
+    .accountsStrict({
+      config,
+      community: communityReference,
+      memberIdentity: viewerIdentity,
+      membership: membershipReference,
+      authority: viewerAuthority.publicKey,
+      payer: deployer.publicKey,
+      systemProgram: SystemProgram.programId,
+      delegation: null,
+    })
+    .signers([viewerAuthority])
     .rpc(),
 );
 
@@ -380,6 +439,10 @@ await writeFile(
       communityPayloadHash: community.envelope.proof.payloadHash,
       communitySlug: COMMUNITY_SLUG,
       followEdge: followEdge.toBase58(),
+      membershipAddress: membershipReference.toBase58(),
+      membershipCid: membership.cid,
+      membershipObjectId: membership.objectId,
+      membershipPayloadHash: membership.envelope.proof.payloadHash,
       networkId,
       postBody: POST_BODY,
       postCid: post.cid,
@@ -430,6 +493,13 @@ function communityAddress(programId, creatorIdentity, communityNonce) {
       creatorIdentity.toBuffer(),
       Buffer.from(communityNonce),
     ],
+    programId,
+  )[0];
+}
+
+function communityMembershipAddress(programId, community, memberIdentity) {
+  return PublicKey.findProgramAddressSync(
+    [PDA_PREFIX, PDA_VERSION, MEMBERSHIP_SEED, community.toBuffer(), memberIdentity.toBuffer()],
     programId,
   )[0];
 }

@@ -11,6 +11,7 @@ export type ExternalEnforcementCheck =
   | 'target-author-or-authorized-delete'
   | 'community-authority'
   | 'community-membership'
+  | 'community-membership-policy'
   | 'moderation-provider-policy'
   | 'proposal-eligibility-and-window'
   | 'vote-eligibility-and-weight'
@@ -60,7 +61,7 @@ const AUTHORIZATION_REQUIREMENTS = {
   community: policy(['community.create'], ['replacement-chain'], 'root-only'),
   'community-membership': policy(
     ['community.membership'],
-    ['target-exists', 'community-authority', 'community-membership', 'replacement-chain'],
+    ['target-exists', 'community-membership-policy', 'community-membership', 'replacement-chain'],
   ),
   'community-role': policy(
     ['community.admin'],
@@ -105,6 +106,21 @@ const LEGACY_COMMUNITY_AUTHORIZATION_REQUIREMENT = policy(
   ['replacement-chain'],
 );
 
+const LEGACY_COMMUNITY_MEMBERSHIP_AUTHORIZATION_REQUIREMENT = policy(
+  ['community.membership'],
+  ['target-exists', 'community-authority', 'community-membership', 'replacement-chain'],
+);
+
+const MODERATED_COMMUNITY_MEMBERSHIP_AUTHORIZATION_REQUIREMENT = policy(
+  ['community.admin'],
+  ['target-exists', 'community-authority', 'community-membership', 'replacement-chain'],
+);
+
+const COMMUNITY_MEMBERSHIP_LEAVE_AUTHORIZATION_REQUIREMENT = policy(
+  ['community.membership'],
+  ['target-exists', 'community-membership', 'replacement-chain'],
+);
+
 export function authorizationRequirementFor(
   payloadOrType: PortablePayload | PortablePayloadType,
 ): ObjectAuthorizationRequirement {
@@ -114,6 +130,27 @@ export function authorizationRequirementFor(
     payloadOrType.schemaVersion === 1
   ) {
     return LEGACY_COMMUNITY_AUTHORIZATION_REQUIREMENT;
+  }
+  if (
+    typeof payloadOrType !== 'string' &&
+    payloadOrType.type === 'community-membership' &&
+    payloadOrType.schemaVersion === 1
+  ) {
+    return LEGACY_COMMUNITY_MEMBERSHIP_AUTHORIZATION_REQUIREMENT;
+  }
+  if (
+    typeof payloadOrType !== 'string' &&
+    payloadOrType.type === 'community-membership' &&
+    (payloadOrType.content.action === 'remove' || payloadOrType.content.action === 'ban')
+  ) {
+    return MODERATED_COMMUNITY_MEMBERSHIP_AUTHORIZATION_REQUIREMENT;
+  }
+  if (
+    typeof payloadOrType !== 'string' &&
+    payloadOrType.type === 'community-membership' &&
+    payloadOrType.content.action === 'leave'
+  ) {
+    return COMMUNITY_MEMBERSHIP_LEAVE_AUTHORIZATION_REQUIREMENT;
   }
   return AUTHORIZATION_REQUIREMENTS[
     typeof payloadOrType === 'string' ? payloadOrType : payloadOrType.type

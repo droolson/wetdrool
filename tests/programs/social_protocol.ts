@@ -7,6 +7,7 @@ import { describe, it } from "mocha";
 
 import type { Program } from "@coral-xyz/anchor";
 import type { SocialProtocol } from "../../target/types/social_protocol";
+import { registerCommunityMembershipTests } from "./community_membership";
 import { registerGovernanceTests } from "./governance";
 import { parsedEvents } from "./governance_test_helpers";
 import { registerIdentityDeactivationTests } from "./identity_deactivation";
@@ -39,7 +40,6 @@ const PROFILE_SCHEMA_VERSION = 2;
 const SCOPE_SOCIAL = 1 << 2;
 const SCOPE_COMMUNITY = 1 << 3;
 const COMMUNITY_ROLE_MEMBER = 1;
-const COMMUNITY_ROLE_MODERATOR = 1 << 1;
 const REACTION_LIKE = 1;
 
 function digest(value: string): number[] {
@@ -1033,6 +1033,8 @@ describe("social_protocol local-validator vertical slice", () => {
         manifestUri: manifestUri("community-manifest-v1"),
         governanceVersion: 1,
         governanceStrategyHash: governanceHashV1,
+        visibility: { public: {} },
+        membershipPolicy: { open: {} },
       })
       .accountsStrict({
         config,
@@ -1045,91 +1047,99 @@ describe("social_protocol local-validator vertical slice", () => {
       .signers([rotatedAuthority])
       .rpc();
 
-    await program.methods
-      .setCommunityMembership({
-        expectedAuthoritySequence: new BN(16),
-        active: true,
-        roles: COMMUNITY_ROLE_MEMBER,
-      })
-      .accountsStrict({
-        config,
-        creatorIdentity: authorIdentity,
-        community,
-        memberIdentity: subjectIdentity,
-        membership,
-        authority: rotatedAuthority.publicKey,
-        payer: provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-        delegation: null,
-      })
-      .signers([rotatedAuthority])
-      .rpc();
-
-    await assert.rejects(
-      program.methods
-        .setCommunityMembership({
-          expectedAuthoritySequence: new BN(17),
-          active: true,
-          roles: COMMUNITY_ROLE_MEMBER,
+    let subjectSequence = (
+      await program.account.identity.fetch(subjectIdentity)
+    ).sequence.toNumber();
+    let membershipStateSequence = 0;
+    let communityMembershipSequence = 0;
+    const joinSubject = async (label: string): Promise<void> => {
+      await program.methods
+        .joinCommunity({
+          expectedMemberSequence: new BN(subjectSequence),
+          expectedStateSequence: new BN(membershipStateSequence),
+          expectedMembershipPolicySequence: new BN(1),
+          expectedCommunityMembershipSequence: new BN(
+            communityMembershipSequence,
+          ),
+          manifestHash: digest(label),
+          manifestUri: manifestUri(label),
         })
         .accountsStrict({
           config,
-          creatorIdentity: authorIdentity,
           community,
           memberIdentity: subjectIdentity,
           membership,
-          authority: rotatedAuthority.publicKey,
+          authority: subjectAuthority.publicKey,
           payer: provider.wallet.publicKey,
           systemProgram: SystemProgram.programId,
           delegation: null,
         })
-        .signers([rotatedAuthority])
+        .signers([subjectAuthority])
+        .rpc();
+      subjectSequence += 1;
+      membershipStateSequence += 1;
+      communityMembershipSequence += 1;
+    };
+    const leaveSubject = async (label: string): Promise<void> => {
+      await program.methods
+        .leaveCommunity({
+          expectedMemberSequence: new BN(subjectSequence),
+          expectedStateSequence: new BN(membershipStateSequence),
+          expectedMembershipPolicySequence: new BN(1),
+          expectedCommunityMembershipSequence: new BN(
+            communityMembershipSequence,
+          ),
+          manifestHash: digest(label),
+          manifestUri: manifestUri(label),
+        })
+        .accountsStrict({
+          config,
+          community,
+          memberIdentity: subjectIdentity,
+          membership,
+          authority: subjectAuthority.publicKey,
+          delegation: null,
+        })
+        .signers([subjectAuthority])
+        .rpc();
+      subjectSequence += 1;
+      membershipStateSequence += 1;
+      communityMembershipSequence += 1;
+    };
+
+    await joinSubject("community-membership-join-1");
+    await assert.rejects(
+      program.methods
+        .joinCommunity({
+          expectedMemberSequence: new BN(subjectSequence),
+          expectedStateSequence: new BN(membershipStateSequence),
+          expectedMembershipPolicySequence: new BN(1),
+          expectedCommunityMembershipSequence: new BN(
+            communityMembershipSequence,
+          ),
+          manifestHash: digest("community-membership-duplicate-join"),
+          manifestUri: manifestUri("community-membership-duplicate-join"),
+        })
+        .accountsStrict({
+          config,
+          community,
+          memberIdentity: subjectIdentity,
+          membership,
+          authority: subjectAuthority.publicKey,
+          payer: provider.wallet.publicKey,
+          systemProgram: SystemProgram.programId,
+          delegation: null,
+        })
+        .signers([subjectAuthority])
         .rpc(),
     );
-
-    await program.methods
-      .setCommunityMembership({
-        expectedAuthoritySequence: new BN(17),
-        active: false,
-        roles: 0,
-      })
-      .accountsStrict({
-        config,
-        creatorIdentity: authorIdentity,
-        community,
-        memberIdentity: subjectIdentity,
-        membership,
-        authority: rotatedAuthority.publicKey,
-        payer: provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-        delegation: null,
-      })
-      .signers([rotatedAuthority])
-      .rpc();
-    await program.methods
-      .setCommunityMembership({
-        expectedAuthoritySequence: new BN(18),
-        active: true,
-        roles: COMMUNITY_ROLE_MEMBER,
-      })
-      .accountsStrict({
-        config,
-        creatorIdentity: authorIdentity,
-        community,
-        memberIdentity: subjectIdentity,
-        membership,
-        authority: rotatedAuthority.publicKey,
-        payer: provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-        delegation: null,
-      })
-      .signers([rotatedAuthority])
-      .rpc();
+    await leaveSubject("community-membership-leave-1");
+    await joinSubject("community-membership-join-2");
 
     const delegationSlot = await provider.connection.getSlot("confirmed");
     await program.methods
       .createDelegation({
-        expectedIdentitySequence: new BN(19),
+        expectedIdentitySequence: new BN(16),
         delegationSequence: new BN(4),
         delegateAuthority: communityDelegate.publicKey,
         scopes: SCOPE_COMMUNITY,
@@ -1146,36 +1156,52 @@ describe("social_protocol local-validator vertical slice", () => {
       .signers([rotatedAuthority])
       .rpc();
 
-    await program.methods
-      .setCommunityMembership({
-        expectedAuthoritySequence: new BN(20),
-        active: true,
-        roles: COMMUNITY_ROLE_MEMBER | COMMUNITY_ROLE_MODERATOR,
-      })
-      .accountsStrict({
-        config,
-        creatorIdentity: authorIdentity,
-        community,
-        memberIdentity: subjectIdentity,
-        membership,
-        authority: communityDelegate.publicKey,
-        payer: provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-        delegation: communityDelegation,
-      })
-      .signers([communityDelegate])
-      .rpc();
-
-    await assert.rejects(
-      program.methods
-        .setCommunityMembership({
-          expectedAuthoritySequence: new BN(21),
-          active: true,
-          roles: COMMUNITY_ROLE_MEMBER,
+    let creatorSequence = 17;
+    for (let index = 0; index < 4; index += 1) {
+      const label = `community-membership-remove-${index + 1}`;
+      await program.methods
+        .moderateCommunityMembership({
+          expectedCreatorSequence: new BN(creatorSequence),
+          expectedStateSequence: new BN(membershipStateSequence),
+          expectedMembershipPolicySequence: new BN(1),
+          expectedCommunityMembershipSequence: new BN(
+            communityMembershipSequence,
+          ),
+          action: { remove: {} },
+          manifestHash: digest(label),
+          manifestUri: manifestUri(label),
         })
         .accountsStrict({
           config,
           creatorIdentity: authorIdentity,
+          community,
+          memberIdentity: subjectIdentity,
+          membership,
+          authority: communityDelegate.publicKey,
+          delegation: communityDelegation,
+        })
+        .signers([communityDelegate])
+        .rpc();
+      creatorSequence += 1;
+      membershipStateSequence += 1;
+      communityMembershipSequence += 1;
+      await joinSubject(`community-membership-rejoin-${index + 1}`);
+    }
+
+    await assert.rejects(
+      program.methods
+        .joinCommunity({
+          expectedMemberSequence: new BN(creatorSequence),
+          expectedStateSequence: new BN(membershipStateSequence),
+          expectedMembershipPolicySequence: new BN(1),
+          expectedCommunityMembershipSequence: new BN(
+            communityMembershipSequence,
+          ),
+          manifestHash: digest("community-membership-substitution"),
+          manifestUri: manifestUri("community-membership-substitution"),
+        })
+        .accountsStrict({
+          config,
           community,
           memberIdentity: authorIdentity,
           membership,
@@ -1233,12 +1259,20 @@ describe("social_protocol local-validator vertical slice", () => {
       communityState.governanceStrategyHash,
       governanceHashV2,
     );
-    assert.equal(membershipState.active, true);
+    assert.deepEqual(membershipState.state, { active: {} });
+    assert.equal(membershipState.roles, COMMUNITY_ROLE_MEMBER);
     assert.equal(
-      membershipState.roles,
-      COMMUNITY_ROLE_MEMBER | COMMUNITY_ROLE_MODERATOR,
+      membershipState.stateSequence.toNumber(),
+      membershipStateSequence,
     );
-    assert.equal(membershipState.stateSequence.toNumber(), 4);
+    assert.equal(
+      membershipState.memberActionSequence.toNumber(),
+      subjectSequence,
+    );
+    assert.equal(
+      communityState.membershipSequence.toNumber(),
+      communityMembershipSequence,
+    );
 
     // The mismatched existing PDA above must remain the only membership account.
     assert.equal(
@@ -1268,7 +1302,7 @@ describe("social_protocol local-validator vertical slice", () => {
 
     await program.methods
       .setReaction({
-        expectedReactorSequence: new BN(0),
+        expectedReactorSequence: new BN(7),
         reactionKind: REACTION_LIKE,
         active: true,
       })
@@ -1287,7 +1321,7 @@ describe("social_protocol local-validator vertical slice", () => {
     await assert.rejects(
       program.methods
         .setReaction({
-          expectedReactorSequence: new BN(1),
+          expectedReactorSequence: new BN(8),
           reactionKind: REACTION_LIKE,
           active: true,
         })
@@ -1307,7 +1341,7 @@ describe("social_protocol local-validator vertical slice", () => {
     await assert.rejects(
       program.methods
         .setReaction({
-          expectedReactorSequence: new BN(1),
+          expectedReactorSequence: new BN(8),
           reactionKind: REACTION_LIKE,
           active: false,
         })
@@ -1326,7 +1360,7 @@ describe("social_protocol local-validator vertical slice", () => {
 
     await program.methods
       .setReaction({
-        expectedReactorSequence: new BN(1),
+        expectedReactorSequence: new BN(8),
         reactionKind: REACTION_LIKE,
         active: false,
       })
@@ -1343,7 +1377,7 @@ describe("social_protocol local-validator vertical slice", () => {
       .rpc();
     await program.methods
       .setReaction({
-        expectedReactorSequence: new BN(2),
+        expectedReactorSequence: new BN(9),
         reactionKind: REACTION_LIKE,
         active: true,
       })
@@ -1364,7 +1398,7 @@ describe("social_protocol local-validator vertical slice", () => {
     const configState = await program.account.protocolConfig.fetch(config);
     assert.equal(reactionState.active, true);
     assert.equal(reactionState.stateSequence.toNumber(), 3);
-    assert.equal(reactionState.reactorSequence.toNumber(), 3);
+    assert.equal(reactionState.reactorSequence.toNumber(), 10);
     assert.equal(configState.delegationCount.toNumber(), 5);
     assert.equal(configState.blockEdgeCount.toNumber(), 1);
     assert.equal(configState.communityCount.toNumber(), 1);
@@ -1635,8 +1669,8 @@ describe("social_protocol local-validator vertical slice", () => {
       { address: measuredTombstone, label: "tombstone", space: 155 },
       { address: profileDelegation, label: "delegation", space: 190 },
       { address: blockEdge, label: "block edge", space: 139 },
-      { address: community, label: "community", space: 392 },
-      { address: membership, label: "community membership", space: 173 },
+      { address: community, label: "community", space: 410 },
+      { address: membership, label: "community membership", space: 426 },
       { address: reactionReference, label: "reaction reference", space: 140 },
     ];
     const rentEvidence = [];
@@ -1667,4 +1701,5 @@ describe("social_protocol local-validator vertical slice", () => {
   registerRecoveryTests({ config, program, provider });
   registerPaymentTests({ config, program, provider });
   registerIdentityDeactivationTests({ config, program, provider });
+  registerCommunityMembershipTests({ config, program, provider });
 });

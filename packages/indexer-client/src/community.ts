@@ -1,4 +1,10 @@
-import { networkIdSchema, solanaPublicKeySchema } from '@wokesocial/protocol';
+import {
+  networkIdSchema,
+  solanaPublicKeySchema,
+  timestampSchema,
+  transactionSignatureSchema,
+  unsigned64Schema,
+} from '@wokesocial/protocol';
 
 import {
   IndexerPayloadError,
@@ -33,12 +39,53 @@ export interface CommunityDetailResponse {
   projection: 'wokenet-open-indexer';
 }
 
+export type CommunityMembershipAction = 'ban' | 'join' | 'leave' | 'remove';
+export type CommunityMembershipState = 'active' | 'banned' | 'left' | 'removed';
+
+export interface CommunityMembershipStatus {
+  activeSinceMembershipSequence: string;
+  action: CommunityMembershipAction;
+  communityAddress: string;
+  communityMembershipSequence: string;
+  memberActionSequence: string;
+  membershipAddress: string;
+  membershipPolicySequence: string;
+  roles: [] | ['member'];
+  state: CommunityMembershipState;
+  stateSequence: string;
+  updatedAt: string;
+  updatedSlot: string;
+}
+
+export interface CommunityMembershipProof {
+  finality: 'finalized';
+  kind: 'wokesocial-program-event';
+  logIndex: number;
+  slot: string;
+  transactionIndex: number | null;
+  transactionSignature: string;
+}
+
+export interface CommunityMembershipStatusResponse {
+  canonical: false;
+  membership: CommunityMembershipStatus;
+  meta: IndexerMeta;
+  network: string;
+  projection: 'wokenet-open-indexer';
+  proof: CommunityMembershipProof;
+}
+
 export type CommunityDirectoryResult =
   | { endpoint: string; kind: 'ready'; value: CommunityDirectoryResponse }
   | { detail: string; kind: 'degraded'; reason: DegradedReason };
 
 export type CommunityDetailResult =
   | { endpoint: string; kind: 'ready'; value: CommunityDetailResponse }
+  | { kind: 'not-found' }
+  | { detail: string; kind: 'degraded'; reason: DegradedReason };
+
+export type CommunityMembershipStatusResult =
+  | { endpoint: string; kind: 'ready'; value: CommunityMembershipStatusResponse }
   | { kind: 'not-found' }
   | { detail: string; kind: 'degraded'; reason: DegradedReason };
 
@@ -53,9 +100,17 @@ export interface CommunityDetailRequest {
   network: string;
 }
 
+export interface CommunityMembershipStatusRequest {
+  address: string;
+  network: string;
+}
+
 export interface CommunityClient {
   detail(request: CommunityDetailRequest): Promise<CommunityDetailResult>;
   directory(request: CommunityDirectoryRequest): Promise<CommunityDirectoryResult>;
+  membershipStatus(
+    request: CommunityMembershipStatusRequest,
+  ): Promise<CommunityMembershipStatusResult>;
 }
 
 export type CommunityCursorState =
@@ -98,6 +153,70 @@ function canonicalNetwork(value: unknown, label: string): string {
     );
   }
   return parsed.data;
+}
+
+function canonicalPublicKey(value: unknown, label: string): string {
+  const parsed = solanaPublicKeySchema.safeParse(value);
+  if (!parsed.success) {
+    throw new IndexerPayloadError(`${label} must be a canonical 32-byte Solana public key.`);
+  }
+  return parsed.data;
+}
+
+function canonicalUnsigned64(value: unknown, label: string): string {
+  const parsed = unsigned64Schema.safeParse(value);
+  if (!parsed.success) {
+    throw new IndexerPayloadError(`${label} must be a canonical unsigned 64-bit integer string.`);
+  }
+  return parsed.data;
+}
+
+function canonicalTimestamp(value: unknown, label: string): string {
+  const parsed = timestampSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new IndexerPayloadError(`${label} must be a canonical timestamp.`);
+  }
+  return parsed.data;
+}
+
+function canonicalTransactionSignature(value: unknown, label: string): string {
+  const parsed = transactionSignatureSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new IndexerPayloadError(`${label} must be a canonical Solana transaction signature.`);
+  }
+  return parsed.data;
+}
+
+function nonNegativeSafeInteger(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+    throw new IndexerPayloadError(`${label} must be a non-negative safe integer.`);
+  }
+  return value;
+}
+
+function membershipAction(value: unknown): CommunityMembershipAction {
+  if (value === 'join' || value === 'leave' || value === 'remove' || value === 'ban') {
+    return value;
+  }
+  throw new IndexerPayloadError('community membership status.action is invalid.');
+}
+
+function membershipState(value: unknown): CommunityMembershipState {
+  if (value === 'active' || value === 'left' || value === 'removed' || value === 'banned') {
+    return value;
+  }
+  throw new IndexerPayloadError('community membership status.state is invalid.');
+}
+
+function parseMembershipRoles(value: unknown): [] | ['member'] {
+  if (!Array.isArray(value)) {
+    throw new IndexerPayloadError('community membership status.roles must be an array.');
+  }
+  if (value.length === 0) return [];
+  if (value.length === 1 && value[0] === 'member') return ['member'];
+  throw new IndexerPayloadError(
+    'community membership status.roles must be [] or the exact member role.',
+  );
 }
 
 function checkpointCoversCommunity(
@@ -227,6 +346,171 @@ export function parseCommunityDetailResponse(
     meta,
     network,
     projection: 'wokenet-open-indexer',
+  };
+}
+
+export function parseCommunityMembershipStatusResponse(
+  value: unknown,
+  expected?: { address: string; network: string },
+): CommunityMembershipStatusResponse {
+  const response = record(value, 'community membership status response');
+  exactKeys(response, 'community membership status response', [
+    'canonical',
+    'membership',
+    'meta',
+    'network',
+    'projection',
+    'proof',
+  ]);
+  const network = canonicalNetwork(
+    response.network,
+    'community membership status response.network',
+  );
+  if (
+    response.canonical !== false ||
+    response.projection !== 'wokenet-open-indexer' ||
+    (expected !== undefined && network !== expected.network)
+  ) {
+    throw new IndexerPayloadError('The community membership status metadata is invalid.');
+  }
+  const membership = record(response.membership, 'community membership status');
+  exactKeys(membership, 'community membership status', [
+    'activeSinceMembershipSequence',
+    'action',
+    'communityAddress',
+    'communityMembershipSequence',
+    'memberActionSequence',
+    'membershipAddress',
+    'membershipPolicySequence',
+    'roles',
+    'state',
+    'stateSequence',
+    'updatedAt',
+    'updatedSlot',
+  ]);
+  const communityAddress = canonicalPublicKey(
+    membership.communityAddress,
+    'community membership status.communityAddress',
+  );
+  const membershipAddress = canonicalPublicKey(
+    membership.membershipAddress,
+    'community membership status.membershipAddress',
+  );
+  if (expected !== undefined && membershipAddress !== expected.address) {
+    throw new IndexerPayloadError('The membership status response changed its requested address.');
+  }
+  const action = membershipAction(membership.action);
+  const state = membershipState(membership.state);
+  const stateSequence = canonicalUnsigned64(
+    membership.stateSequence,
+    'community membership status.stateSequence',
+  );
+  const memberActionSequence = canonicalUnsigned64(
+    membership.memberActionSequence,
+    'community membership status.memberActionSequence',
+  );
+  const membershipPolicySequence = canonicalUnsigned64(
+    membership.membershipPolicySequence,
+    'community membership status.membershipPolicySequence',
+  );
+  const communityMembershipSequence = canonicalUnsigned64(
+    membership.communityMembershipSequence,
+    'community membership status.communityMembershipSequence',
+  );
+  const activeSinceMembershipSequence = canonicalUnsigned64(
+    membership.activeSinceMembershipSequence,
+    'community membership status.activeSinceMembershipSequence',
+  );
+  const updatedSlot = canonicalUnsigned64(
+    membership.updatedSlot,
+    'community membership status.updatedSlot',
+  );
+  if (
+    BigInt(stateSequence) === 0n ||
+    BigInt(memberActionSequence) === 0n ||
+    BigInt(membershipPolicySequence) === 0n ||
+    BigInt(communityMembershipSequence) === 0n
+  ) {
+    throw new IndexerPayloadError('Community membership proof sequences must be positive.');
+  }
+  const expectedState = {
+    ban: 'banned',
+    join: 'active',
+    leave: 'left',
+    remove: 'removed',
+  }[action];
+  const roles = parseMembershipRoles(membership.roles);
+  if (
+    state !== expectedState ||
+    (state === 'active' &&
+      (roles.length !== 1 ||
+        BigInt(activeSinceMembershipSequence) !== BigInt(communityMembershipSequence))) ||
+    (state !== 'active' && (roles.length !== 0 || BigInt(activeSinceMembershipSequence) !== 0n))
+  ) {
+    throw new IndexerPayloadError('Community membership action, state, roles, and proof disagree.');
+  }
+  const proof = record(response.proof, 'community membership proof');
+  exactKeys(proof, 'community membership proof', [
+    'finality',
+    'kind',
+    'logIndex',
+    'slot',
+    'transactionIndex',
+    'transactionSignature',
+  ]);
+  const proofSlot = canonicalUnsigned64(proof.slot, 'community membership proof.slot');
+  const transactionSignature = canonicalTransactionSignature(
+    proof.transactionSignature,
+    'community membership proof.transactionSignature',
+  );
+  const logIndex = nonNegativeSafeInteger(proof.logIndex, 'community membership proof.logIndex');
+  const transactionIndex =
+    proof.transactionIndex === null
+      ? null
+      : nonNegativeSafeInteger(
+          proof.transactionIndex,
+          'community membership proof.transactionIndex',
+        );
+  if (
+    proof.kind !== 'wokesocial-program-event' ||
+    proof.finality !== 'finalized' ||
+    proofSlot !== updatedSlot
+  ) {
+    throw new IndexerPayloadError('The community membership finalized proof is invalid.');
+  }
+  const meta = parseIndexerMeta(response.meta);
+  if (meta.checkpointSlot === null || BigInt(meta.checkpointSlot) < BigInt(updatedSlot)) {
+    throw new IndexerPayloadError(
+      'The indexer checkpoint does not cover the community membership transition.',
+    );
+  }
+  return {
+    canonical: false,
+    membership: {
+      activeSinceMembershipSequence,
+      action,
+      communityAddress,
+      communityMembershipSequence,
+      memberActionSequence,
+      membershipAddress,
+      membershipPolicySequence,
+      roles,
+      state,
+      stateSequence,
+      updatedAt: canonicalTimestamp(membership.updatedAt, 'community membership status.updatedAt'),
+      updatedSlot,
+    },
+    meta,
+    network,
+    projection: 'wokenet-open-indexer',
+    proof: {
+      finality: 'finalized',
+      kind: 'wokesocial-program-event',
+      logIndex,
+      slot: proofSlot,
+      transactionIndex,
+      transactionSignature,
+    },
   };
 }
 
@@ -482,9 +766,81 @@ export async function fetchCommunityDetail(
   }
 }
 
+export async function fetchCommunityMembershipStatus(
+  options: IndexerClientOptions,
+  request: CommunityMembershipStatusRequest,
+): Promise<CommunityMembershipStatusResult> {
+  const network = validateCommunityNetwork(request.network);
+  const addressState = validateCommunityAddress(request.address);
+  if (network === null) {
+    return degraded(
+      'invalid-response',
+      'A canonical WokeNet Solana deployment identifier is required to read membership status.',
+    );
+  }
+  if (addressState.kind !== 'valid') {
+    return degraded(
+      'invalid-response',
+      addressState.kind === 'invalid'
+        ? addressState.detail
+        : 'A canonical Solana membership address is required.',
+    );
+  }
+  const client = parseClientOptions(options);
+  if (client.kind === 'invalid') {
+    return degraded('invalid-configuration', client.detail);
+  }
+  const query = new URLSearchParams({ network });
+  const endpoint = endpointFor(
+    client.base,
+    `v1/community-memberships/${encodeURIComponent(addressState.address)}?${query.toString()}`,
+  );
+  try {
+    const outcome = await beforeDeadline(client.deadlineMs, async (signal) => {
+      const response = await client.fetch(endpoint.toString(), {
+        headers: { Accept: 'application/json' },
+        signal,
+      });
+      if (response.status === 404) return { kind: 'not-found' as const };
+      if (!response.ok) return { kind: 'http-error' as const, status: response.status };
+      try {
+        return {
+          kind: 'ready' as const,
+          value: parseCommunityMembershipStatusResponse(await readIndexerJson(response), {
+            address: addressState.address,
+            network,
+          }),
+        };
+      } catch {
+        return { kind: 'invalid-response' as const };
+      }
+    });
+    if (outcome.kind === 'not-found') return { kind: 'not-found' };
+    if (outcome.kind === 'http-error') {
+      return degraded(
+        outcome.status === 400 ? 'invalid-response' : 'unavailable',
+        `The configured indexer returned HTTP ${outcome.status}. No membership status was accepted.`,
+      );
+    }
+    if (outcome.kind === 'invalid-response') {
+      return degraded(
+        'invalid-response',
+        'The configured indexer returned data that did not match the privacy-safe membership-status contract.',
+      );
+    }
+    return { endpoint: client.base.origin, kind: 'ready', value: outcome.value };
+  } catch {
+    return degraded(
+      'unavailable',
+      'The configured indexer could not be reached before the membership-status deadline.',
+    );
+  }
+}
+
 export function createCommunityClient(options: IndexerClientOptions): CommunityClient {
   return {
     detail: (request) => fetchCommunityDetail(options, request),
     directory: (request) => fetchCommunityDirectory(options, request),
+    membershipStatus: (request) => fetchCommunityMembershipStatus(options, request),
   };
 }

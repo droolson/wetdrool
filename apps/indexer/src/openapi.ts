@@ -323,6 +323,32 @@ export const openApiDocument = {
         },
       },
     },
+    '/v1/community-memberships/{membershipAddress}': {
+      get: {
+        summary: 'Read one privacy-safe verified community membership status',
+        description:
+          'Exact-address lookup only; there is no roster endpoint. Returns a membership state only when its signed schema-v2 transition is verified, its finalized program-event proof is covered by the projection checkpoint, and its parent is a verified public or unlisted community whose effective onchain membership policy is open. Member identity, actor identity, authority, moderation reason, and portable-manifest location are never returned. Unknown, unverified, protected, restricted-policy, and checkpoint-incomplete records all fail closed with the same not-found response.',
+        parameters: [
+          {
+            name: 'membershipAddress',
+            in: 'path',
+            required: true,
+            schema: solanaPublicKeyParameterSchema,
+          },
+          networkParameter,
+        ],
+        responses: {
+          '200': {
+            description:
+              'Portable state/roles, non-identity proof sequences, finalized event provenance, and a covering projection checkpoint',
+          },
+          '400': { description: 'Invalid membership address or network' },
+          '404': {
+            description: 'Membership not found or not eligible for privacy-safe public discovery',
+          },
+        },
+      },
+    },
     '/v1/communities/{communityAddress}/proposals': {
       get: {
         summary: 'List governance proposals projected for a community',

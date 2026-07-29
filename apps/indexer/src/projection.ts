@@ -3,6 +3,7 @@ import type {
   CommunityDirectoryQuery,
   CommunityDirectorySnapshot,
   CommunityMembershipProjection,
+  CommunityMembershipStatusSnapshot,
   CommunityProjection,
   DelegationProjection,
   FeedEntry,
@@ -36,7 +37,7 @@ export interface VerifiedManifest {
   readonly signingKeyId: string;
   readonly authorIdentityId: string;
   readonly createdAt: string;
-  readonly type: 'profile' | 'post' | 'community' | 'tombstone';
+  readonly type: 'profile' | 'post' | 'community' | 'community-membership' | 'tombstone';
   readonly content: unknown;
 }
 
@@ -95,6 +96,15 @@ export interface ProjectionStore {
     networkId: string,
     communityAddress: string,
   ): Promise<readonly CommunityMembershipProjection[]>;
+  /**
+   * Returns one privacy-safe exact-address status only when its parent is a
+   * verified public/unlisted community with open membership discovery and the
+   * returned checkpoint covers the membership update.
+   */
+  getDiscoverableCommunityMembership(
+    networkId: string,
+    membershipAddress: string,
+  ): Promise<CommunityMembershipStatusSnapshot | undefined>;
   getReactionsByPostReference(
     networkId: string,
     targetPostReference: string,

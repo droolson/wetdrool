@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme';
 
-export type MobileRoute = 'feed' | 'wallet';
+export type MobileRoute = 'communities' | 'feed' | 'wallet';
 
 interface BottomNavigationProps {
   readonly onChange: (route: MobileRoute) => void;
@@ -11,6 +11,7 @@ interface BottomNavigationProps {
 
 const items = [
   { label: 'Feed', route: 'feed' },
+  { label: 'Communities', route: 'communities' },
   { label: 'Wallet', route: 'wallet' },
 ] as const;
 

@@ -49,6 +49,7 @@ export const rootIdentity = createPayloadBuilderIdentity(network, author, public
 
 const otherIdentityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 10));
 export const otherIdentity = `wokesocialid:v1:${network}:${otherIdentityPda}`;
+export const communityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 11));
 const delegatedPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => 200 - index);
 const delegatedPublicKey = ed25519.getPublicKey(delegatedPrivateKey);
 
@@ -269,10 +270,11 @@ export function createValidPayloads(): readonly PortablePayload[] {
     buildCommunityMembershipPayload(
       identity,
       {
-        community: objectReference('community'),
-        member: otherIdentity,
+        communityAddress,
+        member: author,
+        action: 'join',
         state: 'active',
-        roles: [{ role: 'member', state: 'active' }],
+        roles: ['member'],
         replacement: { sequence: 1 },
       },
       fixedOptions,

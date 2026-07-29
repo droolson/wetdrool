@@ -154,6 +154,14 @@ Roles must use least privilege. Permission scopes include, at minimum:
 
 No moderator may review an appeal of their own action. Administrative override requires a distinct permission and an audit reason.
 
+The current predeployment WokeNet membership instruction is narrower than this
+planned role system. Only the community creator identity's current root or a
+current `community`-scoped delegate can remove or ban an existing membership.
+`remove` is valid only from active; `ban` is valid from active, left, or
+removed; and banned is terminal. These transitions cannot create a join or
+impersonate the member's leave. Richer moderator-role authorization and appeal
+execution remain planned.
+
 ### 5.2 Community actions
 
 Available actions include:
@@ -184,6 +192,14 @@ Every non-personal action records:
 - Scope and distribution consequences
 - Appeal eligibility and deadline
 - Superseding action, if any
+
+The signed membership-v2 remove/ban manifest requires a bounded nonblank
+reason, but that public portable reason is not a place for report narrative,
+private evidence, protected traits, or personal information. Use only a
+non-sensitive policy category/reference. The public exact-address membership
+status endpoint omits the reason, actor/member identities, signer authority,
+and manifest location and provides no roster; the underlying Solana event and
+content reference remain publicly observable.
 
 Sensitive internal notes and evidence must not be placed onchain or in public manifests.
 

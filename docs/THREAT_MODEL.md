@@ -203,6 +203,7 @@ All mitigations below are **Planned**.
 | WN-16 | Priority-fee, blockhash, simulation, or commitment handling causes false success or excess spend | Bounded fee policy, fresh blockhash, same-byte signing, finalized confirmation, reconciliation and explicit pending/degraded UI | Expiry, fee-spike, simulation drift, timeout and delayed-finality tests |
 | WN-17 | Solana outage, congestion, reorganization, or provider concentration blocks or delays writes | Multiple RPC providers, cached verified reads, safe write stop, retry/reconciliation policy, transparent status | Provider evacuation, congestion, reorg and degraded-mode exercises |
 | WN-18 | Program upgrade-governance or external Solana network changes harm users | Hardware-backed multisig, timelock, deployed-byte monitoring, narrow emergency powers, version gates and migration plan | Authority compromise tabletop, upgrade rehearsal and dependency-change review |
+| WN-19 | A creator assigns membership without consent, a moderator action is disguised as join/leave, a banned member rejoins, or a stale sequence corrupts governance eligibility | Separate member and creator/scoped-delegate authority paths, exact action/state/role pairs, deterministic PDA, signed membership-v2 manifest, optimistic identity/state/policy/community sequences, terminal ban, proposal membership-sequence snapshot | Root/delegate substitution, self-moderation, invalid transition, stale sequence, response-loss retry, same-slot join/proposal, and post-snapshot rejoin tests |
 
 Residual risk: transaction finality and availability depend on Solana and its
 provider ecosystem, which WokeSocial does not operate or control. Clients must
@@ -225,6 +226,7 @@ All mitigations below are **Planned**.
 | CNT-09 | An author uses a future/backdated manifest timestamp, equal-time cursor collision, or nonpublic visibility to pin, skip, or disclose a post | Indexer chronology binds to finalized event time plus object-ID tie-break; bounded opaque composite cursors; unauthenticated feeds are public-only | Memory/PostgreSQL/API adversarial timestamp, pagination, and unlisted-plaintext tests |
 | CNT-10 | Gateway/storage outage removes public content | Multiple providers/gateways, local verification, health state, operator-independent publication | Provider-loss and cold-recovery exercises |
 | CNT-11 | Tombstoned content remains in official projections | Tombstone precedence, purge queue, cache invalidation, provider deletion attempts | Deletion propagation and rebuild tests |
+| CNT-12 | A public indexer turns membership events into a roster or leaks member/actor identity, signer, moderation reason, or manifest location | Exact membership-address lookup only; verified open public/unlisted parent; covering finalized checkpoint; uniform not-found response; no list/search/filter contract or identity-bearing fields | Memory/PostgreSQL/API parity, protected/restricted/checkpoint-incomplete denial, exact-key response, and roster-route absence tests |
 
 Residual risk: copied public content can survive deletion. The composer and
 deletion UI must explain the difference between removal from operated services

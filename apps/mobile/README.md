@@ -3,7 +3,8 @@
 This Expo/React Native Android app is the WokeSocial client foundation for
 Solana Seeker and other Mobile Wallet Adapter-compatible Android devices.
 WokeNet is the WokeSocial program/deployment namespace on Solana; this app does
-not connect to a separate WokeNet blockchain.
+not connect to a separate WokeNet blockchain or a WokeNet
+Firedancer/Agave validator topology.
 
 ## Current slice
 
@@ -12,9 +13,18 @@ not connect to a separate WokeNet blockchain.
   itself a WokeSocial identity.
 - Finalized verification of the configured Solana genesis and executable
   WokeSocial program account before protocol features can be enabled.
-- Strict, shared open-indexer client for the verified chronological feed.
+- Strict, shared open-indexer clients for the verified chronological feed and
+  public-community directory.
 - Honest unconfigured, unavailable, invalid-response, empty, and loading states.
 - A non-authoritative Seeker model hint for presentation only.
+
+Community discovery is read-only. The program/protocol/SDK can represent a
+member-signed join/leave and creator-or-scoped-delegate remove/ban, but this app
+does not yet select a WokeSocial identity, sign the membership manifest,
+simulate the instruction, present exact sequence/fee intent to Mobile Wallet
+Adapter, request transaction approval, verify finalized account state, or wait
+for indexer catch-up. It therefore exposes no join/leave/moderation control and
+never infers membership from a directory result.
 
 The app intentionally exposes no program transaction button yet. No public
 devnet/mainnet WokeSocial program ID is recorded in this repository, and the

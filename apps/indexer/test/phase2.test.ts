@@ -3,6 +3,7 @@ import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   buildPostPayload,
   canonicalizeEnvelope,
@@ -19,6 +20,7 @@ import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
   decodeAnchorEventLog,
+  deriveCommunityMembershipAddress,
   ManifestVerifier,
   MemoryProjectionStore,
   OpenIndexer,
@@ -27,6 +29,7 @@ import {
   type ProtocolEvent,
 } from '../src/index.js';
 import { TEST_CID } from './cid-fixtures.js';
+import { exerciseModerationAfterMemberDeactivation } from './community-membership-lifecycle-fixtures.js';
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
 const genesisHash = publicKey(70);
@@ -38,11 +41,18 @@ const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
 const memberIdentityId = `wokesocialid:v1:${networkId}:${memberAddress}`;
 const rootPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const rootAuthority = bs58.encode(ed25519.getPublicKey(rootPrivateKey));
+const memberPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 91);
+const memberAuthority = bs58.encode(ed25519.getPublicKey(memberPrivateKey));
 const nextRootAuthority = publicKey(74);
 const delegateAuthority = publicKey(75);
 const currentDelegateAuthority = publicKey(76);
 const postReference = publicKey(77);
 const communityAddress = publicKey(78);
+const membershipAddress = await deriveCommunityMembershipAddress(
+  programId,
+  communityAddress,
+  memberAddress,
+);
 
 describe('Phase-2 Anchor decoding', () => {
   it.each([
@@ -123,6 +133,10 @@ describe('Phase-2 Anchor decoding', () => {
         borshString(`ipfs://${fakeCid()}`),
         u16(1),
         bytes(32, 2),
+        Uint8Array.of(0),
+        Uint8Array.of(0),
+        u64(1n),
+        u64(0n),
         u64(6n),
       ),
     ],
@@ -150,14 +164,21 @@ describe('Phase-2 Anchor decoding', () => {
         u16(1),
         pubkey(configAddress),
         pubkey(communityAddress),
-        pubkey(publicKey(82)),
+        pubkey(membershipAddress),
         pubkey(memberAddress),
-        pubkey(identityAddress),
-        pubkey(rootAuthority),
-        u64(7n),
+        pubkey(memberAddress),
+        pubkey(memberAuthority),
+        Uint8Array.of(0),
+        Uint8Array.of(0),
         u64(1n),
-        u16(3),
-        Uint8Array.of(1),
+        u64(1n),
+        u64(1n),
+        u64(1n),
+        u64(1n),
+        u64(1n),
+        u16(1),
+        bytes(32, 4),
+        borshString(`ipfs://${fakeCid()}`),
         u64(8n),
       ),
     ],
@@ -190,6 +211,27 @@ describe('Phase-2 Anchor decoding', () => {
 });
 
 describe('Phase-2 projection and authorization', () => {
+  it.each(['root', 'delegation'] as const)(
+    'accepts %s-authorized moderation after the member deactivates and replays it',
+    async (signingKind) => {
+      const result = await exerciseModerationAfterMemberDeactivation(
+        new MemoryProjectionStore(),
+        signingKind,
+      );
+      expect(result.beforeReplay).toMatchObject([
+        {
+          membershipAddress: result.membershipAddress,
+          action: signingKind === 'root' ? 'remove' : 'ban',
+          state: result.state,
+          active: false,
+          roles: 0,
+          manifestVerified: true,
+        },
+      ]);
+      expect(result.afterReplay).toEqual(result.beforeReplay);
+    },
+  );
+
   it('projects every state family, authorizes historical epochs, and rebuilds identically', async () => {
     const storage = new MemoryContentAddressedStorage();
     const projection = new MemoryProjectionStore();
@@ -247,6 +289,32 @@ describe('Phase-2 projection and authorization', () => {
     const communityReceipt = await storage.put(canonicalizeEnvelope(communityEnvelope), {
       permanence: 'deletion-compatible',
     });
+    const membershipEnvelope = signPayload(
+      buildCommunityMembershipPayload(
+        createPayloadBuilderIdentity(
+          networkId,
+          memberIdentityId,
+          ed25519.getPublicKey(memberPrivateKey),
+          'root',
+        ),
+        {
+          communityAddress,
+          member: memberIdentityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T15:08:00.000Z'),
+          nonce: bytes(16, 22),
+        },
+      ),
+      memberPrivateKey,
+    );
+    const membershipReceipt = await storage.put(canonicalizeEnvelope(membershipEnvelope), {
+      permanence: 'deletion-compatible',
+    });
     const strategy1 = communityGovernanceStrategyCommitment({
       governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
     }).digest;
@@ -270,7 +338,7 @@ describe('Phase-2 projection and authorization', () => {
         type: 'identity-created',
         identityId: memberIdentityId,
         identityAddress: memberAddress,
-        rootAuthority: publicKey(79),
+        rootAuthority: memberAuthority,
       },
       {
         ...base(3n, 4),
@@ -291,7 +359,7 @@ describe('Phase-2 projection and authorization', () => {
         delegateAuthority,
         delegationSequence: 1n,
         identitySequence: 2n,
-        scopes: 3,
+        scopes: 11,
         issuedAtRootRotationCount: 0n,
         expiresAtSlot: 100n,
       },
@@ -318,6 +386,10 @@ describe('Phase-2 projection and authorization', () => {
         manifestHash: communityEnvelope.proof.payloadHash,
         governanceVersion: 1,
         governanceStrategyHash: strategy1,
+        visibility: 'public',
+        membershipPolicy: 'open',
+        membershipPolicySequence: 1n,
+        membershipSequence: 0n,
       },
       {
         ...base(7n, 8),
@@ -335,14 +407,22 @@ describe('Phase-2 projection and authorization', () => {
         ...base(8n, 9),
         type: 'community-membership-changed',
         communityAddress,
-        membershipAddress: publicKey(82),
+        membershipAddress,
         memberIdentityId,
-        assignedByIdentityId: identityId,
-        authority: rootAuthority,
-        authoritySequence: 6n,
+        actorIdentityId: memberIdentityId,
+        authority: memberAuthority,
+        action: 'join',
+        state: 'active',
+        actorSequence: 1n,
+        memberActionSequence: 1n,
+        membershipPolicySequence: 1n,
+        communityMembershipSequence: 1n,
+        activeSinceMembershipSequence: 1n,
         membershipStateSequence: 1n,
-        roles: 3,
-        active: true,
+        roles: 1,
+        manifestCid: membershipReceipt.cid,
+        manifestHash: membershipEnvelope.proof.payloadHash,
+        manifestUri: `ipfs://${membershipReceipt.cid}`,
       },
       {
         ...base(9n, 10),
@@ -352,7 +432,7 @@ describe('Phase-2 projection and authorization', () => {
         targetPostReference: postReference,
         authority: rootAuthority,
         reactionKind: 1,
-        reactorSequence: 7n,
+        reactorSequence: 6n,
         reactionStateSequence: 1n,
         active: true,
       },
@@ -362,7 +442,7 @@ describe('Phase-2 projection and authorization', () => {
         identityId,
         previousRootAuthority: rootAuthority,
         newRootAuthority: nextRootAuthority,
-        identitySequence: 8n,
+        identitySequence: 7n,
         rotationCount: 1n,
       },
       {
@@ -371,7 +451,7 @@ describe('Phase-2 projection and authorization', () => {
         communityAddress,
         creatorIdentityId: identityId,
         authority: nextRootAuthority,
-        creatorSequence: 9n,
+        creatorSequence: 8n,
         previousGovernanceVersion: 2,
         governanceVersion: 3,
         previousStrategyHash: strategy2,
@@ -384,7 +464,7 @@ describe('Phase-2 projection and authorization', () => {
         delegationAddress: publicKey(84),
         delegateAuthority: currentDelegateAuthority,
         delegationSequence: 2n,
-        identitySequence: 10n,
+        identitySequence: 9n,
         scopes: 1,
         issuedAtRootRotationCount: 1n,
         expiresAtSlot: 100n,
@@ -396,7 +476,7 @@ describe('Phase-2 projection and authorization', () => {
         delegationAddress: publicKey(84),
         delegateAuthority: currentDelegateAuthority,
         delegationSequence: 2n,
-        identitySequence: 11n,
+        identitySequence: 10n,
         delegationStateSequence: 2n,
       },
     ];
@@ -426,7 +506,7 @@ describe('Phase-2 projection and authorization', () => {
     });
     await expect(
       projection.getCommunityMemberships(networkId, communityAddress),
-    ).resolves.toMatchObject([{ memberIdentityId, roles: 3, active: true }]);
+    ).resolves.toMatchObject([{ memberIdentityId, roles: 1, active: true }]);
     await expect(
       projection.getReactionsByPostReference(networkId, postReference),
     ).resolves.toMatchObject([{ reactionKind: 1, active: true }]);
@@ -434,6 +514,9 @@ describe('Phase-2 projection and authorization', () => {
     await expect(authorize(projection, rootAuthority, 'root', 'post', 3n, 4)).resolves.toBe(true);
     await expect(
       authorize(projection, delegateAuthority, 'delegation', 'profile', 9n, 10),
+    ).resolves.toBe(true);
+    await expect(
+      authorize(projection, delegateAuthority, 'delegation', 'community-membership', 9n, 10),
     ).resolves.toBe(true);
     await expect(
       authorize(projection, delegateAuthority, 'delegation', 'tombstone', 9n, 10),
@@ -450,6 +533,16 @@ describe('Phase-2 projection and authorization', () => {
     await expect(
       authorize(projection, currentDelegateAuthority, 'delegation', 'profile', 12n, 13),
     ).resolves.toBe(true);
+    await expect(
+      authorize(
+        projection,
+        currentDelegateAuthority,
+        'delegation',
+        'community-membership',
+        12n,
+        13,
+      ),
+    ).resolves.toBe(false);
     await expect(
       authorize(projection, currentDelegateAuthority, 'delegation', 'profile', 13n, 14),
     ).resolves.toBe(false);

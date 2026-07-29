@@ -121,6 +121,9 @@ export interface VerifiedCommunity {
   governanceStrategyHash: string;
   governanceVersion: number;
   latestActionAuthority: string;
+  membershipPolicy: 'invite' | 'open' | 'request';
+  membershipPolicySequence: string;
+  membershipSequence: string;
   manifestCid: string;
   manifestAuthority: string;
   manifestCreatedAt: string;
@@ -134,6 +137,7 @@ export interface VerifiedCommunity {
   signingKeyId: string;
   updatedAt: string;
   updatedSlot: string;
+  visibility: 'private' | 'public' | 'unlisted';
 }
 
 export type PublicVerifiedCommunity = Omit<VerifiedCommunity, 'content'> & {
@@ -409,6 +413,9 @@ export function parseVerifiedCommunity(
     'governanceStrategyHash',
     'governanceVersion',
     'latestActionAuthority',
+    'membershipPolicy',
+    'membershipPolicySequence',
+    'membershipSequence',
     'manifestAuthority',
     'manifestCid',
     'manifestCreatedAt',
@@ -422,6 +429,7 @@ export function parseVerifiedCommunity(
     'signingKeyId',
     'updatedAt',
     'updatedSlot',
+    'visibility',
   ]);
   const networkId = canonicalProtocolValue(
     networkIdSchema,
@@ -486,6 +494,14 @@ export function parseVerifiedCommunity(
     'community.content',
   );
   if (
+    community.visibility !== content.visibility ||
+    community.membershipPolicy !== content.membershipPolicy
+  ) {
+    throw new IndexerPayloadError(
+      'Effective onchain community discovery policy must match its verified creation manifest.',
+    );
+  }
+  if (
     (visibility === 'public' && content.visibility !== 'public') ||
     (visibility === 'direct' &&
       content.visibility !== 'public' &&
@@ -520,6 +536,19 @@ export function parseVerifiedCommunity(
   if (BigInt(creatorSequence) === 0n) {
     throw new IndexerPayloadError('A verified community creator sequence must be positive.');
   }
+  const membershipPolicySequence = canonicalProtocolValue(
+    unsigned64Schema,
+    community.membershipPolicySequence,
+    'community.membershipPolicySequence',
+  );
+  if (BigInt(membershipPolicySequence) === 0n) {
+    throw new IndexerPayloadError('Community membership policy sequence must be positive.');
+  }
+  const membershipSequence = canonicalProtocolValue(
+    unsigned64Schema,
+    community.membershipSequence,
+    'community.membershipSequence',
+  );
   const createdAt = canonicalProtocolValue(
     timestampSchema,
     community.createdAt,
@@ -582,6 +611,9 @@ export function parseVerifiedCommunity(
     governanceStrategyHash,
     governanceVersion,
     latestActionAuthority,
+    membershipPolicy: content.membershipPolicy,
+    membershipPolicySequence,
+    membershipSequence,
     manifestAuthority,
     manifestCid: canonicalProtocolValue(cidSchema, community.manifestCid, 'community.manifestCid'),
     manifestCreatedAt: canonicalProtocolValue(
@@ -599,6 +631,7 @@ export function parseVerifiedCommunity(
     signingKeyId,
     updatedAt,
     updatedSlot,
+    visibility: content.visibility as 'public' | 'unlisted',
   };
   return parsed as DirectVerifiedCommunity | PublicVerifiedCommunity;
 }

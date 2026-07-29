@@ -8,6 +8,8 @@ The implemented surface includes:
 
 - recoverable signed-manifest publication through replaceable storage and
   transaction adapters;
+- deterministic program-owned, member-bound community PDAs, exact join/leave/moderation
+  instruction builders, and response-loss-safe membership publication;
 - ordered provider health checks and failover;
 - portable payment planning for SOL and explicitly allowlisted SPL assets;
 - PDA derivation, instruction builders, and finalized-account verification for
@@ -33,7 +35,30 @@ that an RPC provider is honest.
 
 The PDA helpers implement the program's versioned seeds for protocol and
 payment configuration, identities, subscription offerings, payment receipts,
-subscription entitlements, and upgradeable-loader program data.
+subscription entitlements, community memberships, and upgradeable-loader
+program data.
+
+## Member-signed community membership
+
+`buildJoinCommunityInstruction` and `buildLeaveCommunityInstruction` encode the
+exact Anchor account order and optimistic sequence snapshots for a member's
+own identity. `buildModerateCommunityMembershipInstruction` can encode only
+`remove` or `ban`; it cannot manufacture a join or withdrawal. Every builder
+requires the hash and bounded URI of the exact signed membership-v2 manifest.
+
+`PublicationPipeline.publishOwnCommunityMembership` signs and stores the
+portable join/leave object before anchoring it. The injected chain writer must
+reconcile the deterministic membership PDA before submission, so retrying a
+landed transaction whose RPC response was lost does not consume another
+sequence or claim a second action. Success still requires a finalized
+confirmation for the exact derived membership address.
+
+These APIs do not connect a browser wallet or Mobile Wallet Adapter, select a
+WokeNet identity, upload to a production storage service, or imply that a
+community was joined. A client must display the exact Solana deployment,
+identity, action, policy and membership sequences, fees/rent, and absence of a
+`$WOKE` transfer; then it must verify finalized account state and an indexer
+checkpoint covering that state.
 
 ## Quarantined legacy payment ABI
 

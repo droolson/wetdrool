@@ -7,7 +7,8 @@ Date: 2026-07-29
 WokeSocial is the social platform and flagship application at `woke.social`.
 WokeNet is the WokeSocial protocol and smart-contract deployment layer on the
 Solana blockchain. It is not a separate blockchain, Solana fork, validator
-network, or RPC network.
+network, RPC network, or Firedancer deployment. Solana validators and RPC
+providers are external to WokeNet.
 
 The repository contains a substantial local implementation: an Anchor program,
 portable signed-content schemas, a finalized Solana indexer, replaceable
@@ -19,6 +20,10 @@ signed Seeker APK or distribution artifact exists.
 
 The release decision remains **NO-GO for production**.
 
+The configured source remote is the private GitHub repository
+`AlexBTC420/wokesocial`; the local repository/workspace identity is `wokenet`.
+This is source hosting, not a deployment or release artifact.
+
 ## Architecture decision
 
 ADR-0009 records the current boundary:
@@ -26,6 +31,8 @@ ADR-0009 records the current boundary:
 - WokeSocial is the product, web application, services, and mobile clients.
 - WokeNet is the Anchor program, protocol namespace, portable identifiers, and
   exact Solana deployment metadata.
+- WokeNet does not ship or operate Firedancer, Agave, a validator topology, or
+  a separate ledger.
 - Solana validators and RPC providers are external, replaceable dependencies.
 - Canonical projection uses finalized commitment and exact genesis/program
   binding.
@@ -39,20 +46,20 @@ ADR-0009 records the current boundary:
 
 ## Current implementation status
 
-| Area               | Verified implementation                                                                                                                                                                                                                                                                                                                                                                                      | Important limits                                                                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| WokeSocial web     | Production Next.js build, required route-shell surface, responsive and failure states, local composer/preferences/export, provider settings, bounded indexer-backed search, chronological feed pagination, public following preview, address-routed verified public/unlisted community detail and directory, and real passkey-service registration/sign-in                                                   | Authenticated protocol identity, community joining, mutation/signing flows, recommendation-provider integration, media playback, and complete offline behavior remain incomplete |
-| WokeSocial Android | Expo/React Native Seeker foundation with a Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed, honest unavailable states, and focused unit tests                                                                                                                                                                                                  | No verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication          |
-| WokeNet program    | Anchor/SBF program with configuration, identity/profile references, deactivation, handles, root rotation, delegation, delayed recovery, social actions, communities/governance, posts/reactions/tombstones, and a legacy payment account family                                                                                                                                                              | No devnet/mainnet-beta deployment; payment ABI is quarantined; broader governance, close/migration paths, and public deployment review remain open                               |
-| Portable protocol  | Strict canonical envelopes, hashes, signatures, identifiers, object registry, schema generation, exact schema-v2 community governance commitment, root-only creation authorization, and tamper/authorization checks                                                                                                                                                                                          | Full cross-language and independent-client conformance remain incomplete                                                                                                         |
-| Indexer            | Finalized Solana RPC synchronization, exact genesis/program validation, all current IDL events decoded/projected, canonical manifest validation including immutable community authority and signed/PDA-nonce binding, accepted/pending/terminal ingestion, replay, 17 PostgreSQL migrations, RPC failover, DLQ, provenance, privacy-safe community discovery, search, home feed, and generic projected feeds | Independent-provider reconciliation, fork/reorg evidence, production metrics/load, and rebuilds above the documented bound remain incomplete                                     |
-| Feed service       | Replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and reconciliation logic                                                                                                                                                                                                                                                                               | Production collection and independent deployment remain incomplete                                                                                                               |
-| Authentication     | Replaceable WebAuthn RP, discoverable registration/sign-in, durable ceremonies/sessions, passkey lifecycle, and ciphertext-only PRF bundle storage                                                                                                                                                                                                                                                           | It does not create or recover the protocol identity; complete device/recovery flows remain open                                                                                  |
-| Relay              | Signed non-authoritative WebSocket transport, failover client, bounded retention/backpressure, and fail-closed authorization adapters                                                                                                                                                                                                                                                                        | Cross-replica coordination and production authorizer deployments remain incomplete                                                                                               |
-| Moderation         | Signed label/report/appeal provider, encrypted PostgreSQL case ledger, retention/legal hold, transparency aggregation, and restricted reads                                                                                                                                                                                                                                                                  | Production SSO/authorizer and specialist safety workflows remain incomplete                                                                                                      |
-| Messaging          | Experimental pairwise Olm adapter using Matrix Rust crypto WASM with authenticated envelopes and adversarial tests                                                                                                                                                                                                                                                                                           | Volatile storage, browser packaging, attachments, group messaging, product safety UX, and independent review block production                                                    |
-| Media              | Resumable worker, MIME/hash/container validation, ClamAV, metadata stripping, image/video/audio output, HLS, waveforms, and unsigned media manifests                                                                                                                                                                                                                                                         | Flagship upload/signing/publication integration remains incomplete                                                                                                               |
-| Infrastructure     | Local PostgreSQL, Redis, Kubo, ClamAV/media profile, service containers, migrations, health checks, least-privilege defaults, and secret scanning                                                                                                                                                                                                                                                            | Public provider accounts, production secrets, backups/restore evidence, capacity testing, and independent operations remain external                                             |
+| Area               | Current implementation                                                                                                                                                                                                                                                                                                                                                                                      | Important limits                                                                                                                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WokeSocial web     | Production Next.js build, required route-shell surface, responsive and failure states, local composer/preferences/export, provider settings, bounded indexer-backed search, chronological feed pagination, public following preview, address-routed verified public/unlisted community detail and directory, and real passkey-service registration/sign-in                                                  | Authenticated protocol identity, community joining, mutation/signing flows, recommendation-provider integration, media playback, and complete offline behavior remain incomplete                                                                |
+| WokeSocial Android | Expo/React Native Seeker foundation with a Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed and verified community discovery, honest unavailable states, and focused unit tests                                                                                                                                                                | Membership remains read-only; no identity selection, manifest signing, simulation, MWA transaction approval, finalized mutation flow, verified Seeker-device run, reproducible signed APK, signing provenance, store submission, or publication |
+| WokeNet program    | Generated IDL with 43 instructions, 19 account layouts, and 33 events, including member-authorized join/leave, creator-or-scoped-delegate remove/ban, terminal bans, community-wide membership sequencing, and the broader identity/social/governance/content plus quarantined legacy-payment surface                                                                                                       | Predeployment/local code only; no devnet/mainnet-beta deployment; payment ABI is quarantined; richer roles, protected-community membership, close/migration paths, and public deployment review remain open                                     |
+| Portable protocol  | Strict 29-family object registry with current schema-v2 profile, community, and community-membership creation; read-compatible v1 history; member/moderator authorship and transition checks; canonical envelopes, hashes, signatures, identifiers, schema generation, exact governance commitment, and tamper/authorization checks                                                                         | Full cross-language and independent-client conformance remain incomplete                                                                                                                                                                        |
+| Indexer            | Finalized Solana RPC synchronization, exact genesis/program validation, all 33 current IDL events decoded/projected, canonical profile/community/membership manifest validation, accepted/pending/terminal ingestion, replay, 18 PostgreSQL migrations, RPC failover, DLQ, provenance, privacy-safe community discovery and exact-address membership status, search, home feed, and generic projected feeds | No membership roster or identity-bearing public membership response; independent-provider reconciliation, fork/reorg evidence, production metrics/load, and rebuilds above the documented bound remain incomplete                               |
+| Feed service       | Replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and reconciliation logic                                                                                                                                                                                                                                                                              | Production collection and independent deployment remain incomplete                                                                                                                                                                              |
+| Authentication     | Replaceable WebAuthn RP, discoverable registration/sign-in, durable ceremonies/sessions, passkey lifecycle, and ciphertext-only PRF bundle storage                                                                                                                                                                                                                                                          | It does not create or recover the protocol identity; complete device/recovery flows remain open                                                                                                                                                 |
+| Relay              | Signed non-authoritative WebSocket transport, failover client, bounded retention/backpressure, and fail-closed authorization adapters                                                                                                                                                                                                                                                                       | Cross-replica coordination and production authorizer deployments remain incomplete                                                                                                                                                              |
+| Moderation         | Signed label/report/appeal provider, encrypted PostgreSQL case ledger, retention/legal hold, transparency aggregation, and restricted reads                                                                                                                                                                                                                                                                 | Production SSO/authorizer and specialist safety workflows remain incomplete                                                                                                                                                                     |
+| Messaging          | Experimental pairwise Olm adapter using Matrix Rust crypto WASM with authenticated envelopes and adversarial tests                                                                                                                                                                                                                                                                                          | Volatile storage, browser packaging, attachments, group messaging, product safety UX, and independent review block production                                                                                                                   |
+| Media              | Resumable worker, MIME/hash/container validation, ClamAV, metadata stripping, image/video/audio output, HLS, waveforms, and unsigned media manifests                                                                                                                                                                                                                                                        | Flagship upload/signing/publication integration remains incomplete                                                                                                                                                                              |
+| Infrastructure     | Local PostgreSQL, Redis, Kubo, ClamAV/media profile, service containers, migrations, health checks, least-privilege defaults, and secret scanning                                                                                                                                                                                                                                                           | Public provider accounts, production secrets, backups/restore evidence, capacity testing, and independent operations remain external                                                                                                            |
 
 ## `$WOKE` and payment quarantine
 
@@ -83,6 +90,33 @@ legal review, a new mint-aware ABI, an explicit migration/version boundary,
 updated SDK/indexer/UI semantics, adversarial tests, devnet rehearsal,
 independent audit, and explicit release approval.
 
+## Member-signed community membership status
+
+ADR-0011 records the predeployment replacement for creator-assigned
+membership. For a verified `public` or `unlisted` community whose effective
+policy is `open`, the member identity authorizes `join` and `leave`. The
+community creator identity's root or current `community`-scoped delegate may
+`remove` or `ban` an existing membership. A ban is terminal; moderation cannot
+manufacture a join or pretend to be a member withdrawal.
+
+The portable schema-v2 manifest, deterministic member-bound PDA, optimistic
+identity/state/policy/community sequences, finalized program event, and indexer
+checkpoint must agree. The public indexer accepts only one exact membership
+address and returns state, roles, non-identity proof sequences, and finalized
+provenance. It provides no roster and returns no member identity, actor
+identity, signer authority, moderation reason, or manifest location. Ineligible
+or incomplete records fail with the same not-found response.
+
+Program/protocol/SDK/indexer implementation does not complete a product
+journey. The flagship clients still have no wallet-approved join/leave flow,
+and no public-cluster membership transaction is claimed.
+
+This predeployment slice changes the community, membership, and proposal ABI
+under the development-localnet program ID. Indexer migration `0018` refuses
+prior rows and raw events on those surfaces. A disposable local environment
+must recreate both its PostgreSQL projection and local-validator ledger before
+using this version; no in-place public or irreplaceable-state migration exists.
+
 ## Solana Seeker Android status
 
 The non-release native mobile foundation targets Android on Solana Seeker.
@@ -93,7 +127,11 @@ Current status:
 
 - an Expo/React Native Android project and Mobile Wallet Adapter connection
   boundary are present;
-- exact Solana genesis/program checks and a read-only indexer feed are present;
+- exact Solana genesis/program checks, a read-only indexer feed, and verified
+  public-community discovery are present;
+- community membership remains read-only: identity selection, manifest
+  signing, simulation, Mobile Wallet Adapter approval, finality, and indexer
+  catch-up are not connected;
 - no Seeker device test has run;
 - no APK has been built, signed, published, or submitted to a store.
 
@@ -106,7 +144,8 @@ satisfy these gates.
 
 ## Verified local evidence
 
-The checked-in suites demonstrate the following local boundaries:
+The updated workspace-wide run and connected membership slice demonstrate the
+following local boundaries:
 
 - Anchor/SBF builds and Rust tests cover current account layouts, authorization,
   PDA domains, replay boundaries, arithmetic, and serialization constraints.
@@ -115,9 +154,10 @@ The checked-in suites demonstrate the following local boundaries:
   not authorize deployment or execution.
 - The connected vertical slice starts a disposable local validator and
   PostgreSQL, submits finalized program transactions, ingests signed post and
-  community manifests through the production indexer, renders production
-  Next.js in desktop and mobile-viewport Chromium, destroys the projection, and
-  verifies deterministic replay.
+  community/member-authored-join manifests through the production indexer,
+  verifies privacy-safe membership status, renders production Next.js in
+  desktop and mobile-viewport Chromium, destroys the projection, and verifies
+  deterministic replay.
 - Protocol, storage, SDK, configuration, indexer, feed, relay, authentication,
   moderation, messaging, media, and shared rate-limit unit suites pass for their
   implemented surfaces.
@@ -129,25 +169,30 @@ The checked-in suites demonstrate the following local boundaries:
 - Formatting, lint, type checking, builds, dependency audit, and the
   checksum-pinned secret scan pass for the verified workspace state.
 
+The member-signed package, program, integration, static, and connected-slice
+gates now have passing local evidence.
+
 These results are not devnet, mainnet-beta, public-scale, independent-provider,
 Seeker-device, signed-APK, token-mint, legal-review, or
 external-security-audit evidence.
 
 ## Exact verification ledger
 
-The final local run on 2026-07-29 produced:
+The latest recorded local evidence on 2026-07-29 is below. Aggregate package
+and browser counts retain the prior published baseline; current focused counts
+are recorded where captured. The updated workspace-wide gates pass, but this
+report does not invent revised totals that were not captured here:
 
-| Gate                       | Result                                                                                                                                                                                                         |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm test`                | 1,052 package tests plus 14 repository-script tests passed                                                                                                                                                     |
-| `pnpm test:integration`    | 99 tests passed across PostgreSQL, Redis/rate limiting, Kubo, media, relay, messaging, and service migrations; this includes 30 indexer PostgreSQL cases and the new verified-community migration/replay gates |
-| `pnpm test:e2e`            | 211 tests passed: one authentication-service browser test plus 210 web Playwright tests; two mobile-viewport passkey duplicates were intentionally skipped                                                     |
-| `pnpm test:programs`       | 28 Anchor local-validator cases passed, including six legacy-payment quarantine cases                                                                                                                          |
-| `pnpm test:vertical-slice` | Passed before and after destructive projection rebuild: ten finalized local transactions, nine durable events replayed, and eight production-browser checks passed                                             |
-| Mobile package             | 12 tests passed; Expo dependency compatibility and 20/20 Expo Doctor checks passed; Android Hermes export succeeded at 4.3 MB                                                                                  |
-| Build and static checks    | All 18 workspace type-check scopes passed; all 17 build tasks, ESLint, Prettier, workspace, naming, schema, and domain-policy checks passed                                                                    |
-| Security                   | `pnpm audit --audit-level moderate` found no known vulnerability; both repository-history and working-tree secret scans found no leak                                                                          |
-| Production domains         | The live probe verified permanent redirects from the exact legacy hosts to `https://woke.social/`                                                                                                              |
+| Gate                       | Result                                                                                                                                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm test`                | 1,052 package tests plus 14 repository-script tests passed                                                                                                                                           |
+| `pnpm test:e2e`            | 211 tests passed: one authentication-service browser test plus 210 web Playwright tests; two mobile-viewport passkey duplicates were intentionally skipped                                           |
+| `pnpm test:programs`       | 30 Anchor local-validator cases passed, including six legacy-payment quarantine cases and the member-signed community-membership paths                                                               |
+| `pnpm test:vertical-slice` | Passed with exactly 11 finalized local transactions, 10 durable events replayed to exact state equivalence, zero dead letters, and eight production-browser checks—four before and four after replay |
+| Mobile package             | 12 tests passed; Expo dependency compatibility and 20/20 Expo Doctor checks passed; Android Hermes export succeeded at 4.4 MB                                                                        |
+| Build and static checks    | All 18 workspace type-check scopes passed; all 17 build tasks, ESLint, Prettier, workspace, naming, schema, and domain-policy checks passed                                                          |
+| Security                   | `pnpm audit --audit-level moderate` found no known vulnerability; both repository-history and working-tree secret scans found no leak                                                                |
+| Production domains         | The live probe verified permanent redirects from the exact legacy hosts to `https://woke.social/`                                                                                                    |
 
 The unthrottled local production-build browser observation used three samples
 per route. It is not field Core Web Vitals evidence:

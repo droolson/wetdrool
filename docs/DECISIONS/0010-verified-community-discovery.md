@@ -160,8 +160,10 @@ not sample content.
   identity, manifest CID, and hashes. Returning not-found from the official API
   prevents discovery amplification; it does not make a protected community's
   existence secret from chain observers.
-- Membership, joining, community feeds, moderation roles, lifecycle status,
-  and governance transaction UX remain separate product slices.
+- Member-signed open-community membership now has a separate predeployment
+  protocol/program/SDK/indexer contract under ADR-0011, but wallet-backed
+  joining, community feeds, richer moderation roles, lifecycle status, and
+  governance transaction UX remain separate product slices.
 - Local-validator evidence does not establish a public Solana deployment.
 
 ## Rejected alternatives
@@ -172,7 +174,8 @@ not sample content.
 - **Index every community event publicly:** this leaks the existence and
   metadata of protected communities.
 - **Return memberships with public detail:** membership can be sensitive and is
-  not required for discovery.
+  not required for discovery. ADR-0011 permits only a separate exact-PDA status
+  lookup with no roster or identity fields.
 - **Hash an informal governance label:** it does not bind the exact executable
   thresholds and abstention semantics.
 - **Accept offchain-only metadata replacement:** the current program exposes no
@@ -184,6 +187,7 @@ not sample content.
 - [ADR-0003: Onchain/offchain data split](0003-onchain-offchain-data-split.md)
 - [ADR-0004: Indexer projection and replay](0004-indexer-projection-and-replay.md)
 - [ADR-0009: WokeNet on Solana](0009-wokenet-on-solana.md)
+- [ADR-0011: Member-signed community membership](0011-member-signed-community-membership.md)
 - `packages/protocol/src/governance.ts`
 - `apps/indexer/`
 - `packages/indexer-client/`

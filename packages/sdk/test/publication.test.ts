@@ -3,6 +3,7 @@ import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
   COMMUNITY_SCHEMA_VERSION,
   PROFILE_SCHEMA_VERSION,
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
@@ -13,6 +14,8 @@ import {
   encodeMultibaseBase64Url,
   signPayload,
   type CommunityContent,
+  type CommunityMembershipContent,
+  type CommunityMembershipPayload,
   type NetworkId,
   type PostContent,
   type PortablePayload,
@@ -22,9 +25,11 @@ import { MemoryContentAddressedStorage, MultiProviderStorage } from '@wokesocial
 
 import {
   deriveWokeCommunityAddress,
+  deriveWokeCommunityMembershipAddressForNetwork,
   PublicationError,
   PublicationPipeline,
   type AnchorCommunityInput,
+  type AnchorCommunityMembershipInput,
   type CommunityPublicationOperationOptions,
   type PublicationPipelineOptions,
   type ProtocolChainWriter,
@@ -238,6 +243,8 @@ describe('publication pipeline', () => {
       communityNonce: fixedNonce,
       governanceVersion: governance.governanceVersion,
       governanceStrategyHash: governance.bytes,
+      membershipPolicy: 'open',
+      visibility: 'public',
     });
     expect(reconcileCommunityCreation).toHaveBeenCalledWith(
       expect.objectContaining({ communityAddress }),
@@ -320,6 +327,244 @@ describe('publication pipeline', () => {
     expect(result.objectId).toBe(creationInput?.objectId);
     expect(result.storage.cid).toBe(creationInput?.cid);
     expect(result.chain.communityAddress).toBe(communityAddress);
+  });
+
+  it('publishes and reconciles the exact member-signed join without a duplicate transition', async () => {
+    const communityAddress = await deriveWokeCommunityAddress({
+      networkId: network,
+      creatorIdentityId: author,
+      communityNonce: fixedNonce,
+    });
+    const membershipAddress = await deriveWokeCommunityMembershipAddressForNetwork({
+      networkId: network,
+      communityAddress,
+      memberIdentityId: author,
+    });
+    const membershipContent = {
+      action: 'join',
+      communityAddress,
+      member: author,
+      replacement: { sequence: 1 },
+      roles: ['member'],
+      state: 'active',
+    } as const satisfies CommunityMembershipContent;
+    let landedInput: AnchorCommunityMembershipInput | undefined;
+    const reconcileCommunityMembershipAction = vi.fn(
+      async (input: AnchorCommunityMembershipInput) => {
+        if (landedInput === undefined) return { status: 'ready' as const };
+        expect(input).toEqual(landedInput);
+        return {
+          status: 'existing' as const,
+          confirmation: {
+            finalized: true,
+            membershipAddress,
+            signature: 'landed-membership-signature',
+            slot: 51n,
+          },
+        };
+      },
+    );
+    const applyCommunityMembershipAction = vi.fn(async (input: AnchorCommunityMembershipInput) => {
+      landedInput = input;
+      throw new Error('RPC response lost after member-signed join landed');
+    });
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: storage(),
+      chain: {
+        applyCommunityMembershipAction,
+        createCommunity: vi.fn(),
+        follow: vi.fn(),
+        publishPost: vi.fn(),
+        reconcileCommunityCreation: reconcileAbsent(),
+        reconcileCommunityMembershipAction,
+        unfollow: vi.fn(),
+        updateProfile: vi.fn(),
+      },
+    });
+    const operation = {
+      createdAt: fixedCreatedAt,
+      expectedCommunityMembershipSequence: 0n,
+      expectedMemberIdentitySequence: 0n,
+      expectedMembershipPolicySequence: 1n,
+      expectedMembershipStateSequence: 0n,
+      nonce: fixedNonce,
+      signer,
+    } as const;
+
+    await expect(
+      pipeline.publishOwnCommunityMembership(
+        membershipContent,
+        { permanence: 'deletion-compatible' },
+        operation,
+      ),
+    ).rejects.toMatchObject({
+      recoverableCid: expect.stringMatching(/^bafk/u),
+      stage: 'anchoring',
+    });
+    const result = await pipeline.publishOwnCommunityMembership(
+      membershipContent,
+      { permanence: 'deletion-compatible' },
+      operation,
+    );
+
+    expect(applyCommunityMembershipAction).toHaveBeenCalledOnce();
+    expect(reconcileCommunityMembershipAction).toHaveBeenCalledTimes(2);
+    expect(result.envelope.payload).toMatchObject({
+      author,
+      content: membershipContent,
+      schemaVersion: COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
+      type: 'community-membership',
+    });
+    expect(result.chain).toEqual({
+      finalized: true,
+      membershipAddress,
+      signature: 'landed-membership-signature',
+      slot: 51n,
+    });
+    expect(landedInput).toMatchObject({
+      action: 'join',
+      communityAddress,
+      expectedCommunityMembershipSequence: 0n,
+      expectedMemberIdentitySequence: 0n,
+      expectedMembershipPolicySequence: 1n,
+      expectedMembershipStateSequence: 0n,
+      identity: author,
+      memberIdentityAddress: identityPda,
+      membershipAddress,
+      membershipStateSequence: 1n,
+    });
+    expect(landedInput?.payloadHash).toEqual(
+      decodeMultibaseBase64Url(result.envelope.proof.payloadHash, 32),
+    );
+  });
+
+  it('anchors the signed membership coordinates when a signer mutates its input after signing', async () => {
+    const communityAddress = await deriveWokeCommunityAddress({
+      networkId: network,
+      creatorIdentityId: author,
+      communityNonce: fixedNonce,
+    });
+    const membershipAddress = await deriveWokeCommunityMembershipAddressForNetwork({
+      networkId: network,
+      communityAddress,
+      memberIdentityId: author,
+    });
+    const wrongCommunityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 12));
+    const mutableContent: CommunityMembershipContent = {
+      action: 'join',
+      communityAddress,
+      member: author,
+      replacement: { sequence: 1 },
+      roles: ['member'],
+      state: 'active',
+    };
+    const applyCommunityMembershipAction = vi.fn(async (input: AnchorCommunityMembershipInput) => ({
+      finalized: true,
+      membershipAddress: input.membershipAddress,
+      signature: 'mutation-resistant-membership-signature',
+      slot: 52n,
+    }));
+    const mutatingSigner = vi.fn((payload: PortablePayload) => {
+      const envelope = signPayload(payload, privateKey);
+      mutableContent.communityAddress = wrongCommunityAddress;
+      mutableContent.replacement.sequence = 99;
+      if (payload.type !== 'community-membership') throw new Error('Expected membership payload.');
+      const membershipPayload = payload as CommunityMembershipPayload;
+      membershipPayload.content.communityAddress = wrongCommunityAddress;
+      membershipPayload.content.replacement.sequence = 99;
+      return envelope;
+    });
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: storage(),
+      chain: {
+        applyCommunityMembershipAction,
+        createCommunity: vi.fn(),
+        follow: vi.fn(),
+        publishPost: vi.fn(),
+        reconcileCommunityCreation: reconcileAbsent(),
+        reconcileCommunityMembershipAction: vi.fn(async () => ({ status: 'ready' as const })),
+        unfollow: vi.fn(),
+        updateProfile: vi.fn(),
+      },
+    });
+
+    const result = await pipeline.publishOwnCommunityMembership(
+      mutableContent,
+      { permanence: 'deletion-compatible' },
+      {
+        createdAt: fixedCreatedAt,
+        expectedCommunityMembershipSequence: 0n,
+        expectedMemberIdentitySequence: 0n,
+        expectedMembershipPolicySequence: 1n,
+        expectedMembershipStateSequence: 0n,
+        nonce: fixedNonce,
+        signer: mutatingSigner,
+      },
+    );
+
+    expect(result.envelope.payload).toMatchObject({
+      content: {
+        communityAddress,
+        replacement: { sequence: 1 },
+      },
+    });
+    expect(applyCommunityMembershipAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        communityAddress,
+        membershipAddress,
+        membershipStateSequence: 1n,
+      }),
+    );
+  });
+
+  it('rejects a stale membership sequence before signing or storage', async () => {
+    const communityAddress = await deriveWokeCommunityAddress({
+      networkId: network,
+      creatorIdentityId: author,
+      communityNonce: fixedNonce,
+    });
+    const publicationStorage = storage();
+    const publish = vi.spyOn(publicationStorage, 'publish');
+    const membershipSigner = vi.fn(signer);
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: publicationStorage,
+      chain: {
+        ...chainWriter(vi.fn()),
+        applyCommunityMembershipAction: vi.fn(),
+        reconcileCommunityMembershipAction: vi.fn(async () => ({ status: 'ready' as const })),
+      },
+    });
+
+    await expect(
+      pipeline.publishOwnCommunityMembership(
+        {
+          action: 'join',
+          communityAddress,
+          member: author,
+          replacement: { sequence: 1 },
+          roles: ['member'],
+          state: 'active',
+        },
+        { permanence: 'deletion-compatible' },
+        {
+          createdAt: fixedCreatedAt,
+          expectedCommunityMembershipSequence: 0n,
+          expectedMemberIdentitySequence: 0n,
+          expectedMembershipPolicySequence: 1n,
+          expectedMembershipStateSequence: 1n,
+          nonce: fixedNonce,
+          signer: membershipSigner,
+        },
+      ),
+    ).rejects.toMatchObject({
+      stage: 'validating',
+    });
+
+    expect(membershipSigner).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it('rejects a valid confirmation address that is not the derived community PDA', async () => {

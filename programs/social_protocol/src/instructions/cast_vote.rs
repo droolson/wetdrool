@@ -9,8 +9,8 @@ use crate::{
     errors::SocialProtocolError,
     events::VoteCast,
     state::{
-        Community, CommunityMembership, Delegation, GovernanceProposal, GovernanceProposalOutcome,
-        GovernanceVote, GovernanceVoteChoice, Identity, ProtocolConfig,
+        Community, CommunityMembership, CommunityMembershipState, Delegation, GovernanceProposal,
+        GovernanceProposalOutcome, GovernanceVote, GovernanceVoteChoice, Identity, ProtocolConfig,
     },
     validation::{
         authorize_identity_action_any_scope, calculate_governance_tally, checked_increment,
@@ -167,15 +167,13 @@ pub fn handle_cast_vote(ctx: Context<CastVote>, args: CastVoteArgs) -> Result<()
         SocialProtocolError::ProposalVotingClosed
     );
     require!(
-        ctx.accounts.membership.active
-            && ctx.accounts.membership.roles & COMMUNITY_ROLE_MEMBER != 0,
+        ctx.accounts.membership.state == CommunityMembershipState::Active
+            && ctx.accounts.membership.roles == COMMUNITY_ROLE_MEMBER,
         SocialProtocolError::InactiveCommunityMember
     );
     validate_membership_snapshot(
-        ctx.accounts.membership.updated_at_slot,
-        ctx.accounts.membership.authority_sequence,
-        ctx.accounts.proposal.created_at_slot,
-        ctx.accounts.proposal.proposer_sequence,
+        ctx.accounts.membership.active_since_membership_sequence,
+        ctx.accounts.proposal.community_membership_sequence,
     )?;
     require_eq!(
         ctx.accounts.membership.state_sequence,

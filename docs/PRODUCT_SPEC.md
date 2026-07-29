@@ -34,6 +34,8 @@ on Solana. WokeNet is not a blockchain or validator network. People should be
 able to own and move their identity, social graph,
 public content relationships, communities, and choice of algorithm without
 needing to understand cryptocurrency.
+WokeNet does not operate Firedancer/Agave validators or an application-chain
+topology; Solana supplies the external ledger and runtime.
 
 The flagship client must feel like a trustworthy consumer application rather
 than a wallet or blockchain explorer. A person may browse without a token,
@@ -309,8 +311,13 @@ Private fields are excluded and tombstones remove posts from both memory and Pos
 Community discovery is address-routed and fail closed: directory/search include verified public
 manifests only, direct detail additionally permits unlisted manifests, private/restricted and
 unverified communities resolve as not found, and public responses never include membership lists.
-Event/creator-specific discovery, viewer-aware block/mute enforcement, community membership/join
-UX, independent provider conformance, and production-scale relevance/load evidence remain open.
+One separate exact-address endpoint can return privacy-safe verified
+membership action/state/roles and finalized proof for an open public/unlisted
+community, but it provides no roster, member/actor identity, signer authority,
+moderation reason, or manifest location. Event/creator-specific discovery,
+viewer-aware block/mute enforcement, wallet-backed community membership/join
+UX, independent provider conformance, and production-scale relevance/load
+evidence remain open.
 
 - Search results state which indexer produced them.
 - Deleted or access-revoked content is removed from official results once the relevant update is ingested.
@@ -328,11 +335,33 @@ UX, independent provider conformance, and production-scale relevance/load eviden
 
 ### 9.2 Communities
 
-**PS-COM-001 — Planned.** Communities support public, restricted, and private modes; rules; join requests; roles; scoped permissions; moderators; pinned posts; resource pages; events; polls; governance; optional treasury configuration; portable configuration; and community-selected moderation providers.
+**PS-COM-001 — Partially implemented at the predeployment protocol layer.**
+Communities require public, restricted, and private modes; rules; join
+requests; roles; scoped permissions; moderators; pinned posts; resource pages;
+events; polls; governance; optional treasury configuration; portable
+configuration; and community-selected moderation providers.
+
+The current narrow membership contract supports a member-authorized `join` and
+`leave` only for a finalized public or unlisted community whose effective
+policy is open. A community creator identity's root or current
+`community`-scoped delegate may remove or ban an existing membership; a ban is
+terminal. The exact signed membership-v2 manifest, member-bound PDA, optimistic
+sequences, finalized event, and indexer checkpoint must agree.
+
+This program/protocol/SDK/indexer surface does not satisfy the consumer flow.
+The web and Seeker clients do not yet select a protocol identity, sign the
+manifest, simulate and present transaction intent, obtain wallet/Mobile Wallet
+Adapter approval, verify finality, or wait for indexer catch-up. Approval
+requests, invites, protected-community membership, richer roles, and full
+moderation/appeal UX remain planned.
 
 **Acceptance criteria**
 
 - A private community does not leak private posts or a membership roster through the official public API.
+- Member consent is required for join/leave; moderator remove/ban cannot be
+  emitted as a member action, and a banned membership cannot rejoin.
+- Public membership status is exact-address only and excludes member identity,
+  actor identity, signer authority, moderation reason, and manifest location.
 - Every moderator action records actor, permission scope, target, policy version, reason category, timestamp, and appeal eligibility.
 - Exported community configuration is documented, versioned, and accepted by a clean compatible instance.
 - A person without the required role cannot perform an administrative action even by calling the API directly.
@@ -481,7 +510,10 @@ All surfaces below are **Planned**. A route existing by itself does not satisfy 
 
 The Seeker app has an implemented non-release Expo/React Native foundation with
 a Mobile Wallet Adapter connection boundary, exact Solana deployment checks, a
-read-only chronological feed, honest failure states, and focused tests.
+read-only chronological feed, verified community discovery, honest failure
+states, and focused tests. Community membership remains read-only; no
+identity-selection, membership-manifest signing, simulation, MWA approval,
+finality, or indexer-catch-up flow is connected.
 Responsive-web coverage and an Android export are not Seeker-device or
 signed-APK evidence. Release still requires the transaction-signing flow,
 reproducible build, controlled signing, verifiable signed-APK provenance,
@@ -568,15 +600,15 @@ The product cannot be described as production-ready until:
 |---|---|---|
 | Public experience and onboarding | Partial | Complete route surface, 210 passing desktop and mobile-viewport browser cases, bounded provider-backed public search, and real passkey service-account lifecycle coverage; wallet and protocol-identity onboarding remain fail-closed |
 | Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass Solana local-validator tests; durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and sessions pass, while protocol onboarding, WokeNet delegation lifecycle, recovery product UX, sponsorship, and public-cluster execution remain open |
-| Signed publishing and social graph | Verified post/community vertical slice; broader interactions partial | Ten finalized transactions, signed post and schema-v2 community CAS manifests, nine-event PostgreSQL replay, root/delegated social program tests |
+| Signed publishing and social graph | Verified local post/community/membership vertical slice; broader interactions partial | The connected proof finalized exactly 11 local transactions, verified member-authored join content and privacy-safe status, replayed 10 durable events, and passed eight browser checks; it is not public-cluster or general product-mutation evidence |
 | Feeds, search, and discovery | Partial | Seven-mode replaceable feed engine plus a separate consumer-safe home feed, strict bounded indexer-backed chronological pagination, an unauthenticated public following-graph preview, device-local exact-identity hiding, and indexed bounded profile/post search. Authenticated following, recommendation-provider integration, cross-device safety, independent-provider conformance, complete offline caching, and production-scale evidence remain |
-| Communities and governance | Partial | Community/membership plus immutable one-member-one-vote proposal, vote, and finalization accounts pass 16 validator flows; other models, execution, and enabled web mutations remain open |
+| Communities and governance | Partial predeployment implementation | Member-signed join/leave, creator-or-scoped-delegate remove/ban, terminal bans, exact sequence snapshots, privacy-safe exact-address membership status, and immutable one-member-one-vote account logic are present. Flagship wallet mutations, protected/approval flows, richer roles, other governance models, execution, and public deployment remain open |
 | Moderation and appeals | Partial | Strict signed provider intake/active labels/restricted reads plus an encrypted runtime-delete-protected PostgreSQL case/appeal ledger, legal holds, due/expiry transitions, and transparency aggregation pass; production object authorization/SSO, a separately credentialed retention executor, and complete specialist product workflows remain blocked |
 | One-to-one encrypted messaging | Experimental subset | Pairwise real-WASM Olm adapter passes 13 envelope/device/revocation/lifecycle adversarial cases; volatile storage and absent browser/relay/product integration keep it non-production |
 | Group encrypted messaging | Experimental design only | UI is disabled; no group cryptography is claimed |
 | Media, stories, events, and livestream architecture | Partial | Hardened resumable media worker, real processing, ClamAV scanning, unsigned manifests, routes, encrypted signaling, and verified media-reference retention for media-only feed posts exist; feed gateway playback, browser publication, and stories/events/live product flows remain gated |
 | Creator payments and entitlements | Quarantined legacy subset | Historical lamport-denominated tip/subscription, receipt, entitlement, SDK, and indexer paths have local regression tests but cannot execute or be unpaused. No `$WOKE` mint exists; a real mint and new mint-aware ABI are required |
-| Solana Seeker Android | Implemented non-release foundation | Expo/React Native source, Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only feed, honest failure states, and focused tests exist. No verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication exists |
+| Solana Seeker Android | Implemented non-release read foundation | Expo/React Native source, Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only feed and verified community discovery, honest failure states, and focused tests exist. Membership mutation remains absent; no verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication exists |
 | Portability and provider replacement | Partial | Alternate endpoint validation, open indexer/storage/feed/relay/moderation contracts, replay, and relay failover pass |
 | Accessibility, performance, and resilience | Partial | Production web build, automated desktop/mobile-viewport/axe matrix, and reproducible unthrottled loopback TTFB/DOM/load/LCP/CLS observations pass; manual WCAG, native Android accessibility/performance, field Core Web Vitals, INP, load/capacity, and resilience gates remain |
 

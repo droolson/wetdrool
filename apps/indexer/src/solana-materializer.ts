@@ -277,6 +277,10 @@ export class SolanaEventMaterializer {
           manifestHash: encodeMultibaseBase64Url(decoded.manifestHash),
           governanceVersion: decoded.governanceVersion,
           governanceStrategyHash: encodeMultibaseBase64Url(decoded.governanceStrategyHash),
+          visibility: decoded.visibility,
+          membershipPolicy: decoded.membershipPolicy,
+          membershipPolicySequence: decoded.membershipPolicySequence,
+          membershipSequence: decoded.membershipSequence,
         };
       case 'community-governance-updated':
         this.#assertSlot(decoded.updatedAtSlot, context.slot);
@@ -294,19 +298,40 @@ export class SolanaEventMaterializer {
         };
       case 'community-membership-changed':
         this.#assertSlot(decoded.updatedAtSlot, context.slot);
-        return {
+        if (
+          decoded.membership !==
+          (await deriveCommunityMembershipAddress(
+            context.programId,
+            decoded.community,
+            decoded.memberIdentity,
+          ))
+        ) {
+          throw new SolanaEventMaterializationError(
+            'Membership event contains a substituted membership account.',
+            'account-mismatch',
+          );
+        }
+        return this.#validatedEvent({
           ...base,
           type: 'community-membership-changed',
           communityAddress: decoded.community,
           membershipAddress: decoded.membership,
           memberIdentityId: identityId(context.networkId, decoded.memberIdentity),
-          assignedByIdentityId: identityId(context.networkId, decoded.assignedByIdentity),
+          actorIdentityId: identityId(context.networkId, decoded.actorIdentity),
           authority: decoded.authority,
-          authoritySequence: decoded.authoritySequence,
+          action: decoded.action,
+          state: decoded.state,
           membershipStateSequence: decoded.membershipStateSequence,
+          memberActionSequence: decoded.memberActionSequence,
+          actorSequence: decoded.actorSequence,
+          membershipPolicySequence: decoded.membershipPolicySequence,
+          communityMembershipSequence: decoded.communityMembershipSequence,
+          activeSinceMembershipSequence: decoded.activeSinceMembershipSequence,
           roles: decoded.roles,
-          active: decoded.active,
-        };
+          manifestHash: encodeMultibaseBase64Url(decoded.manifestHash),
+          manifestCid: manifestCid(decoded.manifestUri),
+          manifestUri: decoded.manifestUri,
+        });
       case 'reaction-changed':
         this.#assertSlot(decoded.updatedAtSlot, context.slot);
         return {
@@ -678,6 +703,7 @@ export class SolanaEventMaterializer {
           governanceStrategyHash: encodeMultibaseBase64Url(decoded.governanceStrategyHash),
           votingModel: decoded.votingModel,
           eligibleMemberCount: decoded.eligibleMemberCount,
+          communityMembershipSequence: decoded.communityMembershipSequence,
           opensAtSlot: decoded.opensAtSlot,
           closesAtSlot: decoded.closesAtSlot,
           quorumBps: decoded.quorumBps,

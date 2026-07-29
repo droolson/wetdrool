@@ -40,6 +40,9 @@ const COMMUNITY = {
   governanceStrategyHash: GOVERNANCE.digest,
   governanceVersion: GOVERNANCE.governanceVersion,
   latestActionAuthority: '11111111111111111111111111111111',
+  membershipPolicy: 'open',
+  membershipPolicySequence: '1',
+  membershipSequence: '0',
   manifestAuthority: '11111111111111111111111111111111',
   manifestCid: CID,
   manifestCreatedAt: '2026-07-28T12:00:00.000Z',
@@ -53,6 +56,7 @@ const COMMUNITY = {
   signingKeyId: `${IDENTITY_ID}#root/${'1'.repeat(32)}`,
   updatedAt: '2026-07-28T12:01:00.000Z',
   updatedSlot: '42',
+  visibility: 'public',
 } as const;
 
 const META = {

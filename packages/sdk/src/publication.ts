@@ -1,5 +1,6 @@
 import {
   PROFILE_SCHEMA_VERSION,
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
@@ -8,6 +9,8 @@ import {
   decodeMultibaseBase64Url,
   solanaPublicKeySchema,
   type CommunityContent,
+  type CommunityMembershipContent,
+  type CommunityMembershipPayload,
   type CommunityPayload,
   type PayloadBuildOptions,
   type PayloadBuilderIdentity,
@@ -28,8 +31,11 @@ import type {
 import {
   assertFinalized,
   deriveWokeCommunityAddress,
+  deriveWokeCommunityMembershipAddressForNetwork,
+  wokeIdentityAddressFromId,
   type ChainConfirmation,
   type CommunityChainConfirmation,
+  type CommunityMembershipChainConfirmation,
   type ProtocolChainWriter,
 } from './chain.js';
 
@@ -85,6 +91,25 @@ export interface PublicationOperationOptions<
 export interface CommunityPublicationOperationOptions extends PublicationOperationOptions<CommunityPayload> {
   readonly createdAt: Date;
   readonly nonce: Uint8Array;
+}
+
+export type MemberCommunityMembershipContent = Extract<
+  CommunityMembershipContent,
+  { action: 'join' | 'leave' }
+>;
+
+/**
+ * Membership actions consume several optimistic onchain sequences. Callers
+ * must persist and reuse this entire operation input after an ambiguous
+ * failure; changing any coordinate creates a different action.
+ */
+export interface CommunityMembershipPublicationOperationOptions extends PublicationOperationOptions<CommunityMembershipPayload> {
+  readonly createdAt: Date;
+  readonly nonce: Uint8Array;
+  readonly expectedCommunityMembershipSequence: bigint;
+  readonly expectedMemberIdentitySequence: bigint;
+  readonly expectedMembershipPolicySequence: bigint;
+  readonly expectedMembershipStateSequence: bigint;
 }
 
 export class PublicationError extends Error {
@@ -154,7 +179,8 @@ export class PublicationPipeline {
         'validating',
       );
     }
-    if (!['public', 'unlisted'].includes(content.visibility)) {
+    const visibility = content.visibility;
+    if (visibility !== 'public' && visibility !== 'unlisted') {
       throw new PublicationError(
         'Private and restricted community publication is disabled until encrypted publication is connected.',
         'validating',
@@ -169,6 +195,14 @@ export class PublicationPipeline {
       );
     }
     const governance = communityGovernanceStrategyCommitment(payload.content);
+    const membershipPolicy = payload.content.membershipPolicy;
+    const anchoredVisibility = payload.content.visibility;
+    if (anchoredVisibility !== 'public' && anchoredVisibility !== 'unlisted') {
+      throw new PublicationError(
+        'The constructed community manifest changed its validated visibility.',
+        'validating',
+      );
+    }
     const communityNonce = decodeMultibaseBase64Url(payload.nonce, 16);
     const communityAddress = await deriveWokeCommunityAddress({
       networkId: payload.network,
@@ -182,6 +216,8 @@ export class PublicationPipeline {
         communityNonce,
         governanceVersion: governance.governanceVersion,
         governanceStrategyHash: governance.bytes,
+        membershipPolicy,
+        visibility: anchoredVisibility,
       };
       const reconciliation = await this.#chain.reconcileCommunityCreation(input);
       const confirmation =
@@ -201,6 +237,105 @@ export class PublicationPipeline {
         );
       }
       return { ...confirmation, communityAddress: confirmedAddress };
+    });
+  }
+
+  async publishOwnCommunityMembership(
+    content: MemberCommunityMembershipContent,
+    policy: StoragePolicy,
+    options: CommunityMembershipPublicationOperationOptions,
+  ): Promise<PublicationResult<CommunityMembershipChainConfirmation>> {
+    this.#progress('validating', `Validating the community ${content.action} manifest.`);
+    validatePersistentCoordinates(options, 'Community membership publication');
+    const reconcileCommunityMembershipAction = this.#chain.reconcileCommunityMembershipAction?.bind(
+      this.#chain,
+    );
+    const applyCommunityMembershipAction = this.#chain.applyCommunityMembershipAction?.bind(
+      this.#chain,
+    );
+    if (
+      reconcileCommunityMembershipAction === undefined ||
+      applyCommunityMembershipAction === undefined
+    ) {
+      throw new PublicationError(
+        'The configured chain writer does not implement member-signed community actions.',
+        'validating',
+      );
+    }
+    const expectedMemberIdentitySequence = incrementableU64(
+      options.expectedMemberIdentitySequence,
+      'expected member identity sequence',
+    );
+    const expectedMembershipStateSequence = incrementableU64(
+      options.expectedMembershipStateSequence,
+      'expected membership state sequence',
+    );
+    const expectedMembershipPolicySequence = positiveU64(
+      options.expectedMembershipPolicySequence,
+      'expected membership policy sequence',
+    );
+    const expectedCommunityMembershipSequence = incrementableU64(
+      options.expectedCommunityMembershipSequence,
+      'expected community membership sequence',
+    );
+    if (BigInt(content.replacement.sequence) !== expectedMembershipStateSequence + 1n) {
+      throw new PublicationError(
+        'The portable membership replacement sequence must be exactly one greater than the current onchain membership state sequence.',
+        'validating',
+      );
+    }
+
+    const payload = buildCommunityMembershipPayload(this.#identity, content, options);
+    const action = payload.content.action;
+    if (action !== 'join' && action !== 'leave') {
+      throw new PublicationError(
+        'Member-owned publication can only anchor a join or leave action.',
+        'validating',
+      );
+    }
+    const communityAddress = payload.content.communityAddress;
+    const membershipStateSequence = BigInt(payload.content.replacement.sequence);
+    const memberIdentityAddress = wokeIdentityAddressFromId({
+      networkId: payload.network,
+      identityId: payload.content.member,
+    });
+    const membershipAddress = await deriveWokeCommunityMembershipAddressForNetwork({
+      networkId: payload.network,
+      communityAddress,
+      memberIdentityId: payload.content.member,
+    });
+
+    return this.#publish(payload, options.signer, policy, async (anchor) => {
+      const input = {
+        ...anchor,
+        action,
+        communityAddress,
+        expectedCommunityMembershipSequence,
+        expectedMemberIdentitySequence,
+        expectedMembershipPolicySequence,
+        expectedMembershipStateSequence,
+        memberIdentityAddress,
+        membershipAddress,
+        membershipStateSequence,
+      };
+      const reconciliation = await reconcileCommunityMembershipAction(input);
+      const confirmation =
+        reconciliation.status === 'existing'
+          ? reconciliation.confirmation
+          : reconciliation.status === 'ready'
+            ? await applyCommunityMembershipAction(input)
+            : (() => {
+                throw new TypeError(
+                  'Community membership reconciliation returned an invalid status.',
+                );
+              })();
+      const confirmedAddress = solanaPublicKeySchema.parse(confirmation.membershipAddress);
+      if (confirmedAddress !== membershipAddress) {
+        throw new TypeError(
+          'Community membership confirmation does not match the deterministic member PDA.',
+        );
+      }
+      return { ...confirmation, membershipAddress: confirmedAddress };
     });
   }
 
@@ -313,6 +448,45 @@ export class PublicationPipeline {
 
 function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
   return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
+}
+
+const U64_MAX = 18_446_744_073_709_551_615n;
+
+function validatePersistentCoordinates(
+  options: { readonly createdAt: Date; readonly nonce: Uint8Array },
+  label: string,
+): void {
+  if (
+    !(options.createdAt instanceof Date) ||
+    !Number.isFinite(options.createdAt.getTime()) ||
+    !(options.nonce instanceof Uint8Array) ||
+    options.nonce.byteLength !== 16
+  ) {
+    throw new PublicationError(
+      `${label} requires an explicit valid createdAt and 16-byte nonce that callers persist and reuse for retries.`,
+      'validating',
+    );
+  }
+}
+
+function incrementableU64(value: bigint, label: string): bigint {
+  if (typeof value !== 'bigint' || value < 0n || value >= U64_MAX) {
+    throw new PublicationError(
+      `The ${label} must fit the incrementable unsigned 64-bit range.`,
+      'validating',
+    );
+  }
+  return value;
+}
+
+function positiveU64(value: bigint, label: string): bigint {
+  if (typeof value !== 'bigint' || value <= 0n || value > U64_MAX) {
+    throw new PublicationError(
+      `The ${label} must fit the positive unsigned 64-bit range.`,
+      'validating',
+    );
+  }
+  return value;
 }
 
 function hasProtectedProfileReferences(content: ProfileContent): boolean {

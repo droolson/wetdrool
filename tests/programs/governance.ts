@@ -15,7 +15,6 @@ import {
   type TransactionMeasurement,
 } from "./phase2_test_helpers";
 import {
-  COMMUNITY_ROLE_MEMBER,
   GOVERNANCE_APPROVAL_BPS,
   GOVERNANCE_PROPOSAL_SPACE,
   GOVERNANCE_QUORUM_BPS,
@@ -70,7 +69,7 @@ function publicKeyString(value: unknown): string {
 async function currentSequences(
   context: Phase2Context,
   fixture: GovernanceCommunityFixture,
-): Promise<{ community: number; creator: number }> {
+): Promise<{ community: number; creator: number; membership: number }> {
   const [creator, community] = await Promise.all([
     context.program.account.identity.fetch(fixture.creator.address),
     context.program.account.community.fetch(fixture.address),
@@ -78,6 +77,7 @@ async function currentSequences(
   return {
     creator: creator.sequence.toNumber(),
     community: community.creatorSequence.toNumber(),
+    membership: community.membershipSequence.toNumber(),
   };
 }
 
@@ -114,6 +114,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         memberAt(fixture, 1),
         voterDelegate,
         SCOPE_SOCIAL,
+        { expectedIdentitySequence: 1 },
       );
       const communityVoterDelegate = Keypair.generate();
       const communityVoterDelegation = await createDelegation(
@@ -121,6 +122,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         memberAt(fixture, 2),
         communityVoterDelegate,
         SCOPE_COMMUNITY,
+        { expectedIdentitySequence: 1 },
       );
 
       const proposalHash = digest("governance-lifecycle-proposal");
@@ -137,6 +139,9 @@ export function registerGovernanceTests(context: Phase2Context): void {
         .createProposal({
           expectedCreatorSequence: new BN(afterDelegation.creator),
           expectedCommunitySequence: new BN(afterDelegation.community),
+          expectedCommunityMembershipSequence: new BN(
+            afterDelegation.membership,
+          ),
           manifestHash: proposalHash,
           manifestUri: manifestUri("governance-lifecycle-proposal"),
           opensAtSlot: new BN(opensAtSlot),
@@ -166,6 +171,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         "authority",
         "closesAtSlot",
         "community",
+        "communityMembershipSequence",
         "config",
         "createdAtSlot",
         "eligibleMemberCount",
@@ -233,7 +239,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       );
       const firstVoteSignature = await program.methods
         .castVote({
-          expectedVoterSequence: new BN(0),
+          expectedVoterSequence: new BN(1),
           expectedMembershipStateSequence: new BN(
             await membershipSequence(context, firstMember),
           ),
@@ -282,7 +288,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       const secondMember = memberAt(fixture, 1);
       await program.methods
         .castVote({
-          expectedVoterSequence: new BN(1),
+          expectedVoterSequence: new BN(2),
           expectedMembershipStateSequence: new BN(
             await membershipSequence(context, secondMember),
           ),
@@ -307,7 +313,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       const thirdMember = memberAt(fixture, 2);
       await program.methods
         .castVote({
-          expectedVoterSequence: new BN(1),
+          expectedVoterSequence: new BN(2),
           expectedMembershipStateSequence: new BN(
             await membershipSequence(context, thirdMember),
           ),
@@ -432,6 +438,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
           approvalBps: number;
           closesAtSlot: number;
           expectedCommunitySequence: number;
+          expectedCommunityMembershipSequence: number;
           expectedCreatorSequence: number;
           manifestHash: number[];
           manifestUri: string;
@@ -448,6 +455,10 @@ export function registerGovernanceTests(context: Phase2Context): void {
             ),
             expectedCommunitySequence: new BN(
               overrides.expectedCommunitySequence ?? sequences.community,
+            ),
+            expectedCommunityMembershipSequence: new BN(
+              overrides.expectedCommunityMembershipSequence ??
+                sequences.membership,
             ),
             manifestHash: candidateHash,
             manifestUri:
@@ -514,6 +525,12 @@ export function registerGovernanceTests(context: Phase2Context): void {
         "CommunitySequenceMismatch",
       );
       await assertAnchorError(
+        create({
+          expectedCommunityMembershipSequence: sequences.membership - 1,
+        }),
+        "CommunityMembershipSequenceMismatch",
+      );
+      await assertAnchorError(
         create({ expectedCreatorSequence: sequences.creator + 1 }),
         "SequenceMismatch",
       );
@@ -535,6 +552,9 @@ export function registerGovernanceTests(context: Phase2Context): void {
           .createProposal({
             expectedCreatorSequence: new BN(emptySequences.creator),
             expectedCommunitySequence: new BN(emptySequences.community),
+            expectedCommunityMembershipSequence: new BN(
+              emptySequences.membership,
+            ),
             manifestHash: emptyHash,
             manifestUri: manifestUri("empty-community-proposal"),
             opensAtSlot: new BN(emptySlot + 5),
@@ -576,6 +596,9 @@ export function registerGovernanceTests(context: Phase2Context): void {
             expectedCreatorSequence: new BN(unsupportedSequences.creator),
             expectedCommunitySequence: new BN(
               unsupportedSequences.community,
+            ),
+            expectedCommunityMembershipSequence: new BN(
+              unsupportedSequences.membership,
             ),
             manifestHash: unsupportedHash,
             manifestUri: manifestUri("unsupported-strategy-proposal"),
@@ -620,6 +643,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         .createProposal({
           expectedCreatorSequence: new BN(sequences.creator),
           expectedCommunitySequence: new BN(sequences.community),
+          expectedCommunityMembershipSequence: new BN(sequences.membership),
           manifestHash: proposalHash,
           manifestUri: manifestUri("governance-vote-adversarial"),
           opensAtSlot: new BN(opensAtSlot),
@@ -660,7 +684,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         return program.methods
           .castVote({
             expectedVoterSequence: new BN(
-              overrides.expectedVoterSequence ?? 0,
+              overrides.expectedVoterSequence ?? 1,
             ),
             expectedMembershipStateSequence: new BN(
               overrides.expectedMembershipStateSequence ?? 1,
@@ -701,7 +725,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         "ProposalSequenceMismatch",
       );
       await assertAnchorError(
-        castFirst({ expectedVoterSequence: 1 }),
+        castFirst({ expectedVoterSequence: 2 }),
         "SequenceMismatch",
       );
       await castFirst();
@@ -714,7 +738,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       await assert.rejects(
         program.methods
           .castVote({
-            expectedVoterSequence: new BN(0),
+            expectedVoterSequence: new BN(1),
             expectedMembershipStateSequence: new BN(1),
             expectedProposalStateSequence: new BN(2),
             choice: { yes: {} },
@@ -737,7 +761,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       await assert.rejects(
         program.methods
           .castVote({
-            expectedVoterSequence: new BN(0),
+            expectedVoterSequence: new BN(1),
             expectedMembershipStateSequence: new BN(1),
             expectedProposalStateSequence: new BN(2),
             choice: { yes: {} },
@@ -760,28 +784,30 @@ export function registerGovernanceTests(context: Phase2Context): void {
 
       const creatorAfterProposal = await currentSequences(context, fixture);
       await program.methods
-        .setCommunityMembership({
-          expectedAuthoritySequence: new BN(creatorAfterProposal.creator),
-          active: false,
-          roles: 0,
+        .leaveCommunity({
+          expectedMemberSequence: new BN(1),
+          expectedStateSequence: new BN(1),
+          expectedMembershipPolicySequence: new BN(1),
+          expectedCommunityMembershipSequence: new BN(
+            creatorAfterProposal.membership,
+          ),
+          manifestHash: digest("governance-second-member-leave"),
+          manifestUri: manifestUri("governance-second-member-leave"),
         })
         .accountsStrict({
           config,
-          creatorIdentity: fixture.creator.address,
           community: fixture.address,
           memberIdentity: secondMember.address,
           membership: secondMember.membership,
-          authority: fixture.creator.authority.publicKey,
-          payer: provider.wallet.publicKey,
-          systemProgram: SystemProgram.programId,
+          authority: secondMember.authority.publicKey,
           delegation: null,
         })
-        .signers([fixture.creator.authority])
+        .signers([secondMember.authority])
         .rpc();
       await assertAnchorError(
         program.methods
           .castVote({
-            expectedVoterSequence: new BN(0),
+            expectedVoterSequence: new BN(2),
             expectedMembershipStateSequence: new BN(2),
             expectedProposalStateSequence: new BN(2),
             choice: { yes: {} },
@@ -817,35 +843,39 @@ export function registerGovernanceTests(context: Phase2Context): void {
       );
       const creatorBeforeLateMember = await currentSequences(context, fixture);
       await program.methods
-        .setCommunityMembership({
-          expectedAuthoritySequence: new BN(creatorBeforeLateMember.creator),
-          active: true,
-          roles: COMMUNITY_ROLE_MEMBER,
+        .joinCommunity({
+          expectedMemberSequence: new BN(0),
+          expectedStateSequence: new BN(0),
+          expectedMembershipPolicySequence: new BN(1),
+          expectedCommunityMembershipSequence: new BN(
+            creatorBeforeLateMember.membership,
+          ),
+          manifestHash: digest("governance-late-member-join"),
+          manifestUri: manifestUri("governance-late-member-join"),
         })
         .accountsStrict({
           config,
-          creatorIdentity: fixture.creator.address,
           community: fixture.address,
           memberIdentity: lateIdentity.address,
           membership: lateMembership,
-          authority: fixture.creator.authority.publicKey,
+          authority: lateIdentity.authority.publicKey,
           payer: provider.wallet.publicKey,
           systemProgram: SystemProgram.programId,
           delegation: null,
         })
-        .signers([fixture.creator.authority])
+        .signers([lateIdentity.authority])
         .rpc();
       const lateMembershipState =
         await program.account.communityMembership.fetch(lateMembership);
       assert.ok(
-        lateMembershipState.authoritySequence.gt(
-          proposalState.proposerSequence,
+        lateMembershipState.activeSinceMembershipSequence.gt(
+          proposalState.communityMembershipSequence,
         ),
       );
       await assertAnchorError(
         program.methods
           .castVote({
-            expectedVoterSequence: new BN(0),
+            expectedVoterSequence: new BN(1),
             expectedMembershipStateSequence: new BN(1),
             expectedProposalStateSequence: new BN(2),
             choice: { yes: {} },
@@ -871,7 +901,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       await assertAnchorError(
         program.methods
           .castVote({
-            expectedVoterSequence: new BN(0),
+            expectedVoterSequence: new BN(2),
             expectedMembershipStateSequence: new BN(2),
             expectedProposalStateSequence: new BN(2),
             choice: { yes: {} },
@@ -917,6 +947,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         .createProposal({
           expectedCreatorSequence: new BN(sequences.creator),
           expectedCommunitySequence: new BN(sequences.community),
+          expectedCommunityMembershipSequence: new BN(sequences.membership),
           manifestHash: abstainHash,
           manifestUri: manifestUri("governance-abstain-only"),
           opensAtSlot: new BN(opensAtSlot),
@@ -941,6 +972,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         .createProposal({
           expectedCreatorSequence: new BN(afterFirst.creator),
           expectedCommunitySequence: new BN(afterFirst.community),
+          expectedCommunityMembershipSequence: new BN(afterFirst.membership),
           manifestHash: emptyHash,
           manifestUri: manifestUri("governance-zero-participation"),
           opensAtSlot: new BN(opensAtSlot),
@@ -965,7 +997,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       const member = memberAt(fixture, 0);
       await program.methods
         .castVote({
-          expectedVoterSequence: new BN(0),
+          expectedVoterSequence: new BN(1),
           expectedMembershipStateSequence: new BN(1),
           expectedProposalStateSequence: new BN(1),
           choice: { abstain: {} },
@@ -1048,6 +1080,9 @@ export function registerGovernanceTests(context: Phase2Context): void {
               .createProposal({
                 expectedCreatorSequence: new BN(sequences.creator),
                 expectedCommunitySequence: new BN(sequences.community),
+                expectedCommunityMembershipSequence: new BN(
+                  sequences.membership,
+                ),
                 manifestHash,
                 manifestUri: manifestUri("governance-budget-proposal"),
                 opensAtSlot: new BN(opensAtSlot),
@@ -1084,7 +1119,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
           () =>
             program.methods
               .castVote({
-                expectedVoterSequence: new BN(0),
+                expectedVoterSequence: new BN(1),
                 expectedMembershipStateSequence: new BN(1),
                 expectedProposalStateSequence: new BN(1),
                 choice: { yes: {} },
@@ -1159,6 +1194,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         member,
         profileDelegate,
         SCOPE_PROFILE,
+        { expectedIdentitySequence: 1 },
       );
       const sequences = await currentSequences(context, fixture);
       const manifestHash = digest("governance-missing-scope");
@@ -1174,6 +1210,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
         .createProposal({
           expectedCreatorSequence: new BN(sequences.creator),
           expectedCommunitySequence: new BN(sequences.community),
+          expectedCommunityMembershipSequence: new BN(sequences.membership),
           manifestHash,
           manifestUri: manifestUri("governance-missing-scope"),
           opensAtSlot: new BN(opensAtSlot),
@@ -1197,7 +1234,7 @@ export function registerGovernanceTests(context: Phase2Context): void {
       await assertAnchorError(
         program.methods
           .castVote({
-            expectedVoterSequence: new BN(1),
+            expectedVoterSequence: new BN(2),
             expectedMembershipStateSequence: new BN(1),
             expectedProposalStateSequence: new BN(1),
             choice: { yes: {} },

@@ -72,6 +72,20 @@ pub enum SocialProtocolError {
     InvalidCommunityRoles,
     #[msg("The membership is already in the requested state")]
     MembershipStateUnchanged,
+    #[msg("The requested community membership transition is invalid")]
+    InvalidMembershipTransition,
+    #[msg("A banned community membership is terminal")]
+    MembershipBanned,
+    #[msg("Self-service joining requires a public or unlisted community")]
+    CommunityNotPublic,
+    #[msg("Self-service joining requires an open membership policy")]
+    CommunityMembershipNotOpen,
+    #[msg("The expected community membership-policy sequence does not match current state")]
+    MembershipPolicySequenceMismatch,
+    #[msg("The expected community membership sequence does not match current state")]
+    CommunityMembershipSequenceMismatch,
+    #[msg("A community creator cannot moderate their own membership")]
+    CannotModerateSelf,
     #[msg("The community or membership account was substituted")]
     CommunitySubstitution,
     #[msg("A checked counter could not be decremented")]

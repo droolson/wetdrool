@@ -1,5 +1,6 @@
 import {
   cidSchema,
+  COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
   COMMUNITY_SCHEMA_VERSION,
   communityGovernanceStrategyCommitment,
   decodeCanonicalEnvelope,
@@ -82,6 +83,7 @@ export class ManifestVerifier {
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
       event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed' &&
       event.type !== 'tombstoned'
     ) {
       return undefined;
@@ -95,7 +97,12 @@ export class ManifestVerifier {
 
     const manifestUri = event.type === 'community-created' ? undefined : event.manifestUri;
     const uriCid = manifestUri === undefined ? undefined : extractWokeManifestCid(manifestUri);
-    const eventCid = event.type === 'community-created' ? event.manifestCid : event.cid;
+    const eventCid =
+      event.type === 'community-created'
+        ? event.manifestCid
+        : event.type === 'community-membership-changed'
+          ? event.manifestCid
+          : event.cid;
     const explicitCid = eventCid === undefined ? undefined : cidSchema.safeParse(eventCid);
     if (
       (manifestUri !== undefined && uriCid === undefined) ||
@@ -136,7 +143,11 @@ export class ManifestVerifier {
       );
     }
     const eventIdentityId =
-      event.type === 'community-created' ? event.creatorIdentityId : event.identityId;
+      event.type === 'community-created'
+        ? event.creatorIdentityId
+        : event.type === 'community-membership-changed'
+          ? event.actorIdentityId
+          : event.identityId;
     const authorityMatches =
       event.type === 'community-created'
         ? envelope.proof.keyId === `${eventIdentityId}#root/${event.authority}`
@@ -166,7 +177,9 @@ export class ManifestVerifier {
         ? 'profile'
         : event.type === 'community-created'
           ? 'community'
-          : 'post';
+          : event.type === 'community-membership-changed'
+            ? 'community-membership'
+            : 'post';
     if (envelope.payload.type !== expectedType) {
       throw new ManifestVerificationError(`Expected a ${expectedType} manifest.`, 'type-mismatch');
     }
@@ -223,9 +236,49 @@ export class ManifestVerifier {
           'hash-mismatch',
         );
       }
+      if (
+        envelope.payload.content.visibility !== event.visibility ||
+        envelope.payload.content.membershipPolicy !== event.membershipPolicy ||
+        event.membershipPolicySequence !== 1n ||
+        event.membershipSequence !== 0n
+      ) {
+        throw new ManifestVerificationError(
+          'Community admission and visibility commitments do not match the creation manifest.',
+          'object-mismatch',
+        );
+      }
+    }
+    if (event.type === 'community-membership-changed') {
+      if (
+        envelope.payload.schemaVersion !== COMMUNITY_MEMBERSHIP_SCHEMA_VERSION ||
+        envelope.payload.type !== 'community-membership'
+      ) {
+        throw new ManifestVerificationError(
+          `Community membership requires a schema-v${String(COMMUNITY_MEMBERSHIP_SCHEMA_VERSION)} envelope.`,
+          'schema-version',
+        );
+      }
+      const content = envelope.payload.content;
+      const expectedRoles = content.state === 'active' ? 0x01 : 0;
+      if (
+        content.communityAddress !== event.communityAddress ||
+        content.member !== event.memberIdentityId ||
+        content.action !== event.action ||
+        content.state !== event.state ||
+        expectedRoles !== event.roles ||
+        BigInt(content.replacement.sequence) !== event.membershipStateSequence
+      ) {
+        throw new ManifestVerificationError(
+          'Community membership manifest does not match the exact finalized transition.',
+          'object-mismatch',
+        );
+      }
     }
 
-    const expectedObjectId = event.type === 'community-created' ? undefined : event.objectId;
+    const expectedObjectId =
+      event.type === 'community-created' || event.type === 'community-membership-changed'
+        ? undefined
+        : event.objectId;
     if (verified.cid !== cid) {
       throw new ManifestVerificationError(
         'Envelope CID does not match the onchain reference.',
@@ -239,7 +292,11 @@ export class ManifestVerifier {
       );
     }
     const expectedAuthor =
-      event.type === 'community-created' ? event.creatorIdentityId : event.identityId;
+      event.type === 'community-created'
+        ? event.creatorIdentityId
+        : event.type === 'community-membership-changed'
+          ? event.actorIdentityId
+          : event.identityId;
     if (envelope.payload.author !== expectedAuthor) {
       throw new ManifestVerificationError(
         'Envelope author does not match the onchain identity.',
@@ -247,7 +304,9 @@ export class ManifestVerifier {
       );
     }
     const expectedPayloadHash =
-      event.type === 'community-created' ? event.manifestHash : event.payloadHash;
+      event.type === 'community-created' || event.type === 'community-membership-changed'
+        ? event.manifestHash
+        : event.payloadHash;
     if (envelope.proof.payloadHash !== expectedPayloadHash) {
       throw new ManifestVerificationError(
         'Envelope payload hash does not match the onchain reference.',

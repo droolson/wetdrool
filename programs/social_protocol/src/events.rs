@@ -3,8 +3,9 @@ use anchor_lang::prelude::*;
 use crate::{
     constants::{MANIFEST_HASH_BYTES, NONCE_BYTES},
     state::{
-        GovernanceProposalOutcome, GovernanceVoteChoice, GovernanceVotingModel, PaymentKind,
-        PaymentSplit, SubscriptionInterval, TombstoneReason,
+        CommunityMembershipAction, CommunityMembershipPolicy, CommunityMembershipState,
+        CommunityVisibility, GovernanceProposalOutcome, GovernanceVoteChoice,
+        GovernanceVotingModel, PaymentKind, PaymentSplit, SubscriptionInterval, TombstoneReason,
     },
 };
 
@@ -182,6 +183,10 @@ pub struct CommunityCreated {
     pub manifest_uri: String,
     pub governance_version: u16,
     pub governance_strategy_hash: [u8; MANIFEST_HASH_BYTES],
+    pub visibility: CommunityVisibility,
+    pub membership_policy: CommunityMembershipPolicy,
+    pub membership_policy_sequence: u64,
+    pub membership_sequence: u64,
     pub created_at_slot: u64,
 }
 
@@ -207,12 +212,19 @@ pub struct CommunityMembershipChanged {
     pub community: Pubkey,
     pub membership: Pubkey,
     pub member_identity: Pubkey,
-    pub assigned_by_identity: Pubkey,
+    pub actor_identity: Pubkey,
     pub authority: Pubkey,
-    pub authority_sequence: u64,
-    pub membership_state_sequence: u64,
+    pub action: CommunityMembershipAction,
+    pub state: CommunityMembershipState,
+    pub state_sequence: u64,
+    pub member_action_sequence: u64,
+    pub actor_sequence: u64,
+    pub membership_policy_sequence: u64,
+    pub community_membership_sequence: u64,
+    pub active_since_membership_sequence: u64,
     pub roles: u16,
-    pub active: bool,
+    pub manifest_hash: [u8; MANIFEST_HASH_BYTES],
+    pub manifest_uri: String,
     pub updated_at_slot: u64,
 }
 
@@ -247,6 +259,7 @@ pub struct ProposalCreated {
     pub governance_strategy_hash: [u8; MANIFEST_HASH_BYTES],
     pub voting_model: GovernanceVotingModel,
     pub eligible_member_count: u64,
+    pub community_membership_sequence: u64,
     pub opens_at_slot: u64,
     pub closes_at_slot: u64,
     pub quorum_bps: u16,

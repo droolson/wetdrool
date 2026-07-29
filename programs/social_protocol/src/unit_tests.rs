@@ -2,13 +2,13 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::{
-        ACCOUNT_VERSION, BLOCK_SEED, COMMUNITY_ROLE_ADMIN, COMMUNITY_ROLE_MEMBER, COMMUNITY_SEED,
-        CONFIG_SEED, CURRENT_PROFILE_SCHEMA_VERSION, DELEGATION_SEED, FOLLOW_SEED,
-        GOVERNANCE_APPROVAL_BPS, GOVERNANCE_QUORUM_BPS, HANDLE_SEED, IDENTITY_SEED,
-        MAX_GOVERNANCE_START_DELAY_SLOTS, MAX_GOVERNANCE_VOTING_SLOTS, MAX_HANDLE_BYTES,
-        MAX_MANIFEST_URI_BYTES, MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS,
-        MAX_RECOVERY_DELAY_SLOTS, MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS,
-        MEMBERSHIP_SEED, MIN_GOVERNANCE_VOTING_SLOTS, MIN_RECOVERY_DELAY_SLOTS,
+        ACCOUNT_VERSION, BLOCK_SEED, COMMUNITY_ROLE_MEMBER, COMMUNITY_SEED, CONFIG_SEED,
+        CURRENT_PROFILE_SCHEMA_VERSION, DELEGATION_SEED, FOLLOW_SEED, GOVERNANCE_APPROVAL_BPS,
+        GOVERNANCE_QUORUM_BPS, HANDLE_SEED, IDENTITY_SEED, MAX_GOVERNANCE_START_DELAY_SLOTS,
+        MAX_GOVERNANCE_VOTING_SLOTS, MAX_HANDLE_BYTES, MAX_MANIFEST_URI_BYTES,
+        MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS, MAX_RECOVERY_DELAY_SLOTS,
+        MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS, MEMBERSHIP_SEED,
+        MIN_GOVERNANCE_VOTING_SLOTS, MIN_RECOVERY_DELAY_SLOTS,
         ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PAYMENT_CONFIG_SEED, PAYMENT_RECEIPT_SEED,
         PDA_PREFIX, PDA_VERSION, POST_SEED, PROPOSAL_SEED, REACTION_LIKE, REACTION_SEED,
         RECOVERY_POLICY_SEED, RECOVERY_REQUEST_SEED, SCOPE_COMMUNITY, SCOPE_POST, SCOPE_PROFILE,
@@ -17,12 +17,14 @@ use crate::{
     },
     errors::SocialProtocolError,
     state::{
-        BlockEdge, Community, CommunityMembership, CreatorSubscriptionOffering, Delegation,
-        FollowEdge, GovernanceProposal, GovernanceProposalOutcome, GovernanceVote,
-        GovernanceVoteChoice, GovernanceVotingModel, HandleClaim, Identity, PaymentConfig,
-        PaymentKind, PaymentReceipt, PaymentSplit, PostReference, ProtocolConfig,
-        ReactionReference, RecoveryPolicy, RecoveryRequest, RecoveryRequestState,
-        SubscriptionEntitlement, SubscriptionInterval, Tombstone, TombstoneReason,
+        BlockEdge, Community, CommunityMembership, CommunityMembershipAction,
+        CommunityMembershipPolicy, CommunityMembershipState, CommunityVisibility,
+        CreatorSubscriptionOffering, Delegation, FollowEdge, GovernanceProposal,
+        GovernanceProposalOutcome, GovernanceVote, GovernanceVoteChoice, GovernanceVotingModel,
+        HandleClaim, Identity, PaymentConfig, PaymentKind, PaymentReceipt, PaymentSplit,
+        PostReference, ProtocolConfig, ReactionReference, RecoveryPolicy, RecoveryRequest,
+        RecoveryRequestState, SubscriptionEntitlement, SubscriptionInterval, Tombstone,
+        TombstoneReason,
     },
     validation::{
         authorize_identity_action, authorize_identity_action_any_scope, calculate_governance_tally,
@@ -186,9 +188,13 @@ fn account_space_constants_fit_maximum_serialized_values_exactly() {
         creator_identity: key,
         community_nonce: [u8::MAX; 16],
         manifest_hash: [u8::MAX; 32],
-        manifest_uri: max_uri,
+        manifest_uri: max_uri.clone(),
         governance_version: u16::MAX,
         governance_strategy_hash: [u8::MAX; 32],
+        visibility: CommunityVisibility::Private,
+        membership_policy: CommunityMembershipPolicy::Closed,
+        membership_policy_sequence: u64::MAX,
+        membership_sequence: u64::MAX,
         creator_sequence: u64::MAX,
         member_count: u64::MAX,
         created_at_slot: u64::MAX,
@@ -200,13 +206,18 @@ fn account_space_constants_fit_maximum_serialized_values_exactly() {
         config: key,
         community: key,
         member_identity: Pubkey::new_unique(),
-        assigned_by_identity: key,
-        roles: u16::MAX,
+        acted_by_identity: key,
+        action: CommunityMembershipAction::Ban,
+        state: CommunityMembershipState::Banned,
+        roles: 0,
         state_sequence: u64::MAX,
-        authority_sequence: u64::MAX,
+        member_action_sequence: u64::MAX,
+        actor_sequence: u64::MAX,
+        active_since_membership_sequence: u64::MAX,
+        manifest_hash: [u8::MAX; 32],
+        manifest_uri: max_uri,
         created_at_slot: u64::MAX,
         updated_at_slot: u64::MAX,
-        active: true,
         bump: u8::MAX,
     };
     let proposal = GovernanceProposal {
@@ -220,6 +231,7 @@ fn account_space_constants_fit_maximum_serialized_values_exactly() {
         governance_strategy_hash: [u8::MAX; 32],
         voting_model: GovernanceVotingModel::OneActiveMemberOneVote,
         eligible_member_count: u64::MAX,
+        community_membership_sequence: u64::MAX,
         opens_at_slot: u64::MAX,
         closes_at_slot: u64::MAX,
         quorum_bps: u16::MAX,
@@ -592,8 +604,8 @@ fn scope_role_and_reaction_validation_is_closed_and_explicit() {
     assert!(validate_delegation_scopes(1 << 15).is_err());
 
     assert!(validate_community_roles(true, COMMUNITY_ROLE_MEMBER).is_ok());
-    assert!(validate_community_roles(true, COMMUNITY_ROLE_MEMBER | COMMUNITY_ROLE_ADMIN).is_ok());
-    assert!(validate_community_roles(true, COMMUNITY_ROLE_ADMIN).is_err());
+    assert!(validate_community_roles(true, COMMUNITY_ROLE_MEMBER | (1 << 1)).is_err());
+    assert!(validate_community_roles(true, 1 << 2).is_err());
     assert!(validate_community_roles(false, 0).is_ok());
     assert!(validate_community_roles(false, COMMUNITY_ROLE_MEMBER).is_err());
 
@@ -943,14 +955,13 @@ fn governance_tally_uses_u128_and_explicit_abstention_semantics() {
 
 #[test]
 fn governance_membership_snapshot_orders_same_slot_changes_by_sequence() {
-    assert!(validate_membership_snapshot(100, 7, 100, 8).is_ok());
+    assert!(validate_membership_snapshot(7, 8).is_ok());
     assert_eq!(
-        validate_membership_snapshot(100, 8, 100, 8)
+        validate_membership_snapshot(9, 8)
             .expect_err("a same-slot membership change after proposal creation must fail"),
         error!(SocialProtocolError::MemberNotEligibleAtSnapshot)
     );
-    assert!(validate_membership_snapshot(101, 7, 100, 8).is_err());
-    assert!(validate_membership_snapshot(99, 9, 100, 8).is_err());
+    assert!(validate_membership_snapshot(0, 8).is_err());
 }
 
 #[test]
@@ -1138,6 +1149,13 @@ fn legacy_v1_instruction_event_and_account_discriminators_are_frozen() {
     assert_discriminator::<crate::instruction::InitializeProtocol>([
         188, 233, 252, 106, 134, 146, 202, 91,
     ]);
+    assert_discriminator::<crate::instruction::JoinCommunity>([
+        252, 106, 147, 30, 134, 74, 28, 232,
+    ]);
+    assert_discriminator::<crate::instruction::LeaveCommunity>([218, 140, 41, 66, 8, 140, 33, 161]);
+    assert_discriminator::<crate::instruction::ModerateCommunityMembership>([
+        191, 194, 181, 172, 173, 36, 64, 195,
+    ]);
     assert_discriminator::<crate::instruction::PublishPost>([182, 78, 189, 205, 125, 46, 217, 154]);
     assert_discriminator::<crate::instruction::PublishPostDelegated>([
         177, 131, 214, 24, 206, 88, 180, 204,
@@ -1152,9 +1170,6 @@ fn legacy_v1_instruction_event_and_account_discriminators_are_frozen() {
     assert_discriminator::<crate::instruction::SetBlock>([118, 39, 143, 189, 159, 146, 46, 160]);
     assert_discriminator::<crate::instruction::SetBlockDelegated>([
         241, 233, 188, 231, 249, 250, 252, 62,
-    ]);
-    assert_discriminator::<crate::instruction::SetCommunityMembership>([
-        145, 88, 213, 239, 60, 124, 114, 12,
     ]);
     assert_discriminator::<crate::instruction::SetReaction>([
         189, 188, 123, 156, 127, 248, 203, 107,

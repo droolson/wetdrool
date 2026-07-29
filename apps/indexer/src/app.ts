@@ -111,6 +111,9 @@ const handleParamsSchema = z
   .strict();
 const handleQuerySchema = z.object({ network: networkIdSchema }).strict();
 const communityParamsSchema = z.object({ communityAddress: solanaPublicKeySchema }).strict();
+const communityMembershipParamsSchema = z
+  .object({ membershipAddress: solanaPublicKeySchema })
+  .strict();
 const communityDirectoryQuerySchema = z
   .object({
     network: networkIdSchema,
@@ -625,6 +628,65 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         network: parsedQuery.data.network,
         meta: await responseMeta(options.projection, parsedQuery.data.network),
         community: serializeCommunity(community),
+      };
+    },
+  );
+
+  app.get<{ Params: { membershipAddress: string }; Querystring: { network: string } }>(
+    '/v1/community-memberships/:membershipAddress',
+    async (request, reply) => {
+      const parsedParams = communityMembershipParamsSchema.safeParse(request.params);
+      const parsedQuery = networkQuerySchema.safeParse(request.query);
+      if (!parsedParams.success || !parsedQuery.success) {
+        void reply.code(400);
+        return {
+          error: {
+            code: 'invalid-community-membership-query',
+            message: 'A canonical Solana membership address and explicit network are required.',
+          },
+        };
+      }
+      const snapshot = await options.projection.getDiscoverableCommunityMembership(
+        parsedQuery.data.network,
+        parsedParams.data.membershipAddress,
+      );
+      if (snapshot === undefined) {
+        void reply.code(404);
+        return {
+          error: {
+            code: 'not-found',
+            message: 'Community membership was not found.',
+          },
+        };
+      }
+      const membership = snapshot.membership;
+      return {
+        canonical: false,
+        projection: 'wokenet-open-indexer',
+        network: parsedQuery.data.network,
+        meta: responseMetaForCheckpoint(snapshot.checkpoint),
+        membership: {
+          communityAddress: membership.communityAddress,
+          membershipAddress: membership.membershipAddress,
+          action: membership.action,
+          state: membership.state,
+          roles: membership.roles,
+          stateSequence: membership.stateSequence.toString(),
+          memberActionSequence: membership.memberActionSequence.toString(),
+          membershipPolicySequence: membership.membershipPolicySequence.toString(),
+          communityMembershipSequence: membership.communityMembershipSequence.toString(),
+          activeSinceMembershipSequence: membership.activeSinceMembershipSequence.toString(),
+          updatedSlot: membership.updatedSlot.toString(),
+          updatedAt: membership.updatedAt,
+        },
+        proof: {
+          kind: 'wokesocial-program-event',
+          finality: 'finalized',
+          transactionSignature: membership.transactionSignature,
+          transactionIndex: membership.transactionIndex ?? null,
+          logIndex: membership.logIndex,
+          slot: membership.updatedSlot.toString(),
+        },
       };
     },
   );

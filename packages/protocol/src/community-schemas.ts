@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import {
+  COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
   COMMUNITY_SCHEMA_VERSION,
   MAX_DESCRIPTION_BYTES,
   MAX_ROLES,
@@ -190,7 +191,13 @@ export const communityContentSchema = z
   })
   .strict();
 
-export const communityMembershipContentSchema = z
+/**
+ * Frozen schema-version-1 community-membership shape.
+ *
+ * Historical objects remain readable, but this authority-assigned shape must
+ * never be used to create a new membership.
+ */
+export const legacyCommunityMembershipContentSchema = z
   .object({
     community: typedObjectReferenceSchema(['community']),
     member: identityIdSchema,
@@ -211,6 +218,68 @@ export const communityMembershipContentSchema = z
     (content) =>
       content.state === 'active' || content.roles.every((role) => role.state === 'inactive'),
     'Only active memberships may carry active roles.',
+  );
+
+const communityMembershipBaseFields = {
+  communityAddress: solanaPublicKeySchema,
+  member: identityIdSchema,
+  replacement: replacementSchema,
+} as const;
+
+const communityJoinContentSchema = z
+  .object({
+    ...communityMembershipBaseFields,
+    action: z.literal('join'),
+    state: z.literal('active'),
+    roles: z.tuple([z.literal('member')]),
+  })
+  .strict();
+
+const communityLeaveContentSchema = z
+  .object({
+    ...communityMembershipBaseFields,
+    action: z.literal('leave'),
+    state: z.literal('left'),
+    roles: z.tuple([]),
+  })
+  .strict();
+
+const communityRemovalContentSchema = z
+  .object({
+    ...communityMembershipBaseFields,
+    action: z.literal('remove'),
+    state: z.literal('removed'),
+    roles: z.tuple([]),
+    reason: nonEmptyLimitedString(1_000),
+  })
+  .strict();
+
+const communityBanContentSchema = z
+  .object({
+    ...communityMembershipBaseFields,
+    action: z.literal('ban'),
+    state: z.literal('banned'),
+    roles: z.tuple([]),
+    reason: nonEmptyLimitedString(1_000),
+  })
+  .strict();
+
+/**
+ * Current member-consent membership state.
+ *
+ * Actions and their resulting state/roles are encoded as a discriminated
+ * union so invalid combinations cannot cross the canonical signing boundary.
+ */
+export const communityMembershipContentSchema = z
+  .discriminatedUnion('action', [
+    communityJoinContentSchema,
+    communityLeaveContentSchema,
+    communityRemovalContentSchema,
+    communityBanContentSchema,
+  ])
+  .refine(
+    (content) => content.replacement.sequence !== 1 || content.action === 'join',
+    'The first community membership action must be a member-authored join.',
   );
 
 export const communityRoleContentSchema = z
@@ -420,8 +489,42 @@ export const legacyCommunityPayloadSchema = z
 export const communityMembershipPayloadSchema = z
   .object({
     ...commonPayloadFields,
+    schemaVersion: z.literal(COMMUNITY_MEMBERSHIP_SCHEMA_VERSION),
     type: z.literal('community-membership'),
     content: communityMembershipContentSchema,
+  })
+  .strict()
+  .superRefine((payload, context) => {
+    const isSelfAction = payload.content.action === 'join' || payload.content.action === 'leave';
+    if (isSelfAction && payload.author !== payload.content.member) {
+      context.addIssue({
+        code: 'custom',
+        path: ['author'],
+        message: 'Community join and leave actions must be authored by the member.',
+      });
+    }
+    if (!isSelfAction && payload.author === payload.content.member) {
+      context.addIssue({
+        code: 'custom',
+        path: ['author'],
+        message: 'Community removal and ban actions must be authored by a moderator.',
+      });
+    }
+    if (!payload.content.member.startsWith(`wokesocialid:v1:${payload.network}:`)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['content', 'member'],
+        message: 'The community member must belong to the payload network.',
+      });
+    }
+  });
+
+export const legacyCommunityMembershipPayloadSchema = z
+  .object({
+    ...commonPayloadFields,
+    schemaVersion: z.literal(1),
+    type: z.literal('community-membership'),
+    content: legacyCommunityMembershipContentSchema,
   })
   .strict();
 
@@ -472,6 +575,9 @@ export const eventPayloadSchema = z
 export type CommunityContent = z.infer<typeof communityContentSchema>;
 export type LegacyCommunityContent = z.infer<typeof legacyCommunityContentSchema>;
 export type CommunityMembershipContent = z.infer<typeof communityMembershipContentSchema>;
+export type LegacyCommunityMembershipContent = z.infer<
+  typeof legacyCommunityMembershipContentSchema
+>;
 export type CommunityRoleContent = z.infer<typeof communityRoleContentSchema>;
 export type CommunityRuleSetContent = z.infer<typeof communityRuleSetContentSchema>;
 export type GovernanceProposalContent = z.infer<typeof governanceProposalContentSchema>;
@@ -480,6 +586,9 @@ export type EventContent = z.infer<typeof eventContentSchema>;
 export type CommunityPayload = z.infer<typeof communityPayloadSchema>;
 export type LegacyCommunityPayload = z.infer<typeof legacyCommunityPayloadSchema>;
 export type CommunityMembershipPayload = z.infer<typeof communityMembershipPayloadSchema>;
+export type LegacyCommunityMembershipPayload = z.infer<
+  typeof legacyCommunityMembershipPayloadSchema
+>;
 export type CommunityRolePayload = z.infer<typeof communityRolePayloadSchema>;
 export type CommunityRuleSetPayload = z.infer<typeof communityRuleSetPayloadSchema>;
 export type GovernanceProposalPayload = z.infer<typeof governanceProposalPayloadSchema>;

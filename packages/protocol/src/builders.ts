@@ -2,6 +2,7 @@ import { ed25519 } from '@noble/curves/ed25519.js';
 import { randomBytes } from '@noble/hashes/utils.js';
 
 import {
+  COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
   COMMUNITY_SCHEMA_VERSION,
   PROFILE_SCHEMA_VERSION,
   PROTOCOL_NAME,
@@ -118,12 +119,18 @@ function commonFields(
   createdAt: Date,
   nonce: Uint8Array,
   schemaVersion:
-    typeof SCHEMA_VERSION | typeof PROFILE_SCHEMA_VERSION | typeof COMMUNITY_SCHEMA_VERSION,
+    | typeof SCHEMA_VERSION
+    | typeof PROFILE_SCHEMA_VERSION
+    | typeof COMMUNITY_SCHEMA_VERSION
+    | typeof COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
 ): {
   readonly protocol: typeof PROTOCOL_NAME;
   readonly protocolVersion: typeof PROTOCOL_VERSION;
   readonly schemaVersion:
-    typeof SCHEMA_VERSION | typeof PROFILE_SCHEMA_VERSION | typeof COMMUNITY_SCHEMA_VERSION;
+    | typeof SCHEMA_VERSION
+    | typeof PROFILE_SCHEMA_VERSION
+    | typeof COMMUNITY_SCHEMA_VERSION
+    | typeof COMMUNITY_MEMBERSHIP_SCHEMA_VERSION;
   readonly network: NetworkId;
   readonly author: string;
   readonly signingKey: string;
@@ -164,7 +171,9 @@ export function buildPortablePayload<Type extends PortablePayloadType>(
         ? PROFILE_SCHEMA_VERSION
         : type === 'community'
           ? COMMUNITY_SCHEMA_VERSION
-          : SCHEMA_VERSION,
+          : type === 'community-membership'
+            ? COMMUNITY_MEMBERSHIP_SCHEMA_VERSION
+            : SCHEMA_VERSION,
     ),
     type,
     content,

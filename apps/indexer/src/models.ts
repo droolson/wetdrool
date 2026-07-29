@@ -80,6 +80,13 @@ interface CommunityProjectionBase {
   /** Current onchain governance state, which may advance independently. */
   readonly governanceVersion: number;
   readonly governanceStrategyHash: string;
+  /** Current effective onchain visibility, independently committed by the account. */
+  readonly visibility: 'private' | 'public' | 'unlisted';
+  /** Current effective onchain membership admission policy. */
+  readonly membershipPolicy: 'invite' | 'open' | 'request';
+  readonly membershipPolicySequence: bigint;
+  /** Community-wide total ordering of membership transitions. */
+  readonly membershipSequence: bigint;
   readonly createdSlot: bigint;
   readonly createdAt: string;
   readonly updatedSlot: bigint;
@@ -123,14 +130,61 @@ export interface CommunityMembershipProjection {
   readonly communityAddress: string;
   readonly membershipAddress: string;
   readonly memberIdentityId: string;
-  readonly assignedByIdentityId: string;
+  readonly actorIdentityId: string;
   readonly authority: string;
-  readonly authoritySequence: bigint;
+  readonly actorSequence: bigint;
+  readonly memberActionSequence: bigint;
+  readonly membershipPolicySequence: bigint;
+  readonly communityMembershipSequence: bigint;
+  readonly activeSinceMembershipSequence: bigint;
   readonly stateSequence: bigint;
+  readonly action: CommunityMembershipAction;
+  readonly state: CommunityMembershipState;
+  readonly manifestCid?: string;
+  readonly manifestHash?: string;
+  readonly manifestVerified: boolean;
+  readonly objectId?: string;
+  readonly signingKeyId?: string;
+  readonly manifestCreatedAt?: string;
   readonly roles: number;
   readonly active: boolean;
   readonly updatedSlot: bigint;
   readonly updatedAt: string;
+  readonly transactionSignature?: string;
+  readonly transactionIndex?: number;
+  readonly logIndex?: number;
+}
+
+export type CommunityMembershipAction = 'ban' | 'join' | 'leave' | 'remove';
+export type CommunityMembershipState = 'active' | 'banned' | 'left' | 'removed';
+
+/**
+ * Privacy-safe exact-address view. Member and actor identities, signing
+ * authority, and portable-manifest locations intentionally never cross this
+ * projection boundary.
+ */
+export interface CommunityMembershipStatusProjection {
+  readonly networkId: string;
+  readonly communityAddress: string;
+  readonly membershipAddress: string;
+  readonly action: CommunityMembershipAction;
+  readonly state: CommunityMembershipState;
+  readonly roles: readonly [] | readonly ['member'];
+  readonly stateSequence: bigint;
+  readonly memberActionSequence: bigint;
+  readonly membershipPolicySequence: bigint;
+  readonly communityMembershipSequence: bigint;
+  readonly activeSinceMembershipSequence: bigint;
+  readonly updatedSlot: bigint;
+  readonly updatedAt: string;
+  readonly transactionSignature: string;
+  readonly transactionIndex?: number;
+  readonly logIndex: number;
+}
+
+export interface CommunityMembershipStatusSnapshot {
+  readonly checkpoint: bigint;
+  readonly membership: CommunityMembershipStatusProjection;
 }
 
 export interface ReactionProjection {
@@ -215,6 +269,7 @@ export interface GovernanceProposalProjection {
   readonly governanceStrategyHash: string;
   readonly votingModel: 'one-active-member-one-vote';
   readonly eligibleMemberCount: bigint;
+  readonly communityMembershipSequence: bigint;
   readonly opensAtSlot: bigint;
   readonly closesAtSlot: bigint;
   readonly quorumBps: 5000;

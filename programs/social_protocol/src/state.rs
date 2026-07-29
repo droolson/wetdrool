@@ -202,6 +202,10 @@ pub struct Community {
     pub manifest_uri: String,
     pub governance_version: u16,
     pub governance_strategy_hash: [u8; MANIFEST_HASH_BYTES],
+    pub visibility: CommunityVisibility,
+    pub membership_policy: CommunityMembershipPolicy,
+    pub membership_policy_sequence: u64,
+    pub membership_sequence: u64,
     pub creator_sequence: u64,
     pub member_count: u64,
     pub created_at_slot: u64,
@@ -220,11 +224,45 @@ impl Community {
         + MAX_MANIFEST_URI_BYTES
         + 2
         + MANIFEST_HASH_BYTES
+        + 1
+        + 1
+        + 8
+        + 8
         + 8
         + 8
         + 8
         + 8
         + 1;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommunityVisibility {
+    Public,
+    Unlisted,
+    Private,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommunityMembershipPolicy {
+    Open,
+    ApprovalRequired,
+    Closed,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommunityMembershipAction {
+    Join,
+    Leave,
+    Remove,
+    Ban,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommunityMembershipState {
+    Active,
+    Left,
+    Removed,
+    Banned,
 }
 
 #[account]
@@ -233,18 +271,41 @@ pub struct CommunityMembership {
     pub config: Pubkey,
     pub community: Pubkey,
     pub member_identity: Pubkey,
-    pub assigned_by_identity: Pubkey,
+    pub acted_by_identity: Pubkey,
+    pub action: CommunityMembershipAction,
+    pub state: CommunityMembershipState,
     pub roles: u16,
     pub state_sequence: u64,
-    pub authority_sequence: u64,
+    pub member_action_sequence: u64,
+    pub actor_sequence: u64,
+    pub active_since_membership_sequence: u64,
+    pub manifest_hash: [u8; MANIFEST_HASH_BYTES],
+    pub manifest_uri: String,
     pub created_at_slot: u64,
     pub updated_at_slot: u64,
-    pub active: bool,
     pub bump: u8,
 }
 
 impl CommunityMembership {
-    pub const SPACE: usize = 8 + 1 + 32 + 32 + 32 + 32 + 2 + 8 + 8 + 8 + 8 + 1 + 1;
+    pub const SPACE: usize = 8
+        + 1
+        + 32
+        + 32
+        + 32
+        + 32
+        + 1
+        + 1
+        + 2
+        + 8
+        + 8
+        + 8
+        + 8
+        + MANIFEST_HASH_BYTES
+        + 4
+        + MAX_MANIFEST_URI_BYTES
+        + 8
+        + 8
+        + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
@@ -278,6 +339,7 @@ pub struct GovernanceProposal {
     pub governance_strategy_hash: [u8; MANIFEST_HASH_BYTES],
     pub voting_model: GovernanceVotingModel,
     pub eligible_member_count: u64,
+    pub community_membership_sequence: u64,
     pub opens_at_slot: u64,
     pub closes_at_slot: u64,
     pub quorum_bps: u16,
@@ -305,6 +367,7 @@ impl GovernanceProposal {
         + 2
         + MANIFEST_HASH_BYTES
         + 1
+        + 8
         + 8
         + 8
         + 8

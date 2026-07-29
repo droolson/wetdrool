@@ -7,7 +7,7 @@ use crate::{
     },
     errors::SocialProtocolError,
     events::CommunityCreated,
-    state::{Community, Identity, ProtocolConfig},
+    state::{Community, CommunityMembershipPolicy, CommunityVisibility, Identity, ProtocolConfig},
     validation::{
         checked_increment, checked_next_sequence, validate_manifest, validate_nonzero_hash,
     },
@@ -21,6 +21,8 @@ pub struct CreateCommunityArgs {
     pub manifest_uri: String,
     pub governance_version: u16,
     pub governance_strategy_hash: [u8; MANIFEST_HASH_BYTES],
+    pub visibility: CommunityVisibility,
+    pub membership_policy: CommunityMembershipPolicy,
 }
 
 #[derive(Accounts)]
@@ -97,6 +99,10 @@ pub fn handle_create_community(
     community.manifest_uri = args.manifest_uri.clone();
     community.governance_version = args.governance_version;
     community.governance_strategy_hash = args.governance_strategy_hash;
+    community.visibility = args.visibility;
+    community.membership_policy = args.membership_policy;
+    community.membership_policy_sequence = 1;
+    community.membership_sequence = 0;
     community.creator_sequence = next_creator_sequence;
     community.member_count = 0;
     community.created_at_slot = created_at_slot;
@@ -115,6 +121,10 @@ pub fn handle_create_community(
         manifest_uri: args.manifest_uri,
         governance_version: args.governance_version,
         governance_strategy_hash: args.governance_strategy_hash,
+        visibility: args.visibility,
+        membership_policy: args.membership_policy,
+        membership_policy_sequence: community.membership_policy_sequence,
+        membership_sequence: community.membership_sequence,
         created_at_slot,
     });
 

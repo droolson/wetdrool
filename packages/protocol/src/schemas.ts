@@ -9,6 +9,7 @@ import {
   governanceProposalPayloadSchema,
   governanceVotePayloadSchema,
   legacyCommunityPayloadSchema,
+  legacyCommunityMembershipPayloadSchema,
 } from './community-schemas.js';
 import {
   mediaManifestPayloadSchema,
@@ -86,7 +87,8 @@ function validatePortablePayload(
   payload:
     | z.infer<typeof currentPortablePayloadUnionSchema>
     | z.infer<typeof legacyProfilePayloadSchema>
-    | z.infer<typeof legacyCommunityPayloadSchema>,
+    | z.infer<typeof legacyCommunityPayloadSchema>
+    | z.infer<typeof legacyCommunityMembershipPayloadSchema>,
   context: {
     addIssue(issue: { code: 'custom'; path?: PropertyKey[] | undefined; message: string }): void;
   },
@@ -146,8 +148,8 @@ function validatePortablePayload(
 /**
  * Current object-creation schema.
  *
- * Profiles and communities use schema version 2. Other object families remain
- * on schema version 1.
+ * Profiles, communities, and community memberships use schema version 2.
+ * Other object families remain on schema version 1.
  */
 export const currentPortablePayloadSchema = currentPortablePayloadUnionSchema.superRefine(
   (payload, context) => {
@@ -158,13 +160,15 @@ export const currentPortablePayloadSchema = currentPortablePayloadUnionSchema.su
 /**
  * Versioned read schema for immutable protocol history.
  *
- * Frozen schema-version-1 profile and community shapes remain read-compatible.
- * Use currentPortablePayloadSchema or the builders for new objects.
+ * Frozen schema-version-1 profile, community, and community-membership shapes
+ * remain read-compatible. Use currentPortablePayloadSchema or the builders for
+ * new objects.
  */
 export const portablePayloadSchema = z
   .union([
     legacyProfilePayloadSchema,
     legacyCommunityPayloadSchema,
+    legacyCommunityMembershipPayloadSchema,
     currentPortablePayloadUnionSchema,
   ])
   .superRefine((payload, context) => {

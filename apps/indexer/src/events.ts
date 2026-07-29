@@ -295,6 +295,10 @@ const communityCreatedEventSchema = z
     manifestHash: digestSchema,
     governanceVersion: u16Schema.positive(),
     governanceStrategyHash: digestSchema,
+    visibility: z.enum(['public', 'unlisted', 'private']),
+    membershipPolicy: z.enum(['open', 'request', 'invite']),
+    membershipPolicySequence: positiveU64Schema,
+    membershipSequence: nonnegativeU64Schema,
   })
   .strict();
 
@@ -324,20 +328,56 @@ const communityMembershipChangedEventSchema = z
     communityAddress: solanaPublicKeySchema,
     membershipAddress: solanaPublicKeySchema,
     memberIdentityId: identityIdSchema,
-    assignedByIdentityId: identityIdSchema,
+    actorIdentityId: identityIdSchema,
     authority: solanaPublicKeySchema,
-    authoritySequence: z.bigint().positive(),
-    membershipStateSequence: z.bigint().positive(),
+    action: z.enum(['join', 'leave', 'remove', 'ban']),
+    state: z.enum(['active', 'left', 'removed', 'banned']),
+    membershipStateSequence: positiveU64Schema,
+    memberActionSequence: positiveU64Schema,
+    actorSequence: positiveU64Schema,
+    membershipPolicySequence: positiveU64Schema,
+    communityMembershipSequence: positiveU64Schema,
+    activeSinceMembershipSequence: nonnegativeU64Schema,
     roles: u16Schema.refine((value) => (value & ~0x07) === 0),
-    active: z.boolean(),
+    manifestHash: nonzeroDigestSchema,
+    manifestCid: cidSchema,
+    manifestUri: manifestUriSchema,
   })
   .strict()
-  .refine(
-    (event) =>
-      (event.active && event.roles > 0 && (event.roles & 0x01) === 0x01) ||
-      (!event.active && event.roles === 0),
-    'Active memberships require the member role; inactive memberships require no roles.',
-  );
+  .superRefine((event, context) => {
+    const expectedState = {
+      join: 'active',
+      leave: 'left',
+      remove: 'removed',
+      ban: 'banned',
+    }[event.action];
+    if (event.state !== expectedState) {
+      context.addIssue({
+        code: 'custom',
+        path: ['state'],
+        message: 'Membership action and resulting state must agree.',
+      });
+    }
+    if (
+      (event.state === 'active' &&
+        (event.roles !== 0x01 || event.activeSinceMembershipSequence === 0n)) ||
+      (event.state !== 'active' &&
+        (event.roles !== 0 || event.activeSinceMembershipSequence !== 0n))
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Only active memberships carry the exact member role and an activation sequence.',
+      });
+    }
+    const selfAction = event.action === 'join' || event.action === 'leave';
+    if (selfAction !== (event.actorIdentityId === event.memberIdentityId)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['actorIdentityId'],
+        message: 'Join/leave must be self-authored and moderation must use another actor.',
+      });
+    }
+  });
 
 const reactionChangedEventSchema = z
   .object({
@@ -514,6 +554,7 @@ const proposalCreatedEventSchema = z
     governanceStrategyHash: digestSchema,
     votingModel: z.literal('one-active-member-one-vote'),
     eligibleMemberCount: positiveU64Schema,
+    communityMembershipSequence: nonnegativeU64Schema,
     opensAtSlot: nonnegativeU64Schema,
     closesAtSlot: positiveU64Schema,
     quorumBps: z.literal(GOVERNANCE_QUORUM_BPS),

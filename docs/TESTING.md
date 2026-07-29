@@ -11,15 +11,16 @@ WokeNet is the WokeSocial protocol and smart-contract deployment layer on
 Solana, not a chain or validator network. No `$WOKE` mint exists. The legacy
 lamport payment ABI is quarantined and cannot execute or be unpaused; its tests
 are regression evidence only.
+No Firedancer/Agave validator topology is part of WokeNet.
 
 ## Verified evidence snapshot
 
 | Surface | Current verified evidence | Important limit |
 | --- | --- | --- |
-| Protocol objects | All 29 current portable object families—schema v2 for profile/community creation, schema v1 for the other families, and frozen profile/community v1 read compatibility—plus deterministic RFC 8785 bytes and IDs, exact canonical-envelope decoding, NFC rejection, Ed25519 verification, changed-payload rejection, authorization denial, and generated Draft 2020-12 schema drift | TypeScript fixtures only; no shared Rust/TypeScript golden corpus |
-| Storage and SDK | Local CAS round-trip/deletion/corruption, permanence-consent gate, multi-provider quorum, Arweave-compatible receipt/readback validation, operation-scoped signed/recoverable publication, root-only schema-v2 community publication with caller-persisted retry coordinates, exact PDA validation, and landed-but-response-lost reconciliation, eight IDL-aligned instruction builders including one-way identity deactivation, strict RPC parsing, and exact-byte version-0/legacy compile/sign/simulate/broadcast/finalize execution | No funded live Arweave uploader, production provider, complete generated account client, flagship wallet/Mobile Wallet Adapter signer integration, executable-artifact attestation, or public-cluster transaction path |
-| WokeNet program | Twenty-five Rust sizing/validation/PDA/discriminator/sequence/allocation tests, an SBF build, and 28 Solana local-validator cases including root-authorized identity deactivation, handles, root/delegated actions, delayed recovery, governance, fail-closed legacy-payment quarantine, adversarial authorization/substitution/replay, and transaction/compute/rent ceilings | Local evidence only; no devnet/mainnet-beta deployment, successful payment flow, `$WOKE` mint, replacement payment ABI, full fuzz/cross-language matrix, or independent audit |
-| Indexer/PostgreSQL | Finalized Solana RPC sync; exact decoding/projection of all 33 IDL events; canonical onchain profile-v2 commitment; root-authority, signed/PDA-nonce, and exact-governance verification for schema-v2 communities; privacy-safe public/unlisted community projection; exact CIDv1/base32-lower/raw/SHA-256 URI validation; accepted/pending/terminal raw disposition; checkpoint-independent bounded hydration; detached, non-gating tombstone metadata; suppression-aware exact-source replay; one-way identity deactivation; seventeen ordered migrations; exact-network APIs; deterministic community-directory pagination; and bounded indexed `public-match-v2` search | Fork/reorg behavior, independent-provider reconciliation, viewer-aware search, and production-scale rebuild evidence remain open; the current rebuild refuses more than 50,000 events |
+| Protocol objects | All 29 current portable object families—schema v2 for profile/community/community-membership creation, schema v1 for the other families, and frozen v1 read compatibility for those three—plus deterministic RFC 8785 bytes and IDs, exact canonical-envelope decoding, NFC rejection, Ed25519 verification, action/state/role and author/transition checks, changed-payload rejection, authorization denial, and generated Draft 2020-12 schema drift | TypeScript fixtures only; no shared Rust/TypeScript golden corpus |
+| Storage and SDK | Local CAS round-trip/deletion/corruption, permanence-consent gate, multi-provider quorum, Arweave-compatible receipt/readback validation, operation-scoped signed/recoverable publication, root-only schema-v2 community publication, exact member-bound membership PDA plus join/leave/remove/ban builders, landed-but-response-lost reconciliation, 11 IDL-aligned builders total, strict RPC parsing, and exact-byte compile/sign/simulate/broadcast/finalize execution | No funded live Arweave uploader, production provider, complete generated account client, flagship wallet/Mobile Wallet Adapter membership integration, executable-artifact attestation, or public-cluster transaction path |
+| WokeNet program | Generated IDL with 43 instructions, 19 account layouts, and 33 events; passing Rust/SBF/local-validator gates cover member-authorized join/leave, creator-or-scoped-delegate remove/ban, terminal bans, sequence-safe governance snapshots, adversarial membership cases, and the broader program surface | Local scope only, with no devnet/mainnet-beta deployment, successful payment flow, `$WOKE` mint, replacement payment ABI, full fuzz/cross-language matrix, or independent audit |
+| Indexer/PostgreSQL | Passing workspace/integration gates cover exact decoding/projection of all 33 IDL events; canonical profile-v2, community-v2, and membership-v2 verification; privacy-safe public/unlisted community projection and exact-address open-membership status; exact CID validation; accepted/pending/terminal disposition; bounded hydration; suppression-aware replay; one-way identity deactivation; 18 ordered migrations; the explicit `0018` predeployment rejection of incompatible community/membership/proposal history; exact-network APIs; deterministic pagination; and bounded `public-match-v2` search | The status route has no roster or identity-bearing fields. Migration `0018` requires fresh disposable PostgreSQL and local-validator state; it provides no in-place compatibility path. Fork/reorg behavior, independent-provider reconciliation, viewer-aware search, and production-scale rebuild evidence remain open |
 | Feed provider | 38 cases cover all seven modes, transparent scoring, bounded trending, provider provenance/checkpoints, cursor binding, third-party reconciliation, local safety filtering, redirect-only-origin rejection, and fail-closed limiter startup ownership | Production candidate collection and a curated discovery registry are operator/client integrations |
 | Crypto/passkey wrapping | 12 vectors cover random/hash/HKDF/AES-GCM and credential-bound WebAuthn-PRF Ed25519-seed wrapping, including substitution and malformed inputs | Package-level vectors do not prove protocol onboarding, recovery, or external review |
 | Configuration | Unit cases plus real-TLS integration cover runtime-mode consistency, Solana cluster/RPC naming, origin/domain boundaries, verified database TLS and hostname/CA rejection, migration integrity, trusted proxies, secret isolation, service-specific parsers, shared Redis/HMAC admission configuration, and nonlocal fail-closed requirements | Configuration tests are guardrails, not production certificate, secret-manager, public-provider, or multi-replica evidence |
@@ -30,10 +31,10 @@ are regression evidence only.
 | Moderation provider | 56 unit cases and four isolated PostgreSQL cases cover signed object verification, encrypted restricted evidence, append-only history, runtime-role delete denial, readiness privileges, legal holds, due/review/expiry transitions, and retention-safe maintenance | Production object authorizer, operator SSO, specialist workflows, and a separately credentialed reviewed retention executor remain open |
 | Media worker | 70 adversarial unit cases, three real Sharp/FFmpeg/ffprobe integrations, and a real ClamAV 1.5.3 benign/EICAR container check cover resumability, hashes, MIME/container checks, filesystem races, bounds, metadata-free processing, HLS/waveforms, authorization, scanner protocol/freshness/provenance, and unsigned publication | Flagship browser upload, production multi-provider storage, codec sandbox/isolation evidence, load testing, and external review remain open |
 | Kubo | Real local container publish, returned-CID verification, gateway retrieval, health, and unpin | No production provider or multi-gateway fault exercise |
-| Connected local slice | Fresh Solana local validator, signed local CAS, ten finalized transactions, verified public community creation/discovery, production sync/API, nine-event destructive projection replay with exact public-state equivalence, production Next, and eight desktop/mobile production-browser checks across both runs | Local identity/profile/text-post/community/follow/tombstone journey only; not devnet/mainnet-beta, community joining, Seeker Android, `$WOKE`, or full product breadth |
+| Connected local slice | A fresh validator and signed local CAS produced exactly 11 finalized transactions, verified community and member-authored join manifests, privacy-safe exact-address membership status, 10-event destructive replay with exact state equivalence, production Next, and eight browser checks (four before and four after replay) | Local identity/profile/text-post/community/membership/follow/tombstone journey only; not devnet/mainnet-beta, Seeker Android, `$WOKE`, or full product breadth |
 | Public Solana deployment | None | No WokeNet program is recorded on devnet or mainnet-beta |
 | `$WOKE` replacement | Portable asset schema truthfully accepts SOL or exact SPL metadata and rejects `{ kind: "woke" }`; local program tests prove the legacy ABI fails closed without state/balance changes | No mint exists; legacy ABI cannot execute or be unpaused; mint-aware ABI/migration/audit absent |
-| Seeker Android | Non-release Expo/React Native foundation with Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed, honest failure states, focused unit tests, and Android export metadata | No verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication |
+| Seeker Android | Non-release Expo/React Native foundation with Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed/community discovery, honest failure states, focused unit tests, and Android export metadata | Membership mutation is absent; no verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication |
 | Web | Production build and passing unit/Playwright cases cover the current route surface, axe A/AA fixtures, semantic states, connected post detail, skip-link/navigation, high contrast, canonical-host redirects, bounded public search, local composer/preferences/hide/export, and desktop passkey lifecycle flows; duplicate mobile-viewport flows are intentionally skipped | Wallet/protocol-identity/transaction flows, WokeNet delegation lifecycle, post-detail axe coverage, a manual WCAG conformance result, and native Android remain open |
 | Local web performance | `pnpm measure:performance` records three production-mode loopback samples for each of five representative routes, including TTFB, DOM-ready, load, LCP, and CLS | Unthrottled laboratory observation only; no INP, field Core Web Vitals, production dependencies, regional latency, load, or capacity evidence |
 
@@ -126,32 +127,38 @@ production build.
 
 ## Local Solana vertical-slice proof
 
-The current integration milestone runs against a disposable Solana local
-validator and does the following:
+The current completed integration milestone uses a disposable Solana local
+validator for the following exact 11-transaction/10-event flow:
 
 1. Start a fresh Solana local validator and PostgreSQL projection.
 2. Create two identities and an inclusive profile through the program.
-3. Canonicalize and sign text-post and schema-v2 public-community manifests.
+3. Canonicalize and sign text-post, schema-v2 public-community, and
+   member-authored membership-join manifests.
 4. Store and independently re-read the exact bytes by content address.
 5. Anchor both references and the community PDA through finalized transactions.
 6. Bind the community's signed nonce, creation root, and exact governance
    strategy to its finalized creation event.
-7. Index only finalized/eligible events and verify both manifests.
-8. Follow the author and display the verified post and discoverable community
-   in the production web application.
-9. Clear every row in the selected network projection.
-10. Rebuild nine durable events from program history and stored signed
-    manifests.
-11. Recheck the feed, address-routed community detail, bounded directory, and
-    exact-network public search before and after replay.
+7. Submit the viewer's member-authorized join against exact identity, state,
+   membership-policy, and community-membership sequence snapshots.
+8. Index only finalized/eligible events and verify all three manifests.
+9. Assert exact-address privacy-safe membership status without a roster,
+   member/actor identity, signer authority, moderation reason, or manifest
+   location.
+10. Follow the author and display the verified post and discoverable community
+    in the production web application.
+11. Clear every row in the selected network projection, rebuild exactly ten
+    durable events, and recheck the feed, membership status, address-routed
+    community detail, bounded directory, and exact-network public search.
 
 The connected harness checks exact object ID, CID, payload hash, finalized
 anchor, tombstone suppression, following projection, zero replay dead letters,
 and exact pre/post replay state. Adjacent protocol/indexer tests reject changed
 bytes, invalid signatures, wrong authors, duplicates, and invalid manifests.
-`pnpm test:vertical-slice` runs this proof and is included in `pnpm verify:all`
-and the program integration CI lane. It does not prove devnet/mainnet-beta,
-Seeker Android, Mobile Wallet Adapter, signed-APK, or `$WOKE`-mint behavior.
+`pnpm test:vertical-slice` passed this proof with zero dead letters, exact
+pre/post replay state, and eight production-browser checks—four before replay
+and four after. It is included in `pnpm verify:all` and the program integration
+CI lane. It does not prove devnet/mainnet-beta, Seeker Android, Mobile Wallet
+Adapter, signed-APK, or `$WOKE`-mint behavior.
 
 The public-deployment gate must repeat the flow on Solana devnet with an exact
 genesis/program/deployment-slot record, reviewed authority, finalized indexing,

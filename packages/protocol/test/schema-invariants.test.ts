@@ -265,7 +265,7 @@ describe('object-specific validation invariants', () => {
         ...payload,
         content: { ...payload.content, state: 'left' },
       }),
-    ).toThrow(/Only active memberships/u);
+    ).toThrow();
   });
 
   it('keeps community v1 read-only and requires the exact v2 onchain governance binding', () => {

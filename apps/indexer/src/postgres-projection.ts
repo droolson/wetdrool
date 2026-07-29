@@ -1,6 +1,6 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres';
 
-import { communityContentSchema } from '@wokesocial/protocol';
+import { communityContentSchema, type CommunityMembershipContent } from '@wokesocial/protocol';
 
 import {
   assertUnambiguousEventOrder,
@@ -31,6 +31,7 @@ import type {
   CommunityDirectoryQuery,
   CommunityDirectorySnapshot,
   CommunityMembershipProjection,
+  CommunityMembershipStatusSnapshot,
   CommunityProjection,
   VerifiedCommunityProjection,
   DelegationProjection,
@@ -205,7 +206,12 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
          AND dead_letter.failure_code = 'manifest-unavailable'
          AND dead_letter.next_attempt_at IS NOT NULL
         WHERE event.network_id = ${networkId}
-          AND event.event_type IN ('profile-updated', 'post-published', 'community-created')
+          AND event.event_type IN (
+            'profile-updated',
+            'post-published',
+            'community-created',
+            'community-membership-changed'
+          )
           AND dead_letter.next_attempt_at <= ${dueAt}
         ORDER BY
           dead_letter.next_attempt_at ASC,
@@ -535,10 +541,11 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
-      event.type !== 'community-created'
+      event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed'
     ) {
       throw new ProjectionError(
-        'Only profile, post, and community manifest events can be deferred.',
+        'Only profile, post, community, and membership manifest events can be deferred.',
         'manifest-mismatch',
       );
     }
@@ -583,6 +590,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       `;
     } else if (event.type === 'community-created') {
       await this.#insertCommunityShell(sql, event);
+    } else if (event.type === 'community-membership-changed') {
+      await this.#projectCommunityMembershipTransition(sql, event);
     }
 
     await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
@@ -641,10 +650,11 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
-      event.type !== 'community-created'
+      event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed'
     ) {
       throw new ProjectionError(
-        'Only profile, post, and community manifest events can be promoted.',
+        'Only profile, post, community, and membership manifest events can be promoted.',
         'manifest-mismatch',
       );
     }
@@ -724,7 +734,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         )
         ON CONFLICT (object_id) DO NOTHING
       `;
-    } else {
+    } else if (event.type === 'community-created') {
       const verified = requireManifest(event, manifest, 'community');
       const updated = await sql`
         UPDATE communities
@@ -746,6 +756,45 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       if (updated.length !== 1) {
         throw stale('A pending community shell must exist before manifest promotion.');
       }
+    } else {
+      const verified = requireManifest(event, manifest, 'community-membership');
+      const content = verified.content as CommunityMembershipContent;
+      const previous =
+        event.membershipStateSequence === 1n
+          ? []
+          : await sql<{ manifest_hash: string }[]>`
+              SELECT event_body ->> 'manifestHash' AS manifest_hash
+              FROM protocol_events
+              WHERE network_id = ${event.networkId}
+                AND event_type = 'community-membership-changed'
+                AND event_body ->> 'membershipAddress' = ${event.membershipAddress}
+                AND event_body ->> 'membershipStateSequence' =
+                  ${(event.membershipStateSequence - 1n).toString()}
+              LIMIT 1
+            `;
+      const expectedPreviousObjectId =
+        previous[0] === undefined
+          ? undefined
+          : `wokesocialobj:v1:community-membership:${previous[0].manifest_hash}`;
+      if (
+        BigInt(content.replacement.sequence) !== event.membershipStateSequence ||
+        content.replacement.replaces?.id !== expectedPreviousObjectId
+      ) {
+        throw stale('Membership manifest does not continue its exact replacement chain.');
+      }
+      await sql`
+        UPDATE community_memberships
+        SET
+          manifest_verified = true,
+          object_id = ${verified.objectId},
+          signing_key_id = ${verified.signingKeyId},
+          manifest_created_at = ${verified.createdAt}
+        WHERE network_id = ${event.networkId}
+          AND community_address = ${event.communityAddress}
+          AND membership_address = ${event.membershipAddress}
+          AND state_sequence = ${event.membershipStateSequence.toString()}
+          AND manifest_hash = ${event.manifestHash}
+      `;
     }
 
     const transitions = await sql<{ transitioned: boolean }[]>`
@@ -779,10 +828,11 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
-      event.type !== 'community-created'
+      event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed'
     ) {
       throw new ProjectionError(
-        'Only profile, post, and community manifest events can transition from pending to terminal.',
+        'Only profile, post, community, and membership manifest events can transition from pending to terminal.',
         'manifest-mismatch',
       );
     }
@@ -869,6 +919,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
       event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed' &&
       event.type !== 'tombstoned'
     ) {
       throw new ProjectionError(
@@ -933,6 +984,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       `;
     } else if (event.type === 'community-created') {
       await this.#insertCommunityShell(sql, event);
+    } else if (event.type === 'community-membership-changed') {
+      await this.#projectCommunityMembershipTransition(sql, event);
     }
 
     await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
@@ -988,6 +1041,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         creator_sequence, manifest_cid, manifest_hash, manifest_verified,
         manifest_governance_version, manifest_governance_strategy_hash,
         governance_version, governance_strategy_hash,
+        visibility, membership_policy, membership_policy_sequence, membership_sequence,
         created_slot, created_at, updated_slot, updated_at
       ) VALUES (
         ${event.communityAddress}, ${event.networkId}, ${event.creatorIdentityId},
@@ -995,6 +1049,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         ${event.manifestCid}, ${event.manifestHash}, false,
         ${event.governanceVersion}, ${event.governanceStrategyHash},
         ${event.governanceVersion}, ${event.governanceStrategyHash},
+        ${event.visibility}, ${event.membershipPolicy},
+        ${event.membershipPolicySequence.toString()}, ${event.membershipSequence.toString()},
         ${event.slot.toString()}, ${event.blockTime},
         ${event.slot.toString()}, ${event.blockTime}
       )
@@ -1010,6 +1066,194 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         ${event.blockTime}
       )
     `;
+  }
+
+  async #projectCommunityMembershipTransition(
+    sql: TransactionSql,
+    event: Extract<ProtocolEvent, { readonly type: 'community-membership-changed' }>,
+    manifest?: VerifiedManifest,
+  ): Promise<void> {
+    const communities = await sql<CommunityRow[]>`
+      SELECT *
+      FROM communities
+      WHERE network_id = ${event.networkId}
+        AND community_address = ${event.communityAddress}
+      FOR UPDATE
+    `;
+    const community = communities[0];
+    if (community === undefined) {
+      throw new ProjectionError(
+        `Community ${event.communityAddress} has not been indexed.`,
+        'missing-identity',
+      );
+    }
+    const members = await sql<{ identity_address: string }[]>`
+      SELECT identity_address
+      FROM identities
+      WHERE identity_id = ${event.memberIdentityId}
+        AND network_id = ${event.networkId}
+    `;
+    const member = members[0];
+    if (member === undefined) {
+      throw new ProjectionError(
+        `Identity ${event.memberIdentityId} has not been indexed.`,
+        'missing-identity',
+      );
+    }
+    const expectedAddress = await deriveCommunityMembershipAddress(
+      event.programId,
+      event.communityAddress,
+      member.identity_address,
+    );
+    if (
+      community.network_id !== event.networkId ||
+      BigInt(community.membership_policy_sequence) !== event.membershipPolicySequence ||
+      event.communityMembershipSequence !== BigInt(community.membership_sequence) + 1n ||
+      event.membershipAddress !== expectedAddress ||
+      (event.action === 'join' &&
+        (community.membership_policy !== 'open' ||
+          (community.visibility !== 'public' && community.visibility !== 'unlisted'))) ||
+      ((event.action === 'join' || event.action === 'leave') &&
+        event.actorIdentityId !== event.memberIdentityId) ||
+      ((event.action === 'remove' || event.action === 'ban') &&
+        event.actorIdentityId !== community.creator_identity_id)
+    ) {
+      throw stale('Membership event does not continue the indexed community policy.');
+    }
+    const existingMemberships = await sql<CommunityMembershipRow[]>`
+      SELECT *
+      FROM community_memberships
+      WHERE network_id = ${event.networkId}
+        AND (
+          (
+            community_address = ${event.communityAddress}
+            AND member_identity_id = ${event.memberIdentityId}
+          )
+          OR membership_address = ${event.membershipAddress}
+        )
+      FOR UPDATE
+    `;
+    const current = existingMemberships.find(
+      (membership) =>
+        membership.community_address === event.communityAddress &&
+        membership.member_identity_id === event.memberIdentityId,
+    );
+    const verified =
+      manifest === undefined ? undefined : requireManifest(event, manifest, 'community-membership');
+    const content = verified?.content as CommunityMembershipContent | undefined;
+    const objectId = `wokesocialobj:v1:community-membership:${event.manifestHash}`;
+    if (
+      (current === undefined &&
+        (event.action !== 'join' ||
+          event.membershipStateSequence !== 1n ||
+          (content !== undefined &&
+            (content.replacement.sequence !== 1 || content.replacement.replaces !== undefined)))) ||
+      (current !== undefined &&
+        (event.membershipStateSequence !== BigInt(current.state_sequence) + 1n ||
+          current.membership_address !== event.membershipAddress ||
+          !membershipTransitionAllowed(current.state, event.action) ||
+          (content !== undefined &&
+            (BigInt(content.replacement.sequence) !== event.membershipStateSequence ||
+              content.replacement.replaces?.id !== current.object_id)))) ||
+      existingMemberships.some((membership) => membership !== current) ||
+      (verified !== undefined &&
+        (verified.objectId !== objectId ||
+          verified.payloadHash !== event.manifestHash ||
+          verified.cid !== event.manifestCid)) ||
+      (event.action === 'join' &&
+        (event.memberActionSequence !== event.actorSequence ||
+          event.activeSinceMembershipSequence !== event.communityMembershipSequence ||
+          (current !== undefined &&
+            event.memberActionSequence <= BigInt(current.member_action_sequence)))) ||
+      (event.action === 'leave' &&
+        (event.memberActionSequence !== event.actorSequence ||
+          current === undefined ||
+          event.memberActionSequence <= BigInt(current.member_action_sequence))) ||
+      ((event.action === 'remove' || event.action === 'ban') &&
+        (current === undefined ||
+          event.memberActionSequence !== BigInt(current.member_action_sequence) ||
+          event.actorSequence <= BigInt(community.creator_sequence)))
+    ) {
+      throw stale('Membership event does not advance its exact state and replacement sequence.');
+    }
+    const updated = await sql`
+      INSERT INTO community_memberships (
+        network_id, community_address, member_identity_id, membership_address,
+        actor_identity_id, authority, actor_sequence, member_action_sequence,
+        membership_policy_sequence, community_membership_sequence,
+        active_since_membership_sequence, state_sequence, action, state,
+        manifest_cid, manifest_hash, manifest_verified, object_id,
+        signing_key_id, manifest_created_at, roles, active,
+        updated_slot, updated_at, transaction_signature, transaction_index, log_index
+      ) VALUES (
+        ${event.networkId}, ${event.communityAddress}, ${event.memberIdentityId},
+        ${event.membershipAddress}, ${event.actorIdentityId}, ${event.authority},
+        ${event.actorSequence.toString()}, ${event.memberActionSequence.toString()},
+        ${event.membershipPolicySequence.toString()},
+        ${event.communityMembershipSequence.toString()},
+        ${event.activeSinceMembershipSequence.toString()},
+        ${event.membershipStateSequence.toString()}, ${event.action}, ${event.state},
+        ${event.manifestCid}, ${event.manifestHash}, ${verified !== undefined}, ${objectId},
+        ${verified?.signingKeyId ?? null}, ${verified?.createdAt ?? null},
+        ${event.roles}, ${event.state === 'active'}, ${event.slot.toString()},
+        ${event.blockTime}, ${event.transactionSignature},
+        ${event.transactionIndex ?? null}, ${event.logIndex}
+      )
+      ON CONFLICT (network_id, community_address, member_identity_id)
+      DO UPDATE SET
+        membership_address = EXCLUDED.membership_address,
+        actor_identity_id = EXCLUDED.actor_identity_id,
+        authority = EXCLUDED.authority,
+        actor_sequence = EXCLUDED.actor_sequence,
+        member_action_sequence = EXCLUDED.member_action_sequence,
+        membership_policy_sequence = EXCLUDED.membership_policy_sequence,
+        community_membership_sequence = EXCLUDED.community_membership_sequence,
+        active_since_membership_sequence = EXCLUDED.active_since_membership_sequence,
+        state_sequence = EXCLUDED.state_sequence,
+        action = EXCLUDED.action,
+        state = EXCLUDED.state,
+        manifest_cid = EXCLUDED.manifest_cid,
+        manifest_hash = EXCLUDED.manifest_hash,
+        manifest_verified = EXCLUDED.manifest_verified,
+        object_id = EXCLUDED.object_id,
+        signing_key_id = EXCLUDED.signing_key_id,
+        manifest_created_at = EXCLUDED.manifest_created_at,
+        roles = EXCLUDED.roles,
+        active = EXCLUDED.active,
+        updated_slot = EXCLUDED.updated_slot,
+        updated_at = EXCLUDED.updated_at,
+        transaction_signature = EXCLUDED.transaction_signature,
+        transaction_index = EXCLUDED.transaction_index,
+        log_index = EXCLUDED.log_index
+      WHERE community_memberships.state_sequence < EXCLUDED.state_sequence
+      RETURNING community_address
+    `;
+    if (updated.length !== 1) {
+      throw stale('Membership event does not advance its state sequence.');
+    }
+    const moderated = event.action === 'remove' || event.action === 'ban';
+    const advanced = await sql`
+      UPDATE communities
+      SET
+        latest_action_authority =
+          CASE WHEN ${moderated} THEN ${event.authority} ELSE latest_action_authority END,
+        creator_sequence =
+          CASE
+            WHEN ${moderated} THEN ${event.actorSequence.toString()}::numeric
+            ELSE creator_sequence
+          END,
+        membership_sequence = ${event.communityMembershipSequence.toString()},
+        updated_slot = ${event.slot.toString()},
+        updated_at = ${event.blockTime}
+      WHERE community_address = ${event.communityAddress}
+        AND network_id = ${event.networkId}
+        AND membership_policy_sequence = ${event.membershipPolicySequence.toString()}
+        AND membership_sequence = ${(event.communityMembershipSequence - 1n).toString()}
+      RETURNING community_address
+    `;
+    if (advanced.length !== 1) {
+      throw stale('Membership event could not advance the community membership sequence.');
+    }
   }
 
   async #applyInTransaction(
@@ -1489,6 +1733,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 object_id, schema_version, signing_key_id, manifest_created_at, content,
                 manifest_governance_version, manifest_governance_strategy_hash,
                 governance_version, governance_strategy_hash,
+                visibility, membership_policy, membership_policy_sequence, membership_sequence,
                 created_slot, created_at, updated_slot, updated_at
               ) VALUES (
                 ${event.communityAddress}, ${event.networkId}, ${event.creatorIdentityId},
@@ -1498,6 +1743,9 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 ${verified.createdAt}, ${sql.json(toJsonValue(verified.content))},
                 ${event.governanceVersion}, ${event.governanceStrategyHash},
                 ${event.governanceVersion}, ${event.governanceStrategyHash},
+                ${event.visibility}, ${event.membershipPolicy},
+                ${event.membershipPolicySequence.toString()},
+                ${event.membershipSequence.toString()},
                 ${event.slot.toString()}, ${event.blockTime},
                 ${event.slot.toString()}, ${event.blockTime}
               )
@@ -1549,96 +1797,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         break;
       }
       case 'community-membership-changed': {
-        const communities = await sql<CommunityRow[]>`
-              SELECT *
-              FROM communities
-              WHERE network_id = ${event.networkId}
-                AND community_address = ${event.communityAddress}
-              FOR UPDATE
-            `;
-        const community = communities[0];
-        if (community === undefined) {
-          throw new ProjectionError(
-            `Community ${event.communityAddress} has not been indexed.`,
-            'missing-identity',
-          );
-        }
-        if (
-          community.network_id !== event.networkId ||
-          community.creator_identity_id !== event.assignedByIdentityId ||
-          event.authoritySequence <= BigInt(community.creator_sequence)
-        ) {
-          throw stale('Membership event authority does not advance the indexed community.');
-        }
-        const existingMemberships = await sql<CommunityMembershipRow[]>`
-              SELECT *
-              FROM community_memberships
-              WHERE network_id = ${event.networkId}
-                AND (
-                  (
-                    community_address = ${event.communityAddress}
-                    AND member_identity_id = ${event.memberIdentityId}
-                  )
-                  OR membership_address = ${event.membershipAddress}
-                )
-              FOR UPDATE
-            `;
-        const current = existingMemberships.find(
-          (membership) =>
-            membership.community_address === event.communityAddress &&
-            membership.member_identity_id === event.memberIdentityId,
-        );
-        if (
-          (current !== undefined &&
-            (event.membershipStateSequence <= BigInt(current.state_sequence) ||
-              current.membership_address !== event.membershipAddress)) ||
-          existingMemberships.some((membership) => membership !== current)
-        ) {
-          throw stale('Membership event does not advance its exact indexed account.');
-        }
-        const updated = await sql`
-              INSERT INTO community_memberships (
-                network_id, community_address, member_identity_id, membership_address,
-                assigned_by_identity_id, authority, authority_sequence,
-                state_sequence, roles, active, updated_slot, updated_at
-              ) VALUES (
-                ${event.networkId}, ${event.communityAddress}, ${event.memberIdentityId},
-                ${event.membershipAddress}, ${event.assignedByIdentityId},
-                ${event.authority}, ${event.authoritySequence.toString()},
-                ${event.membershipStateSequence.toString()}, ${event.roles},
-                ${event.active}, ${event.slot.toString()}, ${event.blockTime}
-              )
-              ON CONFLICT (network_id, community_address, member_identity_id)
-              DO UPDATE SET
-                membership_address = EXCLUDED.membership_address,
-                assigned_by_identity_id = EXCLUDED.assigned_by_identity_id,
-                authority = EXCLUDED.authority,
-                authority_sequence = EXCLUDED.authority_sequence,
-                state_sequence = EXCLUDED.state_sequence,
-                roles = EXCLUDED.roles,
-                active = EXCLUDED.active,
-                updated_slot = EXCLUDED.updated_slot,
-                updated_at = EXCLUDED.updated_at
-              WHERE community_memberships.state_sequence < EXCLUDED.state_sequence
-              RETURNING community_address
-            `;
-        if (updated.length !== 1) {
-          throw stale('Membership event does not advance its state sequence.');
-        }
-        const advanced = await sql`
-              UPDATE communities
-              SET latest_action_authority = ${event.authority},
-                  creator_sequence = ${event.authoritySequence.toString()},
-                  updated_slot = ${event.slot.toString()},
-                  updated_at = ${event.blockTime}
-              WHERE community_address = ${event.communityAddress}
-                AND network_id = ${event.networkId}
-                AND creator_sequence < ${event.authoritySequence.toString()}
-              RETURNING community_address
-            `;
-        if (advanced.length !== 1) {
-          throw stale('Membership event could not advance the community sequence.');
-        }
+        await this.#projectCommunityMembershipTransition(sql, event, manifest);
         break;
       }
       case 'reaction-changed': {
@@ -2261,7 +2420,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         }
         if (
           event.previousCommunitySequence !== BigInt(community.creator_sequence) ||
-          event.proposerSequence <= BigInt(community.creator_sequence)
+          event.proposerSequence <= BigInt(community.creator_sequence) ||
+          event.communityMembershipSequence !== BigInt(community.membership_sequence)
         ) {
           throw stale('Proposal does not advance the indexed community sequence.');
         }
@@ -2315,7 +2475,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 authority, proposer_sequence, previous_community_sequence,
                 manifest_hash, manifest_uri, manifest_verified,
                 governance_version, governance_strategy_hash, voting_model,
-                eligible_member_count, opens_at_slot, closes_at_slot,
+                eligible_member_count, community_membership_sequence,
+                opens_at_slot, closes_at_slot,
                 quorum_bps, approval_bps, yes_votes, no_votes, abstain_votes,
                 state_sequence, outcome, created_slot, created_at
               ) VALUES (
@@ -2326,6 +2487,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 ${event.manifestHash}, ${event.manifestUri}, false,
                 ${event.governanceVersion}, ${event.governanceStrategyHash},
                 ${event.votingModel}, ${event.eligibleMemberCount.toString()},
+                ${event.communityMembershipSequence.toString()},
                 ${event.opensAtSlot.toString()}, ${event.closesAtSlot.toString()},
                 ${event.quorumBps}, ${event.approvalBps}, 0, 0, 0,
                 ${event.proposalStateSequence.toString()}, 'pending',
@@ -2414,8 +2576,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
           BigInt(membership.state_sequence) !== event.membershipStateSequence ||
           !membership.active ||
           (membership.roles & 0x01) !== 0x01 ||
-          BigInt(membership.updated_slot) > BigInt(proposal.created_slot) ||
-          BigInt(membership.authority_sequence) >= BigInt(proposal.proposer_sequence)
+          BigInt(membership.active_since_membership_sequence) >
+            BigInt(proposal.community_membership_sequence)
         ) {
           throw stale('Vote membership does not match the proposal eligibility snapshot.');
         }
@@ -3401,6 +3563,72 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     return rows.map(membershipFromRow);
   }
 
+  async getDiscoverableCommunityMembership(
+    networkId: string,
+    membershipAddress: string,
+  ): Promise<CommunityMembershipStatusSnapshot | undefined> {
+    try {
+      return await this.#sql.begin('isolation level repeatable read read only', async (sql) => {
+        const rows = await sql<CommunityMembershipRow[]>`
+          SELECT membership.*
+          FROM community_memberships AS membership
+          JOIN communities AS community
+            ON community.network_id = membership.network_id
+           AND community.community_address = membership.community_address
+          WHERE membership.network_id = ${networkId}
+            AND membership.membership_address = ${membershipAddress}
+            AND membership.manifest_verified
+            AND membership.transaction_signature IS NOT NULL
+            AND membership.log_index IS NOT NULL
+            AND community.manifest_verified
+            AND community.visibility IN ('public', 'unlisted')
+            AND community.membership_policy = 'open'
+          LIMIT 1
+        `;
+        const row = rows[0];
+        if (row === undefined) return undefined;
+        const checkpoints = await sql<{ finalized_slot: string }[]>`
+          SELECT finalized_slot
+          FROM indexer_checkpoints
+          WHERE network_id = ${networkId}
+        `;
+        const checkpointRow = checkpoints[0];
+        if (
+          checkpointRow === undefined ||
+          BigInt(checkpointRow.finalized_slot) < BigInt(row.updated_slot) ||
+          row.transaction_signature === null ||
+          row.log_index === null
+        ) {
+          return undefined;
+        }
+        const membership = membershipFromRow(row);
+        return {
+          checkpoint: BigInt(checkpointRow.finalized_slot),
+          membership: {
+            networkId: membership.networkId,
+            communityAddress: membership.communityAddress,
+            membershipAddress: membership.membershipAddress,
+            action: membership.action,
+            state: membership.state,
+            roles: membership.active ? (['member'] as const) : [],
+            stateSequence: membership.stateSequence,
+            memberActionSequence: membership.memberActionSequence,
+            membershipPolicySequence: membership.membershipPolicySequence,
+            communityMembershipSequence: membership.communityMembershipSequence,
+            activeSinceMembershipSequence: membership.activeSinceMembershipSequence,
+            updatedSlot: membership.updatedSlot,
+            updatedAt: membership.updatedAt,
+            transactionSignature: row.transaction_signature,
+            ...(row.transaction_index === null ? {} : { transactionIndex: row.transaction_index }),
+            logIndex: row.log_index,
+          },
+        };
+      });
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
   async getReactionsByPostReference(
     networkId: string,
     targetPostReference: string,
@@ -4383,6 +4611,21 @@ function sameBigInts(left: readonly bigint[], right: readonly bigint[]): boolean
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+function membershipTransitionAllowed(
+  current: CommunityMembershipProjection['state'],
+  action: CommunityMembershipProjection['action'],
+): boolean {
+  switch (current) {
+    case 'active':
+      return action === 'leave' || action === 'remove' || action === 'ban';
+    case 'left':
+    case 'removed':
+      return action === 'join' || action === 'ban';
+    case 'banned':
+      return false;
+  }
+}
+
 function isDefaultPublicKey(value: string): boolean {
   return value === '11111111111111111111111111111111';
 }
@@ -4496,6 +4739,10 @@ interface CommunityRow {
   content: unknown | null;
   governance_version: number;
   governance_strategy_hash: string;
+  visibility: 'public' | 'unlisted' | 'private';
+  membership_policy: 'open' | 'request' | 'invite';
+  membership_policy_sequence: string;
+  membership_sequence: string;
   created_slot: string;
   created_at: Date | string;
   updated_slot: string;
@@ -4507,14 +4754,29 @@ interface CommunityMembershipRow {
   community_address: string;
   membership_address: string;
   member_identity_id: string;
-  assigned_by_identity_id: string;
+  actor_identity_id: string;
   authority: string;
-  authority_sequence: string;
+  actor_sequence: string;
+  member_action_sequence: string;
+  membership_policy_sequence: string;
+  community_membership_sequence: string;
+  active_since_membership_sequence: string;
   state_sequence: string;
+  action: CommunityMembershipProjection['action'];
+  state: CommunityMembershipProjection['state'];
+  manifest_cid: string | null;
+  manifest_hash: string | null;
+  manifest_verified: boolean;
+  object_id: string | null;
+  signing_key_id: string | null;
+  manifest_created_at: Date | string | null;
   roles: number;
   active: boolean;
   updated_slot: string;
   updated_at: Date | string;
+  transaction_signature: string | null;
+  transaction_index: number | null;
+  log_index: number | null;
 }
 
 interface ReactionRow {
@@ -4626,6 +4888,7 @@ interface GovernanceProposalRow {
   governance_strategy_hash: string;
   voting_model: 'one-active-member-one-vote';
   eligible_member_count: string;
+  community_membership_sequence: string;
   opens_at_slot: string;
   closes_at_slot: string;
   quorum_bps: 5000;
@@ -4910,6 +5173,10 @@ function communityFromRow(row: CommunityRow): CommunityProjection {
     manifestGovernanceStrategyHash: row.manifest_governance_strategy_hash,
     governanceVersion: row.governance_version,
     governanceStrategyHash: row.governance_strategy_hash,
+    visibility: row.visibility,
+    membershipPolicy: row.membership_policy,
+    membershipPolicySequence: BigInt(row.membership_policy_sequence),
+    membershipSequence: BigInt(row.membership_sequence),
     createdSlot: BigInt(row.created_slot),
     createdAt: dateString(row.created_at),
     updatedSlot: BigInt(row.updated_slot),
@@ -4942,19 +5209,51 @@ function communityFromRow(row: CommunityRow): CommunityProjection {
 }
 
 function membershipFromRow(row: CommunityMembershipRow): CommunityMembershipProjection {
+  if (
+    row.manifest_verified &&
+    (row.manifest_cid === null ||
+      row.manifest_hash === null ||
+      row.object_id === null ||
+      row.signing_key_id === null ||
+      row.manifest_created_at === null)
+  ) {
+    throw new ProjectionError(
+      'Verified community membership projection metadata is incomplete.',
+      'database-error',
+    );
+  }
   return {
     networkId: row.network_id,
     communityAddress: row.community_address,
     membershipAddress: row.membership_address,
     memberIdentityId: row.member_identity_id,
-    assignedByIdentityId: row.assigned_by_identity_id,
+    actorIdentityId: row.actor_identity_id,
     authority: row.authority,
-    authoritySequence: BigInt(row.authority_sequence),
+    actorSequence: BigInt(row.actor_sequence),
+    memberActionSequence: BigInt(row.member_action_sequence),
+    membershipPolicySequence: BigInt(row.membership_policy_sequence),
+    communityMembershipSequence: BigInt(row.community_membership_sequence),
+    activeSinceMembershipSequence: BigInt(row.active_since_membership_sequence),
     stateSequence: BigInt(row.state_sequence),
+    action: row.action,
+    state: row.state,
+    ...(row.manifest_cid === null ? {} : { manifestCid: row.manifest_cid }),
+    ...(row.manifest_hash === null ? {} : { manifestHash: row.manifest_hash }),
+    manifestVerified: row.manifest_verified,
+    ...(row.object_id === null ? {} : { objectId: row.object_id }),
+    ...(row.signing_key_id === null ? {} : { signingKeyId: row.signing_key_id }),
+    ...(row.manifest_created_at === null
+      ? {}
+      : { manifestCreatedAt: dateString(row.manifest_created_at) }),
     roles: row.roles,
     active: row.active,
     updatedSlot: BigInt(row.updated_slot),
     updatedAt: dateString(row.updated_at),
+    ...(row.transaction_signature === null
+      ? {}
+      : { transactionSignature: row.transaction_signature }),
+    ...(row.transaction_index === null ? {} : { transactionIndex: row.transaction_index }),
+    ...(row.log_index === null ? {} : { logIndex: row.log_index }),
   };
 }
 
@@ -5055,6 +5354,7 @@ function governanceProposalFromRow(row: GovernanceProposalRow): GovernancePropos
     governanceStrategyHash: row.governance_strategy_hash,
     votingModel: row.voting_model,
     eligibleMemberCount: BigInt(row.eligible_member_count),
+    communityMembershipSequence: BigInt(row.community_membership_sequence),
     opensAtSlot: BigInt(row.opens_at_slot),
     closesAtSlot: BigInt(row.closes_at_slot),
     quorumBps: row.quorum_bps,
@@ -5358,6 +5658,7 @@ function pendingManifestRecordFromRow(row: PendingManifestRow): PendingManifestR
   }
   const serializedEvent = row.event_body as Readonly<Record<string, unknown>>;
   const isCommunity = serializedEvent['type'] === 'community-created';
+  const isMembership = serializedEvent['type'] === 'community-membership-changed';
   const event = protocolEventSchema.parse({
     ...serializedEvent,
     slot: storedPendingManifestBigInt(serializedEvent['slot'], 'slot'),
@@ -5367,14 +5668,50 @@ function pendingManifestRecordFromRow(row: PendingManifestRow): PendingManifestR
             serializedEvent['creatorSequence'],
             'creatorSequence',
           ),
+          membershipPolicySequence: storedPendingManifestBigInt(
+            serializedEvent['membershipPolicySequence'],
+            'membershipPolicySequence',
+          ),
+          membershipSequence: storedPendingManifestBigInt(
+            serializedEvent['membershipSequence'],
+            'membershipSequence',
+          ),
         }
-      : { sequence: storedPendingManifestBigInt(serializedEvent['sequence'], 'sequence') }),
+      : isMembership
+        ? {
+            membershipStateSequence: storedPendingManifestBigInt(
+              serializedEvent['membershipStateSequence'],
+              'membershipStateSequence',
+            ),
+            memberActionSequence: storedPendingManifestBigInt(
+              serializedEvent['memberActionSequence'],
+              'memberActionSequence',
+            ),
+            actorSequence: storedPendingManifestBigInt(
+              serializedEvent['actorSequence'],
+              'actorSequence',
+            ),
+            membershipPolicySequence: storedPendingManifestBigInt(
+              serializedEvent['membershipPolicySequence'],
+              'membershipPolicySequence',
+            ),
+            communityMembershipSequence: storedPendingManifestBigInt(
+              serializedEvent['communityMembershipSequence'],
+              'communityMembershipSequence',
+            ),
+            activeSinceMembershipSequence: storedPendingManifestBigInt(
+              serializedEvent['activeSinceMembershipSequence'],
+              'activeSinceMembershipSequence',
+            ),
+          }
+        : { sequence: storedPendingManifestBigInt(serializedEvent['sequence'], 'sequence') }),
   });
   const blockTime = dateString(row.block_time);
   if (
     (event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
-      event.type !== 'community-created') ||
+      event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed') ||
     event.networkId !== row.network_id ||
     event.transactionSignature !== row.transaction_signature ||
     (event.transactionIndex ?? null) !== row.transaction_index ||
@@ -5530,7 +5867,7 @@ function identitySequenceAdvance(event: ProtocolEvent): IdentitySequenceAdvance 
     case 'community-governance-updated':
       return { identityId: event.creatorIdentityId, sequence: event.creatorSequence };
     case 'community-membership-changed':
-      return { identityId: event.assignedByIdentityId, sequence: event.authoritySequence };
+      return { identityId: event.actorIdentityId, sequence: event.actorSequence };
     case 'reaction-changed':
       return { identityId: event.reactorIdentityId, sequence: event.reactorSequence };
     case 'proposal-created':
@@ -5586,7 +5923,10 @@ function activeIdentityIds(event: ProtocolEvent): readonly string[] {
       identities = [event.creatorIdentityId];
       break;
     case 'community-membership-changed':
-      identities = [event.assignedByIdentityId, event.memberIdentityId];
+      identities =
+        event.action === 'join' || event.action === 'leave'
+          ? [event.actorIdentityId, event.memberIdentityId]
+          : [event.actorIdentityId];
       break;
     case 'reaction-changed':
       identities = [event.reactorIdentityId];
@@ -5731,6 +6071,7 @@ function scopeForObjectType(objectType: string): number | undefined {
   if (objectType === 'profile') return 1 << 0;
   if (objectType === 'post') return 1 << 1;
   if (objectType === 'community') return 1 << 3;
+  if (objectType === 'community-membership') return 1 << 3;
   return undefined;
 }
 
@@ -5799,6 +6140,18 @@ function requireManifest(
   ) {
     throw new ProjectionError(
       'Community manifest signer does not match its immutable creation authority.',
+      'manifest-mismatch',
+    );
+  }
+  if (
+    expectedType === 'community-membership' &&
+    (event.type !== 'community-membership-changed' ||
+      manifest.schemaVersion !== 2 ||
+      (manifest.signingKeyId !== `${event.actorIdentityId}#root/${event.authority}` &&
+        manifest.signingKeyId !== `${event.actorIdentityId}#delegation/${event.authority}`))
+  ) {
+    throw new ProjectionError(
+      'Membership manifest signer does not match its finalized actor authority.',
       'manifest-mismatch',
     );
   }

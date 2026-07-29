@@ -56,13 +56,16 @@ Dependencies: repository audit.
 
 ### Monorepo and toolchains
 
-- [x] Initialize Git without configuring a remote.
+- [x] Initialize Git and configure the private `AlexBTC420/wokesocial` source
+  remote.
 - [x] Set the repository identity to `wokenet` and enforce the platform/protocol
   naming boundary.
   - Evidence: the local repository directory and root package are both
     `wokenet`; `pnpm naming:check` enforces `WokeSocial`/`wokesocial` for the
-    platform and `WokeNet`/`wokenet` for the protocol and repository. No Git remote
-    is configured, so there was no remote repository to rename.
+    platform and `WokeNet`/`wokenet` for the protocol and local repository
+    identity. `origin` points to the private `AlexBTC420/wokesocial` source
+    repository; this hosting name does not change the local WokeNet protocol
+    namespace.
 - [x] Add a strict pnpm workspace and Turborepo pipeline.
 - [x] Pin Node, pnpm, TypeScript, Rust, Anchor, and the Solana development
   toolchain.
@@ -124,8 +127,11 @@ Dependencies: repository audit.
   real.
   - Evidence: `pnpm setup` installs checksum-verified toolchains under `.local`,
     starts healthy PostgreSQL/Redis/Kubo containers, validates configuration, and
-    applies all 17 ordered projection migrations through
-    `0017_verified_community_discovery.sql`. `pnpm dev` reloads the selected
+    applies all 18 ordered projection migrations through
+    `0018_member_signed_community_memberships.sql` on a fresh projection. That
+    predeployment migration refuses incompatible prior community, membership,
+    or proposal rows/events and requires both a fresh disposable PostgreSQL
+    projection and a fresh local-validator ledger. `pnpm dev` reloads the selected
     environment for every child process, starts the private ClamAV/media
     profile, applies all local service migrations idempotently, enables advisory
     authorization only after rejecting non-loopback or production use, and
@@ -153,8 +159,8 @@ development toolchains.
 - [x] Define WokeNet as the WokeSocial protocol and smart-contract deployment
   layer on Solana.
   - Evidence: ADR-0009 rejects a separate chain, Solana fork, custom validator,
-    and WokeNet-owned RPC network. Deployment metadata uses explicit Solana
-    clusters and preserves
+    Firedancer/Agave topology, and WokeNet-owned RPC network. Deployment
+    metadata uses explicit Solana clusters and preserves
     `wokenet:v1:<solana-genesis-hash>:<social-program-id>`.
 - [ ] Publish a verified WokeNet deployment to Solana devnet.
   - Required evidence: reproducible SBF build, exact devnet genesis/program
@@ -185,17 +191,20 @@ development toolchains.
     delegated variants enforce exact identity, scope, expiry, and revocation.
 - [ ] Implement communities, membership, scoped roles, and governance
   configuration.
-  - Implemented subset: community creation, versioned governance commitments,
-    schema-v2 signed creation manifests bound to the exact executable strategy,
-    immutable creation root, and PDA nonce; privacy-safe public
-    directory/address detail; membership state; stored roles; and immutable
-    one-active-member-one-vote proposals/votes/finalization with quorum and
-    approval thresholds. Community metadata is immutable in the current
-    program. The existing creator-only membership setter is not exposed as
-    member consent; self-join/leave, ban/removal semantics, role-based
-    authorization, community-scoped delegation audiences, lifecycle/update
-    instructions, other governance models, and proposal execution remain
-    planned.
+  - Implemented predeployment subset: community creation, versioned governance
+    commitments, schema-v2 signed creation manifests bound to the exact
+    executable strategy, immutable creation root, and PDA nonce; privacy-safe
+    public directory/address detail; member-authored schema-v2 join/leave for
+    public or unlisted open communities; creator-root or current
+    community-scoped-delegate remove/ban of an existing membership; terminal
+    bans; exact-address privacy-safe membership status with no roster or
+    identity fields; and immutable one-active-member-one-vote
+    proposals/votes/finalization with quorum and approval thresholds.
+    Community metadata is immutable in the current program. The flagship web
+    and Seeker apps still expose no wallet-backed membership mutation;
+    approval-required/private flows, richer role-based authorization,
+    community-scoped delegation audiences, lifecycle/update instructions,
+    other governance models, and proposal execution remain planned.
 - [ ] Implement signed post references, reply/quote/repost/reaction references,
   and deletion tombstones.
   - Implemented subset: immutable post references, reaction
@@ -226,9 +235,10 @@ development toolchains.
     incomplete.
 - [ ] Generate and verify the client from the IDL.
   - Implemented subset: Anchor generates the local IDL and TypeScript type used
-    by the local-validator and connected suites. Eight manually reviewed
-    SDK builders now match the identity-deactivation and seven quarantined
-    legacy payment instruction layouts. A complete generated,
+    by the local-validator and connected suites. Eleven manually reviewed SDK
+    builders now match the three member-signed membership,
+    identity-deactivation, and seven quarantined legacy payment instruction
+    layouts. A complete generated,
     checked-in SDK client and exhaustive cross-language conformance gate remain
     planned.
 - [ ] Run Rust unit tests and Anchor local-validator tests for success, invalid
@@ -257,10 +267,11 @@ Dependencies: phase 2 protocol identifiers and events.
 
 - [x] Define one canonical source for all versioned protocol object schemas.
   - Evidence: `packages/protocol` defines strict modular Zod schemas and typed
-    builders for all 29 current portable object families. Profiles and
-    communities use schema version 2 for current creation; the other families
-    remain on schema version 1, while frozen profile/community v1 shapes remain
-    read-compatible. Its checked-in Draft 2020-12 signed-envelope schema is
+    builders for all 29 current portable object families. Profiles,
+    communities, and community-memberships use schema version 2 for current
+    creation; the other families remain on schema version 1, while their frozen
+    v1 shapes remain read-compatible. Its checked-in Draft 2020-12
+    signed-envelope schema is
     generated from the same registry, exported as
     `@wokesocial/protocol/schema/v1`, and fails `schema:check` when stale. Rust
     consumption and cross-language golden conformance remain separate open
@@ -305,9 +316,13 @@ Dependencies: phase 2 protocol identifiers and events.
     payment configuration/offerings/receipts/entitlements retain exact-network
     and raw-event provenance. Schema-v2 community creation additionally binds
     the immutable root authority, signed/PDA nonce, replacement sequence, and
-    exact governance commitment before public projection. Seventeen ordered,
-    checksummed migrations, 202 unit cases across 21 files, and 30
-    fresh-PostgreSQL cases across 12 files pass.
+    exact governance commitment before public projection. Membership-v2
+    projection additionally verifies member or moderator authorship, exact
+    action/state/role semantics, manifest lineage, and optimistic sequences.
+    Its exact-address status route is limited to open public/unlisted parents
+    and returns no roster, identities, signer authority, moderation reason, or
+    manifest location. Eighteen ordered, checksummed migrations are present,
+    and the updated unit and fresh-PostgreSQL gates pass.
     Fork/reorg handling, independent-provider reconciliation, production
     metrics, and production-scale rebuilds above 50,000 events remain
     incomplete.
@@ -713,13 +728,13 @@ Dependencies: all applicable product phases.
 
 This gate is deliberately cross-phase and is the first integrated milestone.
 
-`pnpm test:vertical-slice` passed on the final naming/PDA state from a fresh
-Solana local validator and disposable PostgreSQL on 2026-07-29. It finalized
-ten local transactions, applied nine durable projected events, produced zero
-dead letters, compared pre/post replay state exactly, and passed eight
-production desktop and mobile-viewport Chromium checks without request
-interception. It is local development evidence, not devnet, mainnet-beta,
-Seeker, or `$WOKE`-mint evidence.
+`pnpm test:vertical-slice` passed on the member-signed membership-v2 state from
+a fresh Solana local validator and disposable PostgreSQL on 2026-07-29. It
+finalized exactly 11 local transactions, applied 10 durable projected events,
+produced zero dead letters, compared pre/post replay state exactly, and passed
+eight production desktop and mobile-viewport Chromium checks (four before and
+four after replay) without request interception. This is local development
+scope, not devnet, mainnet-beta, Seeker, or `$WOKE`-mint evidence.
 
 - [x] A user creates an identity on a real local validator.
 - [x] The user creates or updates a profile.
@@ -730,6 +745,9 @@ Seeker, or `$WOKE`-mint evidence.
 - [x] The web feed displays the verified post.
 - [x] The public directory, exact-network search, and address-routed detail
   display the verified community without exposing private membership data.
+- [x] A second identity signs and anchors its own membership-v2 join, and the
+  exact-address status response proves finalized active membership without a
+  roster or member/actor identity fields.
 - [x] A second identity follows the first.
 - [x] The following feed includes the post.
 - [x] The network projection is completely cleared and rebuilt solely from

@@ -8,8 +8,10 @@ import {
 import {
   fetchCommunityDetail,
   fetchCommunityDirectory,
+  fetchCommunityMembershipStatus,
   parseCommunityDetailResponse,
   parseCommunityDirectoryResponse,
+  parseCommunityMembershipStatusResponse,
   validateCommunityAddress,
   validateCommunityCursor,
 } from '../src/community.js';
@@ -63,6 +65,9 @@ function verifiedCommunity(overrides: Record<string, unknown> = {}): Record<stri
     governanceStrategyHash: governance.digest,
     governanceVersion: governance.governanceVersion,
     latestActionAuthority: AUTHORITY,
+    membershipPolicy: (content as typeof PUBLIC_CONTENT).membershipPolicy,
+    membershipPolicySequence: '1',
+    membershipSequence: '0',
     manifestAuthority: AUTHORITY,
     manifestCid: CID,
     manifestCreatedAt: '2026-07-28T12:00:00.000Z',
@@ -76,6 +81,7 @@ function verifiedCommunity(overrides: Record<string, unknown> = {}): Record<stri
     signingKeyId: `${IDENTITY_ID}#root/${'1'.repeat(32)}`,
     updatedAt: '2026-07-28T12:01:00.000Z',
     updatedSlot: '42',
+    visibility: (content as typeof PUBLIC_CONTENT).visibility,
     ...overrides,
   };
 }
@@ -108,6 +114,44 @@ function detailResponse(overrides: Record<string, unknown> = {}): Record<string,
     },
     network: NETWORK_ID,
     projection: 'wokenet-open-indexer',
+    ...overrides,
+  };
+}
+
+function membershipStatusResponse(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    canonical: false,
+    membership: {
+      activeSinceMembershipSequence: '7',
+      action: 'join',
+      communityAddress: COMMUNITY_ADDRESS,
+      communityMembershipSequence: '7',
+      memberActionSequence: '3',
+      membershipAddress: SECOND_COMMUNITY_ADDRESS,
+      membershipPolicySequence: '1',
+      roles: ['member'],
+      state: 'active',
+      stateSequence: '1',
+      updatedAt: '2026-07-28T12:03:00.000Z',
+      updatedSlot: '51',
+    },
+    meta: {
+      checkpointSlot: 51,
+      indexedAt: '2026-07-28T12:03:01.000Z',
+      source: 'WokeNet open indexer',
+    },
+    network: NETWORK_ID,
+    projection: 'wokenet-open-indexer',
+    proof: {
+      finality: 'finalized',
+      kind: 'wokesocial-program-event',
+      logIndex: 2,
+      slot: '51',
+      transactionIndex: 4,
+      transactionSignature: '1'.repeat(64),
+    },
     ...overrides,
   };
 }
@@ -385,5 +429,118 @@ describe('community indexer requests', () => {
         network: NETWORK_ID,
       }),
     ).resolves.toMatchObject({ kind: 'degraded', reason: 'invalid-response' });
+  });
+
+  it('accepts a privacy-safe exact-address membership status with covering proof', () => {
+    const parsed = parseCommunityMembershipStatusResponse(membershipStatusResponse(), {
+      address: SECOND_COMMUNITY_ADDRESS,
+      network: NETWORK_ID,
+    });
+
+    expect(parsed.membership).toEqual({
+      activeSinceMembershipSequence: '7',
+      action: 'join',
+      communityAddress: COMMUNITY_ADDRESS,
+      communityMembershipSequence: '7',
+      memberActionSequence: '3',
+      membershipAddress: SECOND_COMMUNITY_ADDRESS,
+      membershipPolicySequence: '1',
+      roles: ['member'],
+      state: 'active',
+      stateSequence: '1',
+      updatedAt: '2026-07-28T12:03:00.000Z',
+      updatedSlot: '51',
+    });
+    expect(JSON.stringify(parsed)).not.toMatch(/memberIdentity|actor|authority|manifestUri/u);
+  });
+
+  it.each([
+    [
+      'an identity leak',
+      () =>
+        membershipStatusResponse({
+          membership: {
+            ...(membershipStatusResponse().membership as Record<string, unknown>),
+            memberIdentityId: IDENTITY_ID,
+          },
+        }),
+    ],
+    [
+      'a checkpoint behind the transition',
+      () =>
+        membershipStatusResponse({
+          meta: {
+            checkpointSlot: 50,
+            indexedAt: '2026-07-28T12:03:01.000Z',
+            source: 'WokeNet open indexer',
+          },
+        }),
+    ],
+    [
+      'raw numeric roles',
+      () =>
+        membershipStatusResponse({
+          membership: {
+            ...(membershipStatusResponse().membership as Record<string, unknown>),
+            roles: 1,
+          },
+        }),
+    ],
+    [
+      'an inconsistent inactive proof',
+      () =>
+        membershipStatusResponse({
+          membership: {
+            ...(membershipStatusResponse().membership as Record<string, unknown>),
+            action: 'leave',
+            state: 'left',
+            roles: [],
+          },
+        }),
+    ],
+    [
+      'a mismatched finalized slot',
+      () =>
+        membershipStatusResponse({
+          proof: {
+            ...(membershipStatusResponse().proof as Record<string, unknown>),
+            slot: '50',
+          },
+        }),
+    ],
+  ])('rejects %s', (_label, fixture) => {
+    expect(() =>
+      parseCommunityMembershipStatusResponse(fixture(), {
+        address: SECOND_COMMUNITY_ADDRESS,
+        network: NETWORK_ID,
+      }),
+    ).toThrow(IndexerPayloadError);
+  });
+
+  it('fetches exact membership status and maps every privacy-gated 404 to not-found', async () => {
+    const readyFetch = vi.fn<typeof globalThis.fetch>(async () =>
+      Response.json(membershipStatusResponse()),
+    );
+    await expect(
+      fetchCommunityMembershipStatus(options(readyFetch), {
+        address: SECOND_COMMUNITY_ADDRESS,
+        network: NETWORK_ID,
+      }),
+    ).resolves.toMatchObject({ kind: 'ready' });
+    expect(String(readyFetch.mock.calls[0]?.[0])).toBe(
+      `https://indexer.example/operator/v1/community-memberships/${SECOND_COMMUNITY_ADDRESS}?network=${encodeURIComponent(
+        NETWORK_ID,
+      )}`,
+    );
+
+    const hiddenFetch = vi.fn<typeof globalThis.fetch>(async () =>
+      Response.json({ error: { code: 'not-found' } }, { status: 404 }),
+    );
+    await expect(
+      fetchCommunityMembershipStatus(options(hiddenFetch), {
+        address: SECOND_COMMUNITY_ADDRESS,
+        network: NETWORK_ID,
+      }),
+    ).resolves.toEqual({ kind: 'not-found' });
   });
 });

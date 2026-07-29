@@ -4,58 +4,55 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import bs58 from 'bs58';
-import postgres from 'postgres';
+import postgres, { type Sql } from 'postgres';
 import { describe, expect, it } from 'vitest';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_ADMIN_DATABASE_URL'] ??
   'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 const migrationDirectory = join(dirname(fileURLToPath(import.meta.url)), '../migrations');
-const legacyStrategyHash = 'uwm8vfQxM7tZkfr0DZsEnFVxa4ZgsIPg8DsCn-xbX_HA';
 
-describe('0017 verified-community migration', () => {
-  it('retains legacy shells and atomically requeues their accepted raw creation events', async () => {
-    const files = (await readdir(migrationDirectory))
-      .filter((file) => /^\d+_[a-z0-9_]+\.sql$/u.test(file))
-      .sort();
-    const migration0017 = files.find((file) => file.startsWith('0017_'));
-    expect(migration0017).toBeDefined();
-    const schema = `indexer_0017_${randomBytes(8).toString('hex')}`;
-    const sql = postgres(databaseUrl, { max: 1, onnotice: () => undefined });
-    const programId = publicKey();
-    const networkId = `wokenet:v1:${publicKey()}:${programId}`;
-    const identityAddress = publicKey();
-    const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
-    const rootAuthority = publicKey();
-    const communityAddress = publicKey();
-    const transactionSignature = bs58.encode(randomBytes(64));
-    const createdAt = '2026-07-28T12:00:00.000Z';
-    const eventBody = {
-      networkId,
-      programId,
-      transactionSignature,
-      transactionIndex: 0,
-      slot: '2',
-      logIndex: 0,
-      blockTime: createdAt,
-      finalized: true,
-      type: 'community-created',
-      communityAddress,
-      creatorIdentityId: identityId,
-      authority: rootAuthority,
-      creatorSequence: '1',
-      manifestCid: 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku',
-      manifestHash: 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-      governanceVersion: 1,
-      governanceStrategyHash: legacyStrategyHash,
-    };
+describe('0018 predeployment ABI reset boundary', () => {
+  it.each(['community-created', 'community-membership-changed', 'proposal-created'] as const)(
+    'refuses a legacy %s raw event instead of creating an unreplayable ledger',
+    async (eventType) => {
+      await withPre0018Schema(async (sql, migration0018, schema) => {
+        await sql`
+        INSERT INTO protocol_events (
+          network_id, transaction_signature, transaction_index, log_index, slot,
+          block_time, event_type, event_body, manifest_pending,
+          terminal_manifest_failure_code
+        ) VALUES (
+          ${`wokenet:v1:${publicKey()}:${publicKey()}`},
+          ${bs58.encode(randomBytes(64))}, 0, 0, 1,
+          '2026-07-29T12:00:00.000Z', ${eventType},
+          ${sql.json({ type: eventType })}, false, null
+        )
+      `;
 
-    try {
-      await sql.unsafe(`CREATE SCHEMA "${schema}"`);
-      await sql.unsafe(`SET search_path TO "${schema}", wokesocial_indexer, pg_catalog`);
-      for (const file of files.filter((candidate) => candidate < (migration0017 ?? ''))) {
-        await sql.unsafe(await readFile(join(migrationDirectory, file), 'utf8'));
-      }
+        await expect(sql.unsafe(migration0018)).rejects.toThrow(
+          /0018 changes the predeployment community, membership, and proposal ABI/u,
+        );
+        await expect(
+          sql<{ count: string }[]>`
+          SELECT count(*)::text AS count
+          FROM information_schema.columns
+          WHERE table_schema = ${schema}
+            AND table_name = 'communities'
+            AND column_name = 'membership_policy_sequence'
+        `,
+        ).resolves.toEqual([{ count: '0' }]);
+      });
+    },
+  );
+
+  it('refuses a legacy projection row even when its raw event is absent', async () => {
+    await withPre0018Schema(async (sql, migration0018) => {
+      const networkId = `wokenet:v1:${publicKey()}:${publicKey()}`;
+      const identityAddress = publicKey();
+      const creatorIdentityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+      const rootAuthority = publicKey();
+      const transactionSignature = bs58.encode(randomBytes(64));
       await sql`
         INSERT INTO identities (
           identity_id, network_id, identity_address, root_authority,
@@ -64,118 +61,120 @@ describe('0017 verified-community migration', () => {
           sequence_transaction_signature, sequence_log_index,
           created_slot, created_at, updated_slot, updated_at
         ) VALUES (
-          ${identityId}, ${networkId}, ${identityAddress}, ${rootAuthority},
-          0, true, 1, 2, 0, ${transactionSignature}, 0,
-          1, ${createdAt}, 2, ${createdAt}
+          ${creatorIdentityId}, ${networkId}, ${identityAddress}, ${rootAuthority},
+          0, true, 0, 1, 0, ${transactionSignature}, 0,
+          1, '2026-07-29T12:00:00.000Z',
+          1, '2026-07-29T12:00:00.000Z'
         )
       `;
       await sql`
         INSERT INTO communities (
-          community_address, network_id, creator_identity_id, authority,
+          community_address, network_id, creator_identity_id,
+          manifest_authority, latest_action_authority,
           creator_sequence, manifest_cid, manifest_hash, manifest_verified,
+          manifest_governance_version, manifest_governance_strategy_hash,
           governance_version, governance_strategy_hash,
           created_slot, created_at, updated_slot, updated_at
         ) VALUES (
-          ${communityAddress}, ${networkId}, ${identityId}, ${rootAuthority},
-          1, ${eventBody.manifestCid}, ${eventBody.manifestHash}, false,
-          1, ${legacyStrategyHash}, 2, ${createdAt}, 2, ${createdAt}
-        )
-      `;
-      await sql`
-        INSERT INTO community_governance_history (
-          network_id, community_address, governance_version, strategy_hash,
-          authority, creator_sequence, updated_slot, updated_at
-        ) VALUES (
-          ${networkId}, ${communityAddress}, 1, ${legacyStrategyHash},
-          ${rootAuthority}, 1, 2, ${createdAt}
-        )
-      `;
-      await sql`
-        INSERT INTO protocol_events (
-          network_id, transaction_signature, transaction_index, log_index, slot,
-          block_time, event_type, event_body, manifest_pending,
-          terminal_manifest_failure_code
-        ) VALUES (
-          ${networkId}, ${transactionSignature}, 0, 0, 2, ${createdAt},
-          'community-created', ${sql.json(eventBody)}, false, null
+          ${publicKey()}, ${networkId},
+          ${creatorIdentityId}, ${rootAuthority}, ${rootAuthority},
+          1, 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku',
+          'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', false,
+          1, 'uwm8vfQxM7tZkfr0DZsEnFVxa4ZgsIPg8DsCn-xbX_HA',
+          1, 'uwm8vfQxM7tZkfr0DZsEnFVxa4ZgsIPg8DsCn-xbX_HA',
+          1, '2026-07-29T12:00:00.000Z',
+          1, '2026-07-29T12:00:00.000Z'
         )
       `;
 
-      await expect(
-        sql.unsafe(await readFile(join(migrationDirectory, migration0017 ?? ''), 'utf8')),
-      ).resolves.toBeDefined();
+      await expect(sql.unsafe(migration0018)).rejects.toThrow(
+        /discard the disposable PostgreSQL projection and local-validator ledger/u,
+      );
+    });
+  });
 
-      const communities = await sql<
-        {
-          manifest_verified: boolean;
-          object_id: string | null;
-          content: unknown | null;
-          manifest_authority: string;
-          latest_action_authority: string;
-          manifest_governance_version: number;
-          manifest_governance_strategy_hash: string;
-        }[]
-      >`
-        SELECT
-          manifest_verified,
-          object_id,
-          content,
-          manifest_authority,
-          latest_action_authority,
-          manifest_governance_version,
-          manifest_governance_strategy_hash
-        FROM communities
-        WHERE network_id = ${networkId}
-          AND community_address = ${communityAddress}
+  it('applies to a clean predeployment schema and creates the strict v2 columns', async () => {
+    await withPre0018Schema(async (sql, migration0018, schema) => {
+      await expect(sql.unsafe(migration0018)).resolves.toBeDefined();
+      const columns = await sql<{ table_name: string; column_name: string }[]>`
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = ${schema}
+          AND (
+            (table_name = 'communities'
+              AND column_name IN (
+                'visibility',
+                'membership_policy',
+                'membership_policy_sequence',
+                'membership_sequence'
+              ))
+            OR
+            (table_name = 'community_memberships'
+              AND column_name IN (
+                'action',
+                'state',
+                'member_action_sequence',
+                'community_membership_sequence',
+                'manifest_hash'
+              ))
+            OR
+            (table_name = 'governance_proposals'
+              AND column_name = 'community_membership_sequence')
+          )
+        ORDER BY table_name, column_name
       `;
-      expect(communities).toEqual([
+      expect(columns).toEqual([
+        { table_name: 'communities', column_name: 'membership_policy' },
+        { table_name: 'communities', column_name: 'membership_policy_sequence' },
+        { table_name: 'communities', column_name: 'membership_sequence' },
+        { table_name: 'communities', column_name: 'visibility' },
+        { table_name: 'community_memberships', column_name: 'action' },
         {
-          manifest_verified: false,
-          object_id: null,
-          content: null,
-          manifest_authority: rootAuthority,
-          latest_action_authority: rootAuthority,
-          manifest_governance_version: 1,
-          manifest_governance_strategy_hash: legacyStrategyHash,
+          table_name: 'community_memberships',
+          column_name: 'community_membership_sequence',
+        },
+        { table_name: 'community_memberships', column_name: 'manifest_hash' },
+        { table_name: 'community_memberships', column_name: 'member_action_sequence' },
+        { table_name: 'community_memberships', column_name: 'state' },
+        {
+          table_name: 'governance_proposals',
+          column_name: 'community_membership_sequence',
         },
       ]);
-      const dispositions = await sql<
-        {
-          manifest_pending: boolean;
-          terminal_manifest_failure_code: string | null;
-          failure_code: string;
-          attempts: number;
-          next_attempt_at: Date | string | null;
-        }[]
-      >`
-        SELECT
-          event.manifest_pending,
-          event.terminal_manifest_failure_code,
-          dead.failure_code,
-          dead.attempts,
-          dead.next_attempt_at
-        FROM protocol_events AS event
-        JOIN indexer_dead_letters AS dead
-          ON dead.network_id = event.network_id
-         AND dead.transaction_signature = event.transaction_signature
-         AND dead.log_index = event.log_index
-        WHERE event.network_id = ${networkId}
-      `;
-      expect(dispositions).toHaveLength(1);
-      expect(dispositions[0]).toMatchObject({
-        manifest_pending: true,
-        terminal_manifest_failure_code: null,
-        failure_code: 'manifest-unavailable',
-        attempts: 1,
-      });
-      expect(dispositions[0]?.next_attempt_at).not.toBeNull();
-    } finally {
-      await sql.unsafe('SET search_path TO wokesocial_indexer, pg_catalog').catch(() => undefined);
-      await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`).catch(() => undefined);
-      await sql.end({ timeout: 5 });
-    }
-  }, 30_000);
+    });
+  });
 });
+
+async function withPre0018Schema(
+  exercise: (sql: Sql, migration0018: string, schema: string) => Promise<void>,
+): Promise<void> {
+  const files = (await readdir(migrationDirectory))
+    .filter((file) => /^\d+_[a-z0-9_]+\.sql$/u.test(file))
+    .sort();
+  const migration0018File = files.find((file) => file.startsWith('0018_'));
+  if (migration0018File === undefined) {
+    throw new Error('Expected migration 0018 in the checked-in catalog.');
+  }
+  const schema = `indexer_0018_${randomBytes(8).toString('hex')}`;
+  const sql = postgres(databaseUrl, { max: 1, onnotice: () => undefined });
+
+  try {
+    await sql.unsafe(`CREATE SCHEMA "${schema}"`);
+    await sql.unsafe(`SET search_path TO "${schema}", wokesocial_indexer, pg_catalog`);
+    for (const file of files.filter((candidate) => candidate < migration0018File)) {
+      await sql.unsafe(await readFile(join(migrationDirectory, file), 'utf8'));
+    }
+    await exercise(
+      sql,
+      await readFile(join(migrationDirectory, migration0018File), 'utf8'),
+      schema,
+    );
+  } finally {
+    await sql.unsafe('SET search_path TO wokesocial_indexer, pg_catalog').catch(() => undefined);
+    await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`).catch(() => undefined);
+    await sql.end({ timeout: 5 });
+  }
+}
 
 function publicKey(): string {
   return bs58.encode(randomBytes(32));

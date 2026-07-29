@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   canonicalizeEnvelope,
   communityGovernanceStrategyCommitment,
@@ -35,6 +36,7 @@ import {
   type VoteCastEvent,
 } from '../src/index.js';
 import { migrate } from '../src/migrate.js';
+import { exerciseModerationAfterMemberDeactivation } from './community-membership-lifecycle-fixtures.js';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
@@ -46,6 +48,35 @@ const migrationDatabaseUrl =
   'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL governance projection integration', () => {
+  it.each(['root', 'delegation'] as const)(
+    'accepts %s-authorized moderation after member deactivation and replays it',
+    async (signingKind) => {
+      await migrate(migrationDatabaseUrl);
+      const projection = new PostgresProjectionStore(databaseUrl);
+      let networkId: string | undefined;
+      try {
+        const result = await exerciseModerationAfterMemberDeactivation(projection, signingKind);
+        networkId = result.networkId;
+        expect(result.beforeReplay).toMatchObject([
+          {
+            membershipAddress: result.membershipAddress,
+            action: signingKind === 'root' ? 'remove' : 'ban',
+            state: result.state,
+            active: false,
+            roles: 0,
+            manifestVerified: true,
+          },
+        ]);
+        expect(result.afterReplay).toEqual(result.beforeReplay);
+      } finally {
+        if (networkId !== undefined) {
+          await projection.clearProjection(networkId);
+        }
+        await projection.close();
+      }
+    },
+  );
+
   it('rolls back invalid transitions and deterministically rebuilds proposal and vote state', async () => {
     await migrate(migrationDatabaseUrl);
     const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
@@ -58,7 +89,9 @@ describe('PostgreSQL governance projection integration', () => {
     const creatorPrivateKey = randomBytes(32);
     const creatorPublicKey = ed25519.getPublicKey(creatorPrivateKey);
     const creatorAuthority = bs58.encode(creatorPublicKey);
-    const voterAuthority = publicKey();
+    const voterPrivateKey = randomBytes(32);
+    const voterPublicKey = ed25519.getPublicKey(voterPrivateKey);
+    const voterAuthority = bs58.encode(voterPublicKey);
     const communityAddress = publicKey();
     const creatorMembershipAddress = await deriveCommunityMembershipAddress(
       programId,
@@ -104,7 +137,52 @@ describe('PostgreSQL governance projection integration', () => {
     const communityReceipt = await storage.put(canonicalizeEnvelope(communityEnvelope), {
       permanence: 'deletion-compatible',
     });
+    const creatorMembershipEnvelope = signPayload(
+      buildCommunityMembershipPayload(
+        createPayloadBuilderIdentity(networkId, creatorIdentityId, creatorPublicKey, 'root'),
+        {
+          communityAddress,
+          member: creatorIdentityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T17:00:05.000Z'),
+          nonce: randomBytes(16),
+        },
+      ),
+      creatorPrivateKey,
+    );
+    const creatorMembershipReceipt = await storage.put(
+      canonicalizeEnvelope(creatorMembershipEnvelope),
+      { permanence: 'deletion-compatible' },
+    );
+    const voterMembershipEnvelope = signPayload(
+      buildCommunityMembershipPayload(
+        createPayloadBuilderIdentity(networkId, voterIdentityId, voterPublicKey, 'root'),
+        {
+          communityAddress,
+          member: voterIdentityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T17:00:06.000Z'),
+          nonce: randomBytes(16),
+        },
+      ),
+      voterPrivateKey,
+    );
+    const voterMembershipReceipt = await storage.put(
+      canonicalizeEnvelope(voterMembershipEnvelope),
+      { permanence: 'deletion-compatible' },
+    );
     const secondCreatorIdentityId = creatorIdentityId.replace(networkId, secondNetworkId);
+    const secondVoterIdentityId = voterIdentityId.replace(networkId, secondNetworkId);
     const secondCommunityEnvelope = signPayload(
       buildCommunityPayload(
         createPayloadBuilderIdentity(
@@ -125,9 +203,67 @@ describe('PostgreSQL governance projection integration', () => {
       canonicalizeEnvelope(secondCommunityEnvelope),
       { permanence: 'deletion-compatible' },
     );
+    const secondCreatorMembershipEnvelope = signPayload(
+      buildCommunityMembershipPayload(
+        createPayloadBuilderIdentity(
+          secondNetworkId,
+          secondCreatorIdentityId,
+          creatorPublicKey,
+          'root',
+        ),
+        {
+          communityAddress,
+          member: secondCreatorIdentityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T17:00:05.000Z'),
+          nonce: randomBytes(16),
+        },
+      ),
+      creatorPrivateKey,
+    );
+    const secondCreatorMembershipReceipt = await storage.put(
+      canonicalizeEnvelope(secondCreatorMembershipEnvelope),
+      { permanence: 'deletion-compatible' },
+    );
+    const secondVoterMembershipEnvelope = signPayload(
+      buildCommunityMembershipPayload(
+        createPayloadBuilderIdentity(
+          secondNetworkId,
+          secondVoterIdentityId,
+          voterPublicKey,
+          'root',
+        ),
+        {
+          communityAddress,
+          member: secondVoterIdentityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T17:00:06.000Z'),
+          nonce: randomBytes(16),
+        },
+      ),
+      voterPrivateKey,
+    );
+    const secondVoterMembershipReceipt = await storage.put(
+      canonicalizeEnvelope(secondVoterMembershipEnvelope),
+      { permanence: 'deletion-compatible' },
+    );
     const authorizedCommunityKeys = new Set([
       communityEnvelope.proof.keyId,
+      creatorMembershipEnvelope.proof.keyId,
+      voterMembershipEnvelope.proof.keyId,
       secondCommunityEnvelope.proof.keyId,
+      secondCreatorMembershipEnvelope.proof.keyId,
+      secondVoterMembershipEnvelope.proof.keyId,
     ]);
     let eventSeed = 0;
     const eventBase = (slot: bigint) => ({
@@ -147,14 +283,15 @@ describe('PostgreSQL governance projection integration', () => {
       proposalAddress,
       proposerIdentityId: creatorIdentityId,
       authority: creatorAuthority,
-      proposerSequence: 4n,
-      previousCommunitySequence: 3n,
+      proposerSequence: 3n,
+      previousCommunitySequence: 1n,
       manifestHash: proposalManifestHash,
       manifestUri: 'local://postgres-governance-proposal',
       governanceVersion: 1,
       governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
       votingModel: 'one-active-member-one-vote',
       eligibleMemberCount: 2n,
+      communityMembershipSequence: 2n,
       opensAtSlot: 8n,
       closesAtSlot: 12n,
       quorumBps: GOVERNANCE_QUORUM_BPS,
@@ -170,7 +307,7 @@ describe('PostgreSQL governance projection integration', () => {
       voterIdentityId,
       membershipAddress: voterMembershipAddress,
       authority: voterAuthority,
-      voterSequence: 1n,
+      voterSequence: 2n,
       membershipStateSequence: 1n,
       proposalStateSequence: 2n,
       choice: 'yes',
@@ -229,6 +366,10 @@ describe('PostgreSQL governance projection integration', () => {
         manifestHash: communityEnvelope.proof.payloadHash,
         governanceVersion: 1,
         governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
+        visibility: 'public',
+        membershipPolicy: 'open',
+        membershipPolicySequence: 1n,
+        membershipSequence: 0n,
       },
       {
         ...eventBase(5n),
@@ -236,12 +377,20 @@ describe('PostgreSQL governance projection integration', () => {
         communityAddress,
         membershipAddress: creatorMembershipAddress,
         memberIdentityId: creatorIdentityId,
-        assignedByIdentityId: creatorIdentityId,
+        actorIdentityId: creatorIdentityId,
         authority: creatorAuthority,
-        authoritySequence: 2n,
+        action: 'join',
+        state: 'active',
+        actorSequence: 2n,
+        memberActionSequence: 2n,
+        membershipPolicySequence: 1n,
+        communityMembershipSequence: 1n,
+        activeSinceMembershipSequence: 1n,
         membershipStateSequence: 1n,
         roles: 1,
-        active: true,
+        manifestCid: creatorMembershipReceipt.cid,
+        manifestHash: creatorMembershipEnvelope.proof.payloadHash,
+        manifestUri: `ipfs://${creatorMembershipReceipt.cid}`,
       },
       {
         ...eventBase(6n),
@@ -249,12 +398,20 @@ describe('PostgreSQL governance projection integration', () => {
         communityAddress,
         membershipAddress: voterMembershipAddress,
         memberIdentityId: voterIdentityId,
-        assignedByIdentityId: creatorIdentityId,
-        authority: creatorAuthority,
-        authoritySequence: 3n,
+        actorIdentityId: voterIdentityId,
+        authority: voterAuthority,
+        action: 'join',
+        state: 'active',
+        actorSequence: 1n,
+        memberActionSequence: 1n,
+        membershipPolicySequence: 1n,
+        communityMembershipSequence: 2n,
+        activeSinceMembershipSequence: 2n,
         membershipStateSequence: 1n,
         roles: 1,
-        active: true,
+        manifestCid: voterMembershipReceipt.cid,
+        manifestHash: voterMembershipEnvelope.proof.payloadHash,
+        manifestUri: `ipfs://${voterMembershipReceipt.cid}`,
       },
     ];
     const events: readonly ProtocolEvent[] = [...prefix, proposal, vote, finalized];
@@ -370,14 +527,33 @@ describe('PostgreSQL governance projection integration', () => {
 
       const secondNetworkEvents = events.map((item) => {
         const moved = moveEventToNetwork(item, networkId, secondNetworkId);
-        return moved.type === 'community-created'
-          ? {
-              ...moved,
-              communityNonce: secondCommunityEnvelope.payload.nonce,
-              manifestCid: secondCommunityReceipt.cid,
-              manifestHash: secondCommunityEnvelope.proof.payloadHash,
-            }
-          : moved;
+        if (moved.type === 'community-created') {
+          return {
+            ...moved,
+            communityNonce: secondCommunityEnvelope.payload.nonce,
+            manifestCid: secondCommunityReceipt.cid,
+            manifestHash: secondCommunityEnvelope.proof.payloadHash,
+          };
+        }
+        if (moved.type === 'community-membership-changed') {
+          const manifest =
+            moved.memberIdentityId === secondCreatorIdentityId
+              ? {
+                  envelope: secondCreatorMembershipEnvelope,
+                  receipt: secondCreatorMembershipReceipt,
+                }
+              : {
+                  envelope: secondVoterMembershipEnvelope,
+                  receipt: secondVoterMembershipReceipt,
+                };
+          return {
+            ...moved,
+            manifestCid: manifest.receipt.cid,
+            manifestHash: manifest.envelope.proof.payloadHash,
+            manifestUri: `ipfs://${manifest.receipt.cid}`,
+          };
+        }
+        return moved;
       });
       for (const event of secondNetworkEvents) {
         await expect(indexer.ingest(event)).resolves.toMatchObject({ applied: true });

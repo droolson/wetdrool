@@ -4,7 +4,8 @@ This `wokenet` repository contains WokeSocial, the open, LGBTQ+ affirming,
 trans-owned social platform at `woke.social`, and WokeNet, its portable
 protocol and smart-contract deployment layer on the Solana blockchain. WokeNet
 is not a blockchain, Solana fork, validator implementation, or separate
-consensus network.
+consensus network. Solana validators and RPC providers are external; this
+repository does not ship a Firedancer/Agave topology or operate WokeNet nodes.
 
 The flagship experience is intended to feel like a polished consumer product.
 Users should not need cryptocurrency knowledge, a visible wallet address, or a
@@ -16,6 +17,10 @@ in independently operable offchain layers.
 Primary domain: `woke.social`. The legacy `sociallywoke.com` hostname is
 redirect-only and must never be treated as a distinct application or WebAuthn
 origin.
+
+The configured source remote is the private GitHub repository
+`AlexBTC420/wokesocial`. The local repository/workspace identity remains
+`wokenet`; source hosting is not a public deployment or release record.
 
 ## Project status
 
@@ -31,9 +36,9 @@ requirement may contain a tested subset without being complete.
 | Architecture and specifications | Initial baseline implemented; v1 conformance work remains |
 | Monorepo and local infrastructure | Implemented and verified locally with PostgreSQL, Redis, Kubo, and hardened service-container profiles |
 | WokeNet | The protocol namespace, Anchor program, portable identifiers, deployment manifest schema, SDK boundaries, and indexer bindings are implemented for Solana. Local-validator evidence exists; no devnet or mainnet-beta WokeNet program deployment has been published |
-| Social protocol | Solana local-validator tests cover 41 instructions, 19 account layouts, and 33 events for identity/profile references, one-way identity deactivation, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, and a quarantined legacy payment ABI |
-| Signed content and storage | A strict 29-family portable object registry, including schema-v2 communities with an exact executable-governance commitment and read-compatible historical v1 objects, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
-| Open indexer | Finalized Solana RPC synchronization, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical profile-v2 and governance-bound community-v2 manifest verification, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, ordered PostgreSQL migrations, RPC failover, DLQ, provenance, and REST APIs are implemented. Privacy-safe verified-community directory/detail plus deterministic `public-match-v2` search complement the consumer-safe home and noncanonical `/v1/feed` projections; fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
+| Social protocol | The generated IDL contains 43 instructions, 19 account layouts, and 33 events. The predeployment community-membership v2 slice replaces creator assignment with member-authorized join/leave plus creator-or-scoped-delegate remove/ban, while the wider local-validator surface covers identity/profile references, one-way identity deactivation, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, and a quarantined legacy payment ABI |
+| Signed content and storage | A strict 29-family portable object registry, including current schema-v2 profile, community, and community-membership objects plus read-compatible historical v1 objects, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
+| Open indexer | Finalized Solana RPC synchronization, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical profile-v2, governance-bound community-v2, and member-signed community-membership-v2 verification, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, 18 ordered PostgreSQL migrations, RPC failover, DLQ, provenance, and REST APIs are implemented. Privacy-safe verified-community directory/detail, an exact-address membership-status endpoint with no roster or identity fields, and deterministic `public-match-v2` search complement the consumer-safe home and noncanonical `/v1/feed` projections; fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Feed service | Independently replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and third-party reconciliation engine implemented and tested |
 | Relay | Replaceable signed WebSocket transport, bounded finalized key and expiring opaque-topic subscription authorizer HTTP adapters, and multi-relay failover client implemented and tested; independent authorizer deployments and E2EE remain external |
 | Flagship web application | Complete required route surface, production build, responsive/a11y states, local composer/preferences/export, provider settings, and real passkey-service registration/sign-in implemented. The consumer-safe home feed, strict bounded chronological pagination, address-routed verified community directory/detail, `public-match-v2` search, and an explicitly public unauthenticated following-graph preview are connected to the open indexer; exact-identity hiding remains device-local, and media-only posts retain verified references without connected gateway playback. Community joining/membership, authenticated following, recommendation-provider integration, cross-device safety, and complete offline caching remain open; unsupported onchain mutations fail closed |
@@ -42,7 +47,7 @@ requirement may contain a tested subset without being complete.
 | End-to-end encrypted messaging | Experimental pairwise-only adapter delegates real Olm sessions to pinned Matrix Rust crypto WASM, authenticates outer envelopes before state mutation, and passes 13 adversarial real-device cases; volatile storage, browser packaging, attachments, safety UX, and reporting remain non-production |
 | Media pipeline | Resumable authenticated worker, strict MIME/hash/container checks, real ClamAV scanning, metadata-free image/video/audio processing, HLS, waveform output, unsigned media manifests, and independent preprocessed publication are implemented and tested; flagship upload integration remains open |
 | Creator payments and `$WOKE` | No `$WOKE` mint or successful payment flow exists. The existing lamport-denominated tip/subscription ABI is legacy and quarantined: bootstrap, execution, authority mutation, and unpause fail without state/balance changes. Portable metadata truthfully accepts SOL or exact SPL asset details and rejects `{ kind: "woke" }`; a real SPL/Token-2022 mint, reviewed authorities/tokenomics, a new mint-aware ABI, migration, SDK/UI/indexer work, tests, and audit are required before any `$WOKE` payment claim |
-| Solana Seeker app | An Expo/React Native Android foundation implements the Mobile Wallet Adapter connection boundary, exact Solana deployment verification, a read-only chronological feed, and unit-test coverage. It is not a release: no verified Seeker-device run, transaction-signing flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication exists |
+| Solana Seeker app | An Expo/React Native Android foundation implements the Mobile Wallet Adapter connection boundary, exact Solana deployment verification, a read-only chronological feed, verified public-community discovery, and unit-test coverage. Community discovery is read-only: identity selection, manifest signing, simulation, Mobile Wallet Adapter transaction approval, finality, and indexer-catch-up are not connected. It is not a release: no verified Seeker-device run, transaction-signing flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication exists |
 | Production deployment | Not authorized or attempted |
 
 The fixed development-localnet program ID is
@@ -55,7 +60,7 @@ not evidence of a devnet or mainnet-beta deployment.
   2.3.0, and Anchor 0.32.1 development toolchains; starts the pinned local
   containers; and applies PostgreSQL migrations.
 - `pnpm test:programs` performs an Anchor SBF build and passes a real
-  28-case Solana local-validator suite covering core actions, handle
+  30-case Solana local-validator suite covering core actions, handle
   release, all six delegated social variants, delayed guardian recovery,
   one-member-one-vote proposal/vote/finalization, quarantined legacy payment paths,
   and adversarial authorization, substitution, snapshot, replay, cancellation,
@@ -63,20 +68,24 @@ not evidence of a devnet or mainnet-beta deployment.
   bootstrap, execution, authority mutation, and unpause fail without state or
   balance changes; no successful payment flow exists.
 - `pnpm test:vertical-slice` starts a fresh validator and disposable PostgreSQL,
-  finalizes ten real local transactions, verifies exact signed post and
-  schema-v2 community CAS content through the production indexer, suppresses a
-  tombstoned post, clears and exactly replays nine durable events, and exercises
-  production Next.js before and after replay with eight desktop and
-  mobile-viewport Chromium checks. This is local Solana program evidence, not a
-  public deployment claim.
-- Package tests cover deterministic canonical bytes and identifiers, Ed25519
+  finalizes exactly 11 real local transactions, verifies signed post,
+  schema-v2 community, and member-authored membership-join CAS content through
+  the production indexer, asserts privacy-safe exact-address membership status,
+  suppresses a tombstoned post, clears and exactly replays 10 durable events,
+  and exercises production Next.js before and after replay with eight desktop
+  and mobile-viewport Chromium checks. This is local Solana program evidence,
+  not a public deployment claim.
+- The updated package run covers deterministic canonical bytes and identifiers, Ed25519
   verification across 29 portable object families, local CAS integrity, storage
   replication, recoverable SDK publication, manifest verification, exhaustive
-  current-IDL indexing, and in-memory rebuild. The current focused evidence
+  current-IDL indexing, and in-memory rebuild. That focused baseline
   includes 149 configuration unit cases plus four verified-database-TLS
-  integration cases, 202 indexer unit cases across 21 files, 30 isolated
+  integration cases, 206 indexer unit cases across 21 files, 36 isolated
   indexer PostgreSQL cases across 12 files, 38 feed-service cases, and 25
   shared rate-limiter unit cases plus six real-Redis integration cases.
+  The workspace-wide membership-v2 gates pass; counts not explicitly updated
+  for that slice retain the prior published baseline and should not be treated
+  as a newly captured aggregate.
 - Relay tests exercise 81 unit cases and 34 real-loopback WebSocket integration
   cases, including signed envelopes, locked-by-default authorization, bounded
   retention, backpressure, failover, reconnect, deduplication, subscription
@@ -131,6 +140,12 @@ not evidence of a devnet or mainnet-beta deployment.
 - RPC providers, content gateways, indexers, relays, storage providers,
   moderation providers, and feed providers are replaceable.
 - Sensitive personal information and private messages never go onchain.
+- A public or unlisted open-community join/leave must be authorized by the
+  member identity. A creator root or current scoped delegate may remove or ban
+  only an existing membership; `banned` is terminal.
+- The public indexer may answer one exact verified membership-PDA status query
+  for an open public/unlisted community, but it exposes no roster, member or
+  actor identity, signer authority, moderation reason, or manifest location.
 - Private content is encrypted before it reaches storage or relays.
 - Deletion is implemented with client/indexer suppression, storage-provider
   requests where possible, key destruction for encrypted content, and signed
@@ -142,9 +157,11 @@ not evidence of a devnet or mainnet-beta deployment.
   SPL/Token-2022 asset; it is not SOL, lamports, a native fee currency, or a
   currently usable payment instrument.
 - The non-release Android foundation targets Solana Seeker and Mobile Wallet
-  Adapter. A release still requires device evidence, transaction-intent tests,
-  reproducible builds, controlled signing, signed-APK provenance, security
-  review, secure update/rollback evidence, and explicit distribution approval.
+  Adapter. Its current feed and community discovery are read-only; a release
+  still requires the missing wallet-backed mutation flow, device evidence,
+  transaction-intent tests, reproducible builds, controlled signing, signed-APK
+  provenance, security review, secure update/rollback evidence, and explicit
+  distribution approval.
 
 The detailed design is in:
 
@@ -176,7 +193,7 @@ apps/
 packages/
   protocol/             Implemented canonical schemas, signatures, hashes, and IDs
   storage/              Local, memory, multi-provider, IPFS, and Arweave adapters
-  sdk/                  Post/profile/community publication plus quarantined legacy payment helpers
+  sdk/                  Post/profile/community/membership publication plus quarantined legacy payment helpers
   ui/                   Implemented accessible design-system subset
   config/               Implemented shared typed local configuration
   crypto/               WebCrypto hashing, HKDF, sealed envelopes, and passkey key wrapping

@@ -22,6 +22,7 @@ use crate::{
 pub struct CreateProposalArgs {
     pub expected_creator_sequence: u64,
     pub expected_community_sequence: u64,
+    pub expected_community_membership_sequence: u64,
     pub manifest_hash: [u8; MANIFEST_HASH_BYTES],
     pub manifest_uri: String,
     pub opens_at_slot: u64,
@@ -175,6 +176,11 @@ pub fn handle_create_proposal(
         args.expected_community_sequence,
         SocialProtocolError::CommunitySequenceMismatch
     );
+    require_eq!(
+        ctx.accounts.community.membership_sequence,
+        args.expected_community_membership_sequence,
+        SocialProtocolError::CommunityMembershipSequenceMismatch
+    );
     let next_creator_sequence = checked_next_sequence(
         ctx.accounts.creator_identity.sequence,
         args.expected_creator_sequence,
@@ -197,6 +203,7 @@ pub fn handle_create_proposal(
     proposal.governance_strategy_hash = ctx.accounts.community.governance_strategy_hash;
     proposal.voting_model = GovernanceVotingModel::OneActiveMemberOneVote;
     proposal.eligible_member_count = ctx.accounts.community.member_count;
+    proposal.community_membership_sequence = ctx.accounts.community.membership_sequence;
     proposal.opens_at_slot = args.opens_at_slot;
     proposal.closes_at_slot = args.closes_at_slot;
     proposal.quorum_bps = args.quorum_bps;
@@ -226,6 +233,7 @@ pub fn handle_create_proposal(
         governance_strategy_hash: proposal.governance_strategy_hash,
         voting_model: proposal.voting_model,
         eligible_member_count: proposal.eligible_member_count,
+        community_membership_sequence: proposal.community_membership_sequence,
         opens_at_slot: proposal.opens_at_slot,
         closes_at_slot: proposal.closes_at_slot,
         quorum_bps: proposal.quorum_bps,

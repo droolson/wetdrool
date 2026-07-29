@@ -34,12 +34,13 @@ foundation and experimental subsets across phases 2–4:
   fixtures; and
 - a non-release Expo/React Native Seeker foundation with a Mobile Wallet
   Adapter connection boundary, exact Solana deployment verification, read-only
-  chronological feed, honest failure states, focused tests, and Android export
-  metadata.
+  chronological feed and verified community discovery, honest failure states,
+  focused tests, and Android export metadata.
 
 WokeNet is the WokeSocial protocol and smart-contract deployment layer on
 Solana. It is not a separate chain, Solana fork, validator implementation, or
-RPC network. No `$WOKE` mint exists; the legacy lamport-denominated payment ABI
+RPC network, and it ships no Firedancer/Agave topology. No `$WOKE` mint exists;
+the legacy lamport-denominated payment ABI
 is quarantined and cannot execute or be unpaused.
 
 The existing Solana local-validator vertical slice is verified locally. No
@@ -185,12 +186,14 @@ This milestone is the highest-priority proof of architecture.
 - A failed publication can retry without duplication.
 - The exact clean-run and verification commands are documented.
 
-The local version of this gate passed via `pnpm test:vertical-slice`: ten
-transactions finalized on a Solana local validator; verified post and
-schema-v2 community manifests reached the production API and browser; the
-tombstoned post was suppressed; and a cleared projection replayed nine durable
-events to exact state equivalence with zero dead letters. Eight production
-browser checks passed across the pre/post-replay runs.
+The local version of this gate passed via `pnpm test:vertical-slice`: exactly 11
+transactions finalized on a Solana local validator; verified post,
+schema-v2 community, and member-authored membership-join manifests reached the
+production indexer; privacy-safe exact-address membership status was asserted;
+the tombstoned post was suppressed; and a cleared projection replayed 10
+durable events to exact state equivalence with zero dead letters. Eight
+production browser checks passed across the pre/post-replay runs, four in each
+run.
 
 This proof does not satisfy devnet/mainnet-beta deployment, Seeker Android,
 token-mint, or production evidence and does not complete the broader product,
@@ -588,10 +591,18 @@ Do not report percent complete without a defined denominator. Prefer verified re
 
 ## 23. Immediate next milestone
 
-The next product milestone is a **signed community membership and join flow**
-across the flagship client, wallet boundary, WokeNet program, finalized
-indexer, and community UI. It must preserve the discovery privacy rules, show
-the exact transaction intent before signing, wait for finalized confirmation,
+The current predeployment protocol milestone is **member-signed community
+membership**. Protocol, program, SDK, and indexer source now define
+member-authorized join/leave for open public or unlisted communities,
+creator-or-current-scoped-delegate remove/ban, terminal bans, exact optimistic
+sequences, and an exact-address privacy-safe status response with no
+roster/identity fields.
+
+The next product milestone is the missing wallet-backed join/leave journey
+across the flagship client and community UI. It must select the exact protocol
+identity; sign the membership-v2 manifest; show deployment, intent, fees/rent,
+sequence snapshots, and absence of a `$WOKE` transfer; simulate; obtain wallet
+approval; wait for finalized account confirmation and an indexer checkpoint;
 and never imply membership from an optimistic or provider-only response.
 
 A verified WokeNet deployment rehearsal on Solana devnet remains a release
@@ -601,8 +612,8 @@ finalized indexing, signed-manifest anchoring, feed display, follow, tombstone
 suppression, and projection rebuild.
 
 In parallel, the next mobile milestone is to take the existing native Seeker
-Android foundation through exact Mobile Wallet Adapter transaction-intent
-handling, approved device/emulator evidence, and a reproducible unsigned
-development APK. Production signing and distribution remain separate gated
-work. `$WOKE` work cannot resume through the legacy ABI; it starts with an
-approved mint and new mint-aware protocol design.
+Android read-only feed/community foundation through exact Mobile Wallet Adapter
+membership transaction-intent handling, approved device/emulator evidence, and
+a reproducible unsigned development APK. Production signing and distribution
+remain separate gated work. `$WOKE` work cannot resume through the legacy ABI;
+it starts with an approved mint and new mint-aware protocol design.

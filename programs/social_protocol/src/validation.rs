@@ -10,13 +10,13 @@ use crate::{
         MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS, MIN_GOVERNANCE_VOTING_SLOTS,
         MIN_HANDLE_BYTES, MIN_RECOVERY_DELAY_SLOTS, MIN_RECOVERY_GUARDIANS,
         ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PDA_PREFIX, PDA_VERSION, REACTION_CELEBRATE,
-        REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT, VALID_COMMUNITY_ROLES,
-        VALID_DELEGATION_SCOPES, WEEK_SECONDS,
+        REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT, VALID_DELEGATION_SCOPES,
+        WEEK_SECONDS,
     },
     errors::SocialProtocolError,
     state::{
-        Delegation, Identity, PaymentConfig, PaymentSplit, RecoveryPolicy, RecoveryRequest,
-        RecoveryRequestState,
+        CommunityMembershipState, Delegation, Identity, PaymentConfig, PaymentSplit,
+        RecoveryPolicy, RecoveryRequest, RecoveryRequestState,
     },
 };
 
@@ -240,13 +240,16 @@ fn validated_delegation_scopes(
 }
 
 pub fn validate_community_roles(active: bool, roles: u16) -> Result<()> {
-    let valid_active_roles =
-        roles != 0 && roles & COMMUNITY_ROLE_MEMBER != 0 && roles & !VALID_COMMUNITY_ROLES == 0;
+    let valid_active_roles = roles == COMMUNITY_ROLE_MEMBER;
     require!(
         (active && valid_active_roles) || (!active && roles == 0),
         SocialProtocolError::InvalidCommunityRoles
     );
     Ok(())
+}
+
+pub fn validate_membership_state_roles(state: CommunityMembershipState, roles: u16) -> Result<()> {
+    validate_community_roles(state == CommunityMembershipState::Active, roles)
 }
 
 pub fn validate_reaction_kind(reaction_kind: u8) -> Result<()> {
@@ -426,14 +429,12 @@ pub fn validate_proposal_window(
 }
 
 pub fn validate_membership_snapshot(
-    membership_updated_at_slot: u64,
-    membership_authority_sequence: u64,
-    proposal_created_at_slot: u64,
-    proposal_proposer_sequence: u64,
+    active_since_membership_sequence: u64,
+    proposal_community_membership_sequence: u64,
 ) -> Result<()> {
     require!(
-        membership_updated_at_slot <= proposal_created_at_slot
-            && membership_authority_sequence < proposal_proposer_sequence,
+        active_since_membership_sequence > 0
+            && active_since_membership_sequence <= proposal_community_membership_sequence,
         SocialProtocolError::MemberNotEligibleAtSnapshot
     );
     Ok(())

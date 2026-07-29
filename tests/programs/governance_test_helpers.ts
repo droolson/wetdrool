@@ -26,7 +26,7 @@ const MEMBERSHIP_SEED = Buffer.from("membership");
 const PROPOSAL_SEED = Buffer.from("proposal");
 const VOTE_SEED = Buffer.from("vote");
 
-export const GOVERNANCE_PROPOSAL_SPACE = 463;
+export const GOVERNANCE_PROPOSAL_SPACE = 471;
 export const GOVERNANCE_VOTE_SPACE = 195;
 export const GOVERNANCE_QUORUM_BPS = 5_000;
 export const GOVERNANCE_APPROVAL_BPS = 5_001;
@@ -143,6 +143,8 @@ export async function createGovernanceCommunity(
       manifestUri: manifestUri(`governance-community-${nonceStart}`),
       governanceVersion: 1,
       governanceStrategyHash,
+      visibility: { public: {} },
+      membershipPolicy: { open: {} },
     })
     .accountsStrict({
       config: context.config,
@@ -167,23 +169,27 @@ export async function createGovernanceCommunity(
       memberIdentity.address,
     );
     await context.program.methods
-      .setCommunityMembership({
-        expectedAuthoritySequence: new BN(index + 1),
-        active: true,
-        roles: COMMUNITY_ROLE_MEMBER,
+      .joinCommunity({
+        expectedMemberSequence: new BN(0),
+        expectedStateSequence: new BN(0),
+        expectedMembershipPolicySequence: new BN(1),
+        expectedCommunityMembershipSequence: new BN(index),
+        manifestHash: digest(`governance-membership-${nonceStart}-${index}`),
+        manifestUri: manifestUri(
+          `governance-membership-${nonceStart}-${index}`,
+        ),
       })
       .accountsStrict({
         config: context.config,
-        creatorIdentity: creator.address,
         community: address,
         memberIdentity: memberIdentity.address,
         membership,
-        authority: creator.authority.publicKey,
+        authority: memberIdentity.authority.publicKey,
         payer: context.provider.wallet.publicKey,
         systemProgram: SystemProgram.programId,
         delegation: null,
       })
-      .signers([creator.authority])
+      .signers([memberIdentity.authority])
       .rpc();
     members.push({ ...memberIdentity, membership });
   }

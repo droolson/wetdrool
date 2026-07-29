@@ -1,7 +1,8 @@
 # Open indexer
 
 The indexer is a replaceable, non-canonical projection of finalized WokeNet
-Solana-format events. It validates the configured genesis hash and
+program events on Solana. WokeNet is not a chain, RPC network, or
+Firedancer/Agave topology. The indexer validates the configured genesis hash and
 program, decodes the generated Anchor IDL event surface, verifies portable
 manifests, and stores deterministic query models in PostgreSQL.
 
@@ -284,6 +285,50 @@ directories expose only verified public communities; exact-address detail may
 also return verified unlisted communities, while private, restricted,
 unverified, and malformed records remain undiscoverable.
 
+Migration `0018_member_signed_community_memberships.sql` replaces the
+authority-assignment projection with the current member-signed transition
+model. It stores the exact join/leave/remove/ban action, resulting
+active/left/removed/banned state, member and actor sequences, membership-policy
+sequence, community-wide membership sequence, active-since sequence,
+manifest-verification fields, and finalized event provenance. Proposal rows
+also retain the community membership sequence snapshot used for same-slot-safe
+voter eligibility.
+
+This is an explicit **predeployment reset boundary**, not a compatibility
+migration. The checked-in community, membership, and proposal account/event
+ABIs changed under the development program ID. Migration `0018` therefore
+refuses to run when it finds any existing community, community-membership, or
+governance-proposal projection row, or any durable `community-created`,
+`community-membership-changed`, or `proposal-created` event. Inferring new
+fields would leave an immutable raw ledger that the strict current decoder
+cannot replay.
+
+Before using this binary in a disposable local environment, stop every writer,
+discard the exact local PostgreSQL projection volume, start a validator with a
+new empty ledger, and redeploy the current program artifact. Never point the
+new indexer at an old local-validator ledger. No automatic upgrade for
+irreplaceable or public-cluster state is provided; a future deployed ABI change
+requires a new program/version boundary and a reviewed migration plan.
+
+The public membership contract is deliberately narrow:
+
+- `GET /v1/community-memberships/{membershipAddress}?network=...` is an exact
+  address lookup, never a roster or search;
+- the signed schema-v2 transition, deterministic PDA, parent community, and
+  finalized event must verify;
+- the parent must be verified `public` or `unlisted` with effective `open`
+  membership policy;
+- the projection checkpoint must cover the transition's update slot;
+- the response contains portable action/state/roles, non-identity sequences,
+  finalized provenance, and checkpoint metadata; and
+- member identity, actor identity, signing authority, moderation reason, and
+  manifest location are never returned.
+
+Unknown, unverified, protected, restricted-policy, malformed, and
+checkpoint-incomplete records all return the same not-found response. Solana
+history remains public; this contract minimizes official-indexer amplification
+and does not claim chain anonymity.
+
 The content-reference boundary is shared with the program and SDK. A canonical
 content ID is exactly a CIDv1 base32-lowercase string using the `raw` multicodec
 and a 32-byte SHA-256 multihash; the textual prefilter is
@@ -392,6 +437,7 @@ In addition to verified feed and post routes, the service exposes replaceable pr
 - `GET /v1/identities/{identityId}/handles`
 - `GET /v1/communities?network=...&limit=...&cursor=...`
 - `GET /v1/communities/{communityAddress}?network=...`
+- `GET /v1/community-memberships/{membershipAddress}?network=...`
 - `GET /v1/communities/{communityAddress}/proposals?network=...`
 - `GET /v1/governance/proposals/{proposalAddress}?network=...`
 - `GET /v1/governance/proposals/{proposalAddress}/votes?network=...`
@@ -413,7 +459,7 @@ verifiable sources.
 ## Verification
 
 Test counts change as the package evolves; use the commands below for current
-evidence. The migration ledger contains seventeen ordered, checksummed
+evidence. The migration ledger contains 18 ordered, checksummed
 migrations. Current tests exercise Solana JSON-RPC/PostgreSQL behavior, but do
 not prove production fork/reorg behavior, independent-provider reconciliation,
 or rebuilds above the configured 50,000-event bound.

@@ -86,6 +86,9 @@ const VERIFIED_COMMUNITY = {
   governanceStrategyHash: COMMUNITY_GOVERNANCE_COMMITMENT.digest,
   governanceVersion: COMMUNITY_GOVERNANCE_COMMITMENT.governanceVersion,
   latestActionAuthority: '11111111111111111111111111111111',
+  membershipPolicy: 'open',
+  membershipPolicySequence: '1',
+  membershipSequence: '0',
   manifestAuthority: '11111111111111111111111111111111',
   manifestCid: PROJECTED_POST_CID,
   manifestCreatedAt: '2026-07-28T12:00:00.000Z',
@@ -99,6 +102,7 @@ const VERIFIED_COMMUNITY = {
   signingKeyId: `${VERIFIED_POST.author.identityId}#root/${'1'.repeat(32)}`,
   updatedAt: '2026-07-28T12:01:00.000Z',
   updatedSlot: '42',
+  visibility: 'public',
 } as const;
 
 describe('typed indexer response parsing', () => {

@@ -889,16 +889,18 @@ function isManifestUnavailable(
   return error instanceof ManifestVerificationError && error.code === 'manifest-unavailable';
 }
 
-function isDeferrableManifestEvent(
-  event: ProtocolEvent,
-): event is Extract<
+function isDeferrableManifestEvent(event: ProtocolEvent): event is Extract<
   ProtocolEvent,
-  { readonly type: 'profile-updated' | 'post-published' | 'community-created' }
+  {
+    readonly type:
+      'profile-updated' | 'post-published' | 'community-created' | 'community-membership-changed';
+  }
 > {
   return (
     event.type === 'profile-updated' ||
     event.type === 'post-published' ||
-    event.type === 'community-created'
+    event.type === 'community-created' ||
+    event.type === 'community-membership-changed'
   );
 }
 

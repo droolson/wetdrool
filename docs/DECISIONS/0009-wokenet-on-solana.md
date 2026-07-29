@@ -32,6 +32,9 @@ therefore a Solana application, not a Solana fork or a new validator network.
 4. Solana validators and RPC providers are external dependencies. WokeSocial
    may use multiple credential-free configured RPC endpoints, verify responses,
    and fail over without treating any provider as canonical.
+5. WokeNet does not ship or operate Firedancer, Agave, a validator topology, or
+   a separate genesis. Those are Solana infrastructure concerns, not
+   application components.
 
 ### Deployment identity
 
@@ -105,7 +108,8 @@ used to pay Solana fees.
 
 The implemented non-release mobile foundation targets Android on Solana Seeker
 and uses Solana Mobile Wallet Adapter for wallet connection. It currently
-exposes no WokeNet program transaction action.
+provides read-only feed and verified community discovery and exposes no WokeNet
+program transaction action.
 Private keys must remain in the selected wallet; WokeSocial receives only the
 minimum public account and signed-request material required for an explicit
 operation.
@@ -158,6 +162,9 @@ direct-distribution approval.
   scope for the product.
 - **Fork Solana or ship a custom validator:** does not improve the application
   boundary and creates a misleading separate-network claim.
+- **Operate Firedancer as a WokeNet validator topology:** Firedancer is Solana
+  validator software, while WokeNet is only an application protocol/program
+  namespace.
 - **Treat RPC providers as WokeNet nodes:** RPC endpoints are replaceable Solana
   providers, not WokeNet consensus participants.
 - **Rename SOL/lamports as `$WOKE`:** false and incompatible with a future

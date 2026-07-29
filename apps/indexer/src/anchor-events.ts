@@ -216,6 +216,10 @@ export type DecodedAnchorEvent =
       readonly manifestUri: string;
       readonly governanceVersion: number;
       readonly governanceStrategyHash: Uint8Array;
+      readonly visibility: 'public' | 'unlisted' | 'private';
+      readonly membershipPolicy: 'open' | 'request' | 'invite';
+      readonly membershipPolicySequence: bigint;
+      readonly membershipSequence: bigint;
       readonly createdAtSlot: bigint;
     }
   | {
@@ -239,12 +243,19 @@ export type DecodedAnchorEvent =
       readonly community: string;
       readonly membership: string;
       readonly memberIdentity: string;
-      readonly assignedByIdentity: string;
+      readonly actorIdentity: string;
       readonly authority: string;
-      readonly authoritySequence: bigint;
+      readonly action: 'join' | 'leave' | 'remove' | 'ban';
+      readonly state: 'active' | 'left' | 'removed' | 'banned';
       readonly membershipStateSequence: bigint;
+      readonly memberActionSequence: bigint;
+      readonly actorSequence: bigint;
+      readonly membershipPolicySequence: bigint;
+      readonly communityMembershipSequence: bigint;
+      readonly activeSinceMembershipSequence: bigint;
       readonly roles: number;
-      readonly active: boolean;
+      readonly manifestHash: Uint8Array;
+      readonly manifestUri: string;
       readonly updatedAtSlot: bigint;
     }
   | {
@@ -495,6 +506,7 @@ export type DecodedAnchorEvent =
       readonly governanceStrategyHash: Uint8Array;
       readonly votingModel: 'one-active-member-one-vote';
       readonly eligibleMemberCount: bigint;
+      readonly communityMembershipSequence: bigint;
       readonly opensAtSlot: bigint;
       readonly closesAtSlot: bigint;
       readonly quorumBps: number;
@@ -746,6 +758,10 @@ export function decodeAnchorEventLog(encoded: string): DecodedAnchorEvent {
       manifestUri: reader.string(),
       governanceVersion: reader.u16(),
       governanceStrategyHash: reader.bytes(32),
+      visibility: reader.communityVisibility(),
+      membershipPolicy: reader.communityMembershipPolicy(),
+      membershipPolicySequence: reader.u64(),
+      membershipSequence: reader.u64(),
       createdAtSlot: reader.u64(),
     };
   } else if (
@@ -775,12 +791,19 @@ export function decodeAnchorEventLog(encoded: string): DecodedAnchorEvent {
       community: reader.publicKey(),
       membership: reader.publicKey(),
       memberIdentity: reader.publicKey(),
-      assignedByIdentity: reader.publicKey(),
+      actorIdentity: reader.publicKey(),
       authority: reader.publicKey(),
-      authoritySequence: reader.u64(),
+      action: reader.communityMembershipAction(),
+      state: reader.communityMembershipState(),
       membershipStateSequence: reader.u64(),
+      memberActionSequence: reader.u64(),
+      actorSequence: reader.u64(),
+      membershipPolicySequence: reader.u64(),
+      communityMembershipSequence: reader.u64(),
+      activeSinceMembershipSequence: reader.u64(),
       roles: reader.u16(),
-      active: reader.boolean(),
+      manifestHash: reader.bytes(32),
+      manifestUri: reader.string(),
       updatedAtSlot: reader.u64(),
     };
   } else if (matches(discriminator, SOCIAL_PROTOCOL_EVENT_LAYOUT.events.ReactionStateChanged)) {
@@ -1050,6 +1073,7 @@ export function decodeAnchorEventLog(encoded: string): DecodedAnchorEvent {
       governanceStrategyHash: reader.bytes(32),
       votingModel: reader.governanceVotingModel(),
       eligibleMemberCount: reader.u64(),
+      communityMembershipSequence: reader.u64(),
       opensAtSlot: reader.u64(),
       closesAtSlot: reader.u64(),
       quorumBps: reader.u16(),
@@ -1242,6 +1266,42 @@ class BorshReader {
       return 'one-active-member-one-vote';
     }
     throw new AnchorEventDecodingError('Anchor event contains an unknown governance voting model.');
+  }
+
+  communityVisibility(): 'public' | 'unlisted' | 'private' {
+    const variant = this.u8();
+    if (variant === 0) return 'public';
+    if (variant === 1) return 'unlisted';
+    if (variant === 2) return 'private';
+    throw new AnchorEventDecodingError('Anchor event contains an unknown community visibility.');
+  }
+
+  communityMembershipPolicy(): 'open' | 'request' | 'invite' {
+    const variant = this.u8();
+    if (variant === 0) return 'open';
+    if (variant === 1) return 'request';
+    if (variant === 2) return 'invite';
+    throw new AnchorEventDecodingError(
+      'Anchor event contains an unknown community membership policy.',
+    );
+  }
+
+  communityMembershipAction(): 'join' | 'leave' | 'remove' | 'ban' {
+    const variant = this.u8();
+    if (variant === 0) return 'join';
+    if (variant === 1) return 'leave';
+    if (variant === 2) return 'remove';
+    if (variant === 3) return 'ban';
+    throw new AnchorEventDecodingError('Anchor event contains an unknown membership action.');
+  }
+
+  communityMembershipState(): 'active' | 'left' | 'removed' | 'banned' {
+    const variant = this.u8();
+    if (variant === 0) return 'active';
+    if (variant === 1) return 'left';
+    if (variant === 2) return 'removed';
+    if (variant === 3) return 'banned';
+    throw new AnchorEventDecodingError('Anchor event contains an unknown membership state.');
   }
 
   governanceVoteChoice(): 'yes' | 'no' | 'abstain' {

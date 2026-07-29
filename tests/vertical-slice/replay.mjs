@@ -30,10 +30,28 @@ try {
   assert.equal(before.community?.content.name, metadata.communityName);
   assert.equal(before.communityDirectory.length, 1);
   assert.equal(before.communityDirectory[0]?.communityAddress, metadata.communityAddress);
+  assert.equal(before.membershipStatus?.membershipAddress, metadata.membershipAddress);
+  assert.equal(before.membershipStatus?.communityAddress, metadata.communityAddress);
+  assert.equal(before.membershipStatus?.action, 'join');
+  assert.equal(before.membershipStatus?.state, 'active');
+  assert.deepEqual(before.membershipStatus?.roles, ['member']);
+  assert.equal(before.membershipStatus?.stateSequence, 1n);
+  assert.equal(before.membershipStatus?.memberActionSequence, 2n);
+  assert.equal(before.membershipStatus?.membershipPolicySequence, 1n);
+  assert.equal(before.membershipStatus?.communityMembershipSequence, 1n);
+  assert.equal(before.membershipStatus?.activeSinceMembershipSequence, 1n);
+  assert.equal(
+    before.membershipStatus?.transactionSignature,
+    metadata.transactionSignatures.at(-1),
+  );
 
   await projection.clearProjection(networkId);
   assert.equal(await projection.getIdentity(metadata.authorIdentityId), undefined);
   assert.equal(await projection.getCommunity(networkId, metadata.communityAddress), undefined);
+  assert.equal(
+    await projection.getDiscoverableCommunityMembership(networkId, metadata.membershipAddress),
+    undefined,
+  );
   assert.deepEqual(
     await projection.getFeed({
       networkId,
@@ -55,7 +73,7 @@ try {
     profileSchemaV2ActivationSlot: 0n,
   });
   assert.equal(replay.mode, 'applied');
-  assert.equal(replay.eventCount, 9, 'replay validates exactly every durable fixture event');
+  assert.equal(replay.eventCount, 10, 'replay validates exactly every durable fixture event');
 
   const after = await snapshot(projection, metadata);
   assert.equal(
@@ -87,6 +105,9 @@ async function snapshot(projection, fixture) {
         limit: 20,
       })
     ).communities,
+    membershipStatus: (
+      await projection.getDiscoverableCommunityMembership(networkId, fixture.membershipAddress)
+    )?.membership,
     post: await projection.getPost(fixture.postObjectId),
     tombstonedPost: await projection.getPost(fixture.tombstonedPostObjectId),
     chronological: await projection.getFeed({

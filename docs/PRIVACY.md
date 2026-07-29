@@ -10,6 +10,7 @@ This document specifies privacy requirements for the protocol, flagship client, 
 WokeNet is the WokeSocial protocol and smart-contract deployment layer on
 Solana. Solana validators and RPC providers are external dependencies. Local
 validator evidence is not devnet/mainnet-beta or production evidence. No
+Firedancer/Agave validator topology is part of WokeNet. No
 `$WOKE` mint exists, and the legacy lamport-denominated payment ABI is
 quarantined and never grants paid access. The canonical public origin is
 `https://woke.social`; `sociallywoke.com` is redirect-only and must not receive
@@ -52,8 +53,8 @@ legal review.
 
 | Class | Examples | Default treatment |
 |---|---|---|
-| Public protocol data | Identity root, public keys, public references, content hashes, public relationships intentionally selected for protocol publication | Public and durable; minimize fields and disclose permanence |
-| Public signed content | Public profile values and post manifests, encrypted references to protected profile values, author-selected media metadata | Content-addressed and verifiable; deletion-compatible storage by default; current schema-v2 publication never places protected profile plaintext inline, while historical schema-v1 bytes remain readable |
+| Public protocol data | Identity root, public keys, public references, content hashes, public relationships intentionally selected for protocol publication, and public/unlisted open-community membership events | Public and durable; minimize fields and disclose permanence |
+| Public signed content | Public profile values, post manifests, public community declarations, member-signed membership transitions, encrypted references to protected profile values, and author-selected media metadata | Content-addressed and verifiable; deletion-compatible storage by default; current profile/community/membership schema-v2 publication preserves strict privacy and authority boundaries while historical schema-v1 bytes remain readable |
 | Restricted signed content | Private-community, paid, limited-audience content | Encrypt before storage; public references reveal no plaintext or key |
 | End-to-end encrypted content | Direct/group messages and attachments | Ciphertext only outside authorized devices |
 | Sensitive service data | Recovery email, account-support records, abuse evidence, provider billing identifiers | Offchain, encrypted, access-controlled, purpose-limited |
@@ -152,7 +153,22 @@ protected communities, and unverified community shells are excluded in both
 memory and PostgreSQL implementations. Direct community detail permits verified
 public or unlisted manifests, but private/restricted communities return the
 same not-found response as an unknown address. Public community responses do
-not include membership lists. Direct governance proposal and vote endpoints
+not include membership lists.
+
+The separate
+`GET /v1/community-memberships/{membershipAddress}?network=...` route accepts
+only one exact deterministic membership PDA. It responds only for a verified
+schema-v2 membership whose parent is a verified public or unlisted community
+with an effective open policy and whose finalized update slot is covered by the
+projection checkpoint. Its response is limited to community/membership
+addresses, action/state/roles, non-identity proof sequences, timestamp/slot,
+finalized event provenance, and checkpoint. It never returns the member
+identity, actor identity, signing authority, moderation reason, or portable
+manifest location. No roster, list, search, member filter, or actor filter
+exists. Missing, unverified, protected, restricted-policy, and
+checkpoint-incomplete records use the same not-found response.
+
+Direct governance proposal and vote endpoints
 apply the same parent-community visibility gate so protected or unverified
 communities cannot leak voter identities, membership addresses, or vote choices
 through a known child PDA. The official publication pipeline rejects
@@ -171,6 +187,14 @@ amplifying a private or restricted community, but it cannot conceal that
 onchain event. Protected community metadata must therefore be encrypted before
 publication, and the current official publication pipeline fails closed
 instead of pretending otherwise.
+
+Likewise, `CommunityMembershipChanged` exposes the deterministic membership
+PDA, community and member/actor identity accounts, authority, action, state,
+roles, sequences, manifest reference, and slot to chain observers. Omitting
+identity and moderation fields from the convenience API minimizes
+amplification; it does not make a public Solana transition anonymous. A party
+that already knows a community and member identity can derive the PDA and
+inspect chain history.
 
 Historical profile compatibility is bounded by one immutable
 `INDEXER_PROFILE_V2_ACTIVATION_SLOT` per WokeNet. Before that slot, the indexer
@@ -314,7 +338,11 @@ Structured logging and OpenTelemetry-compatible instrumentation must:
 ### 8.4 Seeker Android and Mobile Wallet Adapter
 
 The non-release Android foundation uses Mobile Wallet Adapter so the selected
-wallet, not WokeSocial, retains private keys. A production data map must cover:
+wallet, not WokeSocial, retains private keys. Its verified community discovery
+is read-only. Identity selection, membership-manifest signing, simulation,
+Mobile Wallet Adapter transaction approval, finalized-account verification,
+and indexer catch-up are not connected and no join/leave/moderation control is
+exposed. A production data map must cover:
 
 - requested Android permissions and why each is necessary;
 - MWA intents, deep links, callbacks, wallet package, selected public account,

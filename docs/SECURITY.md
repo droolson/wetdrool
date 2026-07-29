@@ -251,6 +251,22 @@ substitution, duplicate initialization, unauthorized closure, overflow,
 malformed input, wrong program IDs, stale delegations, and unsupported token
 mints.
 
+Community membership requires distinct authority paths. Join/leave must resolve
+to the member identity's current root or current `community` delegation;
+remove/ban must resolve to the creator identity's current root or current
+`community` delegation and an existing different member. Clients and programs
+must bind the exact community/member PDA, action/state/roles, signed
+membership-v2 manifest, identity sequence, membership-state sequence,
+membership-policy sequence, and community-wide membership sequence. `banned`
+is terminal. A proposal must snapshot that community-wide sequence, and a vote
+must prove the membership became active no later than the snapshot.
+
+The public indexer must not turn those events into a roster. Exact-address
+status is permitted only for verified open public/unlisted parents after a
+covering finalized checkpoint, and it must omit member/actor identities, signer
+authority, moderation reason, and manifest location. This is data
+minimization, not chain secrecy.
+
 The legacy lamport-denominated payment ABI is permanently quarantined. Clients,
 sponsors, and release tooling MUST reject attempts to execute or unpause it, and
 legacy accounts/events MUST never grant entitlements. Portable signed metadata
@@ -298,8 +314,11 @@ All items in this section are **Planned**.
 
 ### Seeker Android and Mobile Wallet Adapter
 
-The current Expo/React Native project is a non-release foundation. Before an
-Android release:
+The current Expo/React Native project is a non-release foundation with
+read-only feed and verified community discovery. It has no membership
+transaction action: identity selection, manifest signing, simulation, MWA
+approval, finality, and indexer catch-up remain unconnected. Before an Android
+release:
 
 - wallet connect, authorize, sign, disconnect, cancellation, timeout, background
   and resume flows MUST be tested on the approved Seeker/device matrix;

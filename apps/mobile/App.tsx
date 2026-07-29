@@ -6,6 +6,7 @@ import { BottomNavigation, type MobileRoute } from './src/components/bottom-navi
 import { BrandHeader } from './src/components/brand-header';
 import { DeploymentBanner } from './src/components/deployment-banner';
 import { parseMobileRuntimeConfig, type MobileRuntimeEnvironment } from './src/runtime-config';
+import { CommunitiesScreen } from './src/screens/communities-screen';
 import { FeedScreen } from './src/screens/feed-screen';
 import { WalletScreen } from './src/screens/wallet-screen';
 import { colors } from './src/theme';
@@ -62,11 +63,11 @@ function AppShell({
       <BrandHeader />
       <DeploymentBanner config={config} deployment={deployment} />
       <View style={styles.screen}>
-        {route === 'feed' ? (
-          <FeedScreen config={config} deployment={deployment} />
-        ) : (
-          <WalletScreen config={config} deployment={deployment} />
-        )}
+        {route === 'feed' ? <FeedScreen config={config} deployment={deployment} /> : null}
+        {route === 'communities' ? (
+          <CommunitiesScreen config={config} deployment={deployment} />
+        ) : null}
+        {route === 'wallet' ? <WalletScreen config={config} deployment={deployment} /> : null}
       </View>
       <BottomNavigation onChange={setRoute} route={route} />
     </SafeAreaView>

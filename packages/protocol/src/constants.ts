@@ -5,6 +5,8 @@ export const SCHEMA_VERSION = 1 as const;
 export const PROFILE_SCHEMA_VERSION = 2 as const;
 /** Current schema version for newly created community objects. */
 export const COMMUNITY_SCHEMA_VERSION = 2 as const;
+/** Current schema version for newly created community-membership objects. */
+export const COMMUNITY_MEMBERSHIP_SCHEMA_VERSION = 2 as const;
 export const SIGNATURE_DOMAIN = 'woke.social/protocol/signed-object' as const;
 
 export const MAX_INLINE_POST_BYTES = 10_000;

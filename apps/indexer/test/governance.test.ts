@@ -3,6 +3,7 @@ import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   canonicalizeEnvelope,
   createPayloadBuilderIdentity,
@@ -51,7 +52,8 @@ const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
 const voterIdentityId = `wokesocialid:v1:${networkId}:${voterAddress}`;
 const creatorPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 51);
 const creatorAuthority = bs58.encode(ed25519.getPublicKey(creatorPrivateKey));
-const voterAuthority = publicKey(6);
+const voterPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => 180 - index);
+const voterAuthority = bs58.encode(ed25519.getPublicKey(voterPrivateKey));
 const communityAddress = publicKey(7);
 const creatorMembershipAddress = await deriveCommunityMembershipAddress(
   programId,
@@ -76,6 +78,12 @@ const creatorBuilderIdentity = createPayloadBuilderIdentity(
   ed25519.getPublicKey(creatorPrivateKey),
   'root',
 );
+const voterBuilderIdentity = createPayloadBuilderIdentity(
+  networkId,
+  voterIdentityId,
+  ed25519.getPublicKey(voterPrivateKey),
+  'root',
+);
 const communityContent = {
   slug: 'governance-lab',
   name: 'Governance Lab',
@@ -95,7 +103,51 @@ const communityEnvelope = signPayload(
 );
 const communityManifestBytes = canonicalizeEnvelope(communityEnvelope);
 const communityManifestCid = await getContentCid(communityManifestBytes);
-const communityManifestByCid = new Map([[communityManifestCid, communityManifestBytes]]);
+const creatorMembershipEnvelope = signPayload(
+  buildCommunityMembershipPayload(
+    creatorBuilderIdentity,
+    {
+      communityAddress,
+      member: creatorIdentityId,
+      action: 'join',
+      state: 'active',
+      roles: ['member'],
+      replacement: { sequence: 1 },
+    },
+    {
+      createdAt: new Date('2026-07-28T12:05:00.000Z'),
+      nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 21),
+    },
+  ),
+  creatorPrivateKey,
+);
+const creatorMembershipBytes = canonicalizeEnvelope(creatorMembershipEnvelope);
+const creatorMembershipCid = await getContentCid(creatorMembershipBytes);
+const voterMembershipEnvelope = signPayload(
+  buildCommunityMembershipPayload(
+    voterBuilderIdentity,
+    {
+      communityAddress,
+      member: voterIdentityId,
+      action: 'join',
+      state: 'active',
+      roles: ['member'],
+      replacement: { sequence: 1 },
+    },
+    {
+      createdAt: new Date('2026-07-28T12:06:00.000Z'),
+      nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 41),
+    },
+  ),
+  voterPrivateKey,
+);
+const voterMembershipBytes = canonicalizeEnvelope(voterMembershipEnvelope);
+const voterMembershipCid = await getContentCid(voterMembershipBytes);
+const communityManifestByCid = new Map([
+  [communityManifestCid, communityManifestBytes],
+  [creatorMembershipCid, creatorMembershipBytes],
+  [voterMembershipCid, voterMembershipBytes],
+]);
 const communityManifestSource = {
   get(cid: string): Promise<Uint8Array> {
     const bytes = communityManifestByCid.get(cid);
@@ -172,11 +224,12 @@ describe('governance Anchor events', () => {
       kind: 'proposal-created',
       proposal: proposalAddress,
       proposerIdentity: creatorAddress,
-      proposerSequence: 4n,
-      previousCommunitySequence: 3n,
+      proposerSequence: 3n,
+      previousCommunitySequence: 1n,
       governanceVersion: 1,
       votingModel: 'one-active-member-one-vote',
       eligibleMemberCount: 2n,
+      communityMembershipSequence: 2n,
       quorumBps: GOVERNANCE_QUORUM_BPS,
       approvalBps: GOVERNANCE_APPROVAL_BPS,
     });
@@ -291,6 +344,53 @@ describe('governance Anchor events', () => {
 });
 
 describe('governance projection', () => {
+  it('rejects open self-join events for effectively private communities', async () => {
+    const privateContent = {
+      ...communityContent,
+      visibility: 'private',
+    } satisfies CommunityContent;
+    const privateEnvelope = signPayload(
+      buildCommunityPayload(creatorBuilderIdentity, privateContent, {
+        createdAt: new Date('2026-07-28T12:04:00.000Z'),
+        nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 61),
+      }),
+      creatorPrivateKey,
+    );
+    const privateBytes = canonicalizeEnvelope(privateEnvelope);
+    const privateCid = await getContentCid(privateBytes);
+    communityManifestByCid.set(privateCid, privateBytes);
+    const projection = new MemoryProjectionStore();
+    const indexer = new OpenIndexer(
+      projection,
+      new ManifestVerifier(communityManifestSource, {
+        authorize: () => Promise.resolve(true),
+      }),
+    );
+    const events = governanceEvents();
+    for (const event of events.slice(0, 3)) {
+      await indexer.ingest(event);
+    }
+    const creation = events[3];
+    if (creation?.type !== 'community-created') {
+      throw new Error('Expected a community creation fixture.');
+    }
+    await indexer.ingest({
+      ...creation,
+      communityNonce: privateEnvelope.payload.nonce,
+      manifestCid: privateCid,
+      manifestHash: privateEnvelope.proof.payloadHash,
+      visibility: 'private',
+    });
+
+    await expect(indexer.ingest(events[4] as ProtocolEvent)).rejects.toMatchObject({
+      code: 'stale-event',
+    } satisfies Partial<ProjectionError>);
+    await expect(projection.getCommunityMemberships(networkId, communityAddress)).resolves.toEqual(
+      [],
+    );
+    await expect(projection.checkpoint(networkId)).resolves.toBe(4n);
+  });
+
   it('isolates identical identity, community, proposal, membership, and vote addresses by network', async () => {
     const secondNetworkId = `wokenet:v1:${publicKey(140)}:${programId}` as NetworkId;
     const projection = new MemoryProjectionStore();
@@ -302,6 +402,7 @@ describe('governance projection', () => {
     );
     const firstNetworkEvents = governanceEvents();
     const secondCreatorIdentityId = creatorIdentityId.replace(networkId, secondNetworkId);
+    const secondVoterIdentityId = voterIdentityId.replace(networkId, secondNetworkId);
     const secondEnvelope = signPayload(
       buildCommunityPayload(
         createPayloadBuilderIdentity(
@@ -321,16 +422,87 @@ describe('governance projection', () => {
     const secondBytes = canonicalizeEnvelope(secondEnvelope);
     const secondCid = await getContentCid(secondBytes);
     communityManifestByCid.set(secondCid, secondBytes);
+    const secondCreatorMembershipEnvelope = signPayload(
+      buildCommunityMembershipPayload(
+        createPayloadBuilderIdentity(
+          secondNetworkId,
+          secondCreatorIdentityId,
+          ed25519.getPublicKey(creatorPrivateKey),
+          'root',
+        ),
+        {
+          communityAddress,
+          member: secondCreatorIdentityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T12:05:00.000Z'),
+          nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 22),
+        },
+      ),
+      creatorPrivateKey,
+    );
+    const secondCreatorMembershipBytes = canonicalizeEnvelope(secondCreatorMembershipEnvelope);
+    const secondCreatorMembershipCid = await getContentCid(secondCreatorMembershipBytes);
+    communityManifestByCid.set(secondCreatorMembershipCid, secondCreatorMembershipBytes);
+    const secondVoterMembershipEnvelope = signPayload(
+      buildCommunityMembershipPayload(
+        createPayloadBuilderIdentity(
+          secondNetworkId,
+          secondVoterIdentityId,
+          ed25519.getPublicKey(voterPrivateKey),
+          'root',
+        ),
+        {
+          communityAddress,
+          member: secondVoterIdentityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T12:06:00.000Z'),
+          nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 42),
+        },
+      ),
+      voterPrivateKey,
+    );
+    const secondVoterMembershipBytes = canonicalizeEnvelope(secondVoterMembershipEnvelope);
+    const secondVoterMembershipCid = await getContentCid(secondVoterMembershipBytes);
+    communityManifestByCid.set(secondVoterMembershipCid, secondVoterMembershipBytes);
     const secondNetworkEvents = firstNetworkEvents.map((event) => {
       const moved = moveEventToNetwork(event, secondNetworkId);
-      return moved.type === 'community-created'
-        ? {
-            ...moved,
-            communityNonce: secondEnvelope.payload.nonce,
-            manifestCid: secondCid,
-            manifestHash: secondEnvelope.proof.payloadHash,
-          }
-        : moved;
+      if (moved.type === 'community-created') {
+        return {
+          ...moved,
+          communityNonce: secondEnvelope.payload.nonce,
+          manifestCid: secondCid,
+          manifestHash: secondEnvelope.proof.payloadHash,
+        };
+      }
+      if (moved.type === 'community-membership-changed') {
+        const manifest =
+          moved.memberIdentityId === secondCreatorIdentityId
+            ? {
+                envelope: secondCreatorMembershipEnvelope,
+                cid: secondCreatorMembershipCid,
+              }
+            : {
+                envelope: secondVoterMembershipEnvelope,
+                cid: secondVoterMembershipCid,
+              };
+        return {
+          ...moved,
+          manifestCid: manifest.cid,
+          manifestHash: manifest.envelope.proof.payloadHash,
+          manifestUri: `ipfs://${manifest.cid}`,
+        };
+      }
+      return moved;
     });
 
     for (const event of [...firstNetworkEvents, ...secondNetworkEvents]) {
@@ -432,7 +604,7 @@ describe('governance projection', () => {
       expect(votesResponse.json()).toMatchObject({
         canonical: false,
         proposalAddress,
-        votes: [{ voteAddress, voterSequence: '1', proposalStateSequence: '2' }],
+        votes: [{ voteAddress, voterSequence: '2', proposalStateSequence: '2' }],
       });
       const voteResponse = await app.inject({
         method: 'GET',
@@ -746,6 +918,10 @@ function governanceEvents(): readonly ProtocolEvent[] {
       manifestHash: communityEnvelope.proof.payloadHash,
       governanceVersion: 1,
       governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
+      visibility: 'public',
+      membershipPolicy: 'open',
+      membershipPolicySequence: 1n,
+      membershipSequence: 0n,
     },
     {
       ...base(5n, 5),
@@ -753,12 +929,20 @@ function governanceEvents(): readonly ProtocolEvent[] {
       communityAddress,
       membershipAddress: creatorMembershipAddress,
       memberIdentityId: creatorIdentityId,
-      assignedByIdentityId: creatorIdentityId,
+      actorIdentityId: creatorIdentityId,
       authority: creatorAuthority,
-      authoritySequence: 2n,
+      action: 'join',
+      state: 'active',
+      actorSequence: 2n,
+      memberActionSequence: 2n,
+      membershipPolicySequence: 1n,
+      communityMembershipSequence: 1n,
+      activeSinceMembershipSequence: 1n,
       membershipStateSequence: 1n,
       roles: 1,
-      active: true,
+      manifestCid: creatorMembershipCid,
+      manifestHash: creatorMembershipEnvelope.proof.payloadHash,
+      manifestUri: `ipfs://${creatorMembershipCid}`,
     },
     {
       ...base(6n, 6),
@@ -766,12 +950,20 @@ function governanceEvents(): readonly ProtocolEvent[] {
       communityAddress,
       membershipAddress: voterMembershipAddress,
       memberIdentityId: voterIdentityId,
-      assignedByIdentityId: creatorIdentityId,
-      authority: creatorAuthority,
-      authoritySequence: 3n,
+      actorIdentityId: voterIdentityId,
+      authority: voterAuthority,
+      action: 'join',
+      state: 'active',
+      actorSequence: 1n,
+      memberActionSequence: 1n,
+      membershipPolicySequence: 1n,
+      communityMembershipSequence: 2n,
+      activeSinceMembershipSequence: 2n,
       membershipStateSequence: 1n,
       roles: 1,
-      active: true,
+      manifestCid: voterMembershipCid,
+      manifestHash: voterMembershipEnvelope.proof.payloadHash,
+      manifestUri: `ipfs://${voterMembershipCid}`,
     },
     {
       ...base(7n, 7),
@@ -780,14 +972,15 @@ function governanceEvents(): readonly ProtocolEvent[] {
       proposalAddress,
       proposerIdentityId: creatorIdentityId,
       authority: creatorAuthority,
-      proposerSequence: 4n,
-      previousCommunitySequence: 3n,
+      proposerSequence: 3n,
+      previousCommunitySequence: 1n,
       manifestHash: proposalManifestHash,
       manifestUri: 'local://proposal-one',
       governanceVersion: 1,
       governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
       votingModel: 'one-active-member-one-vote',
       eligibleMemberCount: 2n,
+      communityMembershipSequence: 2n,
       opensAtSlot: 8n,
       closesAtSlot: 12n,
       quorumBps: GOVERNANCE_QUORUM_BPS,
@@ -803,7 +996,7 @@ function governanceEvents(): readonly ProtocolEvent[] {
       voterIdentityId,
       membershipAddress: voterMembershipAddress,
       authority: voterAuthority,
-      voterSequence: 1n,
+      voterSequence: 2n,
       membershipStateSequence: 1n,
       proposalStateSequence: 2n,
       choice: 'yes',
@@ -897,13 +1090,14 @@ function proposalAnchorEvent(
     pubkey(overrides.proposalAddress ?? proposalAddress),
     pubkey(creatorAddress),
     pubkey(creatorAuthority),
-    u64(4n),
     u64(3n),
+    u64(1n),
     bytes(32, 30),
     borshString('local://proposal-one'),
     u16(1),
     strategyBytes,
     Uint8Array.of(overrides.votingModel ?? 0),
+    u64(2n),
     u64(2n),
     u64(8n),
     u64(12n),
@@ -925,7 +1119,7 @@ function voteAnchorEvent(): string {
     pubkey(voterAddress),
     pubkey(voterMembershipAddress),
     pubkey(voterAuthority),
-    u64(1n),
+    u64(2n),
     u64(1n),
     u64(2n),
     Uint8Array.of(0),

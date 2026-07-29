@@ -1,3 +1,5 @@
+import type { CommunityMembershipContent } from '@wokesocial/protocol';
+
 import {
   assertUnambiguousEventOrder,
   compareEventOrder,
@@ -26,6 +28,7 @@ import type {
   CommunityDirectoryQuery,
   CommunityDirectorySnapshot,
   CommunityMembershipProjection,
+  CommunityMembershipStatusSnapshot,
   CommunityProjection,
   VerifiedCommunityProjection,
   DelegationProjection,
@@ -236,10 +239,11 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
-      event.type !== 'community-created'
+      event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed'
     ) {
       throw new ProjectionError(
-        'Only profile, post, and community manifest events can be deferred.',
+        'Only profile, post, community, and membership manifest events can be deferred.',
         'manifest-mismatch',
       );
     }
@@ -300,6 +304,8 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         throw stale('Community address was already projected.');
       }
       this.#communities.set(key, unverifiedCommunityProjection(event));
+    } else if (event.type === 'community-membership-changed') {
+      await this.#projectCommunityMembershipTransition(event);
     }
 
     this.#identities.set(sequenceAdvance.identityId, {
@@ -386,10 +392,11 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
-      event.type !== 'community-created'
+      event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed'
     ) {
       throw new ProjectionError(
-        'Only profile, post, and community manifest events can be promoted.',
+        'Only profile, post, community, and membership manifest events can be promoted.',
         'manifest-mismatch',
       );
     }
@@ -443,7 +450,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         verified: true,
         ...(tombstonedAt === undefined ? {} : { tombstonedAt }),
       });
-    } else {
+    } else if (event.type === 'community-created') {
       const verified = requireManifest(event, manifest, 'community');
       const key = communityKey(event.networkId, event.communityAddress);
       const community = this.#communities.get(key);
@@ -462,6 +469,49 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           { readonly manifestVerified: true }
         >['content'],
       });
+    } else {
+      const verified = requireManifest(event, manifest, 'community-membership');
+      const content = verified.content as CommunityMembershipContent;
+      const previous =
+        event.membershipStateSequence === 1n
+          ? undefined
+          : [...this.#events.values()].find(
+              (
+                candidate,
+              ): candidate is Extract<
+                ProtocolEvent,
+                { readonly type: 'community-membership-changed' }
+              > =>
+                candidate.type === 'community-membership-changed' &&
+                candidate.networkId === event.networkId &&
+                candidate.membershipAddress === event.membershipAddress &&
+                candidate.membershipStateSequence === event.membershipStateSequence - 1n,
+            );
+      const expectedPreviousObjectId =
+        previous === undefined
+          ? undefined
+          : `wokesocialobj:v1:community-membership:${previous.manifestHash}`;
+      if (
+        BigInt(content.replacement.sequence) !== event.membershipStateSequence ||
+        content.replacement.replaces?.id !== expectedPreviousObjectId
+      ) {
+        throw stale('Membership manifest does not continue its exact replacement chain.');
+      }
+      const key = membershipKey(event.networkId, event.communityAddress, event.memberIdentityId);
+      const membership = this.#memberships.get(key);
+      if (
+        membership?.membershipAddress === event.membershipAddress &&
+        membership.stateSequence === event.membershipStateSequence &&
+        membership.manifestHash === event.manifestHash
+      ) {
+        this.#memberships.set(key, {
+          ...membership,
+          manifestVerified: true,
+          objectId: verified.objectId,
+          signingKeyId: verified.signingKeyId,
+          manifestCreatedAt: verified.createdAt,
+        });
+      }
     }
 
     this.#pendingManifestEvents.delete(eventKey);
@@ -494,10 +544,11 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
-      event.type !== 'community-created'
+      event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed'
     ) {
       throw new ProjectionError(
-        'Only profile, post, and community manifest events can transition from pending to terminal.',
+        'Only profile, post, community, and membership manifest events can transition from pending to terminal.',
         'manifest-mismatch',
       );
     }
@@ -552,6 +603,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
       event.type !== 'community-created' &&
+      event.type !== 'community-membership-changed' &&
       event.type !== 'tombstoned'
     ) {
       throw new ProjectionError(
@@ -609,6 +661,8 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         throw stale('Community address was already projected.');
       }
       this.#communities.set(key, unverifiedCommunityProjection(event));
+    } else if (event.type === 'community-membership-changed') {
+      await this.#projectCommunityMembershipTransition(event);
     }
 
     const identity = this.#requireIdentity(sequenceAdvance.identityId);
@@ -1275,59 +1329,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         break;
       }
       case 'community-membership-changed': {
-        this.#requireIdentity(event.memberIdentityId);
-        this.#requireIdentity(event.assignedByIdentityId);
-        const communityMapKey = communityKey(event.networkId, event.communityAddress);
-        const community = this.#communities.get(communityMapKey);
-        if (community === undefined) {
-          throw new ProjectionError(
-            `Community ${event.communityAddress} has not been indexed.`,
-            'missing-identity',
-          );
-        }
-        if (
-          community.networkId !== event.networkId ||
-          community.creatorIdentityId !== event.assignedByIdentityId ||
-          event.authoritySequence <= community.creatorSequence
-        ) {
-          throw stale('Membership event authority does not advance the indexed community.');
-        }
-        const key = membershipKey(event.networkId, event.communityAddress, event.memberIdentityId);
-        const current = this.#memberships.get(key);
-        const addressOwner = [...this.#memberships.values()].find(
-          (membership) =>
-            membership.networkId === event.networkId &&
-            membership.membershipAddress === event.membershipAddress,
-        );
-        if (
-          (current !== undefined &&
-            (event.membershipStateSequence <= current.stateSequence ||
-              event.membershipAddress !== current.membershipAddress)) ||
-          (addressOwner !== undefined && addressOwner !== current)
-        ) {
-          throw stale('Membership event does not advance its state sequence.');
-        }
-        this.#memberships.set(key, {
-          networkId: event.networkId,
-          communityAddress: event.communityAddress,
-          membershipAddress: event.membershipAddress,
-          memberIdentityId: event.memberIdentityId,
-          assignedByIdentityId: event.assignedByIdentityId,
-          authority: event.authority,
-          authoritySequence: event.authoritySequence,
-          stateSequence: event.membershipStateSequence,
-          roles: event.roles,
-          active: event.active,
-          updatedSlot: event.slot,
-          updatedAt: event.blockTime,
-        });
-        this.#communities.set(communityMapKey, {
-          ...community,
-          latestActionAuthority: event.authority,
-          creatorSequence: event.authoritySequence,
-          updatedSlot: event.slot,
-          updatedAt: event.blockTime,
-        });
+        await this.#projectCommunityMembershipTransition(event, manifest);
         break;
       }
       case 'reaction-changed': {
@@ -1385,7 +1387,8 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         }
         if (
           event.previousCommunitySequence !== community.creatorSequence ||
-          event.proposerSequence <= community.creatorSequence
+          event.proposerSequence <= community.creatorSequence ||
+          event.communityMembershipSequence !== community.membershipSequence
         ) {
           throw stale('Proposal does not advance the indexed community sequence.');
         }
@@ -1440,6 +1443,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           governanceStrategyHash: event.governanceStrategyHash,
           votingModel: event.votingModel,
           eligibleMemberCount: event.eligibleMemberCount,
+          communityMembershipSequence: event.communityMembershipSequence,
           opensAtSlot: event.opensAtSlot,
           closesAtSlot: event.closesAtSlot,
           quorumBps: event.quorumBps,
@@ -1508,8 +1512,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           membership.stateSequence !== event.membershipStateSequence ||
           !membership.active ||
           (membership.roles & 0x01) !== 0x01 ||
-          membership.updatedSlot > proposal.createdSlot ||
-          membership.authoritySequence >= proposal.proposerSequence
+          membership.activeSinceMembershipSequence > proposal.communityMembershipSequence
         ) {
           throw stale('Vote membership does not match the proposal eligibility snapshot.');
         }
@@ -2040,6 +2043,137 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     return true;
   }
 
+  async #projectCommunityMembershipTransition(
+    event: Extract<ProtocolEvent, { readonly type: 'community-membership-changed' }>,
+    manifest?: VerifiedManifest,
+  ): Promise<void> {
+    const member = this.#requireIdentity(event.memberIdentityId);
+    this.#requireIdentity(event.actorIdentityId);
+    const communityMapKey = communityKey(event.networkId, event.communityAddress);
+    const community = this.#communities.get(communityMapKey);
+    if (community === undefined) {
+      throw new ProjectionError(
+        `Community ${event.communityAddress} has not been indexed.`,
+        'missing-identity',
+      );
+    }
+    if (
+      community.networkId !== event.networkId ||
+      community.membershipPolicySequence !== event.membershipPolicySequence ||
+      event.communityMembershipSequence !== community.membershipSequence + 1n ||
+      ((event.action === 'join' || event.action === 'leave') &&
+        event.actorIdentityId !== event.memberIdentityId) ||
+      ((event.action === 'remove' || event.action === 'ban') &&
+        event.actorIdentityId !== community.creatorIdentityId)
+    ) {
+      throw stale('Membership event does not continue the indexed community policy.');
+    }
+    const expectedAddress = await deriveCommunityMembershipAddress(
+      event.programId,
+      event.communityAddress,
+      member.identityAddress,
+    );
+    if (event.membershipAddress !== expectedAddress) {
+      throw stale('Membership address is not the canonical community membership PDA.');
+    }
+    if (
+      event.action === 'join' &&
+      (community.membershipPolicy !== 'open' ||
+        (community.visibility !== 'public' && community.visibility !== 'unlisted'))
+    ) {
+      throw stale('Open member enrollment is disabled by the indexed community policy.');
+    }
+    const key = membershipKey(event.networkId, event.communityAddress, event.memberIdentityId);
+    const current = this.#memberships.get(key);
+    const addressOwner = [...this.#memberships.values()].find(
+      (membership) =>
+        membership.networkId === event.networkId &&
+        membership.membershipAddress === event.membershipAddress,
+    );
+    const verified =
+      manifest === undefined ? undefined : requireManifest(event, manifest, 'community-membership');
+    const content = verified?.content as CommunityMembershipContent | undefined;
+    const objectId = `wokesocialobj:v1:community-membership:${event.manifestHash}`;
+    if (
+      (current === undefined &&
+        (event.action !== 'join' ||
+          event.membershipStateSequence !== 1n ||
+          (content !== undefined &&
+            (content.replacement.sequence !== 1 || content.replacement.replaces !== undefined)))) ||
+      (current !== undefined &&
+        (event.membershipStateSequence !== current.stateSequence + 1n ||
+          event.membershipAddress !== current.membershipAddress ||
+          !membershipTransitionAllowed(current.state, event.action) ||
+          (content !== undefined &&
+            (BigInt(content.replacement.sequence) !== event.membershipStateSequence ||
+              content.replacement.replaces?.id !== current.objectId)))) ||
+      (addressOwner !== undefined && addressOwner !== current) ||
+      (verified !== undefined &&
+        (verified.objectId !== objectId ||
+          verified.payloadHash !== event.manifestHash ||
+          verified.cid !== event.manifestCid)) ||
+      (event.action === 'join' &&
+        (event.memberActionSequence !== event.actorSequence ||
+          event.activeSinceMembershipSequence !== event.communityMembershipSequence ||
+          (current !== undefined && event.memberActionSequence <= current.memberActionSequence))) ||
+      (event.action === 'leave' &&
+        (event.memberActionSequence !== event.actorSequence ||
+          current === undefined ||
+          event.memberActionSequence <= current.memberActionSequence)) ||
+      ((event.action === 'remove' || event.action === 'ban') &&
+        (current === undefined ||
+          event.memberActionSequence !== current.memberActionSequence ||
+          event.actorSequence <= community.creatorSequence))
+    ) {
+      throw stale('Membership event does not advance its exact state and replacement sequence.');
+    }
+    this.#memberships.set(key, {
+      networkId: event.networkId,
+      communityAddress: event.communityAddress,
+      membershipAddress: event.membershipAddress,
+      memberIdentityId: event.memberIdentityId,
+      actorIdentityId: event.actorIdentityId,
+      authority: event.authority,
+      actorSequence: event.actorSequence,
+      memberActionSequence: event.memberActionSequence,
+      membershipPolicySequence: event.membershipPolicySequence,
+      communityMembershipSequence: event.communityMembershipSequence,
+      activeSinceMembershipSequence: event.activeSinceMembershipSequence,
+      stateSequence: event.membershipStateSequence,
+      action: event.action,
+      state: event.state,
+      manifestCid: event.manifestCid,
+      manifestHash: event.manifestHash,
+      manifestVerified: verified !== undefined,
+      objectId,
+      ...(verified === undefined
+        ? {}
+        : {
+            signingKeyId: verified.signingKeyId,
+            manifestCreatedAt: verified.createdAt,
+          }),
+      roles: event.roles,
+      active: event.state === 'active',
+      updatedSlot: event.slot,
+      updatedAt: event.blockTime,
+      transactionSignature: event.transactionSignature,
+      ...(event.transactionIndex === undefined ? {} : { transactionIndex: event.transactionIndex }),
+      logIndex: event.logIndex,
+    });
+    this.#communities.set(communityMapKey, {
+      ...community,
+      ...(event.action === 'remove' || event.action === 'ban'
+        ? {
+            latestActionAuthority: event.authority,
+            creatorSequence: event.actorSequence,
+          }
+        : {}),
+      membershipSequence: event.communityMembershipSequence,
+      updatedSlot: event.slot,
+      updatedAt: event.blockTime,
+    });
+  }
+
   async rebuildProjection(
     networkId: string,
     items: readonly ProjectionReplayItem[],
@@ -2356,6 +2490,61 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           membership.networkId === networkId && membership.communityAddress === communityAddress,
       )
       .sort((left, right) => left.memberIdentityId.localeCompare(right.memberIdentityId));
+  }
+
+  async getDiscoverableCommunityMembership(
+    networkId: string,
+    membershipAddress: string,
+  ): Promise<CommunityMembershipStatusSnapshot | undefined> {
+    const membership = [...this.#memberships.values()].find(
+      (candidate) =>
+        candidate.networkId === networkId && candidate.membershipAddress === membershipAddress,
+    );
+    if (
+      membership === undefined ||
+      membership.transactionSignature === undefined ||
+      membership.logIndex === undefined
+    ) {
+      return undefined;
+    }
+    const community = this.#communities.get(
+      communityKey(membership.networkId, membership.communityAddress),
+    );
+    const checkpoint = this.#checkpoints.get(networkId);
+    if (
+      community === undefined ||
+      !community.manifestVerified ||
+      !membership.manifestVerified ||
+      (community.visibility !== 'public' && community.visibility !== 'unlisted') ||
+      community.membershipPolicy !== 'open' ||
+      checkpoint === undefined ||
+      checkpoint < membership.updatedSlot
+    ) {
+      return undefined;
+    }
+    return {
+      checkpoint,
+      membership: {
+        networkId: membership.networkId,
+        communityAddress: membership.communityAddress,
+        membershipAddress: membership.membershipAddress,
+        action: membership.action,
+        state: membership.state,
+        roles: membership.active ? (['member'] as const) : [],
+        stateSequence: membership.stateSequence,
+        memberActionSequence: membership.memberActionSequence,
+        membershipPolicySequence: membership.membershipPolicySequence,
+        communityMembershipSequence: membership.communityMembershipSequence,
+        activeSinceMembershipSequence: membership.activeSinceMembershipSequence,
+        updatedSlot: membership.updatedSlot,
+        updatedAt: membership.updatedAt,
+        transactionSignature: membership.transactionSignature,
+        ...(membership.transactionIndex === undefined
+          ? {}
+          : { transactionIndex: membership.transactionIndex }),
+        logIndex: membership.logIndex,
+      },
+    };
   }
 
   async getReactionsByPostReference(
@@ -3272,6 +3461,21 @@ function proposalVoterKey(
   return `${networkId}\u0000${proposalAddress}\u0000${voterIdentityId}`;
 }
 
+function membershipTransitionAllowed(
+  current: CommunityMembershipProjection['state'],
+  action: CommunityMembershipProjection['action'],
+): boolean {
+  switch (current) {
+    case 'active':
+      return action === 'leave' || action === 'remove' || action === 'ban';
+    case 'left':
+    case 'removed':
+      return action === 'join' || action === 'ban';
+    case 'banned':
+      return false;
+  }
+}
+
 function recoveryRequestKey(networkId: string, recoveryRequestAddress: string): string {
   return `${networkId}\u0000${recoveryRequestAddress}`;
 }
@@ -3306,6 +3510,10 @@ function unverifiedCommunityProjection(
     manifestGovernanceStrategyHash: event.governanceStrategyHash,
     governanceVersion: event.governanceVersion,
     governanceStrategyHash: event.governanceStrategyHash,
+    visibility: event.visibility,
+    membershipPolicy: event.membershipPolicy,
+    membershipPolicySequence: event.membershipPolicySequence,
+    membershipSequence: event.membershipSequence,
     createdSlot: event.slot,
     createdAt: event.blockTime,
     updatedSlot: event.slot,
@@ -3349,7 +3557,7 @@ function identitySequenceAdvance(event: ProtocolEvent): IdentitySequenceAdvance 
     case 'community-governance-updated':
       return { identityId: event.creatorIdentityId, sequence: event.creatorSequence };
     case 'community-membership-changed':
-      return { identityId: event.assignedByIdentityId, sequence: event.authoritySequence };
+      return { identityId: event.actorIdentityId, sequence: event.actorSequence };
     case 'reaction-changed':
       return { identityId: event.reactorIdentityId, sequence: event.reactorSequence };
     case 'proposal-created':
@@ -3405,7 +3613,10 @@ function activeIdentityIds(event: ProtocolEvent): readonly string[] {
       identities = [event.creatorIdentityId];
       break;
     case 'community-membership-changed':
-      identities = [event.assignedByIdentityId, event.memberIdentityId];
+      identities =
+        event.action === 'join' || event.action === 'leave'
+          ? [event.actorIdentityId, event.memberIdentityId]
+          : [event.actorIdentityId];
       break;
     case 'reaction-changed':
       identities = [event.reactorIdentityId];
@@ -3482,6 +3693,7 @@ function scopeForObjectType(objectType: string): number | undefined {
   if (objectType === 'profile') return 1 << 0;
   if (objectType === 'post') return 1 << 1;
   if (objectType === 'community') return 1 << 3;
+  if (objectType === 'community-membership') return 1 << 3;
   return undefined;
 }
 
@@ -3588,6 +3800,18 @@ function requireManifest(
   ) {
     throw new ProjectionError(
       'Community manifest signer does not match its immutable creation authority.',
+      'manifest-mismatch',
+    );
+  }
+  if (
+    expectedType === 'community-membership' &&
+    (event.type !== 'community-membership-changed' ||
+      manifest.schemaVersion !== 2 ||
+      (manifest.signingKeyId !== `${event.actorIdentityId}#root/${event.authority}` &&
+        manifest.signingKeyId !== `${event.actorIdentityId}#delegation/${event.authority}`))
+  ) {
+    throw new ProjectionError(
+      'Membership manifest signer does not match its finalized actor authority.',
       'manifest-mismatch',
     );
   }

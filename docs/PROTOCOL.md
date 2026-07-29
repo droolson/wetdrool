@@ -300,6 +300,8 @@ WokeNet is the WokeSocial Anchor program and associated portable protocol
 deployed to Solana. Solana defines the account, PDA, SBF, transaction, fee, and
 validator runtime. WokeNet is not a fork, validator, or separate ledger. See
 [ADR-0009](DECISIONS/0009-wokenet-on-solana.md).
+This repository does not ship or operate Firedancer, Agave, a WokeNet RPC
+network, or validator topology.
 
 ### PDA derivation
 
@@ -326,8 +328,8 @@ unbounded seeds.
 | Recovery request | `b"recovery_request"`, `identity_pda`, `request_nonce[16]` | Implemented | Permanently retained request with immutable policy/root/identity/epoch/target snapshots, distinct approvals, and terminal state |
 | Public block edge | `b"block"`, `blocker_identity_pda`, `subject_identity_pda` | Implemented | Reusable, sequenced public block state |
 | Community | `b"community"`, `creator_identity_pda`, `community_nonce[16]` | Implemented | Stable community root with manifest and governance-strategy commitments |
-| Community membership | `b"membership"`, `community_pda`, `member_identity_pda` | Implemented | Reusable membership state with member/moderator/admin role bits |
-| Community role | `b"role"`, `community_pda`, `SHA-256(role_key)` | Planned | A separate extensible role/permission commitment; the current membership account stores only closed v1 role bits |
+| Community membership | `b"membership"`, `community_pda`, `member_identity_pda` | Implemented predeployment | Reusable member-bound state with explicit join/leave/remove/ban action, active/left/removed/banned state, exact `member` role bit, signed-manifest commitment, and optimistic sequences |
+| Community role | `b"role"`, `community_pda`, `SHA-256(role_key)` | Planned | A separate extensible role/permission commitment; the current membership account permits only the exact `member` role while active |
 | Reaction | `b"reaction"`, `reactor_identity_pda`, `post_reference_pda`, `reaction_code_u8` | Implemented | Reusable add/remove state for one of four closed v1 reaction codes |
 | Governance proposal | `b"proposal"`, `community_pda`, `proposal_manifest_sha256[32]` | Implemented | Immutable policy reference, eligible-member-count snapshot, bounded voting window, strategy/threshold snapshot, checked tallies, and terminal outcome |
 | Governance vote | `b"vote"`, `proposal_pda`, `voter_identity_pda` | Implemented | One immutable vote per eligible identity and proposal; no token or wealth input |
@@ -374,7 +376,7 @@ only with a separately versioned normalization and confusable-defense design.
 | Handles | `claim_handle`, `release_handle` | Implemented: current-root authority, exact normalized string plus full SHA-256 PDA seed, checked identity sequence on both transitions, collision detection, release to the current root authority, and bounded 3–30-byte state |
 | Recovery | `configure_recovery_policy`, `disable_recovery_policy`, `request_recovery`, `approve_recovery`, `cancel_recovery`, `execute_recovery` | Implemented onchain primitive: root-only policy administration, guardian-created requests and distinct approvals, current-root cancellation, checked delay/threshold, arbitrary executor, required target-root signature, and rotation-epoch delegation invalidation |
 | Public blocks | `set_block`, `set_block_delegated` | Implemented: root variant remains stable; delegated variant requires exact identity, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; both reject self-block and reuse a checked actor/edge state |
-| Communities | `create_community`, `update_community_governance`, `set_community_membership` | Implemented subset: creator-root or community-scoped delegation for membership, manifest/governance commitments, reusable member state, and closed role bits; stored roles do not yet grant authorization |
+| Communities | `create_community`, `update_community_governance`, `join_community`, `leave_community`, `moderate_community_membership` | Implemented predeployment subset: member identity root or current `community` delegate authorizes join/leave for public or unlisted open communities; creator identity root or current `community` delegate may remove/ban an existing member; bans are terminal; every transition commits a signed membership-v2 manifest and exact optimistic sequences |
 | Reactions | `set_reaction`, `set_reaction_delegated` | Implemented: root variant remains stable; delegated variant requires exact identity, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; both enforce four closed reaction codes, target-post validation, tombstone rejection on add, reusable remove/re-add state, and checked sequences |
 | Governance proposals/votes | `create_proposal`, `cast_vote`, `finalize_proposal` | Implemented conservative subset: one active member/one immutable vote, full-digest proposal uniqueness, numeric eligibility snapshot, checked actor/membership/proposal/community sequences, bounded slots, fixed strategy-compatible quorum/approval, and permissionless one-time finalization |
 | Legacy payments (quarantined) | `initialize_payment_config`, `update_payment_config`, `rotate_payment_authority`, `create_subscription_offering`, `retire_subscription_offering`, `send_woke_tip`, `settle_subscription` | Historical lamport ABI with regression tests. It must remain paused, cannot execute or be unpaused, and is not `$WOKE`. A future asset requires a real mint and new mint-aware ABI |
@@ -478,11 +480,81 @@ confirmation for any address other than the derived PDA is invalid. This
 prevents a transaction that landed before its RPC response was lost from being
 blindly submitted a second time.
 
+### Member-signed community membership
+
+The current `Community` account records `visibility`,
+`membership_policy`, a `membership_policy_sequence` initialized to `1`, and a
+community-wide `membership_sequence` initialized to `0`. Community visibility
+is `public`, `unlisted`, or `private`; the executable membership policy is
+`open`, `approval-required`, or `closed`. The portable community-v2 terms map
+those program values to the signed policy vocabulary verified by the indexer.
+
+The reusable `CommunityMembership` PDA is derived from the exact community and
+member identity. Its first transition must be a member-authored `join`.
+`join_community` and `leave_community` accept the member identity's current
+root or a current-epoch, unexpired, non-revoked `community` delegation.
+Self-join is executable only when the finalized community is `public` or
+`unlisted` and `open`. The current membership allocation is 426 bytes.
+
+The resulting state machine is:
+
+```text
+absent -> active
+active -> left | removed | banned
+left -> active | banned
+removed -> active | banned
+banned -> terminal
+```
+
+`active` carries exactly the member role bit; `left`, `removed`, and `banned`
+carry no roles. Leaving requires active state. The community creator identity's
+root or current `community` delegate may call
+`moderate_community_membership`, but only for an existing, different member:
+`remove` is valid from active, while `ban` is valid from active, left, or
+removed. Moderation cannot create a membership or emit a member-authored
+join/leave.
+
+Every transition commits the exact signed schema-v2 membership manifest hash
+and URI, increments the membership-state and community-membership sequences,
+and advances the member or creator identity sequence for the actual actor. The
+instruction requires exact expected values for membership state, community
+membership policy, and community-wide membership sequence; a join/leave also
+requires the member identity's expected sequence, while moderation requires
+the creator identity's expected sequence.
+
+The portable membership-v2 action, state, roles, and author are fixed:
+
+| Action | Resulting state | Roles | Portable author |
+| --- | --- | --- | --- |
+| `join` | `active` | `["member"]` | Member identity |
+| `leave` | `left` | `[]` | Member identity |
+| `remove` | `removed` | `[]` | Different moderator identity; reason required |
+| `ban` | `banned` | `[]` | Different moderator identity; reason required |
+
+Schema-v1 authority-assigned membership objects remain readable and verifiable
+as frozen historical bytes. Current builders and signing APIs emit only schema
+v2 and cannot recreate the old assignment model.
+
+The public indexer exposes no membership roster. An exact request to
+`GET /v1/community-memberships/{membershipAddress}?network=...` may return
+portable state/roles, non-identity sequence proofs, finalized event provenance,
+and a covering checkpoint only when the parent is a verified public or
+unlisted open community and the signed membership transition verifies. It
+omits member identity, actor identity, signer authority, moderation reason, and
+manifest location. Unknown, protected, restricted-policy, unverified, and
+checkpoint-incomplete records all return not found.
+
+See
+[ADR-0011](DECISIONS/0011-member-signed-community-membership.md)
+for the complete authority, state-machine, retry, privacy, and product
+boundaries.
+
 `create_proposal` requires the community creator identity's current root or a
 current-epoch, unexpired, non-revoked `community` delegation. It validates the
 proposal manifest, checks both the creator identity sequence and the
 community's last creator sequence, snapshots the community's governance
-version/hash and active-member count, and accepts only a window that:
+version/hash, active-member count, and community-wide membership sequence, and
+accepts only a window that:
 
 - opens no earlier than the creation slot and at most 100,000 slots later;
 - lasts from 2 through 1,000,000 slots; and
@@ -495,15 +567,15 @@ invalidate an existing proposal's immutable strategy snapshot.
 
 The member-count snapshot is deliberately conservative rather than a historical
 membership Merkle root. A voter must present the deterministic membership PDA,
-the membership must currently be active with the v1 member bit, and its last
-update slot must be no later than the proposal creation slot. Its recorded
-community-authority sequence must also be strictly earlier than the proposal's
-creator sequence, which preserves ordering when both transactions land in the
-same slot. These checks reject members added or reactivated after the snapshot.
-They also disqualify a member whose role record changed after the snapshot, even
-if the member bit remained set; a future richer snapshot design must use a new
-additive account family. The voter signs with the identity's current root or a
-current `social` or `community` delegation. The vote PDA is permanently unique for
+and that membership must currently be active with exactly the member role. Its
+recorded `active_since_membership_sequence` must be no later than the
+proposal's immutable `community_membership_sequence`. These checks reject
+members added or reactivated after the snapshot, including two transactions in
+the same Solana slot without relying on ambiguous slot ordering. A member who
+leaves or is removed after proposal creation is no longer active and cannot
+vote; a later rejoin receives a new activation sequence and remains ineligible.
+The voter signs with the identity's current root or a current `social` or
+`community` delegation. The vote PDA is permanently unique for
 `(proposal, voter_identity)`, so votes cannot be replaced, multiplied by
 delegates, or weighted by token holdings, balances, stake, or payment.
 
@@ -522,10 +594,11 @@ accepted      = quorum_met && approval_met
 Abstentions therefore count toward quorum but not approval. An abstention-only
 or zero-participation proposal has a false approval result and is rejected
 without a zero-denominator operation. Proposal and vote accounts remain as
-replay evidence and have exact v1 allocations of 463 and 195 bytes.
+replay evidence and have exact current allocations of 471 and 195 bytes.
 
-The deployed-shape v1 `Community` account has no active/deactivated field, and
-its 392-byte layout is preserved exactly. For this implemented subset, a valid
+The current `Community` account has no active/deactivated field, and its
+410-byte layout includes visibility, membership policy, and the two membership
+sequences. For this implemented subset, a valid
 versioned Community PDA is active by definition; only the creator identity has
 an enforceable active bit. Community deactivation must not be inferred from
 existing fields. A future lifecycle feature requires a separately versioned,
@@ -579,7 +652,9 @@ restricted communities are indistinguishable from unknown addresses, and the
 public detail contract never includes membership records. Community routes use
 the PDA address because slugs are display labels and are not globally unique.
 Directory pagination is ordered by finalized creation slot and address; search
-declares deterministic recipe `public-match-v2`.
+declares deterministic recipe `public-match-v2`. The separate exact-address
+membership-status route described above is not linked from directory/detail and
+cannot enumerate a roster.
 
 See
 [ADR-0010](DECISIONS/0010-verified-community-discovery.md)
@@ -684,7 +759,7 @@ conformance fixtures are stabilized.
 | Bookmark | Encrypted private client data/export by default | User device | Mutable | Local/provider purge; never public by default |
 | Media manifest | Signed portable manifest | `post` delegation or referenced post author | New rendition manifest references predecessor | Tombstone plus provider deletion where possible |
 | Community | WokeNet root plus signed metadata | Community creation permission/root authority | Monotonic config version | Deactivate; identifier not reassigned |
-| Community membership | WokeNet account/event for portable public membership; encrypted record for private membership | Member and/or configured community permission | State transition with version | Leave/remove; private history minimized |
+| Community membership | WokeNet account/event plus schema-v2 signed manifest for eligible public membership; encrypted/authenticated design still required for protected membership | Member identity for join/leave; community creator identity for remove/ban, each through root or current scoped delegation | Exact action/state/role transition with immutable replacement lineage and optimistic sequences; `banned` is terminal | Leave/remove/ban retain public Solana history; no public roster or identity-bearing convenience response |
 | Community role | Onchain permission commitment plus signed role document | Authorized community admin | New version/hash | Retire role; audit events remain |
 | Community rule set | Signed policy object referenced onchain | Authorized community admin | Immutable revision chain | Replace/tombstone; prior signed rules remain auditable |
 | Moderation label | Signed provider assertion | Key authorized by named provider | Superseding assertion or expiry | Retraction label; consumers apply policy |
@@ -1303,17 +1378,17 @@ fixtures independently in each test suite is insufficient.
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Versioned machine-readable schemas | Implemented for the current TypeScript protocol-v1 registry | Strict Zod schemas and builders cover all 29 current portable object families: profiles and communities use schema version 2 for current creation, the other families remain on schema version 1, and frozen profile/community v1 shapes remain read-compatible. A checked-in Draft 2020-12 signed-envelope artifact is generated from that registry and fails CI on drift. Rust consumption and cross-language conformance remain incomplete |
+| Versioned machine-readable schemas | Implemented for the current TypeScript protocol-v1 registry | Strict Zod schemas and builders cover all 29 current portable object families: profiles, communities, and community-memberships use schema version 2 for current creation, the other families remain on schema version 1, and their frozen v1 shapes remain read-compatible. A checked-in Draft 2020-12 signed-envelope artifact is generated from that registry and fails CI on drift. Rust consumption and cross-language conformance remain incomplete |
 | Canonicalization library wrappers | Implemented for the current TypeScript object subset | RFC 8785/JCS wrapper tests cover deterministic bytes, NFC rejection, exact canonical-envelope decoding, and stable IDs |
 | Cross-language golden vectors | Not implemented | None |
-| Anchor program and IDL | Experimental local implementation | SBF build generates an IDL and TypeScript type for 41 instructions, 33 events, and 19 account families under development program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; legacy, identity-deactivation, recovery, and quarantined payment discriminators are frozen by tests |
+| Anchor program and IDL | Experimental local implementation | The generated IDL and TypeScript type contain 43 instructions, 33 events, and 19 account families under development program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; member-signed membership replaces the old setter, and legacy, identity-deactivation, recovery, membership, and quarantined payment layouts/discriminators are checked against the build |
 | Account-size and transaction-cost analysis | Implemented for the current local subset | Serialization tests assert all 19 account layouts. The local-validator harness enforces transaction-size, compute, balance-conservation, substitution, replay, recovery, governance, and legacy payment bounds. These measurements are local Solana evidence only |
 | Local-validator tests | Experimental local coverage | Flows cover root and delegated identity/social actions, handles, governance, delayed guardian recovery, and fail-closed legacy-payment quarantine including rejected bootstrap/execute/rotation/unpause with unchanged state and balances. No successful payment flow exists; the full cross-language, passkey/email product, future mint-aware, devnet, and mainnet-beta matrix remains incomplete |
 | Public Solana deployment | Not performed | No WokeNet program is recorded on devnet or mainnet-beta |
 | `$WOKE` mint and mint-aware ABI | Not implemented | No mint exists; the legacy lamport ABI cannot execute or be unpaused |
-| SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus eight IDL-aligned instructions, including one-way identity deactivation and quarantined legacy payment builders, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict Solana RPC parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit endpoint/genesis/program context. A complete generated client, flagship wallet/Mobile Wallet Adapter integration, executable-artifact attestation, replacement mint-aware ABI, and product wallet UX remain absent |
+| SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus 11 IDL-aligned builders, including exact join/leave/remove/ban membership construction, one-way identity deactivation, and quarantined legacy payment builders, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict Solana RPC parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit endpoint/genesis/program context. A complete generated client, flagship wallet/Mobile Wallet Adapter membership integration, executable-artifact attestation, replacement mint-aware ABI, and product wallet UX remain absent |
 | Storage adapters and local CID verification | Implemented subset | Memory/local CAS, multi-provider quorum, IPFS HTTP/Kubo, and Arweave-compatible permanent-storage adapters are tested; no funded live Arweave uploader is configured |
-| Rebuildable indexer | Experimental connected implementation | Finalized Solana RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2 and community-v2 commitments, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, privacy-safe verified community discovery, non-gating tombstone metadata, suppression-aware destructive replay, read APIs including the bounded noncanonical feed mapping, PostgreSQL durability, and seventeen ordered migrations are implemented. Fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
+| Rebuildable indexer | Experimental connected implementation | Finalized Solana RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2, community-v2, and member-signed membership-v2 commitments, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, privacy-safe verified community discovery and exact-address membership status, non-gating tombstone metadata, suppression-aware destructive replay, read APIs including the bounded noncanonical feed mapping, PostgreSQL durability, and 18 ordered migrations are implemented. The membership endpoint has no roster or identity fields. Fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Alternate-provider conformance | Partial | Storage quorum/failover and real-loopback multi-relay failover/reconnect/deduplication are tested; independent RPC/indexer/feed conformance remains absent |
 | Independent security review | Not performed | None |
 

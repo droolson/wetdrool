@@ -374,6 +374,8 @@ async function main() {
   await assertFeedContract(firstFeed, fixture);
   const firstCommunity = await waitForExpectedCommunity(indexerUrl, fixture, indexer);
   await assertCommunityContracts(indexerUrl, firstCommunity, fixture);
+  const firstMembership = await waitForExpectedMembership(indexerUrl, fixture, indexer);
+  assertMembershipContract(firstMembership, fixture);
 
   step('Exercising the production-built Next application before projection replay');
   await state.portReservation.release([29]);
@@ -406,6 +408,8 @@ async function main() {
   await waitForExpectedFeed(indexerUrl, fixture, indexer);
   const replayedCommunity = await waitForExpectedCommunity(indexerUrl, fixture, indexer);
   await assertCommunityContracts(indexerUrl, replayedCommunity, fixture);
+  const replayedMembership = await waitForExpectedMembership(indexerUrl, fixture, indexer);
+  assertMembershipContract(replayedMembership, fixture);
 
   step('Exercising the production-built Next application after projection replay');
   await verifyProductionWeb(
@@ -735,6 +739,99 @@ async function assertCommunityContracts(indexerUrl, detail, fixture) {
   }
 }
 
+async function waitForExpectedMembership(indexerUrl, fixture, child) {
+  let accepted;
+  const query = new URLSearchParams({ network: fixture.networkId });
+  await waitForHttp(
+    `${indexerUrl}/v1/community-memberships/${encodeURIComponent(fixture.membershipAddress)}?${query.toString()}`,
+    child,
+    SUCCESS_TIMEOUT_MS,
+    async (response) => {
+      if (!response.ok) {
+        return false;
+      }
+      const body = await response.json();
+      if (
+        body?.membership?.membershipAddress !== fixture.membershipAddress ||
+        body.membership.communityAddress !== fixture.communityAddress ||
+        body.membership.action !== 'join' ||
+        body.membership.state !== 'active'
+      ) {
+        return false;
+      }
+      accepted = body;
+      return true;
+    },
+  );
+  return accepted;
+}
+
+function assertMembershipContract(status, fixture) {
+  const membership = status?.membership;
+  const proof = status?.proof;
+  const exactMembershipKeys = [
+    'action',
+    'activeSinceMembershipSequence',
+    'communityAddress',
+    'communityMembershipSequence',
+    'memberActionSequence',
+    'membershipAddress',
+    'membershipPolicySequence',
+    'roles',
+    'state',
+    'stateSequence',
+    'updatedAt',
+    'updatedSlot',
+  ].sort();
+  const exactProofKeys = [
+    'finality',
+    'kind',
+    'logIndex',
+    'slot',
+    'transactionIndex',
+    'transactionSignature',
+  ].sort();
+  if (
+    status?.canonical !== false ||
+    status?.projection !== 'wokenet-open-indexer' ||
+    status?.network !== fixture.networkId ||
+    Object.keys(membership ?? {})
+      .sort()
+      .join('\0') !== exactMembershipKeys.join('\0') ||
+    Object.keys(proof ?? {})
+      .sort()
+      .join('\0') !== exactProofKeys.join('\0') ||
+    membership?.membershipAddress !== fixture.membershipAddress ||
+    membership?.communityAddress !== fixture.communityAddress ||
+    membership?.action !== 'join' ||
+    membership?.state !== 'active' ||
+    !Array.isArray(membership?.roles) ||
+    membership.roles.length !== 1 ||
+    membership.roles[0] !== 'member' ||
+    membership?.stateSequence !== '1' ||
+    membership?.memberActionSequence !== '2' ||
+    membership?.membershipPolicySequence !== '1' ||
+    membership?.communityMembershipSequence !== '1' ||
+    membership?.activeSinceMembershipSequence !== '1' ||
+    typeof membership?.updatedAt !== 'string' ||
+    !Number.isFinite(Date.parse(membership.updatedAt)) ||
+    !/^(0|[1-9]\d*)$/u.test(membership?.updatedSlot ?? '') ||
+    proof?.kind !== 'wokesocial-program-event' ||
+    proof?.finality !== 'finalized' ||
+    proof?.slot !== membership.updatedSlot ||
+    proof?.transactionSignature !== fixture.transactionSignatures.at(-1) ||
+    !Number.isSafeInteger(proof?.logIndex) ||
+    proof.logIndex < 0 ||
+    (proof.transactionIndex !== null && !Number.isSafeInteger(proof.transactionIndex)) ||
+    !Number.isSafeInteger(status?.meta?.checkpointSlot) ||
+    BigInt(status.meta.checkpointSlot) < BigInt(membership.updatedSlot)
+  ) {
+    throw new Error(
+      'Privacy-safe membership status did not preserve the verified member-signed fixture.',
+    );
+  }
+}
+
 async function requiredJson(url, label) {
   const response = await fetch(url, {
     headers: { accept: 'application/json' },
@@ -758,6 +855,10 @@ function assertFixture(fixture, expectedNetworkId) {
     'communityObjectId',
     'communityPayloadHash',
     'communitySlug',
+    'membershipAddress',
+    'membershipCid',
+    'membershipObjectId',
+    'membershipPayloadHash',
     'postBody',
     'postCid',
     'postObjectId',
@@ -774,8 +875,11 @@ function assertFixture(fixture, expectedNetworkId) {
   if (fixture.networkId !== expectedNetworkId || fixture.programId !== PROGRAM_ID) {
     throw new Error('Fixture metadata was produced for an unexpected network or program.');
   }
-  if (!Array.isArray(fixture.transactionSignatures) || fixture.transactionSignatures.length < 10) {
-    throw new Error('Fixture metadata does not prove the expected finalized transactions.');
+  if (
+    !Array.isArray(fixture.transactionSignatures) ||
+    fixture.transactionSignatures.length !== 11
+  ) {
+    throw new Error('Fixture metadata does not prove exactly 11 finalized transactions.');
   }
 }
 

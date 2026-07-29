@@ -499,6 +499,34 @@ unexpected wallet account/network/transaction, or sensitive mobile-data leak.
 
 This runbook requires qualified safety and legal review before production.
 
+## Predeployment membership-v2 ABI reset
+
+Migration `0018_member_signed_community_memberships.sql` is a deliberate reset
+boundary. Community, community-membership, and governance-proposal
+account/event layouts changed under the fixed development-localnet program ID.
+Old `community-created`, `community-membership-changed`, and
+`proposal-created` raw bodies cannot be decoded or deterministically replayed
+as the current ABI. The migration refuses any existing row on those projection
+surfaces or event types instead of creating a silently unreplayable ledger.
+
+For disposable local development only:
+
+1. Stop the indexer, web/services that can write, and every local validator.
+2. Resolve and verify the exact `wokesocial-local` Compose project and its
+   disposable volumes using the commands in the next section.
+3. Remove that exact project's disposable volumes.
+4. Start a local validator with a new empty ledger directory and redeploy the
+   current reviewed SBF artifact. Do not reuse or rescan the previous validator
+   ledger.
+5. Start the fresh PostgreSQL projection, apply all 18 migrations, and run the
+   program, integration, and connected replay gates before further work.
+
+If either the PostgreSQL data or validator history is not disposable, stop.
+There is no in-place compatibility path in this predeployment repository.
+Preserve the state read-only and design a new program/version plus explicit
+dual-read or export/import plan. No devnet or mainnet-beta WokeNet deployment
+currently exists.
+
 ## Legacy public-schema volume upgrade or reset
 
 The local provisioner refuses to create the parallel `wokesocial_auth`,

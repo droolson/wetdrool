@@ -184,11 +184,19 @@ pub mod social_protocol {
         instructions::update_community_governance::handle_update_community_governance(ctx, args)
     }
 
-    pub fn set_community_membership(
-        ctx: Context<SetCommunityMembership>,
-        args: SetCommunityMembershipArgs,
+    pub fn join_community(ctx: Context<JoinCommunity>, args: JoinCommunityArgs) -> Result<()> {
+        instructions::join_community::handle_join_community(ctx, args)
+    }
+
+    pub fn leave_community(ctx: Context<LeaveCommunity>, args: LeaveCommunityArgs) -> Result<()> {
+        instructions::leave_community::handle_leave_community(ctx, args)
+    }
+
+    pub fn moderate_community_membership(
+        ctx: Context<ModerateCommunityMembership>,
+        args: ModerateCommunityMembershipArgs,
     ) -> Result<()> {
-        instructions::set_community_membership::handle_set_community_membership(ctx, args)
+        instructions::moderate_community_membership::handle_moderate_community_membership(ctx, args)
     }
 
     pub fn set_reaction(ctx: Context<SetReaction>, args: SetReactionArgs) -> Result<()> {

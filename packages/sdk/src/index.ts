@@ -1,4 +1,5 @@
 export * from './chain.js';
+export * from './community-membership.js';
 export * from './manifest-uri.js';
 export * from './payments.js';
 export * from './provider-pool.js';

@@ -1,6 +1,7 @@
 import { getObjectId } from './identifiers.js';
 import {
   portablePayloadSchema,
+  type CommunityMembershipPayload,
   type CommunityRuleSetPayload,
   type ModerationLabelPayload,
   type PortablePayload,
@@ -63,7 +64,9 @@ function transitionSubject(payload: PortablePayload): string | undefined {
     case 'community':
       return payload.content.slug;
     case 'community-membership':
-      return `${payload.content.community.id}:${payload.content.member}`;
+      return payload.schemaVersion === 1
+        ? `${payload.content.community.id}:${payload.content.member}`
+        : `${payload.content.communityAddress}:${payload.content.member}`;
     case 'community-role':
       return `${payload.content.community.id}:${payload.content.name}`;
     case 'governance-vote':
@@ -91,6 +94,14 @@ export function assertValidReplacementTransition(
 ): void {
   const previous = portablePayloadSchema.parse(previousInput);
   const next = portablePayloadSchema.parse(nextInput);
+  if (
+    previous.type === 'community-membership' &&
+    next.type === 'community-membership' &&
+    (previous.schemaVersion === 2 || next.schemaVersion === 2)
+  ) {
+    assertValidCommunityMembershipTransition(previous, next);
+    return;
+  }
   if (previous.type !== next.type) {
     throw new ProtocolValidationError('Replacement transitions must retain the object type.');
   }
@@ -116,6 +127,70 @@ export function assertValidReplacementTransition(
     previousSubject !== nextSubject
   ) {
     throw new ProtocolValidationError('Replacement transitions cannot change their subject.');
+  }
+}
+
+const ALLOWED_COMMUNITY_MEMBERSHIP_ACTIONS = {
+  active: ['leave', 'remove', 'ban'],
+  left: ['join', 'ban'],
+  removed: ['join', 'ban'],
+  banned: [],
+} as const satisfies Record<
+  CommunityMembershipPayload['content']['state'],
+  readonly CommunityMembershipPayload['content']['action'][]
+>;
+
+/**
+ * Validates the shared membership-state lineage.
+ *
+ * Unlike author-owned replacement objects, a membership may move between a
+ * member-authored self action and a separately authorized moderator action.
+ * The network, community, member, sequence, prior object, and timestamp remain
+ * immutable/exact across that actor change.
+ */
+export function assertValidCommunityMembershipTransition(
+  previousInput: PortablePayload,
+  nextInput: PortablePayload,
+): void {
+  const previous = portablePayloadSchema.parse(previousInput);
+  const next = portablePayloadSchema.parse(nextInput);
+  if (previous.type !== 'community-membership' || next.type !== 'community-membership') {
+    throw new ProtocolValidationError('Expected community membership actions.');
+  }
+  if (previous.schemaVersion !== 2 || next.schemaVersion !== 2) {
+    throw new ProtocolValidationError(
+      'Community membership replacement transitions cannot cross schema versions.',
+    );
+  }
+  if (previous.network !== next.network) {
+    throw new ProtocolValidationError('Community membership transitions cannot cross networks.');
+  }
+  if (previous.content.communityAddress !== next.content.communityAddress) {
+    throw new ProtocolValidationError(
+      'Community membership transitions cannot change communities.',
+    );
+  }
+  if (previous.content.member !== next.content.member) {
+    throw new ProtocolValidationError('Community membership transitions cannot change members.');
+  }
+  if (previous.createdAt >= next.createdAt) {
+    throw new ProtocolValidationError('Community membership action timestamps must increase.');
+  }
+  if (next.content.replacement.sequence !== previous.content.replacement.sequence + 1) {
+    throw new ProtocolValidationError(
+      'Community membership sequences must increase by exactly one.',
+    );
+  }
+  if (next.content.replacement.replaces?.id !== getObjectId(previous)) {
+    throw new ProtocolValidationError(
+      'Community membership replacement must reference the exact prior object ID.',
+    );
+  }
+  const allowedActions = ALLOWED_COMMUNITY_MEMBERSHIP_ACTIONS[previous.content.state];
+  if (!(allowedActions as readonly string[]).includes(next.content.action)) {
+    throw new ProtocolValidationError(
+      `Community membership action ${next.content.action} cannot follow state ${previous.content.state}.`,
+    );
   }
 }
 

@@ -22,8 +22,8 @@ Every payload carries:
 - `protocol: "wokesocial"`
 - `protocolVersion: "1.0"`
 - `schemaVersion: 1` for most current families and frozen historical
-  profile/community objects; current profiles and communities use
-  `schemaVersion: 2`
+  profile/community/community-membership objects; current profiles,
+  communities, and community memberships use `schemaVersion: 2`
 - a canonical WokeNet ID,
   `wokenet:v1:<genesis-hash-base58-32>:<program-id-base58-32>`
 - an author identity bound to that network
@@ -67,7 +67,7 @@ intentionally incompatible and rejected.
 | `bookmark` | Explicitly private bookmark event | `preferences.bookmark` | Private/restricted storage and winning replacement |
 | `media-manifest` | Original media, variants, captions, waveform, and scan statement | `content.media` | Byte retrieval, digest/CID checks, processor trust |
 | `community` | Portable community configuration | `community.create` | Namespace, authority, current revision, federation, and treasury state |
-| `community-membership` | Join/request/leave/remove/ban and assigned roles | `community.membership` | Membership policy and community authority |
+| `community-membership` | Member-consented join/leave or moderator removal/ban | `community.membership` for self actions; `community.admin` for moderation | Open-membership policy or community authority, exact account state, and replacement lineage |
 | `community-role` | Named role and bounded permission set | `community.admin` | Community authority and current role revision |
 | `community-rule-set` | Versioned rules and appeal policy | `community.rules` | Community authority and exact version lineage |
 | `moderation-label` | Signed advisory label | `moderation.label` | Provider policy, subject state, and supersession |
@@ -85,16 +85,20 @@ intentionally incompatible and rejected.
 
 `delegation` and current schema-v2 `community` objects are intrinsically
 root-only. Frozen schema-v1 community objects remain readable with their
-historical root-or-delegation rule. All other delegated signatures still
-require an external decision that the key existed, held the required scope,
-matched the current root-rotation epoch, and was not revoked at `createdAt`.
+historical root-or-delegation rule. For current community memberships,
+member-authored join/leave actions use `community.membership`; moderator-authored
+remove/ban actions use `community.admin` and require independent community
+authority. All other delegated signatures still require an external decision
+that the key existed, held the required scope, matched the current root-rotation
+epoch, and was not revoked at `createdAt`.
 
 ## Revisions and deletion
 
 Payloads are immutable; updates create new objects.
 
 - Replaceable objects carry a positive `replacement.sequence`. Sequence 1 has no predecessor. Later objects must name the exact prior object ID and increment by one.
-- `assertValidReplacementTransition` also preserves network, author, time order, type, and semantic subject.
+- `assertValidReplacementTransition` also preserves network, author, time order, type, and semantic subject for author-owned objects.
+- `assertValidCommunityMembershipTransition` preserves the exact network, community address, member, prior object ID, gapless sequence, and increasing timestamp while allowing a separately authorized moderator to become the action author. Its fail-closed state table is `active -> left|removed|banned`, `left|removed -> active`, with a moderator ban also permitted from `left|removed`; `banned` is terminal.
 - `assertValidPostRevisionTransition` preserves the original post, exact previous revision, and gapless revision number.
 - Dedicated helpers validate community rule-set versions, moderation-label supersession, and entitlement renewals.
 - `assertValidDeletionTombstone` validates the exact target ID, network, creation order, and author ownership by default. Passing `allowAuthorizedThirdParty` only acknowledges that the caller has separately established legal/community authority; it does not establish that authority.
@@ -137,6 +141,15 @@ package cannot verify membership snapshots, treasury ownership, federation
 behavior, quorum, votes, or proposal execution. Those checks belong to
 finalized onchain state and independently operated indexers/clients.
 
+Current schema-v2 community memberships bind an exact Solana-compatible
+community account address to one network-local WokeNet identity. The first
+action must be a member-authored `join`; self-authored `join`/`leave` actions
+produce `active`/`left`, while separately authored moderator `remove`/`ban`
+actions produce `removed`/`banned` and require a bounded nonblank reason.
+`active` carries exactly `roles: ["member"]`; every inactive state carries
+`roles: []`. Frozen schema-v1 authority-assigned memberships remain readable
+but cannot be emitted or signed through the current creation API.
+
 ## Compatibility and limits
 
 All known objects and nested records are strict. Unknown protocol/schema versions, object types, fields, algorithms, proof fields, and critical extension pointers are rejected. Noncritical extensions must use reverse-domain names, contain JSON values, fit within 32 KiB, and are covered by both object ID and signature.
@@ -161,20 +174,23 @@ Notable representation limits include:
 - media per post: 10;
 - extension entries: 32.
 
-Profile and community schema compatibility is versioned within protocol version
-`1.0`:
+Profile, community, and community-membership schema compatibility is versioned
+within protocol version `1.0`:
 
-- `schemaVersion: 1` contains the frozen historical profile and community
-  shapes. The read and verification APIs continue to accept them so existing
-  signed objects retain their canonical bytes, IDs, signatures, and historical
-  authorization semantics.
-- `schemaVersion: 2` is current for profile and community creation. Profile
-  privacy requires encrypted content references for followers-only/private
-  pronouns, gender, chosen-family labels, and location. Communities require the
-  exact one-active-member-one-vote governance commitment and root-key
-  authorization.
-- `buildProfilePayload`, `buildCommunityPayload`, `buildPortablePayload`, and
-  `signPayload` enforce the current creation surface.
+- `schemaVersion: 1` contains the frozen historical profile, community, and
+  authority-assigned community-membership shapes. The read and verification
+  APIs continue to accept them so existing signed objects retain their
+  canonical bytes, IDs, signatures, and historical authorization semantics.
+- `schemaVersion: 2` is current for profile, community, and community-membership
+  creation. Profile privacy requires encrypted content references for
+  followers-only/private pronouns, gender, chosen-family labels, and location.
+  Communities require the exact one-active-member-one-vote governance
+  commitment and root-key authorization. Memberships require member consent for
+  self actions, explicit moderator authorship for removal/ban, exact role/state
+  semantics, and an immutable replacement lineage.
+- `buildProfilePayload`, `buildCommunityPayload`,
+  `buildCommunityMembershipPayload`, `buildPortablePayload`, and `signPayload`
+  enforce the current creation surface.
   `portablePayloadSchema`, `signedEnvelopeSchema`, `decodeCanonicalEnvelope`,
   and `verifyEnvelope` provide the versioned read path. Code that validates
   new-object submissions directly should use `currentPortablePayloadSchema` or

@@ -3,6 +3,7 @@ import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildCommunityMembershipPayload,
   buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
@@ -25,6 +26,7 @@ import { createProtocolFixtureSet } from '@wokesocial/test-fixtures';
 
 import {
   buildIndexerApp,
+  deriveCommunityMembershipAddress,
   ManifestVerifier,
   MemoryProjectionStore,
   OpenIndexer,
@@ -74,6 +76,93 @@ const postContent: PostContent = {
 };
 
 describe('indexer HTTP contract', () => {
+  it('returns only privacy-safe exact-address membership status with covering finalized proof', async () => {
+    const projection = new MemoryProjectionStore();
+    const membershipAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 73));
+    const communityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 74));
+    vi.spyOn(projection, 'getDiscoverableCommunityMembership').mockResolvedValue({
+      checkpoint: 18n,
+      membership: {
+        networkId,
+        communityAddress,
+        membershipAddress,
+        action: 'join',
+        state: 'active',
+        roles: ['member'],
+        stateSequence: 1n,
+        memberActionSequence: 4n,
+        membershipPolicySequence: 1n,
+        communityMembershipSequence: 2n,
+        activeSinceMembershipSequence: 2n,
+        updatedSlot: 18n,
+        updatedAt: '2026-07-28T14:18:00.000Z',
+        transactionSignature: transactionSignature(73),
+        transactionIndex: 3,
+        logIndex: 1,
+      },
+    });
+    const app = await buildIndexerApp({ projection, logger: false });
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/community-memberships/${membershipAddress}?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        canonical: false,
+        membership: {
+          activeSinceMembershipSequence: '2',
+          action: 'join',
+          communityAddress,
+          communityMembershipSequence: '2',
+          memberActionSequence: '4',
+          membershipAddress,
+          membershipPolicySequence: '1',
+          roles: ['member'],
+          state: 'active',
+          stateSequence: '1',
+          updatedAt: '2026-07-28T14:18:00.000Z',
+          updatedSlot: '18',
+        },
+        meta: {
+          checkpointSlot: 18,
+          indexedAt: expect.any(String),
+          source: 'WokeNet open indexer',
+        },
+        network: networkId,
+        projection: 'wokenet-open-indexer',
+        proof: {
+          finality: 'finalized',
+          kind: 'wokesocial-program-event',
+          logIndex: 1,
+          slot: '18',
+          transactionIndex: 3,
+          transactionSignature: transactionSignature(73),
+        },
+      });
+      expect(JSON.stringify(response.json())).not.toMatch(
+        /memberIdentity|actorIdentity|authority|manifest/u,
+      );
+
+      vi.mocked(projection.getDiscoverableCommunityMembership).mockResolvedValue(undefined);
+      const hidden = await app.inject({
+        method: 'GET',
+        url: `/v1/community-memberships/${membershipAddress}?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(hidden.statusCode).toBe(404);
+      expect(hidden.json()).toEqual({
+        error: {
+          code: 'not-found',
+          message: 'Community membership was not found.',
+        },
+      });
+    } finally {
+      await app.close();
+      await projection.close();
+    }
+  });
+
   it('fails protected requests closed without hiding liveness when admission is unavailable', async () => {
     const projection = new MemoryProjectionStore();
     const unavailableHealth = {
@@ -627,6 +716,29 @@ describe('indexer HTTP contract', () => {
     const governance = communityGovernanceStrategyCommitment({
       governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
     });
+    const membershipAddress = await deriveCommunityMembershipAddress(
+      programId,
+      communityAddress,
+      identityAddress,
+    );
+    const membershipManifest = await publish(
+      fixture.storage,
+      buildCommunityMembershipPayload(
+        builderIdentity,
+        {
+          communityAddress,
+          member: identityId,
+          action: 'join',
+          state: 'active',
+          roles: ['member'],
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T14:05:30.000Z'),
+          nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 81),
+        },
+      ),
+    );
     await fixture.indexer.ingest({
       ...eventBase(4n, 4, '2026-07-28T14:04:00.000Z'),
       type: 'delegation-created',
@@ -651,19 +763,31 @@ describe('indexer HTTP contract', () => {
       manifestHash: communityManifest.envelope.proof.payloadHash,
       governanceVersion: governance.governanceVersion,
       governanceStrategyHash: governance.digest,
+      visibility: 'public',
+      membershipPolicy: 'open',
+      membershipPolicySequence: 1n,
+      membershipSequence: 0n,
     });
     await fixture.indexer.ingest({
       ...eventBase(6n, 6, '2026-07-28T14:06:00.000Z'),
       type: 'community-membership-changed',
       communityAddress,
-      membershipAddress: bs58.encode(Uint8Array.from({ length: 32 }, () => 45)),
+      membershipAddress,
       memberIdentityId: identityId,
-      assignedByIdentityId: identityId,
+      actorIdentityId: identityId,
       authority,
-      authoritySequence: 5n,
+      action: 'join',
+      state: 'active',
+      actorSequence: 5n,
+      memberActionSequence: 5n,
+      membershipPolicySequence: 1n,
+      communityMembershipSequence: 1n,
+      activeSinceMembershipSequence: 1n,
       membershipStateSequence: 1n,
       roles: 1,
-      active: true,
+      manifestCid: membershipManifest.receipt.cid,
+      manifestHash: membershipManifest.envelope.proof.payloadHash,
+      manifestUri: `ipfs://${membershipManifest.receipt.cid}`,
     });
     await fixture.indexer.ingest({
       ...eventBase(7n, 7, '2026-07-28T14:07:00.000Z'),
@@ -678,7 +802,7 @@ describe('indexer HTTP contract', () => {
       active: true,
     });
     const indexAdditionalCommunity = async (
-      visibility: CommunityContent['visibility'],
+      visibility: Exclude<CommunityContent['visibility'], 'restricted'>,
       seed: number,
       creatorSequence: bigint,
       slot: bigint,
@@ -716,6 +840,10 @@ describe('indexer HTTP contract', () => {
         manifestHash: manifest.envelope.proof.payloadHash,
         governanceVersion: governance.governanceVersion,
         governanceStrategyHash: governance.digest,
+        visibility,
+        membershipPolicy: 'open',
+        membershipPolicySequence: 1n,
+        membershipSequence: 0n,
       });
       return { address, manifest };
     };
@@ -736,6 +864,10 @@ describe('indexer HTTP contract', () => {
         manifestHash: communityManifest.envelope.proof.payloadHash,
         governanceVersion: governance.governanceVersion,
         governanceStrategyHash: governance.digest,
+        visibility: 'public',
+        membershipPolicy: 'open',
+        membershipPolicySequence: 1n,
+        membershipSequence: 0n,
       },
       {
         eventBody: {},
@@ -770,6 +902,7 @@ describe('indexer HTTP contract', () => {
         governanceStrategyHash: governance.digest,
         votingModel: 'one-active-member-one-vote',
         eligibleMemberCount: 1n,
+        communityMembershipSequence: 1n,
         opensAtSlot: 12n,
         closesAtSlot: 20n,
         quorumBps: 5000,

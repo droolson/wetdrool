@@ -760,7 +760,7 @@ function communityItem(
   sequence: bigint,
   slot: bigint,
   signatureSeed: number,
-  visibility: CommunityContent['visibility'],
+  visibility: Exclude<CommunityContent['visibility'], 'restricted'>,
 ) {
   const strategy = communityGovernanceStrategyCommitment({
     governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
@@ -779,6 +779,10 @@ function communityItem(
     manifestHash: digest(signatureSeed),
     governanceVersion: strategy.governanceVersion,
     governanceStrategyHash: strategy.digest,
+    visibility,
+    membershipPolicy: 'open' as const,
+    membershipPolicySequence: 1n,
+    membershipSequence: 0n,
   };
   const content = {
     slug: `community-${String(signatureSeed)}`,
