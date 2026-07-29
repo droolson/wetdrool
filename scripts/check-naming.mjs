@@ -6,6 +6,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const formerPlatformParts = ['socially', 'woke'];
 const formerPlatformCompact = formerPlatformParts.join('');
 const formerPlatformDisplayParts = ['Woke', 'Social'];
+const approvedPlatformLegalEntity = `${formerPlatformDisplayParts.join(' ')}, Inc.`;
 const legacyHost = `${formerPlatformCompact}.com`;
 const computedLegacyHostToken = formerPlatformCompact + '${' + "'.com'" + '}';
 const legacyHostPattern = new RegExp(
@@ -115,7 +116,7 @@ for (const path of await workspaceFiles(repositoryRoot)) {
   if (metadata.size > 1_000_000) continue;
   const bytes = await readFile(path);
   if (bytes.includes(0)) continue;
-  const contents = stripLegacyHost(bytes.toString('utf8'));
+  const contents = stripApprovedLegalEntity(stripLegacyHost(bytes.toString('utf8')));
   for (const rule of forbiddenContent) {
     if (rule.pattern.test(contents)) {
       violations.push({ path: workspacePath, label: rule.label });
@@ -145,6 +146,10 @@ function stripLegacyHost(value) {
     .replaceAll(`www.${legacyHost}`, '')
     .replaceAll(legacyHost, '')
     .replaceAll(computedLegacyHostToken, '');
+}
+
+function stripApprovedLegalEntity(value) {
+  return value.replaceAll(approvedPlatformLegalEntity, '');
 }
 
 async function workspaceFiles(directory) {

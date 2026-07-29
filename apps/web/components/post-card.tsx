@@ -117,6 +117,14 @@ export function PostCard({ post, prominent = false }: PostCardProps) {
                 : 'Not available'}
             </dd>
           </div>
+          {proof.anchor ? (
+            <div>
+              <dt>Anchor transaction</dt>
+              <dd title={proof.anchor.transaction}>
+                <code>{proof.anchor.transaction}</code>
+              </dd>
+            </div>
+          ) : null}
         </dl>
       </details>
 

@@ -78,18 +78,18 @@ export default function SafetyPage() {
       <section className="safety-spotlight">
         <div className="page-shell">
           <div>
-            <p className="section-kicker">Identity-targeted harm</p>
-            <h2>Context matters. Dignity is not optional.</h2>
+            <p className="section-kicker">Targeted harm</p>
+            <h2>Context matters. Safety is not optional.</h2>
           </div>
           <div className="prose-stack">
             <p>
-              Reports can identify targeted repeated deadnaming, misgendering, outing threats,
+              Reports can identify repeated use of rejected identity labels, outing threats,
               doxxing, nonconsensual intimate media, and coordinated harassment without requiring a
               legal name or medical proof.
             </p>
             <p>
-              Current views use a person’s current chosen name. If immutable signed history is
-              intentionally opened for a legitimate review, the older identity data appears behind a
+              Current views use a person’s current stated name. If immutable signed history is
+              intentionally opened for a legitimate review, older identity data appears behind a
               clear historical-data warning.
             </p>
           </div>

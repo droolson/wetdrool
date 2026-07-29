@@ -13,6 +13,18 @@ export type ReplyPermission = (typeof REPLY_PERMISSIONS)[number];
 export type RemixPermission = (typeof REMIX_PERMISSIONS)[number];
 export type StoragePolicy = (typeof STORAGE_POLICIES)[number];
 
+/**
+ * Human-readable reply audiences. The persisted `following` token is retained
+ * for v1 draft compatibility; semantically it means followers of the author,
+ * not accounts the author follows.
+ */
+export const REPLY_PERMISSION_LABELS = Object.freeze({
+  everyone: 'Everyone',
+  following: 'Followers',
+  mentioned: 'Mentioned people',
+  nobody: 'No replies',
+} satisfies Readonly<Record<ReplyPermission, string>>);
+
 export interface MediaDraft {
   altText: string;
   mediaType: string;
@@ -214,8 +226,9 @@ export function loadComposerDraft(storage: DraftStorage): ComposerDraft | null {
 
 export function saveComposerDraft(storage: DraftStorage, draft: ComposerDraft): boolean {
   try {
-    storage.setItem(COMPOSER_DRAFT_STORAGE_KEY, serializeComposerDraft(draft));
-    return true;
+    const serialized = serializeComposerDraft(draft);
+    storage.setItem(COMPOSER_DRAFT_STORAGE_KEY, serialized);
+    return storage.getItem(COMPOSER_DRAFT_STORAGE_KEY) === serialized;
   } catch {
     return false;
   }
@@ -224,7 +237,28 @@ export function saveComposerDraft(storage: DraftStorage, draft: ComposerDraft): 
 export function discardComposerDraft(storage: DraftStorage): boolean {
   try {
     storage.removeItem(COMPOSER_DRAFT_STORAGE_KEY);
-    return true;
+    return storage.getItem(COMPOSER_DRAFT_STORAGE_KEY) === null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Removes only the exact serialized draft selected by a caller that already
+ * holds the browser publication lock. This comparison is not itself an atomic
+ * mutex; it prevents cleanup from knowingly deleting a changed draft.
+ */
+export function discardExactComposerDraft(
+  storage: DraftStorage,
+  expectedSerialized: string | null,
+): boolean {
+  try {
+    if (storage.getItem(COMPOSER_DRAFT_STORAGE_KEY) !== expectedSerialized) {
+      return false;
+    }
+    if (expectedSerialized === null) return true;
+    storage.removeItem(COMPOSER_DRAFT_STORAGE_KEY);
+    return storage.getItem(COMPOSER_DRAFT_STORAGE_KEY) === null;
   } catch {
     return false;
   }

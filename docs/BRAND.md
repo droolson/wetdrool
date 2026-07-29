@@ -38,8 +38,8 @@ predictable.
   avoid unlicensed illustration and rainbow cliché.
 - Keep content cards recognizable but not copied pixel-for-pixel from another
   social platform.
-- Represent varied bodies, races, ages, abilities, gender expressions, and
-  family structures when licensed or original imagery is introduced.
+- Represent varied bodies, races, ages, abilities, styles, and family
+  structures when licensed or original imagery is introduced.
 
 ## Voice
 
@@ -75,17 +75,16 @@ confirmed, and degraded-provider behavior. Skeletons preserve layout and never
 masquerade as real content. Error states explain what remains safe and what the
 user can do next.
 
-## Inclusive identity UX
+## Personal identity UX
 
-- Chosen name is the only default display name.
+- A person-selected name is the only default display name.
 - Legal name is neither required nor implicitly requested.
-- Pronouns allow multiple custom sets with per-audience visibility.
-- Gender and sexuality fields are optional, flexible, private by default, and
-  excluded from targeting and inferred analytics.
+- Optional profile details have independent audience controls and are excluded
+  from inferred targeting.
 - Current-profile views suppress superseded names. Historical signed revisions
   show a warning before reveal when immutable copies may contain old identity
   data.
-- Chosen-family labels are customizable rather than forced into legal-family
+- Relationship labels are customizable rather than forced into legal-family
   vocabulary.
 
 ## Originality review

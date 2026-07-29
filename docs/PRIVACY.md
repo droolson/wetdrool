@@ -19,8 +19,8 @@ identity namespace.
 
 Most user-facing privacy controls remain **Planned**. The implemented foundation
 keeps post bodies offchain, enforces encrypted references for protected
-pronoun, gender, chosen-family-label, and location values, requires explicit
-permanent-storage consent, keeps passkey PRF output
+optional profile and location values, requires explicit permanent-storage
+consent, keeps passkey PRF output
 and signing seeds client-side, synchronizes only encrypted key wrappers,
 implements delayed guardian recovery without email/PII onchain, and provides an
 experimental pairwise encryption adapter with no server plaintext path. The
@@ -99,13 +99,13 @@ Public content uses signed, versioned manifests and content hashes. Ordinary pos
 
 Gateways must verify the expected hash or CID. A gateway response is untrusted until verified.
 
-Pronouns, gender, chosen-family labels, and location may be public,
-followers-only, or private. Public values are inline. Followers-only and private
-values are encrypted client-side and represented in the signed profile only by
-a content reference with required encrypted protection metadata, a key
-envelope, and an access policy. The schema rejects protected inline plaintext
-and references missing encrypted-protection metadata, but a signed declaration
-alone cannot prove that referenced bytes are ciphertext. The official SDK
+Optional profile details and location may be public, followers-only, or
+private. Public values are inline. Followers-only and private values are
+encrypted client-side and represented in the signed profile only by a content
+reference with required encrypted protection metadata, a key envelope, and an
+access policy. The schema rejects protected inline plaintext and references
+missing encrypted-protection metadata, but a signed declaration alone cannot
+prove that referenced bytes are ciphertext. The official SDK
 therefore fails closed for followers-only/private profile values and restricted
 posts until its client-side encryption and authenticated-reference verifier are
 implemented. Independent clients must not present a protected reference as
@@ -142,9 +142,9 @@ An indexer database is a replaceable projection, not canonical protocol truth. I
 
 It must not silently convert private preferences, recovery data, or message content into public projections.
 
-The implemented public profile projection retains only public pronouns, gender,
-chosen-family labels, and location. Protected references remain available from
-the verified source manifest to authorized clients but are not copied into the
+The implemented public profile projection retains only explicitly public
+profile and location values. Protected references remain available from the
+verified source manifest to authorized clients but are not copied into the
 public indexer projection. The implemented `public-match-v2` search projection
 is limited to current public display names/bios, active handles, verified posts
 whose visibility is `public`, and verified public-community names, slugs, and
@@ -201,7 +201,7 @@ Historical profile compatibility is bounded by one immutable
 can read a signed schema-v1 profile only when the historical onchain event uses
 the legacy prefix without a schema commitment. Its public projection preserves
 only values for which the legacy object recorded explicit public visibility; it
-does not infer public consent for legacy chosen-family labels or location.
+does not infer public consent for legacy relationship labels or location.
 Current root and delegated profile updates commit schema version 2 onchain, and
 at or after the cutoff the indexer requires that explicit commitment plus a
 schema-v2 envelope. Live ingestion and rebuild use the same cutoff and reject
@@ -220,17 +220,15 @@ the person to public search or discovery.
 
 - A human-readable handle is distinct from a wallet address.
 - Wallet addresses are not the default profile label.
-- Chosen name is independent of legal name.
-- Pronouns, gender, chosen-family labels, and location are optional. Public
-  values use `{visibility: "public", value}`. Followers-only and private values
-  use `{visibility, valueReference}` and the reference must be cryptographically
+- A person-selected name is independent of legal name.
+- Optional profile details and location may be absent. Public values use
+  `{visibility: "public", value}`. Followers-only and private values use
+  `{visibility, valueReference}` and the reference must be cryptographically
   marked encrypted.
 - Raw followers-only/private profile plaintext, unencrypted protected
-  references, and the legacy `genderVisibility` shape are rejected before
-  signing or storage.
-- Sexuality remains optional and must follow the same protected-value contract
-  before it is added to the protocol schema.
-- Multiple pronoun sets and custom localized forms are supported.
+  references, and deprecated visibility shapes are rejected before signing or
+  storage.
+- Custom localized profile fields use the same protected-value contract.
 - No identity field is inferred from appearance, name, network, device, social graph, or content.
 - Public identity does not imply legal-name verification.
 
@@ -597,7 +595,7 @@ The privacy model remains **Planned** until all applicable checks pass.
   transaction construction for WokeNet across local-validator, devnet, and
   mainnet-beta configurations.
 - **PRIV-TST-002:** Logs, traces, analytics, and error reports contain no seeded secrets, emails, message plaintext, or private profile fields.
-- **PRIV-TST-003:** Pronoun and identity-attribute schemas reject protected
+- **PRIV-TST-003:** Optional profile-attribute schemas reject protected
   plaintext and unencrypted references; public indexer projections retain only
   public values.
 - **PRIV-TST-004:** Permanent publication cannot proceed without item-specific recorded consent.

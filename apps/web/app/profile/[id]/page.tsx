@@ -56,7 +56,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         </InfoCard>
         <InfoCard eyebrow="Disclosure" title="Each field has a boundary" tone="coral">
           <p>
-            Pronouns, languages, location, and identity details can be public, limited, or absent.
+            Languages, location, and optional profile details can be public, limited, or absent.
           </p>
         </InfoCard>
         <InfoCard eyebrow="Authority" title="Keys stay backstage" tone="sky">

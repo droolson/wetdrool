@@ -5,6 +5,7 @@ import type { PasskeyWrappedKeyBundle, UnwrapPasskeyAccountKeyInput } from '@wok
 import {
   BrowserAuthClient,
   type LocalKeyOperations,
+  type PasskeyOperationSigner,
   type PasskeyPlatform,
 } from '../lib/auth/browser-auth-client';
 import { ciphertextBundle, type TokenStorage } from '../lib/auth/auth-api';
@@ -47,6 +48,9 @@ describe('browser passkey authentication boundary', () => {
     const operations: LocalKeyOperations = {
       randomBytes: () => localSeed.slice(),
       publicKeyFromSeed: () => publicKey.slice(),
+      sign: () => {
+        throw new Error('Registration must not sign a message.');
+      },
       wrap: async (input) => {
         wrappedPrf = input.prfOutput;
         wrappedSeed = input.accountKeySeed;
@@ -124,6 +128,9 @@ describe('browser passkey authentication boundary', () => {
         throw new Error('Sign-in must not create a replacement key.');
       },
       publicKeyFromSeed: () => publicKey.slice(),
+      sign: () => {
+        throw new Error('Sign-in must not sign a message.');
+      },
       wrap: async () => {
         throw new Error('Sign-in must not wrap a replacement key.');
       },
@@ -168,6 +175,9 @@ describe('browser passkey authentication boundary', () => {
       },
       publicKeyFromSeed: () => {
         throw new Error('A public key must not be derived without PRF.');
+      },
+      sign: () => {
+        throw new Error('A message must not be signed without PRF.');
       },
       wrap: async () => {
         throw new Error('A key must not be wrapped without PRF.');
@@ -230,6 +240,9 @@ describe('browser passkey authentication boundary', () => {
       publicKeyFromSeed: (seed) => {
         expect(seed).toBe(unwrappedSeed);
         return publicKey.slice();
+      },
+      sign: () => {
+        throw new Error('Adding a passkey must not sign a message.');
       },
       wrap: async (input) => {
         expect(input.credentialId).toEqual(newCredentialBytes);
@@ -297,6 +310,179 @@ describe('browser passkey authentication boundary', () => {
     assertNoKeyMaterial(recorder.calls);
   });
 
+  it('step-ups, verifies the synchronized root, and signs the exact operation bytes locally', async () => {
+    const recorder = operationSigningApi();
+    const harness = signingKeyHarness();
+    const message = bytes(217, 73);
+    const messageBeforeSigning = message.slice();
+    const expectedSignature = harness.buffers.signatureWorking.slice();
+    let scopedPublicKey: Uint8Array | undefined;
+    let scopedSignature: Uint8Array | undefined;
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: authenticatedStorage(),
+      platform: authenticationPlatform(prfSecret),
+      keyOperations: harness.operations,
+    });
+
+    const result = await client.withFreshPasskeySigner(async (signer) => {
+      expect(Object.isFrozen(signer)).toBe(true);
+      expect(Object.keys(signer).sort()).toEqual([
+        'credentialId',
+        'publicKey',
+        'publicKeyBytes',
+        'sign',
+      ]);
+      expect(signer).not.toHaveProperty('seed');
+      expect(signer).not.toHaveProperty('prfOutput');
+      expect(signer.credentialId).toBe(credentialId);
+      expect(signer.publicKey).toBe(encodeBase64Url(publicKey));
+      expect(signer.publicKeyBytes).toEqual(publicKey);
+      expect(signer.publicKeyBytes).not.toBe(harness.buffers.publicKeyWorking);
+      scopedPublicKey = signer.publicKeyBytes;
+
+      scopedSignature = signer.sign(message);
+      expect(scopedSignature).toEqual(expectedSignature);
+      expect(scopedSignature).not.toBe(harness.buffers.signatureWorking);
+      expect(harness.buffers.messageWorking).not.toBe(message);
+      expect(harness.buffers.messageSnapshot).toEqual(messageBeforeSigning);
+      expect(harness.buffers.signingSeed).toBe(harness.buffers.seed);
+      expect(message).toEqual(messageBeforeSigning);
+      expect(harness.buffers.messageWorking?.every((value) => value === 0)).toBe(true);
+      expect(harness.buffers.signatureWorking.every((value) => value === 0)).toBe(true);
+
+      await Promise.resolve();
+      expect(scopedSignature).toEqual(expectedSignature);
+      return { publicKey: signer.publicKey, signed: true };
+    });
+
+    expect(result).toEqual({
+      publicKey: encodeBase64Url(publicKey),
+      signed: true,
+    });
+    expect(requestPaths(recorder.calls)).toEqual([
+      'POST /v1/step-up/options',
+      'POST /v1/step-up/verify',
+      'GET /v1/key-bundles',
+    ]);
+    expect(harness.buffers.signCalls).toBe(1);
+    expect(harness.buffers.prfOutput?.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.seed.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.publicKeyWorking.every((value) => value === 0)).toBe(true);
+    expect(scopedPublicKey?.every((value) => value === 0)).toBe(true);
+    expect(scopedSignature?.every((value) => value === 0)).toBe(true);
+    assertNoKeyMaterial(recorder.calls);
+  });
+
+  it('clears every scoped signing buffer when the operation callback fails', async () => {
+    const recorder = operationSigningApi();
+    const harness = signingKeyHarness();
+    const failure = new Error('transaction assembly failed');
+    let capturedSigner: PasskeyOperationSigner | undefined;
+    let scopedSignature: Uint8Array | undefined;
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: authenticatedStorage(),
+      platform: authenticationPlatform(prfSecret),
+      keyOperations: harness.operations,
+    });
+
+    const operation = client.withFreshPasskeySigner(async (signer) => {
+      capturedSigner = signer;
+      scopedSignature = signer.sign(bytes(31, 64));
+      await Promise.resolve();
+      throw failure;
+    });
+
+    await expect(operation).rejects.toBe(failure);
+    expect(harness.buffers.prfOutput?.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.seed.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.publicKeyWorking.every((value) => value === 0)).toBe(true);
+    expect(capturedSigner?.publicKeyBytes.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.messageWorking?.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.signatureWorking.every((value) => value === 0)).toBe(true);
+    expect(scopedSignature?.every((value) => value === 0)).toBe(true);
+    expect(() => capturedSigner?.sign(bytes(1, 1))).toThrowError(
+      expect.objectContaining({ code: 'signer-expired' }),
+    );
+  });
+
+  it('clears the step-up PRF and never invokes the operation when root unwrap fails', async () => {
+    const recorder = operationSigningApi();
+    const harness = signingKeyHarness({
+      unwrapError: new Error('ciphertext authentication failed'),
+    });
+    let operationCalled = false;
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: authenticatedStorage(),
+      platform: authenticationPlatform(prfSecret),
+      keyOperations: harness.operations,
+    });
+
+    const operation = client.withFreshPasskeySigner(() => {
+      operationCalled = true;
+    });
+
+    await expect(operation).rejects.toMatchObject({ code: 'key-wrapper-invalid' });
+    expect(operationCalled).toBe(false);
+    expect(harness.buffers.prfOutput?.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.signCalls).toBe(0);
+  });
+
+  it('rejects a synchronized root whose derived public key does not match its bundle', async () => {
+    const recorder = operationSigningApi();
+    const harness = signingKeyHarness({
+      publicKeyWorking: bytes(7, 32),
+    });
+    let operationCalled = false;
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: authenticatedStorage(),
+      platform: authenticationPlatform(prfSecret),
+      keyOperations: harness.operations,
+    });
+
+    const operation = client.withFreshPasskeySigner(() => {
+      operationCalled = true;
+    });
+
+    await expect(operation).rejects.toMatchObject({ code: 'key-wrapper-invalid' });
+    expect(operationCalled).toBe(false);
+    expect(harness.buffers.prfOutput?.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.seed.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.publicKeyWorking.every((value) => value === 0)).toBe(true);
+    expect(harness.buffers.signCalls).toBe(0);
+  });
+
+  it('disables a captured signer as soon as its synchronous operation returns', async () => {
+    const recorder = operationSigningApi();
+    const harness = signingKeyHarness();
+    let capturedSigner: PasskeyOperationSigner | undefined;
+    const client = new BrowserAuthClient({
+      baseUrl: 'https://auth.example',
+      fetch: recorder.fetch,
+      tokenStorage: authenticatedStorage(),
+      platform: authenticationPlatform(prfSecret),
+      keyOperations: harness.operations,
+    });
+
+    await client.withFreshPasskeySigner((signer) => {
+      capturedSigner = signer;
+      return 'complete';
+    });
+
+    expect(() => capturedSigner?.sign(bytes(1, 32))).toThrowError(
+      expect.objectContaining({ code: 'signer-expired' }),
+    );
+    expect(harness.buffers.signCalls).toBe(0);
+    expect(capturedSigner?.publicKeyBytes.every((value) => value === 0)).toBe(true);
+  });
+
   it('uses a fresh step-up to revoke a passkey and clears the rotated session boundary', async () => {
     const recorder = revocationApi();
     const storage = authenticatedStorage();
@@ -361,6 +547,9 @@ describe('browser passkey authentication boundary', () => {
       keyOperations: {
         randomBytes: () => localSeed.slice(),
         publicKeyFromSeed: () => publicKey.slice(),
+        sign: () => {
+          throw new Error('Registration must not sign a message.');
+        },
         wrap: async () => bundleFixture(),
         unwrap: async () => {
           throw new Error('Registration must not unwrap a key.');
@@ -557,6 +746,48 @@ function additionalPasskeyApi() {
   return { calls, fetch };
 }
 
+function operationSigningApi() {
+  const calls: RecordedCall[] = [];
+  const fetch: typeof globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    calls.push({ url, init });
+    const path = new URL(url).pathname;
+    switch (path) {
+      case '/v1/step-up/options':
+        return json({
+          ceremonyId,
+          options: requestOptions(),
+        });
+      case '/v1/step-up/verify':
+        return json({
+          credential: credentialRecord(credentialId),
+          session: {
+            expiresAt: '2026-07-29T00:00:00.000Z',
+            lastAuthenticatedAt: '2026-07-28T20:00:00.000Z',
+            stepUpAt: '2026-07-28T20:00:00.000Z',
+          },
+          csrfToken: sessionCsrf,
+          stepUp: 'verified',
+        });
+      case '/v1/key-bundles':
+        return json({
+          accountId,
+          ciphertextOnly: true,
+          bundles: [
+            {
+              credentialId,
+              bundle: bundleFixture(),
+              updatedAt: '2026-07-28T20:00:00.000Z',
+            },
+          ],
+        });
+      default:
+        return json({ error: 'unexpected request' }, 500);
+    }
+  };
+  return { calls, fetch };
+}
+
 function revocationApi() {
   const calls: RecordedCall[] = [];
   const fetch: typeof globalThis.fetch = async (input, init = {}) => {
@@ -596,6 +827,62 @@ function revocationApi() {
     }
   };
   return { calls, fetch };
+}
+
+interface SigningBuffers {
+  readonly seed: Uint8Array;
+  readonly publicKeyWorking: Uint8Array;
+  readonly signatureWorking: Uint8Array;
+  prfOutput?: Uint8Array;
+  messageWorking?: Uint8Array;
+  messageSnapshot?: Uint8Array;
+  signingSeed?: Uint8Array;
+  signCalls: number;
+}
+
+function signingKeyHarness(
+  options: {
+    readonly unwrapError?: Error;
+    readonly publicKeyWorking?: Uint8Array;
+  } = {},
+): {
+  readonly operations: LocalKeyOperations;
+  readonly buffers: SigningBuffers;
+} {
+  const buffers: SigningBuffers = {
+    seed: localSeed.slice(),
+    publicKeyWorking: options.publicKeyWorking ?? publicKey.slice(),
+    signatureWorking: bytes(157, 64),
+    signCalls: 0,
+  };
+  return {
+    buffers,
+    operations: {
+      randomBytes: () => {
+        throw new Error('Operation signing must not create a replacement key.');
+      },
+      publicKeyFromSeed: (seed) => {
+        expect(seed).toBe(buffers.seed);
+        return buffers.publicKeyWorking;
+      },
+      sign: (message, seed) => {
+        buffers.signCalls += 1;
+        buffers.messageWorking = message;
+        buffers.messageSnapshot = message.slice();
+        buffers.signingSeed = seed;
+        return buffers.signatureWorking;
+      },
+      wrap: async () => {
+        throw new Error('Operation signing must not wrap a key.');
+      },
+      unwrap: async (input) => {
+        buffers.prfOutput = input.prfOutput;
+        if (options.unwrapError !== undefined) throw options.unwrapError;
+        expect(input.credentialId).toEqual(credentialBytes);
+        return buffers.seed;
+      },
+    },
+  };
 }
 
 function authenticationApi() {

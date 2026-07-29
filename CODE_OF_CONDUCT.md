@@ -4,14 +4,14 @@
 
 WokeSocial is open to everyone who follows its community and safety standards.
 We are committed to a harassment-free experience regardless of identity or
-expression, sexual orientation, sex characteristics, race, ethnicity,
-disability, age, body size, religion, nationality, caste, pregnancy, family
-structure, socioeconomic status, technical experience, or other protected or
-marginalized status.
+expression, race, ethnicity, disability, age, body size, religion, nationality,
+caste, pregnancy, family structure, socioeconomic status, technical
+experience, or other protected or marginalized status.
 
 ## Expected behavior
 
-- Use chosen names and pronouns and correct mistakes without argument.
+- Use the names and identity details people state for themselves, and correct
+  mistakes without argument.
 - Be respectful, curious, specific, and constructive.
 - Critique ideas and behavior, not a person's identity, intelligence, or worth.
 - Respect privacy, consent, boundaries, content warnings, and requests to disengage.
@@ -22,7 +22,7 @@ marginalized status.
 ## Unacceptable behavior
 
 - Harassment, threats, stalking, intimidation, or coordinated dogpiling.
-- Deadnaming, deliberate misgendering, outing, identity-based slurs, or exclusion.
+- Identity-based harassment, outing, slurs, or exclusion.
 - Sexualized attention, nonconsensual imagery, or unwelcome advances.
 - Publishing or threatening to publish private identifying information.
 - Sustained disruption, bad-faith argument, impersonation, spam, or manipulation.

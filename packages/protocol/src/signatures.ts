@@ -49,6 +49,19 @@ export interface AuthorizationContext {
 
 export type AuthorizationVerifier = (context: AuthorizationContext) => boolean | Promise<boolean>;
 
+export interface PayloadSigningRequest {
+  readonly algorithm: 'Ed25519';
+  readonly keyId: string;
+  /**
+   * Exact canonical proof-descriptor bytes. Implementations must sign these
+   * bytes without prefixing, hashing, or replacing them.
+   */
+  readonly message: Uint8Array;
+  readonly purpose: 'wokesocial-portable-object-v1';
+}
+
+export type PayloadSigner = (request: PayloadSigningRequest) => Uint8Array | Promise<Uint8Array>;
+
 function descriptorFor(payload: PortablePayload, payloadHash: string): ProofDescriptor {
   return {
     domain: SIGNATURE_DOMAIN,
@@ -121,6 +134,74 @@ export function signPayload(input: PortablePayload, privateKey: Uint8Array): Cur
       signature: encodeMultibaseBase64Url(signature),
     },
   };
+}
+
+/**
+ * Signs a portable object through an operation-scoped external signer.
+ *
+ * This is the passkey, hardware-wallet, and delegated-signer seam: callers
+ * receive only the exact public descriptor bytes and never need to export key
+ * material into the protocol package. The returned detached signature is
+ * verified against `payload.signingKey` before an envelope is constructed.
+ */
+export async function signPayloadWithSigner(
+  input: PortablePayload,
+  signer: PayloadSigner,
+): Promise<CurrentSignedEnvelope> {
+  if (typeof signer !== 'function') {
+    throw new ProtocolValidationError('A payload signer is required.');
+  }
+
+  const payload = currentPortablePayloadSchema.parse(input);
+  assertIntrinsicObjectAuthorization(payload);
+  const publicKey = publicKeyFromSigningKeyId(payload.signingKey);
+  if (!ed25519.utils.isValidPublicKey(publicKey)) {
+    throw new ProtocolValidationError('Signing key is not a valid Ed25519 key.');
+  }
+
+  const payloadHash = digestSha256Multibase(canonicalizePayload(payload));
+  const descriptor = descriptorFor(payload, payloadHash);
+  const exactMessage = canonicalizeProofDescriptor(descriptor);
+  let returnedSignature: Uint8Array;
+  try {
+    returnedSignature = await signer(
+      Object.freeze({
+        algorithm: 'Ed25519',
+        keyId: payload.signingKey,
+        message: Uint8Array.from(exactMessage),
+        purpose: 'wokesocial-portable-object-v1',
+      }),
+    );
+  } catch (error) {
+    throw new ProtocolValidationError('The payload signer rejected the signing request.', {
+      cause: error,
+    });
+  }
+
+  if (!(returnedSignature instanceof Uint8Array) || returnedSignature.byteLength !== 64) {
+    throw new ProtocolValidationError('The payload signer returned an invalid Ed25519 signature.');
+  }
+  const signature = Uint8Array.from(returnedSignature);
+  if (!ed25519.verify(signature, exactMessage, publicKey)) {
+    signature.fill(0);
+    throw new ProtocolValidationError(
+      'The payload signer returned a signature for different bytes or a different key.',
+    );
+  }
+
+  try {
+    return {
+      payload,
+      proof: {
+        algorithm: 'Ed25519',
+        keyId: payload.signingKey,
+        payloadHash,
+        signature: encodeMultibaseBase64Url(signature),
+      },
+    };
+  } finally {
+    signature.fill(0);
+  }
 }
 
 export async function verifyEnvelope(

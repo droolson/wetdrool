@@ -567,14 +567,20 @@ threat-model mitigations.
     supports discoverable sign-in plus list/add/revoke service passkeys. Each
     additional passkey unwraps and rewraps the same root, and revocation requires
     fresh step-up, deletes that wrapper, and revokes service sessions.
-    Thirty-four auth unit, four isolated PostgreSQL, one auth-service browser
-    integration, 109 web unit, and two desktop web virtual-authenticator
-    lifecycle flows pass.
-  - Remaining scope: create the actual protocol identity/delegation through a
-    simulated and finalized Solana program transaction, connect service-passkey
-    revocation to the separate WokeNet protocol delegation/device-authority lifecycle,
-    complete recovery UX and independent security review, and provide a reviewed
-    fallback for authenticators without PRF support.
+    The development-localnet composer now requires a fresh passkey assertion,
+    creates or reconciles one deterministic WokeNet identity, signs canonical
+    post bytes, verifies local CAS storage, simulates and finalizes the exact
+    Solana transaction, waits for the indexer, and exposes the complete proof.
+    Its retained real-Chromium acceptance publishes two posts, restores one
+    ambiguous finalized intent without rebroadcast, replays 13 events, and
+    reports zero secret matches. Thirty-four auth unit, four isolated
+    PostgreSQL, one auth-service browser integration, 252 web tests across 19
+    files, and the vertical publication/replay browser checks pass.
+  - Remaining scope: connect service-passkey revocation to the separate WokeNet
+    delegation/device-authority lifecycle, complete recovery UX and independent
+    security review, provide a reviewed fallback for authenticators without PRF
+    support, and move the publication flow beyond the development-localnet
+    boundary.
 - [ ] Implement email-assisted recovery without making email the protocol
   identity.
 - [ ] Implement device-bound delegated keys, expiration, revocation, wallet
@@ -723,6 +729,47 @@ Dependencies: all applicable product phases.
 - [ ] Obtain `BLOCKED(external)` production credentials, domain control,
   provider accounts, program-authority participants, Android signing custody,
   and funded Solana deployment identities where applicable.
+
+## 11. Expanded platform workstreams
+
+Dependencies: the verified social publication foundation, plus the specific
+privacy, security, economic, and operational gates named below. The complete
+design is in [docs/PLATFORM_EXPANSION.md](docs/PLATFORM_EXPANSION.md) and is
+tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12).
+
+- [ ] Define and verify decentralized long-form and vertical short-form video
+  manifests, browser upload/playback, replaceable delivery, accessibility, and
+  representative performance benchmarks.
+- [ ] Treat “middle-out” as a measured media R&D program; retain
+  standards-based fallbacks and ship no codec or efficiency claim without a
+  public corpus and reproducible result.
+- [ ] Define the `.woke` namespace, random pseudonymous registration,
+  resolution to real Solana authorities, recovery, normalization,
+  impersonation policy, and anti-squatting custom-name allocation.
+- [ ] Implement separate auditable reputation, points, promotional-grant, AI
+  credit, and redemption-entitlement ledgers with public formulas, caps,
+  anti-abuse controls, reconciliation, statements, and appeals.
+- [ ] Build the portable deterministic avatar renderer and off-chain creator
+  catalog before enabling optional on-chain creator-item ownership.
+- [ ] Define creator subscription, first-1,000 lifetime monthly-rate lock,
+  contribution-based access, 30-day initial refund, rights, tax, entitlement,
+  and settlement behavior before accepting payment.
+- [ ] Prove optional verification with on-device or independently attested
+  ephemeral processing, minimal signed claims, no raw evidence persistence,
+  calibrated uncertainty, an alternate path, and human appeal.
+- [ ] Benchmark current 30–35B-class open models on the actual Apple Silicon
+  cluster and ship a replaceable inference API, licensed data pipeline,
+  privacy controls, AI-credit metering, and published evaluations.
+- [ ] Implement sourced social-sentiment research and paper trading with
+  manipulation detection, uncertainty, user-defined risk limits, and
+  reproducible performance evaluation.
+- [ ] Keep real-money automation disabled until client-held authorization,
+  exact simulation/preview, revocation, kill switches, security audit,
+  financial/legal review, and user-protection gates pass.
+- [ ] Publish machine-readable governance for protocol changes, name rules,
+  point formulas, marketplace policy, AI policy, and automation limits without
+  assigning control by default to SOL, NFT, purchased-point, or future `$WOKE`
+  wealth.
 
 ## Vertical slice acceptance gate
 

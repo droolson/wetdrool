@@ -1,7 +1,6 @@
-# WokeSocial Protocol
+# WokeSocial
 
-**An inclusive, portable social platform with verifiable protocol state on
-Solana.**
+**An open, portable social platform with verifiable protocol state on Solana.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-6f42c1.svg)](LICENSE)
 ![Status: pre-release](https://img.shields.io/badge/status-pre--release-f59e0b.svg)
@@ -56,13 +55,34 @@ hosting is not a public deployment, audit, or release record.
 
 | If you want to…                  | Start here                                                                                                                                       |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Understand the product           | [Product specification](docs/PRODUCT_SPEC.md) and [roadmap](docs/ROADMAP.md)                                                                     |
+| Understand the product           | [Product specification](docs/PRODUCT_SPEC.md), [platform expansion](docs/PLATFORM_EXPANSION.md), and [roadmap](docs/ROADMAP.md)                   |
 | Understand the system            | [Architecture](docs/ARCHITECTURE.md), [protocol](docs/PROTOCOL.md), and [ADRs](docs/DECISIONS/)                                                  |
 | Set up a development environment | [Development guide](docs/DEVELOPMENT.md)                                                                                                         |
-| Find work and contribute         | [Contributing guide](CONTRIBUTING.md) and [task evidence](TASKS.md)                                                                              |
+| Find work and contribute         | [Contributing guide](CONTRIBUTING.md), [developer handoff](docs/DEVELOPER_HANDOFF.md), and [task evidence](TASKS.md)                             |
 | Review security or privacy       | [Security policy](SECURITY.md), [security design](docs/SECURITY.md), [threat model](docs/THREAT_MODEL.md), and [privacy design](docs/PRIVACY.md) |
 | Operate or evaluate a deployment | [Deployment](docs/DEPLOYMENT.md), [operations](docs/OPERATIONS.md), and [final report](FINAL_REPORT.md)                                          |
 | Browse all documentation         | [Documentation index](docs/README.md)                                                                                                            |
+
+### Product horizon
+
+The approved direction expands Woke.social beyond the current social
+foundation into decentralized long- and short-form video, pseudonymous `.woke`
+names, transparent contribution points, a portable avatar and creator-item
+marketplace, optional minimal-disclosure verification, open-model AI creation
+tools, sourced social-sentiment research, bounded noncustodial automation, and
+published product governance.
+
+Those capabilities are planned, not shipped. Their dependency order, privacy
+and economic boundaries, verification requirements, and GitHub workstreams are
+defined in [Platform Expansion](docs/PLATFORM_EXPANSION.md) and
+[epic #12](https://github.com/AlexBTC420/wokesocial/issues/12).
+
+The planned Woke AI product family—Athena for highest reasoning, Kairos for
+balanced default use, and Hermes for fast agentic work—is specified in
+[Woke AI Platform](docs/AI_PLATFORM.md). The owner-provided Pinkman, Inc.,
+Woke Social, Inc., Woke AI, Inc., and ICEFAM Records, LLC. structure and its
+unverified legal-status boundary are recorded in
+[Organization and Product Ownership](docs/ORGANIZATION.md).
 
 ## Project status
 
@@ -83,9 +103,9 @@ requirement may contain a tested subset without being complete.
 | Open indexer | Finalized Solana RPC synchronization, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical profile-v2, governance-bound community-v2, and member-signed community-membership-v2 verification, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, 18 ordered PostgreSQL migrations, RPC failover, DLQ, provenance, and REST APIs are implemented. Privacy-safe verified-community directory/detail, an exact-address membership-status endpoint with no roster or identity fields, and deterministic `public-match-v2` search complement the consumer-safe home and noncanonical `/v1/feed` projections; fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Feed service | Independently replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and third-party reconciliation engine implemented and tested |
 | Relay | Replaceable signed WebSocket transport, bounded finalized key and expiring opaque-topic subscription authorizer HTTP adapters, and multi-relay failover client implemented and tested; independent authorizer deployments and E2EE remain external |
-| Flagship web application | Complete required route surface, production build, responsive/a11y states, local composer/preferences/export, provider settings, and real passkey-service registration/sign-in implemented. The consumer-safe home feed, strict bounded chronological pagination, address-routed verified community directory/detail, `public-match-v2` search, and an explicitly public unauthenticated following-graph preview are connected to the open indexer; exact-identity hiding remains device-local, and media-only posts retain verified references without connected gateway playback. Community joining/membership, authenticated following, recommendation-provider integration, cross-device safety, and complete offline caching remain open; unsupported onchain mutations fail closed |
+| Flagship web application | Complete required route surface, production build, responsive/a11y states, provider settings, and real passkey-service registration/sign-in are implemented. The localnet composer now creates or reconciles one passkey-derived WokeNet identity, signs canonical text-post envelopes, stores exact bytes in the local CAS, simulates and finalizes the Solana post reference, waits for an exact indexer projection, survives reload after an ambiguous response without rebroadcast, and renders the full anchor transaction after replay. The consumer-safe home feed, strict chronological pagination, verified community directory/detail, `public-match-v2` search, and public following preview are also connected. This publication path is development-localnet only; public-cluster transactions, community joining, authenticated following, media upload/playback, cross-device safety, and complete offline caching remain open |
 | Moderation and safety | Replaceable signed label/report/appeal service, encrypted durable PostgreSQL case ledger, retention/legal-hold lifecycle, transparency aggregation, locked-by-default authorization, and restricted case reads are implemented; production authorizer/SSO and complete specialist product workflows remain blocked |
-| Passkeys and recovery | Replaceable WebAuthn service, durable one-time ceremonies/sessions, discoverable browser registration/sign-in, and ciphertext-only PRF key-bundle sync implemented and tested; protocol-identity creation, recovery, sponsorship, and complete device flows remain open |
+| Passkeys and recovery | Replaceable WebAuthn service, durable one-time ceremonies/sessions, discoverable browser registration/sign-in, ciphertext-only PRF key-bundle sync, fresh operation signing, and one verified development-localnet protocol-identity/text-publication path are implemented and tested. Delegation lifecycle, recovery, sponsorship, public-cluster execution, and complete device flows remain open |
 | End-to-end encrypted messaging | Experimental pairwise-only adapter delegates real Olm sessions to pinned Matrix Rust crypto WASM, authenticates outer envelopes before state mutation, and passes 13 adversarial real-device cases; volatile storage, browser packaging, attachments, safety UX, and reporting remain non-production |
 | Media pipeline | Resumable authenticated worker, strict MIME/hash/container checks, real ClamAV scanning, metadata-free image/video/audio processing, HLS, waveform output, unsigned media manifests, and independent preprocessed publication are implemented and tested; flagship upload integration remains open |
 | Creator payments and `$WOKE` | No `$WOKE` mint or successful payment flow exists. The existing lamport-denominated tip/subscription ABI is legacy and quarantined: bootstrap, execution, authority mutation, and unpause fail without state/balance changes. Portable metadata truthfully accepts SOL or exact SPL asset details and rejects `{ kind: "woke" }`; a real SPL/Token-2022 mint, reviewed authorities/tokenomics, a new mint-aware ABI, migration, SDK/UI/indexer work, tests, and audit are required before any `$WOKE` payment claim |
@@ -110,13 +130,16 @@ not evidence of a devnet or mainnet-beta deployment.
   bootstrap, execution, authority mutation, and unpause fail without state or
   balance changes; no successful payment flow exists.
 - `pnpm test:vertical-slice` starts a fresh validator and disposable PostgreSQL,
-  finalizes exactly 11 real local transactions, verifies signed post,
-  schema-v2 community, and member-authored membership-join CAS content through
-  the production indexer, asserts privacy-safe exact-address membership status,
-  suppresses a tombstoned post, clears and exactly replays 10 durable events,
-  and exercises production Next.js before and after replay with eight desktop
-  and mobile-viewport Chromium checks. This is local Solana program evidence,
-  not a public deployment claim.
+  proves the canonical 10-event history, then drives real Chromium through a
+  passkey-created WokeNet identity and two text posts. The first post loses its
+  forwarded response after finality, reloads a locked finalized intent, and
+  reconciles without a duplicate transaction. The expanded 13-event projection
+  is destroyed and replayed to exact state, and both transaction signatures
+  render on the restored feed/detail surface. The retained 2026-07-29 evidence
+  has SHA-256
+  `587c47de8065429f286fcc524737a4f855df94b4fde3b08e5d195d13d3838261`;
+  all audited secret-match and forbidden-field counts are zero. This is local
+  Solana program evidence, not a public deployment claim.
 - The updated package run covers deterministic canonical bytes and identifiers, Ed25519
   verification across 29 portable object families, local CAS integrity, storage
   replication, recoverable SDK publication, manifest verification, exhaustive

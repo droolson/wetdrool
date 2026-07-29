@@ -88,7 +88,7 @@ only, VoiceOver on macOS/iOS, and one additional screen reader/browser
 combination:
 
 - Create a passkey account and recover from validation errors.
-- Complete an inclusive profile with custom and multiple pronoun sets.
+- Complete a profile with optional fields and independent visibility controls.
 - Follow a user and switch among chronological, following, and custom feeds.
 - Publish text and media posts, including alt text, captions, content warning,
   audience, storage consent, retry, and failure recovery.

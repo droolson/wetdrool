@@ -242,7 +242,7 @@ All categories are **Planned**. The policy must support jurisdiction-specific re
 | Category | Examples and handling notes |
 |---|---|
 | Harassment | Targeted abuse, dogpiling, repeated unwanted contact |
-| Identity-targeted abuse | Targeted slurs, deliberate repeated deadnaming or misgendering, outing threats |
+| Identity-targeted abuse | Targeted slurs, repeated use of rejected identity labels, outing threats |
 | Threats or incitement | Credible threats, calls for targeted violence |
 | Doxxing and privacy | Private addresses, contact details, medical or identity information |
 | Nonconsensual intimate media | Actual, threatened, or synthetic intimate material without consent |
@@ -307,7 +307,8 @@ Priority considers credible imminent harm, child safety, nonconsensual intimate 
 ### 10.2 Decision rules
 
 - Automated systems may order a queue, identify duplicates, or apply a reversible user-configurable warning.
-- Automated classification may not infer gender identity, sexuality, medical status, ethnicity, religion, or political belief.
+- Automated classification may not infer sensitive identity, medical,
+  ethnicity, religion, or political-belief attributes.
 - Private user content is not sent to third-party AI services by default.
 - Irreversible service enforcement based on content requires trained review and an appeal path, except for cryptographic invalidity or clearly automated technical abuse.
 - A moderator records both supporting and materially exculpatory context.
@@ -340,14 +341,15 @@ An appeal includes:
 
 Successful appeals reverse distribution restrictions where technically possible, update relevant projections, and preserve an audit record of both actions. Independent copies of public content may remain.
 
-## 12. Inclusive safety requirements
+## 12. Identity and privacy safety requirements
 
-### 12.1 Names, pronouns, and outing risk
+### 12.1 Names and outing risk
 
-- Current-profile and moderation tools use the current chosen name.
+- Current-profile and moderation tools use the current stated name.
 - Obsolete-name data is not included in ordinary moderator search merely for convenience.
 - Historical signed records, if required to evaluate a report, display a warning before identity history.
-- Targeted repeated deadnaming, targeted repeated misgendering, and threats to disclose gender or sexuality can be reported as identity-targeted abuse.
+- Repeated use of rejected identity labels and threats to disclose private
+  identity information can be reported as identity-targeted abuse.
 - The review focuses on conduct, context, repetition, and target impact; it does not require the reporter to prove a legal identity or disclose medical information.
 
 ### 12.2 Doxxing

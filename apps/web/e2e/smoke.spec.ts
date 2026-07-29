@@ -180,10 +180,17 @@ test('mobile navigation opens with keyboard-accessible links', async ({ page }) 
   ).toBeVisible();
 });
 
-test('local composer restores a plain-text draft without enabling publication', async ({
+test('locked composer preserves a local plain-text draft without claiming publication', async ({
   page,
 }) => {
   await page.goto('/compose');
+
+  await expect(
+    page.getByRole('heading', { name: 'The development proof runtime is unavailable.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Localnet publication requires an explicit development-only write opt-in.'),
+  ).toBeVisible();
 
   const text = '<img src=x onerror=alert(1)> A plain-text thought.';
   await page.getByLabel('Post text').fill(text);
@@ -194,6 +201,16 @@ test('local composer restores a plain-text draft without enabling publication', 
   await expect(preview).toContainText(text);
   await expect(preview.locator('img')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Publish unavailable' })).toBeDisabled();
+  await expect(page.getByRole('link', { name: 'Create a passkey account' })).toHaveAttribute(
+    'href',
+    '/onboarding',
+  );
+  await expect(page.getByRole('link', { name: 'Sign in with a passkey' })).toHaveAttribute(
+    'href',
+    '/signin',
+  );
+  await expect(page.locator('.publication-evidence')).toHaveCount(0);
+  await expect(page.locator('body')).not.toContainText('Published globally');
 
   await page.reload();
   await expect(page.getByLabel('Post text')).toHaveValue(text);

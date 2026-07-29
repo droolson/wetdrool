@@ -15,7 +15,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ id
       backLabel="Back to profile"
       cards={[
         {
-          copy: 'Chosen name, pronouns, languages, identity details, and location each carry an independent visibility boundary.',
+          copy: 'Display name, languages, optional profile details, and location each carry an independent visibility boundary.',
           eyebrow: 'Disclosure',
           title: 'Fields do not travel as a bundle',
           tone: 'plum',
@@ -27,7 +27,7 @@ export default async function EditProfilePage({ params }: { params: Promise<{ id
           tone: 'coral',
         },
         {
-          copy: 'A prior public object may remain retrievable; clients can honor current chosen names without denying history.',
+          copy: 'A prior public object may remain retrievable; clients can honor the current display name without denying history.',
           eyebrow: 'History',
           title: 'Revision is not magical erasure',
           tone: 'sky',

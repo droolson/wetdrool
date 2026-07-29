@@ -1164,6 +1164,325 @@
   line-height: 1.45;
 }
 
+.compose-form__fields {
+  display: grid;
+  min-inline-size: 0;
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.compose-form__fields:disabled {
+  opacity: 0.72;
+}
+
+.localnet-proof-scope,
+.publication-panel {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
+}
+
+.localnet-proof-scope {
+  border-color: color-mix(in srgb, var(--wokesocial-sky) 55%, var(--wokesocial-line));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--wokesocial-sky) 11%, transparent),
+      transparent 60%
+    ),
+    var(--wokesocial-surface);
+}
+
+.localnet-proof-scope > header,
+.publication-panel > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.localnet-proof-scope h2,
+.publication-panel h3 {
+  margin: 0.35rem 0 0;
+  font-family: var(--wokesocial-font-display);
+  letter-spacing: -0.035em;
+}
+
+.localnet-proof-scope h2 {
+  font-size: clamp(1.35rem, 2.7vw, 1.85rem);
+}
+
+.publication-panel h3 {
+  font-size: 1.35rem;
+}
+
+.localnet-proof-scope > p,
+.publication-panel__note,
+.publication-panel__eligibility,
+.publication-auth-state,
+.publication-live-copy {
+  margin: 0;
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.localnet-proof-scope dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-sm);
+  background: var(--wokesocial-line);
+}
+
+.localnet-proof-scope dl div {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+  padding: 0.8rem;
+  background: var(--wokesocial-canvas-raised);
+}
+
+.localnet-proof-scope dt,
+.publication-evidence dt {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.localnet-proof-scope dd,
+.publication-evidence dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.73rem;
+  font-weight: 720;
+}
+
+.publication-panel {
+  border-color: color-mix(in srgb, var(--wokesocial-plum) 28%, var(--wokesocial-line));
+}
+
+.publication-panel[data-outcome='success'] {
+  border-color: color-mix(in srgb, var(--wokesocial-success) 52%, var(--wokesocial-line));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--wokesocial-success) 8%, transparent),
+      transparent 58%
+    ),
+    var(--wokesocial-surface);
+}
+
+.publication-panel[data-outcome='error'] {
+  border-color: color-mix(in srgb, var(--wokesocial-danger) 48%, var(--wokesocial-line));
+}
+
+.publication-panel__eligibility {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-sm);
+  background: var(--wokesocial-canvas-raised);
+}
+
+.publication-panel__eligibility[data-eligible='true'] {
+  color: var(--wokesocial-success);
+  border-color: color-mix(in srgb, var(--wokesocial-success) 38%, var(--wokesocial-line));
+}
+
+.publication-panel__eligibility[data-eligible='false'] {
+  color: var(--wokesocial-warning);
+  border-color: color-mix(in srgb, var(--wokesocial-warning) 38%, var(--wokesocial-line));
+}
+
+.publication-progress {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.publication-progress li {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.65rem;
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.73rem;
+  line-height: 1.4;
+}
+
+.publication-progress li::before {
+  display: grid;
+  width: 1.4rem;
+  height: 1.4rem;
+  place-items: center;
+  border: 1px solid var(--wokesocial-line-strong);
+  border-radius: 50%;
+  content: '';
+  background: var(--wokesocial-canvas-raised);
+}
+
+.publication-progress li[data-state='active'] {
+  color: var(--wokesocial-ink);
+  font-weight: 760;
+}
+
+.publication-progress li[data-state='active']::before {
+  border-color: var(--wokesocial-plum);
+  background: color-mix(in srgb, var(--wokesocial-plum) 15%, var(--wokesocial-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wokesocial-plum) 10%, transparent);
+}
+
+.publication-progress li[data-state='complete'] {
+  color: var(--wokesocial-success);
+}
+
+.publication-progress li[data-state='complete']::before {
+  color: var(--wokesocial-surface);
+  border-color: var(--wokesocial-success);
+  content: '✓';
+  background: var(--wokesocial-success);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.publication-progress li[data-state='stopped'] {
+  color: var(--wokesocial-danger);
+  font-weight: 760;
+}
+
+.publication-progress li[data-state='stopped']::before {
+  color: var(--wokesocial-danger);
+  border-color: var(--wokesocial-danger);
+  content: '!';
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.publication-actions,
+.publication-auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.publication-actions > button {
+  min-height: 3rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--wokesocial-radius-pill);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.publication-actions > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.publication-action--primary {
+  color: #17131d;
+  background: var(--wokesocial-citron);
+}
+
+.publication-action--secondary {
+  color: var(--wokesocial-ink);
+  border-color: var(--wokesocial-line-strong) !important;
+  background: var(--wokesocial-canvas-raised);
+}
+
+.publication-action--cancel {
+  color: var(--wokesocial-danger);
+  border-color: color-mix(in srgb, var(--wokesocial-danger) 45%, transparent) !important;
+  background: transparent;
+}
+
+.publication-auth-links a {
+  color: var(--wokesocial-plum);
+  font-size: 0.73rem;
+  font-weight: 760;
+  text-underline-offset: 0.2em;
+}
+
+.publication-live {
+  padding: 0.75rem 0.8rem;
+  border-inline-start: 3px solid var(--wokesocial-plum);
+  border-radius: 0 var(--wokesocial-radius-sm) var(--wokesocial-radius-sm) 0;
+  background: var(--wokesocial-canvas-raised);
+}
+
+.publication-live:focus {
+  outline: 2px solid var(--wokesocial-plum);
+  outline-offset: 3px;
+}
+
+.publication-live-copy {
+  color: var(--wokesocial-ink);
+}
+
+.publication-error {
+  margin: 0;
+  color: var(--wokesocial-danger);
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1.5;
+}
+
+.publication-evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-sm);
+  background: var(--wokesocial-line);
+}
+
+.publication-evidence div {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+  padding: 0.8rem;
+  background: var(--wokesocial-canvas-raised);
+}
+
+.publication-evidence code {
+  direction: ltr;
+  unicode-bidi: isolate;
+  color: var(--wokesocial-ink);
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+.publication-evidence__wide {
+  grid-column: 1 / -1;
+}
+
+.publication-cleanup-warning {
+  padding: 0.7rem 0.8rem;
+  margin: 0;
+  color: var(--wokesocial-warning);
+  border: 1px solid color-mix(in srgb, var(--wokesocial-warning) 38%, var(--wokesocial-line));
+  border-radius: var(--wokesocial-radius-sm);
+  background: color-mix(in srgb, var(--wokesocial-warning) 6%, var(--wokesocial-surface));
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 68rem) {
   .product-page-header {
     grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.65fr);
@@ -1189,6 +1508,10 @@
 
   .compose-preview__heading {
     grid-column: 1 / -1;
+  }
+
+  .localnet-proof-scope dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1326,8 +1649,14 @@
 
   .onboarding-ledger dl,
   .passkey-auth__session,
-  .preview-post dl {
+  .preview-post dl,
+  .localnet-proof-scope dl,
+  .publication-evidence {
     grid-template-columns: 1fr;
+  }
+
+  .publication-evidence__wide {
+    grid-column: auto;
   }
 
   .product-cta__actions,
@@ -1336,7 +1665,9 @@
   .composer__invitation,
   .compose-form__status,
   .compose-preview__heading,
-  .compose-actions {
+  .compose-actions,
+  .localnet-proof-scope > header,
+  .publication-panel > header {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1378,5 +1709,14 @@
 
   .compose-actions {
     display: grid;
+  }
+
+  .publication-actions,
+  .publication-auth-links {
+    display: grid;
+  }
+
+  .publication-actions > button {
+    width: 100%;
   }
 }

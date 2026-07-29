@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   COMPOSER_DRAFT_STORAGE_KEY,
+  REPLY_PERMISSION_LABELS,
   createEmptyComposerDraft,
   discardComposerDraft,
+  discardExactComposerDraft,
   loadComposerDraft,
   normalizePreviewText,
   parseComposerDraft,
@@ -32,6 +34,15 @@ class MemoryStorage implements DraftStorage {
 }
 
 describe('composer draft validation', () => {
+  it('labels the legacy following token as the author’s followers', () => {
+    expect(REPLY_PERMISSION_LABELS).toEqual({
+      everyone: 'Everyone',
+      following: 'Followers',
+      mentioned: 'Mentioned people',
+      nobody: 'No replies',
+    });
+  });
+
   it('requires meaningful text', () => {
     const result = validateComposerDraft(createEmptyComposerDraft());
 
@@ -153,6 +164,47 @@ describe('composer draft storage', () => {
     expect(discardComposerDraft(storage)).toBe(true);
     expect(storage.values.get(COMPOSER_DRAFT_STORAGE_KEY)).toBeUndefined();
     expect(storage.values.get('another-app')).toBe('keep me');
+  });
+
+  it('refuses to discard a draft that changed after selection', () => {
+    const storage = new MemoryStorage();
+    storage.values.set(COMPOSER_DRAFT_STORAGE_KEY, '{"version":1,"text":"new"}');
+
+    expect(discardExactComposerDraft(storage, '{"version":1,"text":"previous"}')).toBe(false);
+    expect(storage.getItem(COMPOSER_DRAFT_STORAGE_KEY)).toBe('{"version":1,"text":"new"}');
+    expect(discardExactComposerDraft(storage, '{"version":1,"text":"new"}')).toBe(true);
+  });
+
+  it('rejects silent draft writes and removals', () => {
+    const draft = createEmptyComposerDraft();
+    draft.text = 'Must be read back exactly.';
+    const silentWrite: DraftStorage = {
+      getItem() {
+        return null;
+      },
+      removeItem() {
+        // Intentionally ignore the requested removal.
+      },
+      setItem() {
+        // Intentionally ignore the requested write.
+      },
+    };
+    expect(saveComposerDraft(silentWrite, draft)).toBe(false);
+
+    const serialized = serializeComposerDraft(draft);
+    const silentRemove: DraftStorage = {
+      getItem() {
+        return serialized;
+      },
+      removeItem() {
+        // Intentionally ignore the requested removal.
+      },
+      setItem() {
+        // Intentionally ignore the requested write.
+      },
+    };
+    expect(discardComposerDraft(silentRemove)).toBe(false);
+    expect(discardExactComposerDraft(silentRemove, serialized)).toBe(false);
   });
 
   it('fails closed when browser storage is unavailable', () => {

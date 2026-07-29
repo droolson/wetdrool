@@ -9,6 +9,8 @@ export type BrowserAuthErrorCode =
   | 'origin-invalid'
   | 'prf-required'
   | 'server-invalid'
+  | 'signer-expired'
+  | 'signing-failed'
   | 'service-rejected';
 
 const USER_MESSAGES: Record<BrowserAuthErrorCode, string> = {
@@ -27,6 +29,8 @@ const USER_MESSAGES: Record<BrowserAuthErrorCode, string> = {
   'prf-required':
     'This passkey does not expose the PRF capability required to protect an embedded account key. No service credential was committed.',
   'server-invalid': 'The authentication service returned an invalid response.',
+  'signer-expired': 'This operation-scoped signer is no longer active.',
+  'signing-failed': 'The requested message could not be signed safely on this device.',
   'service-rejected': 'The authentication service rejected the ceremony. Please start again.',
 };
 

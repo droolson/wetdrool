@@ -55,6 +55,8 @@ const PAYMENT_RECEIPT_ACCOUNT_SPACE = 457n;
 const SUBSCRIPTION_ENTITLEMENT_ACCOUNT_SPACE = 210n;
 const U64_MAX = 18_446_744_073_709_551_615n;
 const MAX_SIMULATION_ACCOUNT_BALANCES = 256;
+const MAX_SIMULATION_ACCOUNT_QUERY_ADDRESSES = 100;
+const MAX_SIMULATION_EVIDENCE_ATTEMPTS = 5;
 const MAX_SIMULATION_INNER_GROUPS = 1;
 const MAX_SIMULATION_INSTRUCTIONS = 64;
 const MAX_SIMULATION_INSTRUCTION_ACCOUNTS = 256;
@@ -232,6 +234,11 @@ export interface WokeTransactionExecutionResult {
   readonly lastValidBlockHeight: bigint;
   readonly simulationSlot: bigint;
   readonly simulatedFeeLamports: bigint;
+  /**
+   * Exact simulation-bound minimum rent-exempt balances keyed by account data
+   * size in bytes. The result owns an immutable defensive copy.
+   */
+  readonly minimumRentExemptBalances: Readonly<Record<string, bigint>>;
   readonly unitsConsumed: bigint | null;
   readonly wireTransactionBase64: string;
   readonly wireTransactionByteLength: number;
@@ -460,7 +467,8 @@ export async function executeWokeInstruction(
 
     scope.assertActive('compiling');
     const transaction = compileWokeTransaction(instruction, feePayer, version, latestBlockhash);
-    const transactionAccountAddresses = decodeTransactionAccountAddresses(transaction);
+    const writableTransactionAccountAddresses =
+      decodeWritableTransactionAccountAddresses(transaction);
     const signedTransaction = await collectAndVerifySignatures(
       transaction,
       {
@@ -480,11 +488,17 @@ export async function executeWokeInstruction(
     const wireTransactionBytes = Uint8Array.from(getTransactionEncoder().encode(signedTransaction));
     const wireTransactionBase64 = getBase64Decoder().decode(wireTransactionBytes);
     const decodedWireBytes = getBase64Encoder().encode(wireTransactionBase64);
-    if (!equalBytes(Uint8Array.from(decodedWireBytes), wireTransactionBytes)) {
+    const messageBytes = Uint8Array.from(signedTransaction.messageBytes);
+    const messageBase64 = getBase64Decoder().decode(messageBytes);
+    const decodedMessageBytes = getBase64Encoder().encode(messageBase64);
+    if (
+      !equalBytes(Uint8Array.from(decodedWireBytes), wireTransactionBytes) ||
+      !equalBytes(Uint8Array.from(decodedMessageBytes), messageBytes)
+    ) {
       throw executionError(
         'invalid-instruction',
         'compiling',
-        'Solana transaction base64 encoding did not round-trip to the exact signed bytes.',
+        'Solana transaction or message base64 encoding did not round-trip to the exact signed bytes.',
       );
     }
     const transactionSignature = getSignatureFromTransaction(signedTransaction);
@@ -500,8 +514,9 @@ export async function executeWokeInstruction(
         version,
         latestBlockhash,
         transactionSignature,
+        messageBase64,
         wireTransactionBase64,
-        transactionAccountAddresses,
+        writableTransactionAccountAddresses,
         maxTransactionFeeLamports: limits.maxTransactionFeeLamports,
         minimumRentExemptBalances,
       },
@@ -575,6 +590,9 @@ export async function executeWokeInstruction(
       lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
       simulationSlot: simulation.contextSlot,
       simulatedFeeLamports: simulation.feeLamports,
+      minimumRentExemptBalances: Object.freeze({
+        ...simulation.snapshot.minimumRentExemptBalances,
+      }),
       unitsConsumed: simulation.unitsConsumed,
       wireTransactionBase64,
       wireTransactionByteLength: wireTransactionBytes.byteLength,
@@ -789,22 +807,53 @@ function compileWokeTransaction(
   }
 }
 
-function decodeTransactionAccountAddresses(transaction: Readonly<Transaction>): readonly string[] {
+function decodeWritableTransactionAccountAddresses(
+  transaction: Readonly<Transaction>,
+): readonly string[] {
   try {
     const decoded = getCompiledTransactionMessageDecoder().decode(transaction.messageBytes);
+    const accountCount = decoded.staticAccounts.length;
+    const { numReadonlyNonSignerAccounts, numReadonlySignerAccounts, numSignerAccounts } =
+      decoded.header;
     if (
-      decoded.staticAccounts.length < 1 ||
-      decoded.staticAccounts.length > MAX_SIMULATION_ACCOUNT_BALANCES ||
-      new Set(decoded.staticAccounts).size !== decoded.staticAccounts.length
+      accountCount < 1 ||
+      accountCount > MAX_SIMULATION_ACCOUNT_BALANCES ||
+      new Set(decoded.staticAccounts).size !== accountCount ||
+      !Number.isSafeInteger(numSignerAccounts) ||
+      !Number.isSafeInteger(numReadonlySignerAccounts) ||
+      !Number.isSafeInteger(numReadonlyNonSignerAccounts) ||
+      numSignerAccounts < 1 ||
+      numSignerAccounts > accountCount ||
+      numReadonlySignerAccounts < 0 ||
+      numReadonlySignerAccounts > numSignerAccounts ||
+      numReadonlyNonSignerAccounts < 0 ||
+      numReadonlyNonSignerAccounts > accountCount - numSignerAccounts ||
+      ('addressTableLookups' in decoded &&
+        decoded.addressTableLookups !== undefined &&
+        decoded.addressTableLookups.length !== 0)
     ) {
       throw new TypeError('invalid static account set');
     }
-    return Object.freeze([...decoded.staticAccounts]);
+
+    const writableSignerCount = numSignerAccounts - numReadonlySignerAccounts;
+    const writableNonSignerEnd = accountCount - numReadonlyNonSignerAccounts;
+    const writableAccounts = decoded.staticAccounts.filter(
+      (_accountAddress, index) =>
+        index < writableSignerCount || (index >= numSignerAccounts && index < writableNonSignerEnd),
+    );
+    if (
+      writableAccounts.length < 1 ||
+      writableAccounts.length > MAX_SIMULATION_ACCOUNT_QUERY_ADDRESSES ||
+      writableAccounts[0] !== decoded.staticAccounts[0]
+    ) {
+      throw new TypeError('invalid writable account set');
+    }
+    return Object.freeze([...writableAccounts]);
   } catch (error) {
     throw executionError(
       'invalid-instruction',
       'compiling',
-      'The compiled transaction account set is invalid.',
+      'The compiled transaction writable-account set is invalid.',
       error,
     );
   }
@@ -1077,123 +1126,250 @@ async function simulateExactTransaction(
     readonly version: WokeTransactionVersion;
     readonly latestBlockhash: LatestBlockhash;
     readonly transactionSignature: string;
+    readonly messageBase64: string;
     readonly wireTransactionBase64: string;
-    readonly transactionAccountAddresses: readonly string[];
+    readonly writableTransactionAccountAddresses: readonly string[];
     readonly maxTransactionFeeLamports: bigint;
     readonly minimumRentExemptBalances: Readonly<Record<string, bigint>>;
   },
   scope: OperationScope,
 ): Promise<ValidatedSimulation> {
-  const response = await sendRpcRequest(
-    rpc.simulateTransaction(
-      binding.wireTransactionBase64 as Parameters<
-        ReturnType<typeof createSolanaRpc>['simulateTransaction']
-      >[0],
-      {
+  const writableAccountAddresses = binding.writableTransactionAccountAddresses.map(
+    (accountAddress) => address(accountAddress),
+  );
+  let minimumEvidenceSlot = binding.latestBlockhash.contextSlot;
+
+  for (let attempt = 1; attempt <= MAX_SIMULATION_EVIDENCE_ATTEMPTS; attempt += 1) {
+    const preAccountResponse = await sendRpcRequest(
+      rpc.getMultipleAccounts(writableAccountAddresses, {
         commitment: 'confirmed',
         encoding: 'base64',
-        innerInstructions: true,
-        minContextSlot: binding.latestBlockhash.contextSlot,
-        replaceRecentBlockhash: false,
-        sigVerify: true,
-      },
-    ),
-    scope,
+        dataSlice: { length: 0, offset: 0 },
+        minContextSlot: minimumEvidenceSlot,
+      }),
+      scope,
+      'simulating',
+      'getMultipleAccounts',
+    );
+    const preAccountContextSlot = parseSimulationContextSlot(
+      preAccountResponse,
+      minimumEvidenceSlot,
+      'pre-simulation account',
+    );
+    if (!Array.isArray(preAccountResponse.value)) {
+      throw executionError(
+        'invalid-rpc-response',
+        'simulating',
+        'The WokeNet provider returned a malformed pre-simulation account response.',
+      );
+    }
+    const preLamports = parseSimulationRpcAccountLamports(
+      preAccountResponse.value,
+      writableAccountAddresses,
+      'pre-simulation',
+    );
+
+    const feeResponse = await sendRpcRequest(
+      rpc.getFeeForMessage(
+        binding.messageBase64 as Parameters<
+          ReturnType<typeof createSolanaRpc>['getFeeForMessage']
+        >[0],
+        {
+          commitment: 'confirmed',
+          minContextSlot: preAccountContextSlot,
+        },
+      ),
+      scope,
+      'simulating',
+      'getFeeForMessage',
+    );
+    const feeContextSlot = parseSimulationContextSlot(
+      feeResponse,
+      preAccountContextSlot,
+      'transaction-fee',
+    );
+    const feeLamports = parseRpcLamports(feeResponse.value, 'exact-message transaction fee');
+    if (feeContextSlot !== preAccountContextSlot) {
+      minimumEvidenceSlot = feeContextSlot;
+      continue;
+    }
+    if (feeLamports > binding.maxTransactionFeeLamports) {
+      throw executionError(
+        'fee-limit-exceeded',
+        'simulating',
+        `The exact-message WokeNet transaction fee exceeds the approved ${String(
+          binding.maxTransactionFeeLamports,
+        )}-lamport limit.`,
+      );
+    }
+
+    const response = await sendRpcRequest(
+      rpc.simulateTransaction(
+        binding.wireTransactionBase64 as Parameters<
+          ReturnType<typeof createSolanaRpc>['simulateTransaction']
+        >[0],
+        {
+          accounts: {
+            addresses: writableAccountAddresses,
+            encoding: 'base64',
+          },
+          commitment: 'confirmed',
+          encoding: 'base64',
+          innerInstructions: true,
+          minContextSlot: preAccountContextSlot,
+          replaceRecentBlockhash: false,
+          sigVerify: true,
+        },
+      ),
+      scope,
+      'simulating',
+      'simulateTransaction',
+    );
+    const simulationContextSlot = parseSimulationContextSlot(
+      response,
+      preAccountContextSlot,
+      'simulation',
+    );
+    if (!isRecord(response.value)) {
+      throw executionError(
+        'invalid-rpc-response',
+        'simulating',
+        'The WokeNet provider returned a malformed simulation response.',
+      );
+    }
+    if (simulationContextSlot !== preAccountContextSlot) {
+      minimumEvidenceSlot = simulationContextSlot;
+      continue;
+    }
+    if (
+      !Object.hasOwn(response.value, 'replacementBlockhash') ||
+      response.value.replacementBlockhash !== null
+    ) {
+      throw executionError(
+        'blockhash-substitution',
+        'simulating',
+        'The provider replaced or failed to attest the signed transaction blockhash during simulation.',
+      );
+    }
+    if (!Object.hasOwn(response.value, 'err')) {
+      throw executionError(
+        'invalid-rpc-response',
+        'simulating',
+        'The simulation response omitted its execution result.',
+      );
+    }
+    if (response.value.err !== null) {
+      throw executionError(
+        'simulation-failed',
+        'simulating',
+        'The exact signed WokeNet transaction failed simulation.',
+      );
+    }
+    const logs = parseSimulationLogs(response.value.logs);
+    const innerInstructions = parseBoundedInnerInstructions(response.value.innerInstructions);
+    const postLamports = parseSimulationRpcAccountLamports(
+      response.value.accounts,
+      writableAccountAddresses,
+      'post-simulation',
+    );
+    const accountBalances = parseSimulationAccountBalances(
+      preLamports,
+      postLamports,
+      writableAccountAddresses,
+    );
+    const unitsConsumed =
+      response.value.unitsConsumed === undefined
+        ? null
+        : parseNonnegativeRpcBigint(
+            response.value.unitsConsumed,
+            'simulation compute-unit count',
+            'simulating',
+          );
+    const snapshot: WokeTransactionSimulationSnapshot = Object.freeze({
+      source: 'simulateTransaction',
+      endpoint: context.endpoint,
+      genesisHash: context.genesisHash,
+      programAddress: context.programAddress,
+      contextSlot: simulationContextSlot,
+      transactionSignature: binding.transactionSignature,
+      transactionVersion: binding.version,
+      feePayer: binding.feePayer,
+      blockhash: binding.latestBlockhash.blockhash,
+      lastValidBlockHeight: binding.latestBlockhash.lastValidBlockHeight,
+      maxTransactionFeeLamports: binding.maxTransactionFeeLamports,
+      wireTransactionBase64: binding.wireTransactionBase64,
+      error: null,
+      feeLamports,
+      logs,
+      innerInstructions,
+      accountBalances,
+      unitsConsumed,
+      minimumRentExemptBalances: binding.minimumRentExemptBalances,
+    });
+    return {
+      snapshot,
+      contextSlot: simulationContextSlot,
+      feeLamports,
+      unitsConsumed,
+    };
+  }
+
+  throw executionError(
+    'simulation-mismatch',
     'simulating',
-    'simulateTransaction',
+    `The provider could not return fee, pre-account, and post-simulation evidence from one confirmed slot within ${String(
+      MAX_SIMULATION_EVIDENCE_ATTEMPTS,
+    )} attempts.`,
   );
+}
+
+function parseSimulationContextSlot(response: unknown, minimumSlot: bigint, label: string): bigint {
   if (
-    response === null ||
-    typeof response !== 'object' ||
-    response.context === null ||
-    typeof response.context !== 'object' ||
-    response.value === null ||
-    typeof response.value !== 'object' ||
+    !isRecord(response) ||
+    !isRecord(response.context) ||
     typeof response.context.slot !== 'bigint' ||
-    response.context.slot < binding.latestBlockhash.contextSlot
+    response.context.slot < minimumSlot ||
+    response.context.slot > U64_MAX ||
+    !Object.hasOwn(response, 'value')
   ) {
     throw executionError(
       'invalid-rpc-response',
       'simulating',
-      'The WokeNet provider returned a malformed or stale simulation response.',
+      `The WokeNet provider returned a malformed or stale ${label} response.`,
     );
   }
+  return response.context.slot;
+}
+
+function parseSimulationRpcAccountLamports(
+  value: unknown,
+  accountAddresses: readonly string[],
+  label: string,
+): readonly bigint[] {
   if (
-    !Object.hasOwn(response.value, 'replacementBlockhash') ||
-    response.value.replacementBlockhash !== null
+    !Array.isArray(value) ||
+    value.length !== accountAddresses.length ||
+    value.length > MAX_SIMULATION_ACCOUNT_QUERY_ADDRESSES
   ) {
-    throw executionError(
-      'blockhash-substitution',
-      'simulating',
-      'The provider replaced or failed to attest the signed transaction blockhash during simulation.',
-    );
-  }
-  if (!Object.hasOwn(response.value, 'err')) {
     throw executionError(
       'invalid-rpc-response',
       'simulating',
-      'The simulation response omitted its execution result.',
+      `The ${label} account response does not match the exact writable-account request.`,
     );
   }
-  if (response.value.err !== null) {
-    throw executionError(
-      'simulation-failed',
-      'simulating',
-      'The exact signed WokeNet transaction failed simulation.',
-    );
-  }
-  const feeLamports = parseRpcLamports(response.value.fee, 'simulation transaction fee');
-  if (feeLamports > binding.maxTransactionFeeLamports) {
-    throw executionError(
-      'fee-limit-exceeded',
-      'simulating',
-      `The simulated WokeNet transaction fee exceeds the approved ${String(
-        binding.maxTransactionFeeLamports,
-      )}-lamport limit.`,
-    );
-  }
-  const logs = parseSimulationLogs(response.value.logs);
-  const innerInstructions = parseBoundedInnerInstructions(response.value.innerInstructions);
-  const accountBalances = parseSimulationAccountBalances(
-    response.value.preBalances,
-    response.value.postBalances,
-    binding.transactionAccountAddresses,
-  );
-  const unitsConsumed =
-    response.value.unitsConsumed === undefined
-      ? null
-      : parseNonnegativeRpcBigint(
-          response.value.unitsConsumed,
-          'simulation compute-unit count',
+  return Object.freeze(
+    value.map((account, index) => {
+      if (account === null) return 0n;
+      if (!isRecord(account) || !Object.hasOwn(account, 'lamports')) {
+        throw executionError(
+          'invalid-rpc-response',
           'simulating',
+          `The ${label} account response contains a malformed account at index ${String(index)}.`,
         );
-  const snapshot: WokeTransactionSimulationSnapshot = Object.freeze({
-    source: 'simulateTransaction',
-    endpoint: context.endpoint,
-    genesisHash: context.genesisHash,
-    programAddress: context.programAddress,
-    contextSlot: response.context.slot,
-    transactionSignature: binding.transactionSignature,
-    transactionVersion: binding.version,
-    feePayer: binding.feePayer,
-    blockhash: binding.latestBlockhash.blockhash,
-    lastValidBlockHeight: binding.latestBlockhash.lastValidBlockHeight,
-    maxTransactionFeeLamports: binding.maxTransactionFeeLamports,
-    wireTransactionBase64: binding.wireTransactionBase64,
-    error: null,
-    feeLamports,
-    logs,
-    innerInstructions,
-    accountBalances,
-    unitsConsumed,
-    minimumRentExemptBalances: binding.minimumRentExemptBalances,
-  });
-  return {
-    snapshot,
-    contextSlot: response.context.slot,
-    feeLamports,
-    unitsConsumed,
-  };
+      }
+      return parseRpcLamports(account.lamports, `${label} account balance ${String(index)}`);
+    }),
+  );
 }
 
 function parseSimulationLogs(value: unknown): readonly string[] | null {
@@ -1269,16 +1445,14 @@ function parseBoundedInnerInstructions(value: unknown): unknown {
 }
 
 function parseSimulationAccountBalances(
-  preValue: unknown,
-  postValue: unknown,
+  preValue: readonly bigint[],
+  postValue: readonly bigint[],
   accountAddresses: readonly string[],
 ): readonly WokeTransactionSimulationAccountBalance[] {
   if (
-    !Array.isArray(preValue) ||
-    !Array.isArray(postValue) ||
     preValue.length !== accountAddresses.length ||
     postValue.length !== accountAddresses.length ||
-    preValue.length > MAX_SIMULATION_ACCOUNT_BALANCES
+    preValue.length > MAX_SIMULATION_ACCOUNT_QUERY_ADDRESSES
   ) {
     throw executionError(
       'invalid-rpc-response',
@@ -1288,14 +1462,15 @@ function parseSimulationAccountBalances(
   }
   return Object.freeze(
     accountAddresses.map((accountAddress, index) => {
-      const preLamports = parseRpcLamports(
-        preValue[index],
-        `pre-simulation balance ${String(index)}`,
-      );
-      const postLamports = parseRpcLamports(
-        postValue[index],
-        `post-simulation balance ${String(index)}`,
-      );
+      const preLamports = preValue[index];
+      const postLamports = postValue[index];
+      if (preLamports === undefined || postLamports === undefined) {
+        throw executionError(
+          'invalid-rpc-response',
+          'simulating',
+          'The simulation account-balance response is incomplete.',
+        );
+      }
       return Object.freeze({
         address: accountAddress,
         preLamports,

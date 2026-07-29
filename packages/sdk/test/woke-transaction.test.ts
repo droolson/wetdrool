@@ -1,7 +1,7 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
 import {
+  getBase64Decoder,
   getBase64Encoder,
-  getCompiledTransactionMessageDecoder,
   getSignatureFromTransaction,
   getTransactionDecoder,
 } from '@solana/kit';
@@ -13,6 +13,7 @@ import {
   WokeTransactionExecutionError,
   buildSendWokeTipInstruction,
   buildSettleWokeSubscriptionInstruction,
+  executeWokeInstruction,
   executeWokePaymentTransaction,
   type BuiltWokeSettlementInstruction,
   type BuiltWokeSubscriptionSettlementInstruction,
@@ -55,6 +56,9 @@ interface MockRpcOptions {
   readonly simulationError?: unknown;
   readonly simulationFeeLamports?: number;
   readonly simulationLogs?: readonly string[] | null;
+  readonly preAccountContextSlots?: readonly number[];
+  readonly feeContextSlots?: readonly number[];
+  readonly simulationContextSlots?: readonly number[];
   readonly mutateTransfers?: (
     transfers: readonly Record<string, unknown>[],
   ) => readonly Record<string, unknown>[];
@@ -82,6 +86,7 @@ interface MockRpcOptions {
 
 interface MockRpc {
   readonly requests: RpcRequestBody[];
+  readonly simulationResponseValues: readonly Record<string, unknown>[];
   readonly simulatedTransactions: string[];
   readonly sentTransactions: string[];
 }
@@ -163,11 +168,22 @@ function installMockRpc(
   options: MockRpcOptions = {},
 ): MockRpc {
   const requests: RpcRequestBody[] = [];
+  const simulationResponseValues: Record<string, unknown>[] = [];
   const simulatedTransactions: string[] = [];
   const sentTransactions: string[] = [];
   let sendAttempt = 0;
   let statusAttempt = 0;
   let genesisAttempt = 0;
+  let preAccountAttempt = 0;
+  let feeAttempt = 0;
+  let simulationAttempt = 0;
+  let pendingBalances:
+    | {
+        readonly addresses: readonly string[];
+        readonly preBalances: readonly number[];
+        readonly postBalances: readonly number[];
+      }
+    | undefined;
   const statusSequence = options.statusSequence ?? [
     {
       slot: 120,
@@ -214,10 +230,47 @@ function installMockRpc(
         case 'getMinimumBalanceForRentExemption':
           result = minimumRentExemptBalance;
           break;
+        case 'getMultipleAccounts': {
+          const addresses = readAddressParams(body);
+          const simulationFeeLamports = options.simulationFeeLamports ?? 5_000;
+          const defaultBalances = buildSimulationAccountBalances(
+            addresses,
+            built,
+            simulationFeeLamports,
+          );
+          const balances = options.mutateAccountBalances?.(defaultBalances) ?? defaultBalances;
+          pendingBalances = {
+            addresses,
+            preBalances: balances.preBalances,
+            postBalances: balances.postBalances,
+          };
+          result = {
+            context: {
+              slot: indexedSlot(options.preAccountContextSlots, preAccountAttempt++, 101),
+            },
+            value: pendingBalances.preBalances.map(rpcAccountSnapshot),
+          };
+          break;
+        }
+        case 'getFeeForMessage':
+          result = {
+            context: { slot: indexedSlot(options.feeContextSlots, feeAttempt++, 101) },
+            value: options.simulationFeeLamports ?? 5_000,
+          };
+          break;
         case 'simulateTransaction': {
           const transaction = readTransactionParam(body);
           simulatedTransactions.push(transaction);
-          const simulationFeeLamports = options.simulationFeeLamports ?? 5_000;
+          const requestedAddresses = readSimulationAccountAddresses(body);
+          if (
+            pendingBalances === undefined ||
+            pendingBalances.addresses.length !== requestedAddresses.length ||
+            pendingBalances.addresses.some(
+              (accountAddress, index) => accountAddress !== requestedAddresses[index],
+            )
+          ) {
+            throw new TypeError('Simulation account request does not match its pre-state query.');
+          }
           const transfers = built.plan.transfers.map((transfer): Record<string, unknown> => ({
             program: 'system',
             programId: WOKENET_SYSTEM_PROGRAM_ADDRESS,
@@ -261,36 +314,29 @@ function installMockRpc(
               instructions: options.mutateTransfers?.(systemInstructions) ?? systemInstructions,
             },
           ];
-          const defaultBalances = buildSimulationAccountBalances(
-            transaction,
-            built,
-            simulationFeeLamports,
-          );
-          const balances = options.mutateAccountBalances?.(defaultBalances) ?? defaultBalances;
           const defaultLogs = [
             `Program ${context.programAddress} invoke [1]`,
             `Program data: ${Buffer.from(encodeSettlementEvent(built)).toString('base64')}`,
             `Program ${context.programAddress} success`,
           ];
+          const simulationValue: Record<string, unknown> = {
+            accounts: pendingBalances.postBalances.map(rpcAccountSnapshot),
+            err: options.simulationError ?? null,
+            innerInstructions:
+              options.mutateInnerInstructions?.(innerInstructionGroups) ?? innerInstructionGroups,
+            loadedAccountsDataSize: 0,
+            logs: Object.hasOwn(options, 'simulationLogs') ? options.simulationLogs : defaultLogs,
+            replacementBlockhash: options.replacementBlockhash ?? null,
+            returnData: null,
+            unitsConsumed: 59_000,
+          };
+          simulationResponseValues.push(simulationValue);
           result = {
-            context: { slot: 101 },
-            value: {
-              accounts: null,
-              err: options.simulationError ?? null,
-              fee: simulationFeeLamports,
-              innerInstructions:
-                options.mutateInnerInstructions?.(innerInstructionGroups) ?? innerInstructionGroups,
-              loadedAccountsDataSize: 0,
-              loadedAddresses: null,
-              logs: Object.hasOwn(options, 'simulationLogs') ? options.simulationLogs : defaultLogs,
-              postBalances: balances.postBalances,
-              postTokenBalances: null,
-              preBalances: balances.preBalances,
-              preTokenBalances: null,
-              replacementBlockhash: options.replacementBlockhash ?? null,
-              returnData: null,
-              unitsConsumed: 59_000,
+            context: {
+              apiVersion: '2.3.0',
+              slot: indexedSlot(options.simulationContextSlots, simulationAttempt++, 101),
             },
+            value: simulationValue,
           };
           break;
         }
@@ -322,7 +368,7 @@ function installMockRpc(
       return jsonRpcResult(body.id, result);
     }),
   );
-  return { requests, simulatedTransactions, sentTransactions };
+  return { requests, simulationResponseValues, simulatedTransactions, sentTransactions };
 }
 
 function executionLimits() {
@@ -337,7 +383,7 @@ function executionLimits() {
 }
 
 describe('WokeNet transaction execution', () => {
-  it('signs a version-0 message, simulates exact bytes, broadcasts them, and waits for finality', async () => {
+  it('uses Agave-standard slot-bound fee/account evidence for the exact bytes before broadcast', async () => {
     const built = await builtTip();
     const rpc = installMockRpc(built);
     const operationSigner = vi.fn(signer());
@@ -358,10 +404,20 @@ describe('WokeNet transaction execution', () => {
       lastValidBlockHeight: 200n,
       simulationSlot: 101n,
       simulatedFeeLamports: 5_000n,
+      minimumRentExemptBalances: {
+        '457': BigInt(minimumRentExemptBalance),
+      },
       unitsConsumed: 59_000n,
       slot: 121n,
       sendAttempts: 1,
       confirmationAttempts: 2,
+    });
+    expect(Object.isFrozen(result.minimumRentExemptBalances)).toBe(true);
+    expect(() => {
+      (result.minimumRentExemptBalances as Record<string, bigint>)['457'] = 0n;
+    }).toThrow(TypeError);
+    expect(result.minimumRentExemptBalances).toEqual({
+      '457': BigInt(minimumRentExemptBalance),
     });
     expect(operationSigner).toHaveBeenCalledOnce();
     const signingRequest = operationSigner.mock.calls[0]?.[0];
@@ -377,6 +433,10 @@ describe('WokeNet transaction execution', () => {
     });
     expect(rpc.simulatedTransactions).toEqual([result.wireTransactionBase64]);
     expect(rpc.sentTransactions).toEqual([result.wireTransactionBase64]);
+    expect(rpc.simulationResponseValues).toHaveLength(1);
+    expect(Object.hasOwn(rpc.simulationResponseValues[0] ?? {}, 'fee')).toBe(false);
+    expect(Object.hasOwn(rpc.simulationResponseValues[0] ?? {}, 'preBalances')).toBe(false);
+    expect(Object.hasOwn(rpc.simulationResponseValues[0] ?? {}, 'postBalances')).toBe(false);
 
     const simulationRequest = rpc.requests.find(
       (request) => request.method === 'simulateTransaction',
@@ -384,10 +444,33 @@ describe('WokeNet transaction execution', () => {
     expect(simulationRequest?.params?.[1]).toMatchObject({
       encoding: 'base64',
       innerInstructions: true,
-      minContextSlot: 100,
+      minContextSlot: 101,
       replaceRecentBlockhash: false,
       sigVerify: true,
     });
+    const preAccountRequest = rpc.requests.find(
+      (request) => request.method === 'getMultipleAccounts',
+    );
+    expect(preAccountRequest?.params?.[1]).toEqual({
+      commitment: 'confirmed',
+      dataSlice: { length: 0, offset: 0 },
+      encoding: 'base64',
+      minContextSlot: 100,
+    });
+    expect(
+      (simulationRequest?.params?.[1] as { readonly accounts?: unknown } | undefined)?.accounts,
+    ).toEqual({
+      addresses: preAccountRequest?.params?.[0],
+      encoding: 'base64',
+    });
+    const feeRequest = rpc.requests.find((request) => request.method === 'getFeeForMessage');
+    const exactTransaction = getTransactionDecoder().decode(
+      getBase64Encoder().encode(result.wireTransactionBase64),
+    );
+    expect(feeRequest?.params).toEqual([
+      getBase64Decoder().decode(exactTransaction.messageBytes),
+      { commitment: 'confirmed', minContextSlot: 101 },
+    ]);
     const sendRequest = rpc.requests.find((request) => request.method === 'sendTransaction');
     expect(sendRequest?.params?.[1]).toMatchObject({
       encoding: 'base64',
@@ -396,6 +479,80 @@ describe('WokeNet transaction execution', () => {
       skipPreflight: true,
     });
     expect(rpc.requests.filter((request) => request.method === 'getGenesisHash')).toHaveLength(6);
+  });
+
+  it('retries the exact signed transaction when the confirmed bank advances between evidence RPCs', async () => {
+    const built = await builtTip();
+    const rpc = installMockRpc(built, {
+      preAccountContextSlots: [101, 102],
+      feeContextSlots: [101, 102],
+      simulationContextSlots: [102, 102],
+      statusSequence: [
+        {
+          slot: 121,
+          confirmations: null,
+          err: null,
+          confirmationStatus: 'finalized',
+          status: { Ok: null },
+        },
+      ],
+    });
+
+    const result = await executeWokePaymentTransaction({
+      built,
+      feePayer: signerAddress,
+      signer: signer(),
+      limits: executionLimits(),
+    });
+
+    expect(result.simulationSlot).toBe(102n);
+    expect(rpc.requests.filter((request) => request.method === 'getMultipleAccounts')).toHaveLength(
+      2,
+    );
+    expect(rpc.requests.filter((request) => request.method === 'getFeeForMessage')).toHaveLength(2);
+    expect(rpc.requests.filter((request) => request.method === 'simulateTransaction')).toHaveLength(
+      2,
+    );
+    expect(
+      rpc.requests
+        .filter((request) => request.method === 'simulateTransaction')
+        .map(
+          (request) =>
+            (request.params?.[1] as { readonly minContextSlot?: number } | undefined)
+              ?.minContextSlot,
+        ),
+    ).toEqual([101, 102]);
+    expect(rpc.simulatedTransactions).toEqual([
+      result.wireTransactionBase64,
+      result.wireTransactionBase64,
+    ]);
+    expect(rpc.sentTransactions).toEqual([result.wireTransactionBase64]);
+  });
+
+  it('fails closed after a bounded number of attempts when confirmed-slot evidence never aligns', async () => {
+    const built = await builtTip();
+    const rpc = installMockRpc(built, {
+      preAccountContextSlots: [101, 102, 103, 104, 105],
+      feeContextSlots: [102, 103, 104, 105, 106],
+    });
+
+    await expect(
+      executeWokePaymentTransaction({
+        built,
+        feePayer: signerAddress,
+        signer: signer(),
+        limits: executionLimits(),
+      }),
+    ).rejects.toMatchObject({
+      code: 'simulation-mismatch',
+      stage: 'simulating',
+    });
+    expect(rpc.requests.filter((request) => request.method === 'getMultipleAccounts')).toHaveLength(
+      5,
+    );
+    expect(rpc.requests.filter((request) => request.method === 'getFeeForMessage')).toHaveLength(5);
+    expect(rpc.requests.some((request) => request.method === 'simulateTransaction')).toBe(false);
+    expect(rpc.sentTransactions).toHaveLength(0);
   });
 
   it('supports a legacy message without changing the exact-byte guarantees', async () => {
@@ -425,6 +582,42 @@ describe('WokeNet transaction execution', () => {
     expect(rpc.sentTransactions[0]).toBe(result.wireTransactionBase64);
   });
 
+  it('returns an immutable defensive copy of the simulation-bound rent evidence', async () => {
+    const built = await builtTip();
+    installMockRpc(built, {
+      statusSequence: [
+        {
+          slot: 121,
+          confirmations: null,
+          err: null,
+          confirmationStatus: 'finalized',
+          status: { Ok: null },
+        },
+      ],
+    });
+    let simulationRentEvidence: Readonly<Record<string, bigint>> | undefined;
+
+    const result = await executeWokeInstruction({
+      context: built.context,
+      instruction: built.instruction,
+      feePayer: signerAddress,
+      signer: signer(),
+      verifySimulation: (snapshot) => {
+        simulationRentEvidence = snapshot.minimumRentExemptBalances;
+      },
+      rentExemptionSpaces: [457],
+      limits: executionLimits(),
+    });
+
+    expect(simulationRentEvidence).toEqual({
+      '457': BigInt(minimumRentExemptBalance),
+    });
+    expect(Object.isFrozen(simulationRentEvidence)).toBe(true);
+    expect(result.minimumRentExemptBalances).toEqual(simulationRentEvidence);
+    expect(result.minimumRentExemptBalances).not.toBe(simulationRentEvidence);
+    expect(Object.isFrozen(result.minimumRentExemptBalances)).toBe(true);
+  });
+
   it('decodes and verifies weekly-subscription transfers, event vectors, and both new accounts', async () => {
     const built = await builtSubscription();
     const rpc = installMockRpc(built, {
@@ -447,6 +640,11 @@ describe('WokeNet transaction execution', () => {
     });
 
     expect(result.finalized).toBe(true);
+    expect(result.minimumRentExemptBalances).toEqual({
+      '210': BigInt(minimumRentExemptBalance),
+      '457': BigInt(minimumRentExemptBalance),
+    });
+    expect(Object.isFrozen(result.minimumRentExemptBalances)).toBe(true);
     expect(rpc.simulatedTransactions).toEqual([result.wireTransactionBase64]);
     const simulation = rpc.requests.find((request) => request.method === 'simulateTransaction');
     const instructions = (
@@ -766,6 +964,7 @@ describe('WokeNet transaction execution', () => {
         limits: executionLimits(),
       }),
     ).rejects.toMatchObject({ code: 'fee-limit-exceeded', stage: 'simulating' });
+    expect(rpc.simulatedTransactions).toHaveLength(0);
     expect(rpc.sentTransactions).toHaveLength(0);
   });
 
@@ -1129,13 +1328,38 @@ function readTransactionParam(body: RpcRequestBody): string {
   return transaction;
 }
 
+function readAddressParams(body: RpcRequestBody): readonly string[] {
+  const addresses = body.params?.[0];
+  if (!Array.isArray(addresses) || !addresses.every((value) => typeof value === 'string')) {
+    throw new TypeError(`${body.method} omitted its account addresses.`);
+  }
+  return addresses;
+}
+
+function readSimulationAccountAddresses(body: RpcRequestBody): readonly string[] {
+  const config = body.params?.[1];
+  if (
+    config === null ||
+    typeof config !== 'object' ||
+    !('accounts' in config) ||
+    config.accounts === null ||
+    typeof config.accounts !== 'object' ||
+    !('addresses' in config.accounts) ||
+    !Array.isArray(config.accounts.addresses) ||
+    !config.accounts.addresses.every((value) => typeof value === 'string')
+  ) {
+    throw new TypeError('simulateTransaction omitted its requested account snapshots.');
+  }
+  return config.accounts.addresses;
+}
+
 function signatureFromWireTransaction(value: string): string {
   const bytes = getBase64Encoder().encode(value);
   return getSignatureFromTransaction(getTransactionDecoder().decode(bytes));
 }
 
 function buildSimulationAccountBalances(
-  wireTransactionBase64: string,
+  addresses: readonly string[],
   built: BuiltWokeSettlementInstruction,
   feeLamports: number,
 ): {
@@ -1143,12 +1367,6 @@ function buildSimulationAccountBalances(
   readonly preBalances: readonly number[];
   readonly postBalances: readonly number[];
 } {
-  const transaction = getTransactionDecoder().decode(
-    getBase64Encoder().encode(wireTransactionBase64),
-  );
-  const addresses = getCompiledTransactionMessageDecoder()
-    .decode(transaction.messageBytes)
-    .staticAccounts.map(String);
   const preBalances = addresses.map(() => 10_000_000);
   const deltas = addresses.map(() => 0);
   const setPreBalance = (accountAddress: string, lamports: number): void => {
@@ -1190,6 +1408,26 @@ function buildSimulationAccountBalances(
     preBalances,
     postBalances: preBalances.map((balance, index) => balance + (deltas[index] ?? 0)),
   };
+}
+
+function rpcAccountSnapshot(lamports: number): Record<string, unknown> | null {
+  if (lamports === 0) return null;
+  return {
+    data: ['', 'base64'],
+    executable: false,
+    lamports,
+    owner: WOKENET_SYSTEM_PROGRAM_ADDRESS,
+    rentEpoch: 0,
+    space: 0,
+  };
+}
+
+function indexedSlot(
+  values: readonly number[] | undefined,
+  index: number,
+  fallback: number,
+): number {
+  return values?.[Math.min(index, values.length - 1)] ?? fallback;
 }
 
 function jsonRpcResult(id: string | number, result: unknown): Response {

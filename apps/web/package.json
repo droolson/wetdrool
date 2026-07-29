@@ -20,7 +20,10 @@
     "@wokesocial/crypto": "workspace:*",
     "@wokesocial/indexer-client": "workspace:*",
     "@wokesocial/protocol": "workspace:*",
+    "@wokesocial/sdk": "workspace:*",
+    "@wokesocial/storage": "workspace:*",
     "@wokesocial/ui": "workspace:*",
+    "bs58": "6.0.0",
     "next": "16.2.12",
     "react": "19.2.8",
     "react-dom": "19.2.8"

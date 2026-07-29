@@ -20,7 +20,7 @@ const STEPS = [
     tone: 'plum' as const,
   },
   {
-    copy: 'Add a chosen name, handle, pronouns, languages, and profile details with visibility controls for each field.',
+    copy: 'Add a display name, handle, languages, and optional profile details with visibility controls for each field.',
     eyebrow: 'Step 02',
     footer: 'Signed profile storage required',
     title: 'Introduce yourself',

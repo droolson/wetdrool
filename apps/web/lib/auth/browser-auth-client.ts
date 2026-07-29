@@ -61,8 +61,19 @@ export interface PasskeyPlatform {
 export interface LocalKeyOperations {
   randomBytes(length: number): Uint8Array;
   publicKeyFromSeed(seed: Uint8Array): Uint8Array;
+  sign(message: Uint8Array, seed: Uint8Array): Uint8Array;
   wrap(input: WrapPasskeyAccountKeyInput): Promise<PasskeyWrappedKeyBundle>;
   unwrap(input: UnwrapPasskeyAccountKeyInput): Promise<Uint8Array>;
+}
+
+export interface PasskeyOperationSigner {
+  readonly credentialId: string;
+  /** Canonical base64url encoding of the verified Ed25519 public key. */
+  readonly publicKey: string;
+  /** Callback-scoped copy. It is zeroed when the operation settles. */
+  readonly publicKeyBytes: Uint8Array;
+  /** Returns a callback-scoped signature that is zeroed when the operation settles. */
+  sign(message: Uint8Array): Uint8Array;
 }
 
 export interface BrowserAuthClientOptions extends AuthApiClientOptions {
@@ -199,6 +210,73 @@ export class BrowserAuthClient {
     return this.api.revokeCredential(credentialId);
   }
 
+  /**
+   * Performs fresh user verification and exposes the synchronized root only as
+   * a callback-scoped signing capability. The seed is never passed to the
+   * callback, and every byte buffer owned by the capability is invalidated when
+   * the callback settles.
+   */
+  async withFreshPasskeySigner<Result>(
+    operation: (signer: PasskeyOperationSigner) => Result | Promise<Result>,
+  ): Promise<Result> {
+    const stepped = await this.#freshStepUp(true);
+    let root:
+      | {
+          readonly publicKey: Uint8Array;
+          readonly seed: Uint8Array;
+        }
+      | undefined;
+    let publicKeyBytes: Uint8Array | undefined;
+    let active = false;
+    const issuedSignatures = new Set<Uint8Array>();
+    try {
+      root = await this.#unwrapSynchronizedRoot(stepped.credentialId, stepped.prfOutput);
+      publicKeyBytes = root.publicKey.slice();
+      active = true;
+      const signer: PasskeyOperationSigner = Object.freeze({
+        credentialId: stepped.credentialId,
+        publicKey: encodeBase64Url(root.publicKey),
+        publicKeyBytes,
+        sign: (message: Uint8Array): Uint8Array => {
+          if (!active || root === undefined) {
+            throw new BrowserAuthError('signer-expired');
+          }
+          if (!(message instanceof Uint8Array)) {
+            throw new BrowserAuthError('signing-failed');
+          }
+
+          const messageWorking = message.slice();
+          let signatureWorking: Uint8Array | undefined;
+          try {
+            signatureWorking = this.#keyOperations.sign(messageWorking, root.seed);
+            if (!(signatureWorking instanceof Uint8Array) || signatureWorking.byteLength !== 64) {
+              throw new BrowserAuthError('signing-failed');
+            }
+            const signature = signatureWorking.slice();
+            issuedSignatures.add(signature);
+            return signature;
+          } catch (error) {
+            if (error instanceof BrowserAuthError) throw error;
+            throw new BrowserAuthError('signing-failed');
+          } finally {
+            messageWorking.fill(0);
+            signatureWorking?.fill(0);
+          }
+        },
+      });
+
+      const result = operation(signer);
+      return isPromiseLike(result) ? await result : result;
+    } finally {
+      active = false;
+      for (const signature of issuedSignatures) signature.fill(0);
+      publicKeyBytes?.fill(0);
+      root?.publicKey.fill(0);
+      root?.seed.fill(0);
+      stepped.prfOutput.fill(0);
+    }
+  }
+
   async #prepareNewRootBundle(
     credentialId: string,
     prfOutput: Uint8Array,
@@ -207,7 +285,7 @@ export class BrowserAuthClient {
     let publicKey: Uint8Array | undefined;
     try {
       if (seed.byteLength !== 32) throw new BrowserAuthError('key-wrapper-failed');
-      publicKey = Uint8Array.from(this.#keyOperations.publicKeyFromSeed(seed));
+      publicKey = this.#keyOperations.publicKeyFromSeed(seed);
       if (publicKey.byteLength !== 32) throw new BrowserAuthError('key-wrapper-failed');
       const bundle = await this.#keyOperations.wrap({
         prfOutput,
@@ -263,7 +341,7 @@ export class BrowserAuthClient {
         bundle,
       });
       if (seed.byteLength !== 32) return fallback('bundle-missing-or-invalid');
-      actualPublicKey = Uint8Array.from(this.#keyOperations.publicKeyFromSeed(seed));
+      actualPublicKey = this.#keyOperations.publicKeyFromSeed(seed);
       expectedPublicKeyBytes = decodeBase64Url(expectedPublicKey, 32);
       if (
         actualPublicKey.byteLength !== 32 ||
@@ -311,7 +389,7 @@ export class BrowserAuthClient {
         bundle,
       });
       if (seed.byteLength !== 32) throw new BrowserAuthError('key-wrapper-invalid');
-      publicKey = Uint8Array.from(this.#keyOperations.publicKeyFromSeed(seed));
+      publicKey = this.#keyOperations.publicKeyFromSeed(seed);
       expectedPublicKey = decodeBase64Url(expectedPublicKeyString, 32);
       if (publicKey.byteLength !== 32 || !constantTimeEqual(publicKey, expectedPublicKey)) {
         throw new BrowserAuthError('key-wrapper-invalid');
@@ -398,6 +476,7 @@ export class BrowserAuthClient {
 const defaultKeyOperations: LocalKeyOperations = {
   randomBytes: secureRandomBytes,
   publicKeyFromSeed: (seed) => Uint8Array.from(ed25519.getPublicKey(seed)),
+  sign: (message, seed) => Uint8Array.from(ed25519.sign(message, seed)),
   wrap: wrapPasskeyAccountKey,
   unwrap: unwrapPasskeyAccountKey,
 };
@@ -483,4 +562,13 @@ function constantTimeEqual(left: Uint8Array, right: Uint8Array): boolean {
     difference |= (left[index] ?? 0) ^ (right[index] ?? 0);
   }
   return difference === 0;
+}
+
+function isPromiseLike<Result>(value: Result | Promise<Result>): value is Promise<Result> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'then' in value &&
+    typeof value.then === 'function'
+  );
 }

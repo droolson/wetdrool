@@ -7,11 +7,11 @@ export const metadata: Metadata = {
 };
 
 const INCLUSION_COMMITMENTS = [
-  'Chosen names stand apart from legal names.',
-  'Pronouns can be custom, multiple, private, or absent.',
-  'Gender and sexuality are optional and never inferred.',
-  'Chosen-family labels do not force a legal or biological model.',
-  'Current views protect against deadnaming while history is disclosed honestly.',
+  'Display names stand apart from legal names.',
+  'Optional profile details can be public, limited, private, or absent.',
+  'Sensitive identity attributes are never inferred.',
+  'Custom relationship labels do not force a legal or biological model.',
+  'Current views use the latest stated name while history is disclosed honestly.',
   'Localization never assumes English identity language.',
 ] as const;
 

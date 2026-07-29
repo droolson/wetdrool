@@ -23,7 +23,7 @@ security audit, `$WOKE` mint, or Solana Seeker release.
 
 | Audience                       | Recommended path                                                                                                                         |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| New contributor                | [Repository README](../README.md) → [Contributing](../CONTRIBUTING.md) → [Development](DEVELOPMENT.md) → [Testing](TESTING.md)           |
+| New contributor                | [Repository README](../README.md) → [Contributing](../CONTRIBUTING.md) → [Development](DEVELOPMENT.md) → [Developer handoff](DEVELOPER_HANDOFF.md) → [Testing](TESTING.md) |
 | Product or design contributor  | [Product specification](PRODUCT_SPEC.md) → [Brand](BRAND.md) → [Accessibility](ACCESSIBILITY.md) → [Roadmap](ROADMAP.md)                 |
 | Protocol or Solana contributor | [Architecture](ARCHITECTURE.md) → [Protocol](PROTOCOL.md) → [ADRs](DECISIONS/) → [Testing](TESTING.md)                                   |
 | Security or privacy reviewer   | [Security policy](../SECURITY.md) → [Security design](SECURITY.md) → [Threat model](THREAT_MODEL.md) → [Privacy](PRIVACY.md)             |
@@ -35,6 +35,9 @@ security audit, `$WOKE` mint, or Solana Seeker release.
 | Document                                 | Purpose                                                                                     |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [Product specification](PRODUCT_SPEC.md) | Product principles, audiences, journeys, feature boundaries, and delivery status            |
+| [Platform expansion](PLATFORM_EXPANSION.md) | Planned video, `.woke` names, points, avatars, verification, AI, market intelligence, and governance systems |
+| [Woke AI platform](AI_PLATFORM.md)       | Athena, Kairos, Hermes, owned-hardware evaluation, inference, credits, training, privacy, and release gates |
+| [Organization](ORGANIZATION.md)          | Owner-provided corporate structure, product responsibilities, service boundaries, and verification limits |
 | [Brand](BRAND.md)                        | Voice, visual direction, inclusive identity UX, and originality expectations                |
 | [Accessibility](ACCESSIBILITY.md)        | Accessibility requirements, implemented evidence, and the remaining manual conformance work |
 | [Roadmap](ROADMAP.md)                    | Dependency-ordered phases, exit criteria, and explicit production blockers                  |
@@ -85,6 +88,7 @@ verified intake channels; follow the exact warnings in those documents.
 | Document                                             | Purpose                                                                       |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------- |
 | [Development](DEVELOPMENT.md)                        | Setup, repository orientation, everyday workflows, and review expectations    |
+| [Developer handoff](DEVELOPER_HANDOFF.md)            | Current-state continuity guide for resuming work without prior task transcripts |
 | [Testing](TESTING.md)                                | Test layers, verified evidence, adversarial vectors, and release gates        |
 | [Deployment](DEPLOYMENT.md)                          | Environment, artifact, authority, rollout, and public-deployment requirements |
 | [Operations](OPERATIONS.md)                          | Service ownership, readiness, observability, incidents, backups, and runbooks |

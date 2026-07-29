@@ -48,7 +48,17 @@ noncustodial: ordinary reading never requires a token, and no token sale,
 bridge, exchange, lending, yield, or token-gated identity feature is authorized
 by this specification.
 
-The product is open to anyone who follows its community and safety standards. It must not require disclosure of gender, sexuality, legal name, or a wallet address in the visible interface.
+The product is open to anyone who follows its community and safety standards.
+It must not require disclosure of sensitive identity attributes, a legal name,
+or a wallet address in the visible interface.
+
+The approved expansion adds decentralized long- and short-form video,
+pseudonymous `.woke` names, transparent contribution points, an avatar and
+creator-item ecosystem, optional minimal-disclosure verification, open-model AI
+tools, social-sentiment market research, and published product governance.
+These systems remain planned and are specified in
+[Platform Expansion](PLATFORM_EXPANSION.md). They do not change the evidence
+policy in this document.
 
 ## 3. Product principles
 
@@ -149,31 +159,39 @@ configured provider remains open.
 - Public profile and social-graph data can be reconstructed from protocol data.
 - The client visibly indicates degraded verification or freshness when a provider is behind.
 
-## 6. Identity and inclusive profile requirements
+## 6. Identity and profile requirements
 
 ### 6.1 Identity presentation
 
 **PS-INC-001 — Planned.** A chosen display name is independent of a legal name. The product does not request a legal name in ordinary onboarding.
 
-**PS-INC-002 — Planned.** A profile may contain zero, one, or multiple pronoun sets, including custom localized text. Each set has a visibility control.
+**PS-INC-002 — Planned.** A profile may contain optional, localized personal
+details. Each field has an independent visibility control and may be absent.
 
-**PS-INC-003 — Planned.** Gender and sexuality fields are optional, flexible, and private by default. The service never infers them from appearance, name, behavior, connections, or content.
+**PS-INC-003 — Planned.** Sensitive profile fields are private by default. The
+service never infers them from appearance, name, behavior, connections, or
+content.
 
-**PS-INC-004 — Planned.** Chosen-family relationship labels are supported without forcing a legal or biological relationship model.
+**PS-INC-004 — Planned.** Custom relationship labels are supported without
+forcing a legal or biological relationship model.
 
 **PS-INC-005 — Planned.** Current-profile surfaces use the current chosen name. Search suggestions, notifications, mentions, caches, and current-profile views must stop presenting an obsolete name after a verified update.
 
 Signed historical revisions may remain retrievable from independent or immutable systems. When the official client exposes a historical revision, it must place the historical-data warning before the obsolete identity data and must not surface that data in ordinary current-profile views.
 
-**PS-INC-006 — Planned.** Identity terminology is localization-ready, supports right-to-left presentation, and does not assume English pronoun grammar.
+**PS-INC-006 — Planned.** Identity terminology is localization-ready, supports
+right-to-left presentation, and does not assume English grammar.
 
 **Acceptance criteria**
 
 - A profile can be completed while every identity-attribute field is blank.
-- Pronoun visibility is enforced in API responses and rendered views, not only hidden with CSS.
+- Profile-field visibility is enforced in API responses and rendered views,
+  not only hidden with CSS.
 - A profile update invalidates current-view caches and search projections for the replaced chosen name.
-- Harassment reports support targeted deadnaming and targeted misgendering without treating accidental mistakes as automatically equivalent.
-- No verification flow asks a reviewer or model to infer gender or sexuality from an image.
+- Harassment reports support repeated use of rejected identity labels without
+  treating accidental mistakes as automatically equivalent.
+- No verification flow asks a reviewer or model to infer sensitive identity
+  attributes from an image.
 
 ### 6.2 Handles and wallet privacy
 
@@ -490,6 +508,11 @@ publication, and end-to-end accessibility UX remain open.
 - Third-party clients can publish already processed compliant media without the flagship worker.
 - Video is lazy-loaded and does not prevent a usable initial render.
 
+Long-form and vertical short-form video use signed, content-addressed media
+manifests and replaceable delivery providers. “Middle-out” is a benchmark
+program, not a shipped codec claim. See
+[Platform Expansion](PLATFORM_EXPANSION.md#3-social-and-video-product).
+
 ## 14. Required product surfaces
 
 All surfaces below are **Planned**. A route existing by itself does not satisfy the requirement.
@@ -598,9 +621,9 @@ The product cannot be described as production-ready until:
 
 | Capability group | Status | Evidence |
 |---|---|---|
-| Public experience and onboarding | Partial | Complete route surface, 210 passing desktop and mobile-viewport browser cases, bounded provider-backed public search, and real passkey service-account lifecycle coverage; wallet and protocol-identity onboarding remain fail-closed |
-| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass Solana local-validator tests; durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and sessions pass, while protocol onboarding, WokeNet delegation lifecycle, recovery product UX, sponsorship, and public-cluster execution remain open |
-| Signed publishing and social graph | Verified local post/community/membership vertical slice; broader interactions partial | The connected proof finalized exactly 11 local transactions, verified member-authored join content and privacy-safe status, replayed 10 durable events, and passed eight browser checks; it is not public-cluster or general product-mutation evidence |
+| Public experience and onboarding | Partial | Complete route surface, established desktop/mobile browser matrix, bounded provider-backed public search, real passkey service-account lifecycle coverage, and a verified development-localnet passkey identity/text-publication journey; wallet onboarding and public-cluster protocol onboarding remain fail-closed |
+| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass Solana local-validator tests. Durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, sessions, and one passkey-derived development-localnet identity creation/reconciliation path pass; delegation lifecycle, recovery product UX, sponsorship, and public-cluster execution remain open |
+| Signed publishing and social graph | Verified local post/community/membership and browser text-publication vertical slices; broader interactions partial | The current connected proof preserves the canonical 10-event fixture, creates one passkey-derived identity, publishes two distinct browser posts, recovers one lost response without a duplicate send, replays the expanded 13 events to exact state, renders both anchor signatures, and records zero secret matches. It is not public-cluster or general product-mutation evidence |
 | Feeds, search, and discovery | Partial | Seven-mode replaceable feed engine plus a separate consumer-safe home feed, strict bounded indexer-backed chronological pagination, an unauthenticated public following-graph preview, device-local exact-identity hiding, and indexed bounded profile/post search. Authenticated following, recommendation-provider integration, cross-device safety, independent-provider conformance, complete offline caching, and production-scale evidence remain |
 | Communities and governance | Partial predeployment implementation | Member-signed join/leave, creator-or-scoped-delegate remove/ban, terminal bans, exact sequence snapshots, privacy-safe exact-address membership status, and immutable one-member-one-vote account logic are present. Flagship wallet mutations, protected/approval flows, richer roles, other governance models, execution, and public deployment remain open |
 | Moderation and appeals | Partial | Strict signed provider intake/active labels/restricted reads plus an encrypted runtime-delete-protected PostgreSQL case/appeal ledger, legal holds, due/expiry transitions, and transparency aggregation pass; production object authorization/SSO, a separately credentialed retention executor, and complete specialist product workflows remain blocked |

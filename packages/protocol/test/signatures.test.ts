@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { ed25519 } from '@noble/curves/ed25519.js';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildPostPayload,
   canonicalizeEnvelope,
   signPayload,
+  signPayloadWithSigner,
   signedEnvelopeSchema,
   verifyEnvelope,
   type SignedEnvelope,
@@ -23,6 +25,57 @@ describe('signed envelopes', () => {
     expect(verified.objectId).toMatch(/^wokesocialobj:v1:post:/u);
     expect(verified.cid).toMatch(/^bafk/u);
     expect(verified.envelope).toEqual(envelope);
+  });
+
+  it('builds the same verified envelope through an operation-scoped detached signer', async () => {
+    const signer = vi.fn(
+      (request: {
+        readonly algorithm: string;
+        readonly keyId: string;
+        readonly message: Uint8Array;
+        readonly purpose: string;
+      }) => {
+        expect(request).toMatchObject({
+          algorithm: 'Ed25519',
+          keyId: payload.signingKey,
+          purpose: 'wokesocial-portable-object-v1',
+        });
+        return ed25519.sign(request.message, privateKey);
+      },
+    );
+
+    const envelope = await signPayloadWithSigner(payload, signer);
+    const verified = await verifyEnvelope(envelope, () => true);
+
+    expect(signer).toHaveBeenCalledOnce();
+    expect(envelope).toEqual(signPayload(payload, privateKey));
+    expect(verified.envelope).toEqual(envelope);
+  });
+
+  it('binds an external signature to the exact descriptor and declared key', async () => {
+    const wrongPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => 255 - index);
+
+    await expect(
+      signPayloadWithSigner(payload, ({ message }) => ed25519.sign(message, wrongPrivateKey)),
+    ).rejects.toThrow('different bytes or a different key');
+    await expect(
+      signPayloadWithSigner(payload, ({ message }) => {
+        const changed = Uint8Array.from(message);
+        changed[changed.length - 1] = (changed.at(-1) ?? 0) ^ 1;
+        return ed25519.sign(changed, privateKey);
+      }),
+    ).rejects.toThrow('different bytes or a different key');
+  });
+
+  it('rejects malformed signer output and wraps signer rejection without weakening validation', async () => {
+    await expect(signPayloadWithSigner(payload, () => new Uint8Array(63))).rejects.toThrow(
+      'invalid Ed25519 signature',
+    );
+    await expect(
+      signPayloadWithSigner(payload, () => {
+        throw new Error('device unavailable');
+      }),
+    ).rejects.toThrow('payload signer rejected');
   });
 
   it('rejects a payload changed after signing', async () => {

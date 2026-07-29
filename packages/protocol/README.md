@@ -168,7 +168,7 @@ Notable representation limits include:
 - no floating-point protocol numbers;
 - body text: 10,000 UTF-8 bytes;
 - profile bio: 2,000 UTF-8 bytes;
-- public pronoun, gender, chosen-family-label, and location values are inline;
+- public optional profile and location values are inline;
   followers-only/private values require encrypted content references and never
   permit inline plaintext;
 - media per post: 10;
@@ -183,7 +183,7 @@ within protocol version `1.0`:
   canonical bytes, IDs, signatures, and historical authorization semantics.
 - `schemaVersion: 2` is current for profile, community, and community-membership
   creation. Profile privacy requires encrypted content references for
-  followers-only/private pronouns, gender, chosen-family labels, and location.
+  followers-only/private profile and location values.
   Communities require the exact one-active-member-one-vote governance
   commitment and root-key authorization. Memberships require member consent for
   self actions, explicit moderator authorship for removal/ban, exact role/state

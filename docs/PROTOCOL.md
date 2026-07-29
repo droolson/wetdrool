@@ -789,8 +789,8 @@ remains a planned extension.
 
 Portable profile history has two readable shapes within protocol version
 `1.0`. Schema v1 is frozen for verification of existing signed bytes; the
-current creation surface emits only schema v2, whose protected pronoun, gender,
-chosen-family-label, and location values must use encrypted references.
+current creation surface emits only schema v2, whose protected optional profile
+and location values must use encrypted references.
 
 Each WokeNet deployment fixes one immutable
 `INDEXER_PROFILE_V2_ACTIVATION_SLOT`. A historical profile-update event without
@@ -815,49 +815,18 @@ commitment are therefore bound by the same canonical onchain event.
 {
   "displayName": "Alex Rivera",
   "bio": "Community organizer and photographer.",
-  "pronouns": [
-    {
-      "visibility": "public",
-      "value": "they/them"
-    }
-  ],
-  "gender": {
-    "visibility": "followers",
-    "valueReference": {
-      "cid": "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
-      "digest": "uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-      "bytes": 96,
-      "mediaType": "application/octet-stream",
-      "protection": {
-        "kind": "encrypted",
-        "encryptionFormat": "wokesocial-sealed-profile-value-v1",
-        "keyEnvelope": {
-          "id": "wokesocialobj:v1:media-manifest:uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        },
-        "accessPolicy": {
-          "id": "wokesocialobj:v1:community-rule-set:uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-        }
-      }
-    }
-  },
-  "chosenFamilyLabels": [
-    {
-      "visibility": "public",
-      "value": "chosen sibling"
-    }
-  ],
   "links": []
 }
 ```
 
-Chosen name is independent of legal name. Pronouns, gender, chosen-family
-labels, and location use the same strict visibility union. Only a `public`
-attribute may contain an inline `value`. A `followers` or `private` attribute
-must contain a `valueReference` whose required protection is
+A person-selected name is independent of legal name. Optional profile details
+and location use the same strict visibility union. Only a `public` attribute
+may contain an inline `value`. A `followers` or `private` attribute must contain
+a `valueReference` whose required protection is
 `{"kind":"encrypted", ...}` with a named encryption format, key envelope, and
 access policy. Raw protected plaintext, an unprotected reference, and the
-legacy `genderVisibility` field are invalid. Gender, sexuality, pronouns, legal
-identity, and other sensitive attributes are optional and never inferred.
+deprecated visibility shape are invalid. Legal identity and other sensitive
+attributes are optional and never inferred.
 
 ### Post content
 

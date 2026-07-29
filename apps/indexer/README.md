@@ -223,11 +223,11 @@ private profile fields, obsolete profile revisions, or community anchors. Commun
 excluded until the indexer can verify a signed community manifest whose visibility is public.
 
 Migration `0012_profile_confidentiality.sql` adds the complete public profile
-content projection. During upgrade it preserves only legacy pronoun entries
+content projection. During upgrade it preserves only legacy profile entries
 explicitly marked public; old followers-only/private plaintext is discarded.
-New memory and PostgreSQL projections retain public pronouns, gender,
-chosen-family labels, and location while leaving protected encrypted references
-in the verified source manifest for authorized clients.
+New memory and PostgreSQL projections retain explicitly public profile and
+location values while leaving protected encrypted references in the verified
+source manifest for authorized clients.
 
 Profile replacement is ordered by the identity's exact next onchain sequence
 and full event position, not slot alone. Sequential profile transactions in one

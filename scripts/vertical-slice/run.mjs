@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import { chainEnvironment } from '../toolchain-paths.mjs';
 import { repositoryRoot } from '../workspaces.mjs';
+import { readPublicationEvidence } from '../../tests/vertical-slice/publication-evidence.mjs';
 
 const PROGRAM_ID = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const POSTGRES_IMAGE =
@@ -21,6 +22,10 @@ const EXPECTED_RUST_VERSION = 'rustc 1.89.0 ';
 const EXPECTED_AGAVE_VERSION = '2.3.0';
 const EXPECTED_ANCHOR_VERSION = '0.32.1';
 const SUCCESS_TIMEOUT_MS = 90_000;
+const FIRST_BROWSER_POST =
+  'A passkey-signed WokeSocial post survived an ambiguous local-validator response.';
+const SECOND_BROWSER_POST =
+  'The same discoverable passkey reused one WokeNet identity for this second post.';
 const currentFile = fileURLToPath(import.meta.url);
 const argumentsAfterScript = process.argv.slice(2);
 const preflightOnly =
@@ -65,7 +70,7 @@ try {
   process.stdout.write(
     preflightOnly
       ? '[vertical-slice] PASS: fast orchestration preflight.\n'
-      : '[vertical-slice] PASS: validator → storage → indexer replay → web UI.\n',
+      : '[vertical-slice] PASS: validator → storage → replay → passkey publication → replayed web UI.\n',
   );
 } catch (error) {
   await printDiagnostics(error);
@@ -109,7 +114,7 @@ async function fastPreflight() {
   await runChecked('Offline signed-fixture construction', process.execPath, [
     'tests/vertical-slice/offline-smoke.mjs',
   ]);
-  state.portReservation = await reservePortBlock(30);
+  state.portReservation = await reservePortBlock(31);
   await state.portReservation.release();
   state.portReservation = undefined;
 }
@@ -122,6 +127,7 @@ async function main() {
   await mkdir(join(state.runDirectory, 'logs'), { recursive: true });
   const contentDirectory = join(state.runDirectory, 'content');
   const metadataPath = join(state.runDirectory, 'fixture.json');
+  const publicationEvidencePath = join(state.runDirectory, 'publication-evidence.json');
   const ledgerDirectory = join(state.runDirectory, 'ledger');
   const deployerKeypair = join(repositoryRoot, '.local', 'solana', 'deployer.json');
   const programBinary = join(repositoryRoot, 'target', 'deploy', 'social_protocol.so');
@@ -220,7 +226,7 @@ async function main() {
     { env: chainEnv },
   );
 
-  state.portReservation = await reservePortBlock(30);
+  state.portReservation = await reservePortBlock(31);
   const basePort = state.portReservation.base;
   const ports = {
     rpc: basePort,
@@ -231,6 +237,7 @@ async function main() {
     dynamicEnd: basePort + 27,
     indexer: basePort + 28,
     web: basePort + 29,
+    auth: basePort + 30,
   };
   await state.portReservation.release(Array.from({ length: 28 }, (_, offset) => offset));
 
@@ -238,6 +245,8 @@ async function main() {
   const websocketUrl = `ws://127.0.0.1:${ports.websocket}`;
   const indexerUrl = `http://127.0.0.1:${ports.indexer}`;
   const webUrl = `http://127.0.0.1:${ports.web}`;
+  const developmentWebUrl = `http://localhost:${ports.web}`;
+  const authUrl = `http://localhost:${ports.auth}`;
 
   step(`Starting a fresh local validator on explicit RPC port ${ports.rpc}`);
   const validator = spawnLogged(
@@ -306,7 +315,7 @@ async function main() {
 
   const serviceEnvironment = {
     ...process.env,
-    ALLOWED_ORIGINS: webUrl,
+    ALLOWED_ORIGINS: `${webUrl},${developmentWebUrl}`,
     APP_ENV: 'test',
     CONTENT_STORAGE_PATH: contentDirectory,
     DATABASE_URL: databaseUrl,
@@ -379,7 +388,6 @@ async function main() {
 
   step('Exercising the production-built Next application before projection replay');
   await state.portReservation.release([29]);
-  state.portReservation = undefined;
   await verifyProductionWeb(
     serviceEnvironment,
     ports.web,
@@ -421,6 +429,57 @@ async function main() {
     'post-replay',
   );
 
+  step('Publishing two passkey-backed posts through the development-only localnet browser path');
+  await state.portReservation.release([30]);
+  state.portReservation = undefined;
+  const publicationRuntime = await startDevelopmentPublicationWeb({
+    authPort: ports.auth,
+    authUrl,
+    contentDirectory,
+    developmentWebUrl,
+    evidencePath: publicationEvidencePath,
+    indexerUrl,
+    networkId,
+    postgresContainerName: state.containerName,
+    programId: PROGRAM_ID,
+    rpcUrl,
+    serviceEnvironment,
+    webPort: ports.web,
+  });
+  const publicationEvidence = await readPublicationEvidence(publicationEvidencePath, {
+    networkId,
+    programId: PROGRAM_ID,
+  });
+
+  step('Stopping the indexer and rebuilding the expanded projection from its durable ledger');
+  await stopChild(indexer);
+  await runChecked(
+    'Post-publication durable-ledger replay',
+    process.execPath,
+    ['tests/vertical-slice/replay-after-publication.mjs'],
+    {
+      env: {
+        ...indexerEnvironment,
+        VERTICAL_SLICE_METADATA_PATH: metadataPath,
+        VERTICAL_SLICE_PUBLICATION_EVIDENCE_PATH: publicationEvidencePath,
+      },
+    },
+  );
+
+  step('Restarting the indexer and proving both browser posts through feed and detail pages');
+  indexer = startIndexer(indexerEnvironment);
+  await waitForPublishedBrowserPosts(indexerUrl, publicationEvidence, indexer);
+  await verifyRestoredPublicationWeb({
+    authUrl,
+    developmentWebUrl,
+    evidencePath: publicationEvidencePath,
+    indexerUrl,
+    postgresContainerName: state.containerName,
+    rpcUrl,
+  });
+
+  await stopChild(publicationRuntime.web);
+  await stopChild(publicationRuntime.auth);
   await stopChild(indexer);
 }
 
@@ -475,6 +534,126 @@ async function verifyProductionWeb(environment, webPort, webUrl, indexerUrl, fix
   } finally {
     await stopChild(web);
   }
+}
+
+async function startDevelopmentPublicationWeb(options) {
+  const auth = spawnLogged(
+    'publication-auth',
+    'pnpm',
+    ['--filter', '@wokesocial/auth-service', 'exec', 'tsx', '../web/e2e/auth-service-fixture.ts'],
+    {
+      env: {
+        ...process.env,
+        NODE_ENV: 'test',
+        WOKESOCIAL_AUTH_PORT: String(options.authPort),
+        WOKESOCIAL_WEB_ORIGIN: options.developmentWebUrl,
+      },
+    },
+  );
+  await waitForHttp(`${options.authUrl}/healthz`, auth, 30_000, async (response) => {
+    const body = await response.json();
+    return response.ok && body?.ok === true;
+  });
+
+  const web = spawnLogged(
+    'web-publication-development',
+    'pnpm',
+    [
+      '--dir',
+      join(repositoryRoot, 'apps', 'web'),
+      'exec',
+      'next',
+      'dev',
+      '--webpack',
+      '--hostname',
+      '127.0.0.1',
+      '--port',
+      String(options.webPort),
+    ],
+    {
+      env: {
+        ...options.serviceEnvironment,
+        APP_ENV: 'development',
+        CONTENT_STORAGE_PATH: options.contentDirectory,
+        NEXT_PUBLIC_APP_ORIGIN: options.developmentWebUrl,
+        NEXT_PUBLIC_AUTH_SERVICE_URL: options.authUrl,
+        NEXT_PUBLIC_INDEXER_URL: options.indexerUrl,
+        NEXT_PUBLIC_PROGRAM_ID: options.programId,
+        NEXT_PUBLIC_SOLANA_CLUSTER: 'localnet',
+        NEXT_PUBLIC_SOLANA_RPC_URL: options.rpcUrl,
+        NODE_ENV: 'development',
+        WOKENET_NETWORK_ID: options.networkId,
+        WOKESOCIAL_AUTH_URL: options.authUrl,
+        WOKESOCIAL_INDEXER_URL: options.indexerUrl,
+        WOKESOCIAL_LOCALNET_WRITES: '1',
+        WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
+        WOKESOCIAL_LOCAL_CAS_ORIGIN: options.developmentWebUrl,
+      },
+    },
+  );
+  try {
+    await waitForHttp(`${options.developmentWebUrl}/compose`, web, 90_000, (response) =>
+      Promise.resolve(response.ok),
+    );
+    await runChecked(
+      'Real-browser passkey publication verification',
+      'pnpm',
+      [
+        '--dir',
+        join(repositoryRoot, 'apps', 'web'),
+        'exec',
+        'playwright',
+        'test',
+        '--config',
+        'publication-slice.playwright.config.ts',
+        '--grep',
+        'recovers an ambiguous response',
+      ],
+      {
+        env: publicationPlaywrightEnvironment(options),
+      },
+    );
+    return { auth, web };
+  } catch (error) {
+    await stopChild(web);
+    await stopChild(auth);
+    throw error;
+  }
+}
+
+async function verifyRestoredPublicationWeb(options) {
+  await runChecked(
+    'Replayed browser-publication feed/detail verification',
+    'pnpm',
+    [
+      '--dir',
+      join(repositoryRoot, 'apps', 'web'),
+      'exec',
+      'playwright',
+      'test',
+      '--config',
+      'publication-slice.playwright.config.ts',
+      '--grep',
+      'durable-ledger-restored posts',
+    ],
+    {
+      env: publicationPlaywrightEnvironment(options),
+    },
+  );
+}
+
+function publicationPlaywrightEnvironment(options) {
+  return {
+    ...process.env,
+    PLAYWRIGHT_BASE_URL: options.developmentWebUrl,
+    PUBLICATION_SLICE_AUTH_URL: options.authUrl,
+    PUBLICATION_SLICE_EVIDENCE_PATH: options.evidencePath,
+    PUBLICATION_SLICE_FIRST_POST: FIRST_BROWSER_POST,
+    PUBLICATION_SLICE_INDEXER_URL: options.indexerUrl,
+    PUBLICATION_SLICE_POSTGRES_CONTAINER: options.postgresContainerName,
+    PUBLICATION_SLICE_RPC_URL: options.rpcUrl,
+    PUBLICATION_SLICE_SECOND_POST: SECOND_BROWSER_POST,
+  };
 }
 
 function startIndexer(environment) {
@@ -608,6 +787,35 @@ async function waitForExpectedFeed(indexerUrl, fixture, child) {
     },
   );
   return accepted;
+}
+
+async function waitForPublishedBrowserPosts(indexerUrl, evidence, child) {
+  for (const expected of evidence.posts) {
+    await waitForHttp(
+      `${indexerUrl}/v1/posts/${encodeURIComponent(expected.objectId)}`,
+      child,
+      SUCCESS_TIMEOUT_MS,
+      async (response) => {
+        if (!response.ok) {
+          return false;
+        }
+        const body = await response.json();
+        return (
+          body?.post?.id === expected.objectId &&
+          body.post.body === expected.body &&
+          body.post.author?.identityId === evidence.identity.identityId &&
+          body.post.verification?.state === 'verified' &&
+          body.post.verification?.contentHash === expected.payloadHash &&
+          body.post.verification?.manifestUri === `ipfs://${expected.cid}` &&
+          body.post.verification?.anchor?.finality === 'finalized' &&
+          body.post.verification.anchor.transaction === expected.transactionSignature &&
+          body.post.verification.anchor.slot === Number(expected.finalizedSlot) &&
+          Number.isSafeInteger(body?.meta?.checkpointSlot) &&
+          BigInt(body.meta.checkpointSlot) >= BigInt(expected.indexedCheckpointSlot)
+        );
+      },
+    );
+  }
 }
 
 async function assertFeedContract(feed, fixture) {
