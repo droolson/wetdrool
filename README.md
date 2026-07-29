@@ -1,7 +1,6 @@
-# WokeSocial and WokeNet
+# WokeSocial Protocol
 
-This `wokenet` repository contains WokeSocial, the open, LGBTQ+ affirming,
-trans-owned social platform at `woke.social`, and WokeNet, its portable
+This `wokesocial` repository contains WokeSocial, the open social platform at `woke.social`, and WokeNet, its portable
 protocol and smart-contract deployment layer on the Solana blockchain. WokeNet
 is not a blockchain, Solana fork, validator implementation, or separate
 consensus network. Solana validators and RPC providers are external; this
