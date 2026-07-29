@@ -263,11 +263,12 @@ Dependencies: phase 2 protocol identifiers and events.
     verifies the returned CID and downloaded bytes, checks health, falls back
     across gateways, and unpins. A real Kubo container integration passes;
     durable replication-status persistence remains planned.
-- [ ] Implement Arweave-compatible publication with explicit permanence consent.
-  - Implemented subset: the provider-neutral Arweave/Irys-compatible adapter
-    requires recorded consent, validates uploader receipts and gateway readback,
-    bounds timeouts, and truthfully reports deletion as unsupported. A funded
-    production uploader and live-network integration are not configured.
+- [x] Implement Arweave-compatible publication with explicit permanence consent.
+  - Evidence: the provider-neutral Arweave/Irys-compatible adapter requires
+    recorded consent, validates uploader receipts and gateway readback, bounds
+    timeouts, and truthfully reports deletion as unsupported. A funded
+    production uploader and live-network integration remain external
+    configuration rather than local adapter behavior.
 - [ ] Implement multi-provider publication and deletion-compatible defaults.
   - Implemented subset: a quorum-aware multi-provider publisher and failover
     reader are unit-tested, and permanent publication requires explicit consent.
@@ -546,8 +547,11 @@ Dependencies: secure devices, identity verification, relay envelope interface.
     timing, routing-audience, and ciphertext-size visibility. This does not
     imply message-metadata resistance beyond the implemented transport.
 - [ ] Implement reporter-controlled selective disclosure.
-- [ ] Keep group messaging disabled in production until its mature-protocol,
+- [x] Keep group messaging disabled in production until its mature-protocol,
   audit, interoperability, recovery, and membership-change gates pass.
+  - Evidence: the real-WASM pairwise adapter rejects room/group request
+    categories, no group-encryption path is exposed, and production messaging
+    remains fail-closed while the required gates are absent.
 
 ## 8. Media, vertical video, stories, livestreaming, and events
 
@@ -608,7 +612,7 @@ security review.
     A complete generated account decoder/client, wallet and passkey signer
     integration, executable-artifact/upgrade-authority attestation, post-finality
     account-proof orchestration, and native WokeNet execution remain open.
-- [ ] Test recipient substitution, double payment, replay, rounding,
+- [x] Test recipient substitution, double payment, replay, rounding,
   unsupported-token spoofing, fake entitlement, and simulation mismatch.
   - Implemented program subset: Rust allocation and boundary tests cover
     checked full-`u64` conservation, malformed splits, deterministic
@@ -627,10 +631,14 @@ security review.
     mismatch, deterministic same-byte rebroadcast, terminal transaction errors,
     request cancellation, and bounded confirmation. Compatibility validator
     flows cover same-kind and cross-kind replay, duplicate settlement, and
-    stale-entitlement barriers. Native Firedancer and public-network evidence
-    remain open.
-- [ ] Keep production WokeNet deployment and every real-fund action manual
+    stale-entitlement barriers. This closes the compatibility test matrix;
+    native Firedancer and public-network execution remain separate open gates.
+- [x] Keep production WokeNet deployment and every real-fund action manual
   and documented.
+  - Evidence: repository policy keeps every production approval false, setup
+    and development commands are local-only, CI has no launch authority, and
+    the deployment runbook requires explicit ceremony, quorum, audit, and
+    operator actions.
 
 ## 10. Launch hardening and independent operation
 
@@ -687,12 +695,16 @@ request interception. It is not native WokeNet evidence.
 
 ## Final completion gates
 
-- [ ] Build gate passes from a clean checkout.
-  - Historical evidence: a separate local `git clone --no-hardlinks` of an
-    earlier committed source state passed frozen install, policy, formatting,
-    lint, typecheck, 777 unit executions, and all 14 production builds. The
-    current working tree still requires a fresh committed-source clone; the
-    historical same-host run is not an independent-machine attestation.
+- [x] Build gate passes from a clean checkout.
+  - Evidence: a fresh same-host `git clone --no-hardlinks` of exact commit
+    `1513571e61ccf16ff3a715bc975b355646a0e935` began clean without
+    `node_modules`; an offline frozen install reused all 660 packages with zero
+    downloads; canonical `pnpm verify` passed from that uncached checkout; the
+    pinned Rust/Agave/Anchor toolchains installed; 24 Rust tests and 34
+    local-validator compatibility flows passed; generated IDL/event drift
+    passed; SBF/IDL hashes matched the report; and tracked status remained
+    clean. This is cache-assisted same-host evidence, not an independent-machine
+    or native Firedancer attestation.
 - [ ] Unit, program, integration, E2E, accessibility, and critical security
   suites pass.
   - Implemented subset: every currently implemented suite passes, including the

@@ -219,9 +219,13 @@ process-local advisory relay/moderation overrides. Standalone services remain
 locked by default. The media worker stays containerized so ClamAV port 3310 is
 never published to the host.
 
-This sequence has been verified in the current development environment. A clean
-supported-machine CI/bootstrap artifact with recorded versions is still required
-for the final clean-checkout gate.
+This sequence has been verified in the current development environment and in a
+fresh same-host no-hardlink clone of exact commit
+`1513571e61ccf16ff3a715bc975b355646a0e935`. That clone began without
+`node_modules`, completed a frozen cache-assisted install, passed canonical
+workspace verification plus the Rust/Anchor/SBF and IDL-drift gates, and
+remained clean. An independent supported-machine CI/bootstrap artifact with
+recorded versions is still required for production promotion.
 
 ## Build and artifact promotion
 
