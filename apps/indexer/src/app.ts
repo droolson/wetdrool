@@ -19,13 +19,25 @@ import {
 } from '@wokesocial/protocol';
 
 import {
+  COMMUNITY_DIRECTORY_RECIPE,
+  decodeCommunityDirectoryCursor,
+  encodeCommunityDirectoryCursor,
+  MAX_COMMUNITY_CURSOR_LENGTH,
+} from './community-cursor.js';
+import {
   decodeFeedCursor,
   encodeFeedCursor,
   MAX_FEED_CURSOR_LENGTH,
   OPEN_INDEXER_FEED_RECIPE,
   type FeedCursorScope,
 } from './feed-cursor.js';
-import type { FeedEntry, PostProjection, PublicSearchResult } from './models.js';
+import type {
+  CommunityProjection,
+  FeedEntry,
+  PostProjection,
+  PublicSearchResult,
+  VerifiedCommunityProjection,
+} from './models.js';
 import { ProjectionError, type ProjectionStore } from './projection.js';
 import { openApiDocument } from './openapi.js';
 import { normalizePublicSearchTerm } from './public-search.js';
@@ -99,6 +111,13 @@ const handleParamsSchema = z
   .strict();
 const handleQuerySchema = z.object({ network: networkIdSchema }).strict();
 const communityParamsSchema = z.object({ communityAddress: solanaPublicKeySchema }).strict();
+const communityDirectoryQuerySchema = z
+  .object({
+    network: networkIdSchema,
+    limit: z.coerce.number().int().min(1).max(50).default(30),
+    before: z.string().min(1).max(MAX_COMMUNITY_CURSOR_LENGTH).optional(),
+  })
+  .strict();
 const proposalParamsSchema = z.object({ proposalAddress: solanaPublicKeySchema }).strict();
 const voteParamsSchema = z.object({ voteAddress: solanaPublicKeySchema }).strict();
 const paymentOfferingParamsSchema = z.object({ offeringAddress: solanaPublicKeySchema }).strict();
@@ -534,6 +553,50 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     },
   );
 
+  app.get(
+    '/v1/communities',
+    { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const parsed = communityDirectoryQuerySchema.safeParse(request.query);
+      if (!parsed.success) {
+        void reply.code(400);
+        return invalidQuery(parsed.error, 'Community directory query is invalid.');
+      }
+      let before;
+      try {
+        before =
+          parsed.data.before === undefined
+            ? undefined
+            : decodeCommunityDirectoryCursor(parsed.data.before, parsed.data.network);
+      } catch {
+        void reply.code(400);
+        return {
+          error: {
+            code: 'invalid-community-cursor',
+            message: 'Community directory cursor is invalid for this network and recipe.',
+          },
+        };
+      }
+      const snapshot = await options.projection.listPublicCommunities({
+        networkId: parsed.data.network,
+        limit: parsed.data.limit,
+        ...(before === undefined ? {} : { before }),
+      });
+      return {
+        canonical: false,
+        projection: 'wokenet-open-indexer',
+        recipe: COMMUNITY_DIRECTORY_RECIPE,
+        network: parsed.data.network,
+        meta: responseMetaForCheckpoint(snapshot.checkpoint),
+        communities: snapshot.communities.map(serializeCommunity),
+        nextCursor:
+          snapshot.next === undefined
+            ? null
+            : encodeCommunityDirectoryCursor(snapshot.next, parsed.data.network),
+      };
+    },
+  );
+
   app.get<{ Params: { communityAddress: string }; Querystring: { network: string } }>(
     '/v1/communities/:communityAddress',
     async (request, reply) => {
@@ -552,18 +615,16 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         parsedQuery.data.network,
         parsedParams.data.communityAddress,
       );
-      if (community === undefined) {
+      if (!isDirectlyReadableCommunity(community)) {
         void reply.code(404);
         return { error: { code: 'not-found', message: 'Community was not found.' } };
       }
-      const memberships = await options.projection.getCommunityMemberships(
-        community.networkId,
-        community.communityAddress,
-      );
       return {
         canonical: false,
-        community: serializeBigInts(community),
-        memberships: memberships.map(serializeBigInts),
+        projection: 'wokenet-open-indexer',
+        network: parsedQuery.data.network,
+        meta: await responseMeta(options.projection, parsedQuery.data.network),
+        community: serializeCommunity(community),
       };
     },
   );
@@ -683,7 +744,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         parsedQuery.data.network,
         parsedParams.data.communityAddress,
       );
-      if (community === undefined) {
+      if (!isDirectlyReadableCommunity(community)) {
         void reply.code(404);
         return { error: { code: 'not-found', message: 'Community was not found.' } };
       }
@@ -717,7 +778,11 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         parsedQuery.data.network,
         parsedParams.data.proposalAddress,
       );
-      if (proposal === undefined) {
+      const community =
+        proposal === undefined
+          ? undefined
+          : await options.projection.getCommunity(proposal.networkId, proposal.communityAddress);
+      if (proposal === undefined || !isDirectlyReadableCommunity(community)) {
         void reply.code(404);
         return { error: { code: 'not-found', message: 'Proposal was not found.' } };
       }
@@ -743,7 +808,11 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         parsedQuery.data.network,
         parsedParams.data.proposalAddress,
       );
-      if (proposal === undefined) {
+      const community =
+        proposal === undefined
+          ? undefined
+          : await options.projection.getCommunity(proposal.networkId, proposal.communityAddress);
+      if (proposal === undefined || !isDirectlyReadableCommunity(community)) {
         void reply.code(404);
         return { error: { code: 'not-found', message: 'Proposal was not found.' } };
       }
@@ -777,7 +846,11 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         parsedQuery.data.network,
         parsedParams.data.voteAddress,
       );
-      if (vote === undefined) {
+      const community =
+        vote === undefined
+          ? undefined
+          : await options.projection.getCommunity(vote.networkId, vote.communityAddress);
+      if (vote === undefined || !isDirectlyReadableCommunity(community)) {
         void reply.code(404);
         return { error: { code: 'not-found', message: 'Vote was not found.' } };
       }
@@ -948,11 +1021,12 @@ async function publicSearchResponse(
   });
   return {
     canonical: false,
+    network: networkId,
     meta: responseMetaForCheckpoint(snapshot.checkpoint),
     query,
     ranking: {
       deterministic: true,
-      version: 'public-match-v1',
+      version: 'public-match-v2',
     },
     scope: 'public-finalized-projection',
     results: snapshot.results.map(serializePublicSearchResult),
@@ -961,6 +1035,12 @@ async function publicSearchResponse(
 
 function serializePublicSearchResult(result: PublicSearchResult) {
   switch (result.kind) {
+    case 'community':
+      return {
+        kind: result.kind,
+        matchedBy: result.matchedBy,
+        community: serializeCommunity(result.community),
+      };
     case 'person':
       return {
         kind: result.kind,
@@ -981,6 +1061,20 @@ function serializePublicSearchResult(result: PublicSearchResult) {
         },
       };
   }
+}
+
+function serializeCommunity(community: VerifiedCommunityProjection) {
+  return serializeBigInts(community);
+}
+
+function isDirectlyReadableCommunity(
+  community: CommunityProjection | undefined,
+): community is VerifiedCommunityProjection {
+  return (
+    community !== undefined &&
+    community.manifestVerified &&
+    (community.content.visibility === 'public' || community.content.visibility === 'unlisted')
+  );
 }
 
 function searchFailure(reply: FastifyReply, error: unknown) {

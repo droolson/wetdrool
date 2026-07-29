@@ -1,5 +1,7 @@
 import {
   cidSchema,
+  COMMUNITY_SCHEMA_VERSION,
+  communityGovernanceStrategyCommitment,
   decodeCanonicalEnvelope,
   extractWokeManifestCid,
   PROFILE_SCHEMA_VERSION,
@@ -79,6 +81,7 @@ export class ManifestVerifier {
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
+      event.type !== 'community-created' &&
       event.type !== 'tombstoned'
     ) {
       return undefined;
@@ -90,9 +93,10 @@ export class ManifestVerifier {
       return undefined;
     }
 
-    const manifestUri = event.manifestUri;
+    const manifestUri = event.type === 'community-created' ? undefined : event.manifestUri;
     const uriCid = manifestUri === undefined ? undefined : extractWokeManifestCid(manifestUri);
-    const explicitCid = event.cid === undefined ? undefined : cidSchema.safeParse(event.cid);
+    const eventCid = event.type === 'community-created' ? event.manifestCid : event.cid;
+    const explicitCid = eventCid === undefined ? undefined : cidSchema.safeParse(eventCid);
     if (
       (manifestUri !== undefined && uriCid === undefined) ||
       (explicitCid !== undefined && !explicitCid.success) ||
@@ -131,6 +135,20 @@ export class ManifestVerifier {
         { cause: error },
       );
     }
+    const eventIdentityId =
+      event.type === 'community-created' ? event.creatorIdentityId : event.identityId;
+    const authorityMatches =
+      event.type === 'community-created'
+        ? envelope.proof.keyId === `${eventIdentityId}#root/${event.authority}`
+        : event.authority === undefined ||
+          envelope.proof.keyId === `${eventIdentityId}#root/${event.authority}` ||
+          envelope.proof.keyId === `${eventIdentityId}#delegation/${event.authority}`;
+    if (!authorityMatches) {
+      throw new ManifestVerificationError(
+        'Envelope signing key does not match the authority recorded by the on-chain event.',
+        'unauthorized-key',
+      );
+    }
 
     let verified: Awaited<ReturnType<typeof verifyEnvelope>>;
     try {
@@ -143,7 +161,12 @@ export class ManifestVerifier {
       );
     }
 
-    const expectedType = event.type === 'profile-updated' ? 'profile' : 'post';
+    const expectedType =
+      event.type === 'profile-updated'
+        ? 'profile'
+        : event.type === 'community-created'
+          ? 'community'
+          : 'post';
     if (envelope.payload.type !== expectedType) {
       throw new ManifestVerificationError(`Expected a ${expectedType} manifest.`, 'type-mismatch');
     }
@@ -165,20 +188,44 @@ export class ManifestVerifier {
         );
       }
     }
-
-    if (
-      (event.type === 'profile-updated' || event.type === 'post-published') &&
-      event.authority !== undefined &&
-      envelope.proof.keyId !== `${event.identityId}#root/${event.authority}` &&
-      envelope.proof.keyId !== `${event.identityId}#delegation/${event.authority}`
-    ) {
-      throw new ManifestVerificationError(
-        'Envelope signing key does not match the authority recorded by the on-chain event.',
-        'unauthorized-key',
-      );
+    if (event.type === 'community-created') {
+      if (
+        envelope.payload.schemaVersion !== COMMUNITY_SCHEMA_VERSION ||
+        envelope.payload.type !== 'community'
+      ) {
+        throw new ManifestVerificationError(
+          `Community creation requires a schema-v${String(COMMUNITY_SCHEMA_VERSION)} envelope.`,
+          'schema-version',
+        );
+      }
+      if (event.communityNonce === undefined || event.communityNonce !== envelope.payload.nonce) {
+        throw new ManifestVerificationError(
+          'Community manifest nonce does not match the immutable onchain PDA nonce.',
+          'object-mismatch',
+        );
+      }
+      if (
+        envelope.payload.content.replacement.sequence !== 1 ||
+        envelope.payload.content.replacement.replaces !== undefined
+      ) {
+        throw new ManifestVerificationError(
+          'Community creation requires replacement sequence 1 without a predecessor.',
+          'object-mismatch',
+        );
+      }
+      const strategy = communityGovernanceStrategyCommitment(envelope.payload.content);
+      if (
+        strategy.governanceVersion !== event.governanceVersion ||
+        strategy.digest !== event.governanceStrategyHash
+      ) {
+        throw new ManifestVerificationError(
+          'Community governance semantics do not match the onchain strategy commitment.',
+          'hash-mismatch',
+        );
+      }
     }
 
-    const expectedObjectId = event.objectId;
+    const expectedObjectId = event.type === 'community-created' ? undefined : event.objectId;
     if (verified.cid !== cid) {
       throw new ManifestVerificationError(
         'Envelope CID does not match the onchain reference.',
@@ -191,13 +238,17 @@ export class ManifestVerifier {
         'object-mismatch',
       );
     }
-    if (envelope.payload.author !== event.identityId) {
+    const expectedAuthor =
+      event.type === 'community-created' ? event.creatorIdentityId : event.identityId;
+    if (envelope.payload.author !== expectedAuthor) {
       throw new ManifestVerificationError(
         'Envelope author does not match the onchain identity.',
         'author-mismatch',
       );
     }
-    if (envelope.proof.payloadHash !== event.payloadHash) {
+    const expectedPayloadHash =
+      event.type === 'community-created' ? event.manifestHash : event.payloadHash;
+    if (envelope.proof.payloadHash !== expectedPayloadHash) {
       throw new ManifestVerificationError(
         'Envelope payload hash does not match the onchain reference.',
         'hash-mismatch',

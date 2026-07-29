@@ -905,3 +905,407 @@
     scroll-snap-type: none;
   }
 }
+
+.community-directory {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.community-directory > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(24rem, auto);
+  align-items: end;
+  gap: 1rem 2rem;
+  padding-block-end: 1rem;
+  border-block-end: 1px solid var(--wokesocial-line);
+}
+
+.community-directory > header h2 {
+  margin: 0.25rem 0 0;
+  font-family: var(--wokesocial-font-display);
+  font-size: clamp(1.75rem, 4vw, 2.7rem);
+  letter-spacing: -0.04em;
+}
+
+.community-directory > header dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(9rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0;
+}
+
+.community-directory > header dl div {
+  min-width: 0;
+}
+
+.community-directory > header dt,
+.community-card__facts dt,
+.community-overview__facts dt,
+.community-governance dt,
+.community-policy-grid dt,
+.community-proof dt {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.community-directory > header dd,
+.community-card__facts dd,
+.community-overview__facts dd,
+.community-governance dd,
+.community-policy-grid dd,
+.community-proof dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.community-directory__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.community-directory__grid > li {
+  min-width: 0;
+}
+
+.community-card {
+  display: grid;
+  height: 100%;
+  gap: 1rem;
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      color-mix(in srgb, var(--wokesocial-lilac) 17%, transparent),
+      transparent 13rem
+    ),
+    var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
+}
+
+.community-card > header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.community-card > header > div {
+  min-width: 0;
+}
+
+.community-card__mark {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--wokesocial-plum) 25%, var(--wokesocial-line));
+  border-radius: 1rem;
+  color: var(--wokesocial-plum-deep);
+  background: color-mix(in srgb, var(--wokesocial-lilac) 45%, var(--wokesocial-surface));
+  font-family: var(--wokesocial-font-display);
+  font-size: 1.25rem;
+  font-weight: 820;
+}
+
+.community-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.community-card__badges > span:not(.wokesocial-status) {
+  display: inline-flex;
+  min-height: 1.8rem;
+  align-items: center;
+  padding-inline: 0.6rem;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-pill);
+  color: var(--wokesocial-ink-muted);
+  background: var(--wokesocial-canvas-raised);
+  font-size: 0.67rem;
+  font-weight: 760;
+}
+
+.community-card h3 {
+  margin: 0.65rem 0 0;
+  font-family: var(--wokesocial-font-display);
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  letter-spacing: -0.025em;
+}
+
+.community-card__slug,
+.community-card__description,
+.community-card__address {
+  margin: 0;
+}
+
+.community-card__slug {
+  color: var(--wokesocial-plum);
+  font-size: 0.8rem;
+  font-weight: 760;
+}
+
+.community-card__description {
+  color: var(--wokesocial-ink-muted);
+  line-height: 1.65;
+}
+
+.community-card__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.community-card__facts div {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-sm);
+  background: var(--wokesocial-canvas-raised);
+}
+
+.community-card__facts dd {
+  font-size: 0.78rem;
+  font-weight: 720;
+  text-transform: capitalize;
+}
+
+.community-card > footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block-start: 0.85rem;
+  border-block-start: 1px solid var(--wokesocial-line);
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.75rem;
+}
+
+.community-card > footer a {
+  color: var(--wokesocial-plum);
+  font-weight: 800;
+}
+
+.community-card__address {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.69rem;
+}
+
+.community-directory__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.8rem;
+  border-block: 1px solid var(--wokesocial-line);
+  font-size: 0.8rem;
+  font-weight: 760;
+}
+
+.community-directory__pagination a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--wokesocial-plum);
+}
+
+.community-directory__pagination span {
+  color: var(--wokesocial-ink-muted);
+}
+
+.community-privacy-notice,
+.community-governance-state {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--wokesocial-plum) 25%, var(--wokesocial-line));
+  border-radius: var(--wokesocial-radius-md);
+  background: color-mix(in srgb, var(--wokesocial-lilac) 14%, var(--wokesocial-surface));
+}
+
+.community-privacy-notice p,
+.community-governance-state p {
+  margin: 0;
+  color: var(--wokesocial-ink-muted);
+  line-height: 1.55;
+}
+
+.community-overview,
+.community-governance {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.7fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  padding: clamp(1.3rem, 4vw, 2.4rem);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
+}
+
+.community-overview h2,
+.community-governance h2,
+.community-policy-grid h2 {
+  margin: 0.35rem 0 0.7rem;
+  font-family: var(--wokesocial-font-display);
+  font-size: clamp(1.65rem, 3.5vw, 2.6rem);
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.community-overview__description,
+.community-governance > div > p:last-child,
+.community-policy-grid article > p:last-child,
+.community-proof > p {
+  margin: 0;
+  color: var(--wokesocial-ink-muted);
+  line-height: 1.65;
+}
+
+.community-overview__facts,
+.community-governance dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: var(--wokesocial-line);
+}
+
+.community-overview__facts div,
+.community-governance dl div {
+  min-width: 0;
+  padding: 1rem;
+  background: var(--wokesocial-canvas-raised);
+}
+
+.community-overview__facts dd,
+.community-governance dd {
+  font-weight: 740;
+  text-transform: capitalize;
+}
+
+.community-governance {
+  background:
+    radial-gradient(
+      circle at 88% 12%,
+      color-mix(in srgb, var(--wokesocial-citron) 19%, transparent),
+      transparent 20rem
+    ),
+    var(--wokesocial-surface);
+}
+
+.community-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.community-policy-grid article {
+  min-width: 0;
+  padding: clamp(1.15rem, 3vw, 1.6rem);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+  box-shadow: var(--wokesocial-shadow-sm);
+}
+
+.community-policy-grid h2 {
+  font-size: clamp(1.35rem, 2.5vw, 1.8rem);
+}
+
+.community-policy-grid dl {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1rem 0 0;
+}
+
+.community-policy-grid dl div {
+  min-width: 0;
+  padding-block-start: 0.8rem;
+  border-block-start: 1px solid var(--wokesocial-line);
+}
+
+.community-proof {
+  padding: clamp(1.1rem, 3vw, 1.5rem);
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-lg);
+  background: var(--wokesocial-surface);
+}
+
+.community-proof summary {
+  min-height: 2.75rem;
+  cursor: pointer;
+  font-family: var(--wokesocial-font-display);
+  font-size: 1.15rem;
+  font-weight: 760;
+}
+
+.community-proof dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 1rem 0;
+  overflow: hidden;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: var(--wokesocial-line);
+}
+
+.community-proof dl div {
+  min-width: 0;
+  padding: 0.9rem;
+  background: var(--wokesocial-canvas-raised);
+}
+
+.community-proof code {
+  direction: ltr;
+  unicode-bidi: isolate;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 64rem) {
+  .community-directory > header,
+  .community-overview,
+  .community-governance {
+    grid-template-columns: 1fr;
+  }
+
+  .community-policy-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 46rem) {
+  .community-directory > header dl,
+  .community-directory__grid,
+  .community-card__facts,
+  .community-overview__facts,
+  .community-governance dl,
+  .community-policy-grid,
+  .community-proof dl {
+    grid-template-columns: 1fr;
+  }
+
+  .community-card > footer,
+  .community-privacy-notice,
+  .community-governance-state {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

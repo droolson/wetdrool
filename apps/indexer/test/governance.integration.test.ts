@@ -1,9 +1,20 @@
 import { randomBytes } from 'node:crypto';
 
+import { ed25519 } from '@noble/curves/ed25519.js';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
+import {
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityPayload,
+  canonicalizeEnvelope,
+  communityGovernanceStrategyCommitment,
+  createPayloadBuilderIdentity,
+  encodeMultibaseBase64Url,
+  signPayload,
+  type CommunityContent,
+  type NetworkId,
+} from '@wokesocial/protocol';
 import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
@@ -23,7 +34,6 @@ import {
   type ProtocolEvent,
   type VoteCastEvent,
 } from '../src/index.js';
-import { TEST_CID } from './cid-fixtures.js';
 import { migrate } from '../src/migrate.js';
 
 const databaseUrl =
@@ -45,7 +55,9 @@ describe('PostgreSQL governance projection integration', () => {
     const voterAddress = publicKey();
     const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
     const voterIdentityId = `wokesocialid:v1:${networkId}:${voterAddress}`;
-    const creatorAuthority = publicKey();
+    const creatorPrivateKey = randomBytes(32);
+    const creatorPublicKey = ed25519.getPublicKey(creatorPrivateKey);
+    const creatorAuthority = bs58.encode(creatorPublicKey);
     const voterAuthority = publicKey();
     const communityAddress = publicKey();
     const creatorMembershipAddress = await deriveCommunityMembershipAddress(
@@ -65,6 +77,58 @@ describe('PostgreSQL governance projection integration', () => {
       proposalManifestHash,
     );
     const voteAddress = await deriveGovernanceVoteAddress(programId, proposalAddress, voterAddress);
+    const communityContent = {
+      slug: 'governance-commons',
+      name: 'Governance Commons',
+      description: 'A verified public community for deterministic governance projection tests.',
+      visibility: 'public',
+      membershipPolicy: 'open',
+      governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+      federationPolicy: { mode: 'open', allow: [], block: [] },
+      replacement: { sequence: 1 },
+    } satisfies CommunityContent;
+    const governanceCommitment = communityGovernanceStrategyCommitment(communityContent);
+    expect(governanceCommitment.digest).toBe(GOVERNANCE_STRATEGY_HASH);
+    const storage = new MemoryContentAddressedStorage();
+    const communityEnvelope = signPayload(
+      buildCommunityPayload(
+        createPayloadBuilderIdentity(networkId, creatorIdentityId, creatorPublicKey, 'root'),
+        communityContent,
+        {
+          createdAt: new Date('2026-07-28T17:00:04.000Z'),
+          nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 1),
+        },
+      ),
+      creatorPrivateKey,
+    );
+    const communityReceipt = await storage.put(canonicalizeEnvelope(communityEnvelope), {
+      permanence: 'deletion-compatible',
+    });
+    const secondCreatorIdentityId = creatorIdentityId.replace(networkId, secondNetworkId);
+    const secondCommunityEnvelope = signPayload(
+      buildCommunityPayload(
+        createPayloadBuilderIdentity(
+          secondNetworkId,
+          secondCreatorIdentityId,
+          creatorPublicKey,
+          'root',
+        ),
+        communityContent,
+        {
+          createdAt: new Date('2026-07-28T17:00:04.000Z'),
+          nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 17),
+        },
+      ),
+      creatorPrivateKey,
+    );
+    const secondCommunityReceipt = await storage.put(
+      canonicalizeEnvelope(secondCommunityEnvelope),
+      { permanence: 'deletion-compatible' },
+    );
+    const authorizedCommunityKeys = new Set([
+      communityEnvelope.proof.keyId,
+      secondCommunityEnvelope.proof.keyId,
+    ]);
     let eventSeed = 0;
     const eventBase = (slot: bigint) => ({
       networkId,
@@ -159,9 +223,10 @@ describe('PostgreSQL governance projection integration', () => {
         communityAddress,
         creatorIdentityId,
         authority: creatorAuthority,
+        communityNonce: communityEnvelope.payload.nonce,
         creatorSequence: 1n,
-        manifestCid: TEST_CID,
-        manifestHash: digest(),
+        manifestCid: communityReceipt.cid,
+        manifestHash: communityEnvelope.proof.payloadHash,
         governanceVersion: 1,
         governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
       },
@@ -196,8 +261,8 @@ describe('PostgreSQL governance projection integration', () => {
     const projection = new PostgresProjectionStore(databaseUrl);
     const indexer = new OpenIndexer(
       projection,
-      new ManifestVerifier(new MemoryContentAddressedStorage(), {
-        authorize: () => Promise.resolve(false),
+      new ManifestVerifier(storage, {
+        authorize: ({ keyId }) => Promise.resolve(authorizedCommunityKeys.has(keyId)),
       }),
     );
 
@@ -303,9 +368,18 @@ describe('PostgreSQL governance projection integration', () => {
       });
       expect(actual).toBe(expected);
 
-      for (const event of events.map((item) =>
-        moveEventToNetwork(item, networkId, secondNetworkId),
-      )) {
+      const secondNetworkEvents = events.map((item) => {
+        const moved = moveEventToNetwork(item, networkId, secondNetworkId);
+        return moved.type === 'community-created'
+          ? {
+              ...moved,
+              communityNonce: secondCommunityEnvelope.payload.nonce,
+              manifestCid: secondCommunityReceipt.cid,
+              manifestHash: secondCommunityEnvelope.proof.payloadHash,
+            }
+          : moved;
+      });
+      for (const event of secondNetworkEvents) {
         await expect(indexer.ingest(event)).resolves.toMatchObject({ applied: true });
       }
       await expect(projection.getCommunity(networkId, communityAddress)).resolves.toMatchObject({

@@ -268,60 +268,86 @@ describe('object-specific validation invariants', () => {
     ).toThrow(/Only active memberships/u);
   });
 
-  it('bounds community governance, federation, privacy, and treasury configuration', () => {
+  it('keeps community v1 read-only and requires the exact v2 onchain governance binding', () => {
     const payload = payloadOf('community');
+    expect(payload.schemaVersion).toBe(2);
     expect(
       portablePayloadSchema.safeParse({
         ...payload,
         content: { ...payload.content, visibility: 'private' },
       }).success,
     ).toBe(true);
+
+    const legacy = {
+      ...payload,
+      schemaVersion: 1,
+      content: {
+        slug: payload.content.slug,
+        name: payload.content.name,
+        description: payload.content.description,
+        visibility: payload.content.visibility,
+        membershipPolicy: payload.content.membershipPolicy,
+        governanceModel: 'one-member-one-vote',
+        governanceThreshold: { kind: 'simple-majority' },
+        governanceQuorum: { kind: 'members', minimum: '10' },
+        federationPolicy: payload.content.federationPolicy,
+        replacement: payload.content.replacement,
+      },
+    };
+    expect(portablePayloadSchema.parse(legacy)).toMatchObject({
+      schemaVersion: 1,
+      type: 'community',
+    });
+    expect(() => currentPortablePayloadSchema.parse(legacy)).toThrow();
+    expect(() =>
+      portablePayloadSchema.parse({
+        ...payload,
+        schemaVersion: 1,
+      }),
+    ).toThrow();
+    expect(() =>
+      portablePayloadSchema.parse({
+        ...legacy,
+        schemaVersion: 2,
+      }),
+    ).toThrow();
+
     expect(() =>
       portablePayloadSchema.parse({
         ...payload,
         content: {
           ...payload.content,
-          governanceModel: 'reputation-weighted-with-cap',
+          governance: {
+            ...payload.content.governance,
+            quorumBasisPoints: 4_999,
+          },
         },
       }),
-    ).toThrow(/requires an explicit weight cap/u);
+    ).toThrow();
     expect(() =>
       portablePayloadSchema.parse({
         ...payload,
         content: {
           ...payload.content,
-          governanceModel: 'delegated-voting',
+          governance: {
+            ...payload.content.governance,
+            approvalBasisPoints: 5_000,
+          },
         },
       }),
-    ).toThrow(/requires a delegation policy/u);
+    ).toThrow();
     expect(() =>
       portablePayloadSchema.parse({
         ...payload,
         content: {
           ...payload.content,
-          governanceModel: 'moderator-council',
+          governance: {
+            ...payload.content.governance,
+            execution: 'automatic',
+          },
         },
       }),
-    ).toThrow(/requires a council role/u);
-    expect(() =>
-      portablePayloadSchema.parse({
-        ...payload,
-        content: {
-          ...payload.content,
-          governanceModel: 'supermajority',
-        },
-      }),
-    ).toThrow(/requires a bounded supermajority threshold/u);
-    expect(
-      portablePayloadSchema.safeParse({
-        ...payload,
-        content: {
-          ...payload.content,
-          governanceModel: 'supermajority',
-          governanceThreshold: { kind: 'supermajority', basisPoints: 6_667 },
-        },
-      }).success,
-    ).toBe(true);
+    ).toThrow();
 
     const blockedPeer = payload.content.federationPolicy.block[0];
     if (blockedPeer === undefined) {

@@ -1,3 +1,5 @@
+import { networkIdSchema } from '@wokesocial/protocol';
+
 export type ProviderKind = 'gateway' | 'indexer' | 'relay' | 'rpc';
 
 export interface ProviderSummary {
@@ -95,6 +97,18 @@ function parseEndpoint(
 export function getIndexerBaseUrl(environment: Environment = process.env): URL | null {
   const rawValue = environment.WOKESOCIAL_INDEXER_URL?.trim();
   return rawValue ? parseHttpEndpoint(rawValue) : null;
+}
+
+export function getWokeNetNetworkId(environment: Environment = process.env): string | null {
+  const rawValue = (environment.WOKENET_NETWORK_ID ?? environment.INDEXER_NETWORK_ID)?.trim();
+  if (!rawValue) return null;
+  const parsed = networkIdSchema.safeParse(rawValue);
+  if (!parsed.success) {
+    throw new ProviderConfigurationError(
+      'The configured WokeNet network ID is not a canonical Solana deployment identifier.',
+    );
+  }
+  return parsed.data;
 }
 
 export function describeEndpoint(endpoint: URL): string {

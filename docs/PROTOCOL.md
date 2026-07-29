@@ -428,13 +428,55 @@ and no such offchain mechanism is authoritative over the program.
 
 ### Executable community governance
 
-The only executable strategy in the current program is committed by
-`SHA-256("wokesocial:governance:one-active-member-one-vote:v1;quorum-bps=5000;approval-bps=5001;abstain=quorum-only")`,
-whose digest is
-`2e67b50438203806e3ee22b80f058398240aede19f76a26cb0a629d0eab390d3`.
-It fixes quorum at 5,000 basis points and approval at 5,001 basis points.
-Proposal creation fails if the community commits to another strategy or the
-caller supplies different thresholds.
+New community manifests use schema version 2 and declare the only executable
+strategy in the current program as an exact object:
+
+```json
+{
+  "model": "one-active-member-one-vote",
+  "version": 1,
+  "quorumBasisPoints": 5000,
+  "approvalBasisPoints": 5001,
+  "abstainTreatment": "quorum-only",
+  "execution": "outcome-record-only"
+}
+```
+
+The strategy commitment is SHA-256 over the UTF-8 domain
+`wokenet:community-governance-strategy:v1`, one NUL separator, and the RFC 8785
+canonical JSON bytes of that object. Its hex digest is
+`9de45b0312c44a78da4c3d46b282a8888aec660d42242a0d7613834b94357571`;
+the portable multibase base64url form is
+`uneRbAxLESnjaTD1GsoKoiIrsZg1CJCoNdhODS5Q1dXE`. The Anchor account and event
+carry the same raw 32 bytes. Proposal creation fails if the community commits
+to another version or digest, or if the caller supplies different thresholds.
+
+Schema-version-1 community manifests remain readable as immutable history, but
+current builders cannot create them and the indexer does not promote them into
+the verified discovery projection.
+
+Current schema-version-2 creation is root-only. The envelope must be signed as
+`<creatorIdentityId>#root/<manifestAuthority>`, with `manifestAuthority` equal
+to the immutable authority recorded by `CommunityCreated`. The projection
+retains that creation authority separately from `latestActionAuthority`, the
+signer of the latest finalized creator-authorized community action. That signer
+may be a scoped delegate and is not presented as a persistent controller or the
+creator identity's current root, so later activity cannot invalidate or silently
+reinterpret the historical signature.
+
+The schema-version-2 payload nonce is the same canonical encoding of the exact
+16 bytes passed as `community_nonce` and used in the community PDA. Publication
+callers must choose and persist both the nonce and `createdAt` before the first
+storage or chain side effect, then reuse them for every retry. A new nonce or
+timestamp is a new object, not a retry.
+
+Before submitting the non-idempotent Anchor `init`, a chain writer must derive
+that exact PDA and reconcile its account state. An absent account permits
+creation; an existing pending or finalized account may complete the retry only
+when every immutable creation field matches. Any mismatch is a conflict, and a
+confirmation for any address other than the derived PDA is invalid. This
+prevents a transaction that landed before its RPC response was lost from being
+blindly submitted a second time.
 
 `create_proposal` requires the community creator identity's current root or a
 current-epoch, unexpired, non-revoked `community` delegation. It validates the
@@ -511,6 +553,37 @@ version. Adding target fields to the existing account would break
 deserialization of deployed v1 accounts; compact onchain targets require a
 separately versioned post-reference or relation account with an explicit
 migration and corresponding indexer support.
+
+### Verified community discovery
+
+`CommunityCreated` is a manifest-bearing event. The open indexer fetches the
+exact canonical CID, verifies the signed schema-version-2 envelope, network,
+creator identity, immutable creation authority, signed/PDA nonce, payload hash,
+immutable replacement sequence `1`, and exact governance commitment before
+exposing user-facing metadata. Missing content is retryable; terminally invalid
+content is rejected or quarantined. An unverified onchain shell is never a
+displayable community.
+
+The verified projection preserves the creation event's immutable
+`manifestAuthority`, `manifestGovernanceVersion`, and
+`manifestGovernanceStrategyHash` separately from `latestActionAuthority`, the
+latest finalized creator-authorized action signer, and the current
+`governanceVersion`/`governanceStrategyHash`. `CommunityGovernanceUpdated`
+changes only current governance state, so creation metadata remains verifiable
+and clients can label a later action signer or governance-anchor change without
+rewriting signed history.
+
+Directory and public search return verified `public` communities only. Direct
+address lookup may return `public` or `unlisted` communities. Private and
+restricted communities are indistinguishable from unknown addresses, and the
+public detail contract never includes membership records. Community routes use
+the PDA address because slugs are display labels and are not globally unique.
+Directory pagination is ordered by finalized creation slot and address; search
+declares deterministic recipe `public-match-v2`.
+
+See
+[ADR-0010](DECISIONS/0010-verified-community-discovery.md)
+for the full verification, replay, privacy, and migration rules.
 
 ### Events
 
@@ -1230,7 +1303,7 @@ fixtures independently in each test suite is insufficient.
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Versioned machine-readable schemas | Implemented for the current TypeScript v1 registry | Strict Zod schemas and builders cover all 29 current portable object families; a checked-in Draft 2020-12 signed-envelope artifact is generated from that registry and fails CI on drift. Rust consumption and cross-language conformance remain incomplete |
+| Versioned machine-readable schemas | Implemented for the current TypeScript protocol-v1 registry | Strict Zod schemas and builders cover all 29 current portable object families: profiles and communities use schema version 2 for current creation, the other families remain on schema version 1, and frozen profile/community v1 shapes remain read-compatible. A checked-in Draft 2020-12 signed-envelope artifact is generated from that registry and fails CI on drift. Rust consumption and cross-language conformance remain incomplete |
 | Canonicalization library wrappers | Implemented for the current TypeScript object subset | RFC 8785/JCS wrapper tests cover deterministic bytes, NFC rejection, exact canonical-envelope decoding, and stable IDs |
 | Cross-language golden vectors | Not implemented | None |
 | Anchor program and IDL | Experimental local implementation | SBF build generates an IDL and TypeScript type for 41 instructions, 33 events, and 19 account families under development program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; legacy, identity-deactivation, recovery, and quarantined payment discriminators are frozen by tests |
@@ -1240,7 +1313,7 @@ fixtures independently in each test suite is insufficient.
 | `$WOKE` mint and mint-aware ABI | Not implemented | No mint exists; the legacy lamport ABI cannot execute or be unpaused |
 | SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus eight IDL-aligned instructions, including one-way identity deactivation and quarantined legacy payment builders, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict Solana RPC parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit endpoint/genesis/program context. A complete generated client, flagship wallet/Mobile Wallet Adapter integration, executable-artifact attestation, replacement mint-aware ABI, and product wallet UX remain absent |
 | Storage adapters and local CID verification | Implemented subset | Memory/local CAS, multi-provider quorum, IPFS HTTP/Kubo, and Arweave-compatible permanent-storage adapters are tested; no funded live Arweave uploader is configured |
-| Rebuildable indexer | Experimental connected implementation | Finalized Solana RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2 commitment, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, non-gating tombstone metadata, suppression-aware destructive replay, read APIs including the bounded noncanonical feed mapping, PostgreSQL durability, and sixteen ordered migrations are implemented. Fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
+| Rebuildable indexer | Experimental connected implementation | Finalized Solana RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2 and community-v2 commitments, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, privacy-safe verified community discovery, non-gating tombstone metadata, suppression-aware destructive replay, read APIs including the bounded noncanonical feed mapping, PostgreSQL durability, and seventeen ordered migrations are implemented. Fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Alternate-provider conformance | Partial | Storage quorum/failover and real-loopback multi-relay failover/reconnect/deduplication are tested; independent RPC/indexer/feed conformance remains absent |
 | Independent security review | Not performed | None |
 

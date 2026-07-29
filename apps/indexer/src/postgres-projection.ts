@@ -1,5 +1,7 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres';
 
+import { communityContentSchema } from '@wokesocial/protocol';
+
 import {
   assertUnambiguousEventOrder,
   compareEventOrder,
@@ -17,6 +19,7 @@ import {
   deriveSubscriptionEntitlementAddress,
   deriveSubscriptionOfferingAddress,
 } from './payment-addresses.js';
+import { EXPECTED_INDEXER_MIGRATION_COUNT, LATEST_INDEXER_MIGRATION } from './migration-version.js';
 import {
   calculatePaymentAllocation,
   calculateSubscriptionWindow,
@@ -25,8 +28,11 @@ import {
 import { deriveRecoveryPolicyAddress, deriveRecoveryRequestAddress } from './recovery-addresses.js';
 import type {
   BlockProjection,
+  CommunityDirectoryQuery,
+  CommunityDirectorySnapshot,
   CommunityMembershipProjection,
   CommunityProjection,
+  VerifiedCommunityProjection,
   DelegationProjection,
   FeedEntry,
   FeedQuery,
@@ -199,7 +205,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
          AND dead_letter.failure_code = 'manifest-unavailable'
          AND dead_letter.next_attempt_at IS NOT NULL
         WHERE event.network_id = ${networkId}
-          AND event.event_type IN ('profile-updated', 'post-published')
+          AND event.event_type IN ('profile-updated', 'post-published', 'community-created')
           AND dead_letter.next_attempt_at <= ${dueAt}
         ORDER BY
           dead_letter.next_attempt_at ASC,
@@ -526,9 +532,13 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     deferral: ManifestDeferral,
     rebuilding: boolean,
   ): Promise<boolean> {
-    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'community-created'
+    ) {
       throw new ProjectionError(
-        'Only profile and post manifest events can be deferred.',
+        'Only profile, post, and community manifest events can be deferred.',
         'manifest-mismatch',
       );
     }
@@ -571,6 +581,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         DELETE FROM profiles
         WHERE identity_id = ${event.identityId}
       `;
+    } else if (event.type === 'community-created') {
+      await this.#insertCommunityShell(sql, event);
     }
 
     await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
@@ -626,9 +638,13 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     event: ProtocolEvent,
     manifest: VerifiedManifest,
   ): Promise<boolean> {
-    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'community-created'
+    ) {
       throw new ProjectionError(
-        'Only profile and post manifest events can be promoted.',
+        'Only profile, post, and community manifest events can be promoted.',
         'manifest-mismatch',
       );
     }
@@ -675,7 +691,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
             updated_at = EXCLUDED.updated_at
         `;
       }
-    } else {
+    } else if (event.type === 'post-published') {
       const verified = requireManifest(event, manifest, 'post');
       const content = verified.content as PostProjection['content'];
       const tombstones = await sql<{ block_time: Date | string }[]>`
@@ -708,6 +724,28 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         )
         ON CONFLICT (object_id) DO NOTHING
       `;
+    } else {
+      const verified = requireManifest(event, manifest, 'community');
+      const updated = await sql`
+        UPDATE communities
+        SET
+          manifest_verified = true,
+          object_id = ${verified.objectId},
+          schema_version = 2,
+          signing_key_id = ${verified.signingKeyId},
+          manifest_created_at = ${verified.createdAt},
+          content = ${sql.json(toJsonValue(verified.content))}
+        WHERE network_id = ${event.networkId}
+          AND community_address = ${event.communityAddress}
+          AND creator_identity_id = ${event.creatorIdentityId}
+          AND manifest_cid = ${event.manifestCid}
+          AND manifest_hash = ${event.manifestHash}
+          AND NOT manifest_verified
+        RETURNING community_address
+      `;
+      if (updated.length !== 1) {
+        throw stale('A pending community shell must exist before manifest promotion.');
+      }
     }
 
     const transitions = await sql<{ transitioned: boolean }[]>`
@@ -738,9 +776,13 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     event: ProtocolEvent,
     rejection: TerminalManifestRejection,
   ): Promise<boolean> {
-    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'community-created'
+    ) {
       throw new ProjectionError(
-        'Only profile and post manifest events can transition from pending to terminal.',
+        'Only profile, post, and community manifest events can transition from pending to terminal.',
         'manifest-mismatch',
       );
     }
@@ -826,6 +868,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
+      event.type !== 'community-created' &&
       event.type !== 'tombstoned'
     ) {
       throw new ProjectionError(
@@ -888,6 +931,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         WHERE object_id = ${event.targetObjectId}
           AND author_identity_id = ${event.identityId}
       `;
+    } else if (event.type === 'community-created') {
+      await this.#insertCommunityShell(sql, event);
     }
 
     await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
@@ -930,6 +975,41 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       `;
     }
     return true;
+  }
+
+  async #insertCommunityShell(
+    sql: TransactionSql,
+    event: Extract<ProtocolEvent, { readonly type: 'community-created' }>,
+  ): Promise<void> {
+    await sql`
+      INSERT INTO communities (
+        community_address, network_id, creator_identity_id,
+        manifest_authority, latest_action_authority,
+        creator_sequence, manifest_cid, manifest_hash, manifest_verified,
+        manifest_governance_version, manifest_governance_strategy_hash,
+        governance_version, governance_strategy_hash,
+        created_slot, created_at, updated_slot, updated_at
+      ) VALUES (
+        ${event.communityAddress}, ${event.networkId}, ${event.creatorIdentityId},
+        ${event.authority}, ${event.authority}, ${event.creatorSequence.toString()},
+        ${event.manifestCid}, ${event.manifestHash}, false,
+        ${event.governanceVersion}, ${event.governanceStrategyHash},
+        ${event.governanceVersion}, ${event.governanceStrategyHash},
+        ${event.slot.toString()}, ${event.blockTime},
+        ${event.slot.toString()}, ${event.blockTime}
+      )
+    `;
+    await sql`
+      INSERT INTO community_governance_history (
+        network_id, community_address, governance_version, strategy_hash,
+        authority, creator_sequence, updated_slot, updated_at
+      ) VALUES (
+        ${event.networkId}, ${event.communityAddress}, ${event.governanceVersion},
+        ${event.governanceStrategyHash}, ${event.authority},
+        ${event.creatorSequence.toString()}, ${event.slot.toString()},
+        ${event.blockTime}
+      )
+    `;
   }
 
   async #applyInTransaction(
@@ -1399,17 +1479,24 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 AND author_identity_id = ${event.identityId}
             `;
         break;
-      case 'community-created':
+      case 'community-created': {
+        const verified = requireManifest(event, manifest, 'community');
         await sql`
               INSERT INTO communities (
-                community_address, network_id, creator_identity_id, authority,
+                community_address, network_id, creator_identity_id,
+                manifest_authority, latest_action_authority,
                 creator_sequence, manifest_cid, manifest_hash, manifest_verified,
+                object_id, schema_version, signing_key_id, manifest_created_at, content,
+                manifest_governance_version, manifest_governance_strategy_hash,
                 governance_version, governance_strategy_hash,
                 created_slot, created_at, updated_slot, updated_at
               ) VALUES (
                 ${event.communityAddress}, ${event.networkId}, ${event.creatorIdentityId},
-                ${event.authority}, ${event.creatorSequence.toString()},
-                ${event.manifestCid}, ${event.manifestHash}, false,
+                ${event.authority}, ${event.authority}, ${event.creatorSequence.toString()},
+                ${event.manifestCid}, ${event.manifestHash}, true,
+                ${verified.objectId}, 2, ${verified.signingKeyId},
+                ${verified.createdAt}, ${sql.json(toJsonValue(verified.content))},
+                ${event.governanceVersion}, ${event.governanceStrategyHash},
                 ${event.governanceVersion}, ${event.governanceStrategyHash},
                 ${event.slot.toString()}, ${event.blockTime},
                 ${event.slot.toString()}, ${event.blockTime}
@@ -1427,10 +1514,11 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
               )
             `;
         break;
+      }
       case 'community-governance-updated': {
         const updated = await sql`
               UPDATE communities
-              SET authority = ${event.authority},
+              SET latest_action_authority = ${event.authority},
                   creator_sequence = ${event.creatorSequence.toString()},
                   governance_version = ${event.governanceVersion},
                   governance_strategy_hash = ${event.governanceStrategyHash},
@@ -1539,7 +1627,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         }
         const advanced = await sql`
               UPDATE communities
-              SET authority = ${event.authority},
+              SET latest_action_authority = ${event.authority},
                   creator_sequence = ${event.authoritySequence.toString()},
                   updated_slot = ${event.slot.toString()},
                   updated_at = ${event.blockTime}
@@ -2246,7 +2334,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
             `;
         const advanced = await sql`
               UPDATE communities
-              SET authority = ${event.authority},
+              SET latest_action_authority = ${event.authority},
                   creator_sequence = ${event.proposerSequence.toString()},
                   updated_slot = ${event.slot.toString()},
                   updated_at = ${event.blockTime}
@@ -3239,6 +3327,66 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     return rows[0] === undefined ? undefined : communityFromRow(rows[0]);
   }
 
+  async listPublicCommunities(query: CommunityDirectoryQuery): Promise<CommunityDirectorySnapshot> {
+    assertCommunityDirectoryLimit(query.limit);
+    try {
+      return await this.#sql.begin('isolation level repeatable read read only', async (sql) => {
+        const cursor =
+          query.before === undefined
+            ? sql``
+            : sql`
+                AND (
+                  created_slot < ${query.before.createdSlot.toString()}::numeric
+                  OR (
+                    created_slot = ${query.before.createdSlot.toString()}::numeric
+                    AND community_address COLLATE "C" < ${query.before.communityAddress}
+                  )
+                )
+              `;
+        const rows = await sql<CommunityRow[]>`
+          SELECT *
+          FROM communities
+          WHERE network_id = ${query.networkId}
+            AND manifest_verified
+            AND content ->> 'visibility' = 'public'
+            ${cursor}
+          ORDER BY created_slot DESC, community_address COLLATE "C" DESC
+          LIMIT ${query.limit + 1}
+        `;
+        const checkpointRows = await sql<{ finalized_slot: string }[]>`
+          SELECT finalized_slot
+          FROM indexer_checkpoints
+          WHERE network_id = ${query.networkId}
+        `;
+        const projected = rows.map(communityFromRow);
+        if (projected.some((community) => !community.manifestVerified)) {
+          throw new ProjectionError(
+            'Public community directory returned an unverified shell.',
+            'database-error',
+          );
+        }
+        const verified = projected as VerifiedCommunityProjection[];
+        const communities = verified.slice(0, query.limit);
+        const last = communities.at(-1);
+        return {
+          checkpoint:
+            checkpointRows[0] === undefined ? undefined : BigInt(checkpointRows[0].finalized_slot),
+          communities,
+          ...(verified.length > query.limit && last !== undefined
+            ? {
+                next: {
+                  createdSlot: last.createdSlot,
+                  communityAddress: last.communityAddress,
+                },
+              }
+            : {}),
+        };
+      });
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
   async getCommunityMemberships(
     networkId: string,
     communityAddress: string,
@@ -3477,12 +3625,21 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
           const postBodyMatch = containsIsIndexable
             ? sql`p.search_body LIKE ${termContains} ESCAPE E'\\\\'`
             : sql`p.search_body_prefix LIKE ${termPrefix} ESCAPE E'\\\\'`;
+          const communityNameMatch = containsIsIndexable
+            ? sql`c.search_name LIKE ${termContains} ESCAPE E'\\\\'`
+            : sql`c.search_name LIKE ${termPrefix} ESCAPE E'\\\\'`;
+          const communitySlugMatch = containsIsIndexable
+            ? sql`c.search_slug LIKE ${termContains} ESCAPE E'\\\\'`
+            : sql`c.search_slug LIKE ${termPrefix} ESCAPE E'\\\\'`;
+          const communityDescriptionMatch = containsIsIndexable
+            ? sql`c.search_description LIKE ${termContains} ESCAPE E'\\\\'`
+            : sql`c.search_description_prefix LIKE ${termPrefix} ESCAPE E'\\\\'`;
           const checkpointRows = await sql<{ finalized_slot: string }[]>`
             SELECT finalized_slot
             FROM indexer_checkpoints
             WHERE network_id = ${query.networkId}
           `;
-          const [personRows, postRows] = await Promise.all([
+          const [personRows, postRows, communityRows] = await Promise.all([
             sql<PublicSearchPersonRow[]>`
               WITH matching_identity_ids AS MATERIALIZED (
                 SELECT i.identity_id
@@ -3590,8 +3747,45 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 p.object_id COLLATE "C"
               LIMIT ${candidateLimit}
             `,
+            sql<CommunityRow[]>`
+              SELECT c.*
+              FROM communities c
+              WHERE c.network_id = ${query.networkId}
+                AND c.manifest_verified
+                AND c.content ->> 'visibility' = 'public'
+                AND (
+                  ${communitySlugMatch}
+                  OR ${communityNameMatch}
+                  OR ${communityDescriptionMatch}
+                )
+              ORDER BY
+                CASE
+                  WHEN c.search_slug = ${term} THEN 970
+                  WHEN c.search_slug LIKE ${termPrefix} ESCAPE E'\\\\' THEN 890
+                  WHEN c.search_name = ${term} THEN 870
+                  WHEN ${containsIsIndexable}
+                    AND c.search_slug LIKE ${termContains} ESCAPE E'\\\\' THEN 810
+                  WHEN c.search_name LIKE ${termPrefix} ESCAPE E'\\\\' THEN 790
+                  WHEN ${containsIsIndexable}
+                    AND c.search_name LIKE ${termContains} ESCAPE E'\\\\' THEN 710
+                  ELSE 500
+                END DESC,
+                c.updated_at DESC,
+                c.community_address COLLATE "C"
+              LIMIT ${candidateLimit}
+            `,
           ]);
 
+          const communityCandidates = communityRows.map((row) => {
+            const community = communityFromRow(row);
+            if (!community.manifestVerified) {
+              throw new ProjectionError(
+                'Public community search returned an unverified shell.',
+                'database-error',
+              );
+            }
+            return { kind: 'community' as const, community };
+          });
           const candidates: PublicSearchCandidate[] = [
             ...personRows.map((row) => ({
               kind: 'person' as const,
@@ -3605,6 +3799,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
               kind: 'post' as const,
               entry: feedEntryFromRow(row, 'chronological'),
             })),
+            ...communityCandidates,
           ];
           const checkpointRow = checkpointRows[0];
           return {
@@ -3805,9 +4000,9 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       )
       SELECT
         (
-          SELECT count(*) = 16
+          SELECT count(*) = ${EXPECTED_INDEXER_MIGRATION_COUNT}
             AND bool_and(checksum ~ '^[0-9a-f]{64}$')
-            AND bool_or(version = '0016_manifest_ingestion_state.sql')
+            AND bool_or(version = ${LATEST_INDEXER_MIGRATION})
           FROM schema_migrations
         )
         AND NOT EXISTS (
@@ -4286,11 +4481,19 @@ interface CommunityRow {
   network_id: string;
   community_address: string;
   creator_identity_id: string;
-  authority: string;
+  manifest_authority: string;
+  latest_action_authority: string;
   creator_sequence: string;
   manifest_cid: string;
   manifest_hash: string;
-  manifest_verified: false;
+  manifest_verified: boolean;
+  manifest_governance_version: number;
+  manifest_governance_strategy_hash: string;
+  object_id: string | null;
+  schema_version: number | null;
+  signing_key_id: string | null;
+  manifest_created_at: Date | string | null;
+  content: unknown | null;
   governance_version: number;
   governance_strategy_hash: string;
   created_slot: string;
@@ -4694,21 +4897,47 @@ function blockFromRow(row: BlockRow): BlockProjection {
 }
 
 function communityFromRow(row: CommunityRow): CommunityProjection {
-  return {
+  const base = {
     networkId: row.network_id,
     communityAddress: row.community_address,
     creatorIdentityId: row.creator_identity_id,
-    authority: row.authority,
+    manifestAuthority: row.manifest_authority,
+    latestActionAuthority: row.latest_action_authority,
     creatorSequence: BigInt(row.creator_sequence),
     manifestCid: row.manifest_cid,
     manifestHash: row.manifest_hash,
-    manifestVerified: false,
+    manifestGovernanceVersion: row.manifest_governance_version,
+    manifestGovernanceStrategyHash: row.manifest_governance_strategy_hash,
     governanceVersion: row.governance_version,
     governanceStrategyHash: row.governance_strategy_hash,
     createdSlot: BigInt(row.created_slot),
     createdAt: dateString(row.created_at),
     updatedSlot: BigInt(row.updated_slot),
     updatedAt: dateString(row.updated_at),
+  };
+  if (!row.manifest_verified) {
+    return { ...base, manifestVerified: false };
+  }
+  if (
+    row.object_id === null ||
+    row.schema_version !== 2 ||
+    row.signing_key_id === null ||
+    row.manifest_created_at === null ||
+    row.content === null
+  ) {
+    throw new ProjectionError(
+      'Verified community projection metadata is incomplete.',
+      'database-error',
+    );
+  }
+  return {
+    ...base,
+    manifestVerified: true,
+    objectId: row.object_id,
+    schemaVersion: 2,
+    signingKeyId: row.signing_key_id,
+    manifestCreatedAt: dateString(row.manifest_created_at),
+    content: communityContentSchema.parse(row.content),
   };
 }
 
@@ -5128,14 +5357,24 @@ function pendingManifestRecordFromRow(row: PendingManifestRow): PendingManifestR
     throw new ProjectionError('Stored pending manifest event body is invalid.', 'database-error');
   }
   const serializedEvent = row.event_body as Readonly<Record<string, unknown>>;
+  const isCommunity = serializedEvent['type'] === 'community-created';
   const event = protocolEventSchema.parse({
     ...serializedEvent,
     slot: storedPendingManifestBigInt(serializedEvent['slot'], 'slot'),
-    sequence: storedPendingManifestBigInt(serializedEvent['sequence'], 'sequence'),
+    ...(isCommunity
+      ? {
+          creatorSequence: storedPendingManifestBigInt(
+            serializedEvent['creatorSequence'],
+            'creatorSequence',
+          ),
+        }
+      : { sequence: storedPendingManifestBigInt(serializedEvent['sequence'], 'sequence') }),
   });
   const blockTime = dateString(row.block_time);
   if (
-    (event.type !== 'profile-updated' && event.type !== 'post-published') ||
+    (event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'community-created') ||
     event.networkId !== row.network_id ||
     event.transactionSignature !== row.transaction_signature ||
     (event.transactionIndex ?? null) !== row.transaction_index ||
@@ -5212,6 +5451,12 @@ function pendingManifestDueTimestamp(value: string): number {
 function assertPendingManifestLimit(limit: number): void {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
     throw new RangeError('Pending manifest query limit must be between 1 and 1,000.');
+  }
+}
+
+function assertCommunityDirectoryLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+    throw new RangeError('Community directory limit must be between 1 and 50.');
   }
 }
 
@@ -5485,6 +5730,7 @@ function comparePosition(left: EventPosition, right: EventPosition): number {
 function scopeForObjectType(objectType: string): number | undefined {
   if (objectType === 'profile') return 1 << 0;
   if (objectType === 'post') return 1 << 1;
+  if (objectType === 'community') return 1 << 3;
   return undefined;
 }
 
@@ -5542,6 +5788,17 @@ function requireManifest(
   if (manifest.type !== expectedType) {
     throw new ProjectionError(
       `Expected ${expectedType}, received ${manifest.type}.`,
+      'manifest-mismatch',
+    );
+  }
+  if (
+    expectedType === 'community' &&
+    (event.type !== 'community-created' ||
+      manifest.schemaVersion !== 2 ||
+      manifest.signingKeyId !== `${event.creatorIdentityId}#root/${event.authority}`)
+  ) {
+    throw new ProjectionError(
+      'Community manifest signer does not match its immutable creation authority.',
       'manifest-mismatch',
     );
   }

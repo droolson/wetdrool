@@ -15,6 +15,7 @@ describe('distributable JSON Schema', () => {
     expect(schema['x-wokesocial-object-types']).toEqual(PORTABLE_OBJECT_TYPES);
     expect(schema['x-wokesocial-schema-versions']).toEqual([1, 2]);
     expect(schema['x-wokesocial-current-profile-schema-version']).toBe(2);
+    expect(schema['x-wokesocial-current-community-schema-version']).toBe(2);
     expect(String(schema.$comment)).toContain('signature/hash verification');
 
     const serialized = JSON.stringify(schema);

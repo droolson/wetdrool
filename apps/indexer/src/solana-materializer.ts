@@ -271,6 +271,7 @@ export class SolanaEventMaterializer {
           communityAddress: decoded.community,
           creatorIdentityId: identityId(context.networkId, decoded.creatorIdentity),
           authority: decoded.authority,
+          communityNonce: encodeMultibaseBase64Url(decoded.communityNonce),
           creatorSequence: decoded.creatorSequence,
           manifestCid: manifestCid(decoded.manifestUri),
           manifestHash: encodeMultibaseBase64Url(decoded.manifestHash),

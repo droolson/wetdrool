@@ -1,4 +1,18 @@
-import { MAX_MEDIA_ITEMS } from '@wokesocial/protocol';
+import {
+  cidSchema,
+  communityContentSchema,
+  communityGovernanceStrategyCommitment,
+  digestSchema,
+  identityIdSchema,
+  MAX_MEDIA_ITEMS,
+  networkIdSchema,
+  objectIdSchema,
+  signingKeyIdSchema,
+  solanaPublicKeySchema,
+  timestampSchema,
+  unsigned64Schema,
+  type CommunityContent,
+} from '@wokesocial/protocol';
 
 /** Strict consumer-facing types and parsers for WokeSocial indexer payloads. */
 
@@ -67,10 +81,12 @@ export interface PostResponse {
 }
 
 export type SearchMatch =
+  | 'community-description'
+  | 'community-name'
+  | 'community-slug'
   | 'display-name'
   | 'exact-identifier'
   | 'handle'
-  | 'manifest-reference'
   | 'post-body'
   | 'profile-bio';
 
@@ -90,15 +106,60 @@ export interface SearchPost {
   post: IndexedPost & { visibility: 'public' };
 }
 
-export type SearchItem = SearchPerson | SearchPost;
+export type CommunitySearchMatch = Extract<
+  SearchMatch,
+  'community-description' | 'community-name' | 'community-slug'
+>;
+
+export interface VerifiedCommunity {
+  communityAddress: string;
+  content: CommunityContent;
+  createdAt: string;
+  createdSlot: string;
+  creatorIdentityId: string;
+  creatorSequence: string;
+  governanceStrategyHash: string;
+  governanceVersion: number;
+  latestActionAuthority: string;
+  manifestCid: string;
+  manifestAuthority: string;
+  manifestCreatedAt: string;
+  manifestGovernanceStrategyHash: string;
+  manifestGovernanceVersion: number;
+  manifestHash: string;
+  manifestVerified: true;
+  networkId: string;
+  objectId: string;
+  schemaVersion: 2;
+  signingKeyId: string;
+  updatedAt: string;
+  updatedSlot: string;
+}
+
+export type PublicVerifiedCommunity = Omit<VerifiedCommunity, 'content'> & {
+  content: CommunityContent & { visibility: 'public' };
+};
+
+export type DirectVerifiedCommunity = Omit<VerifiedCommunity, 'content'> & {
+  content: CommunityContent & { visibility: 'public' | 'unlisted' };
+};
+
+export interface SearchCommunity {
+  community: PublicVerifiedCommunity;
+  kind: 'community';
+  matchedBy: CommunitySearchMatch;
+}
+
+export type SearchItem = SearchCommunity | SearchPerson | SearchPost;
 
 export interface SearchResponse {
   canonical: false;
   meta: IndexerMeta;
+  network: string;
   query: string;
   ranking: {
     deterministic: true;
-    version: 'public-match-v1';
+    version: 'public-match-v2';
   };
   results: SearchItem[];
   scope: 'public-finalized-projection';
@@ -135,6 +196,16 @@ function record(value: unknown, label: string): UnknownRecord {
     throw new IndexerPayloadError(`${label} must be an object.`);
   }
   return value as UnknownRecord;
+}
+
+function exactKeys(value: UnknownRecord, label: string, allowedKeys: readonly string[]): void {
+  const allowed = new Set(allowedKeys);
+  const unexpected = Object.keys(value).filter((key) => !allowed.has(key));
+  if (unexpected.length > 0) {
+    throw new IndexerPayloadError(
+      `${label} contains unsupported fields: ${unexpected.sort().join(', ')}.`,
+    );
+  }
 }
 
 function string(value: unknown, label: string, maximumLength: number): string {
@@ -177,6 +248,30 @@ function nonNegativeInteger(value: unknown, label: string): number {
     throw new IndexerPayloadError(`${label} must be a non-negative safe integer.`);
   }
   return value;
+}
+
+function positiveInteger(value: unknown, label: string): number {
+  const parsed = nonNegativeInteger(value, label);
+  if (parsed === 0) {
+    throw new IndexerPayloadError(`${label} must be a positive safe integer.`);
+  }
+  return parsed;
+}
+
+interface ProtocolSchema<T> {
+  safeParse(value: unknown): { data: T; success: true } | { success: false };
+}
+
+function canonicalProtocolValue<T>(schema: ProtocolSchema<T>, value: unknown, label: string): T {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    throw new IndexerPayloadError(`${label} is not canonical protocol data.`);
+  }
+  return parsed.data;
+}
+
+function identityBelongsToNetwork(identityId: string, network: string): boolean {
+  return identityId.startsWith(`wokesocialid:v1:${network}:`);
 }
 
 function parseBodyReference(value: unknown): IndexedPost['bodyReference'] {
@@ -299,6 +394,215 @@ export function parseIndexerMeta(value: unknown): IndexerMeta {
   };
 }
 
+export function parseVerifiedCommunity(
+  value: unknown,
+  visibility: 'direct' | 'public' = 'direct',
+): DirectVerifiedCommunity | PublicVerifiedCommunity {
+  const community = record(value, 'community');
+  exactKeys(community, 'community', [
+    'communityAddress',
+    'content',
+    'createdAt',
+    'createdSlot',
+    'creatorIdentityId',
+    'creatorSequence',
+    'governanceStrategyHash',
+    'governanceVersion',
+    'latestActionAuthority',
+    'manifestAuthority',
+    'manifestCid',
+    'manifestCreatedAt',
+    'manifestGovernanceStrategyHash',
+    'manifestGovernanceVersion',
+    'manifestHash',
+    'manifestVerified',
+    'networkId',
+    'objectId',
+    'schemaVersion',
+    'signingKeyId',
+    'updatedAt',
+    'updatedSlot',
+  ]);
+  const networkId = canonicalProtocolValue(
+    networkIdSchema,
+    community.networkId,
+    'community.networkId',
+  );
+  const communityAddress = canonicalProtocolValue(
+    solanaPublicKeySchema,
+    community.communityAddress,
+    'community.communityAddress',
+  );
+  const creatorIdentityId = canonicalProtocolValue(
+    identityIdSchema,
+    community.creatorIdentityId,
+    'community.creatorIdentityId',
+  );
+  if (!identityBelongsToNetwork(creatorIdentityId, networkId)) {
+    throw new IndexerPayloadError(
+      'A verified community creator belongs to a different WokeNet Solana deployment.',
+    );
+  }
+  const latestActionAuthority = canonicalProtocolValue(
+    solanaPublicKeySchema,
+    community.latestActionAuthority,
+    'community.latestActionAuthority',
+  );
+  const manifestAuthority = canonicalProtocolValue(
+    solanaPublicKeySchema,
+    community.manifestAuthority,
+    'community.manifestAuthority',
+  );
+  const signingKeyId = canonicalProtocolValue(
+    signingKeyIdSchema,
+    community.signingKeyId,
+    'community.signingKeyId',
+  );
+  if (signingKeyId !== `${creatorIdentityId}#root/${manifestAuthority}`) {
+    throw new IndexerPayloadError(
+      'A verified community must be signed by its creator identity root key at its immutable creation authority.',
+    );
+  }
+  const manifestHash = canonicalProtocolValue(
+    digestSchema,
+    community.manifestHash,
+    'community.manifestHash',
+  );
+  const objectId = canonicalProtocolValue(objectIdSchema, community.objectId, 'community.objectId');
+  if (objectId !== `wokesocialobj:v1:community:${manifestHash}`) {
+    throw new IndexerPayloadError(
+      'A verified community object ID must bind to its anchored manifest hash.',
+    );
+  }
+  if (community.manifestVerified !== true) {
+    throw new IndexerPayloadError('A community requires an explicitly verified manifest.');
+  }
+  if (community.schemaVersion !== 2) {
+    throw new IndexerPayloadError('A verified community requires schema version 2.');
+  }
+  const content = canonicalProtocolValue(
+    communityContentSchema,
+    community.content,
+    'community.content',
+  );
+  if (
+    (visibility === 'public' && content.visibility !== 'public') ||
+    (visibility === 'direct' &&
+      content.visibility !== 'public' &&
+      content.visibility !== 'unlisted')
+  ) {
+    throw new IndexerPayloadError(
+      visibility === 'public'
+        ? 'Community discovery accepts only explicitly public verified manifests.'
+        : 'Direct community reads accept only public or unlisted verified manifests.',
+    );
+  }
+  const createdSlot = canonicalProtocolValue(
+    unsigned64Schema,
+    community.createdSlot,
+    'community.createdSlot',
+  );
+  const updatedSlot = canonicalProtocolValue(
+    unsigned64Schema,
+    community.updatedSlot,
+    'community.updatedSlot',
+  );
+  if (BigInt(updatedSlot) < BigInt(createdSlot)) {
+    throw new IndexerPayloadError(
+      'A verified community update slot cannot precede its creation slot.',
+    );
+  }
+  const creatorSequence = canonicalProtocolValue(
+    unsigned64Schema,
+    community.creatorSequence,
+    'community.creatorSequence',
+  );
+  if (BigInt(creatorSequence) === 0n) {
+    throw new IndexerPayloadError('A verified community creator sequence must be positive.');
+  }
+  const createdAt = canonicalProtocolValue(
+    timestampSchema,
+    community.createdAt,
+    'community.createdAt',
+  );
+  const updatedAt = canonicalProtocolValue(
+    timestampSchema,
+    community.updatedAt,
+    'community.updatedAt',
+  );
+  if (updatedAt < createdAt) {
+    throw new IndexerPayloadError(
+      'A verified community update time cannot precede its creation time.',
+    );
+  }
+  const governanceCommitment = communityGovernanceStrategyCommitment(content);
+  const manifestGovernanceVersion = positiveInteger(
+    community.manifestGovernanceVersion,
+    'community.manifestGovernanceVersion',
+  );
+  const manifestGovernanceStrategyHash = canonicalProtocolValue(
+    digestSchema,
+    community.manifestGovernanceStrategyHash,
+    'community.manifestGovernanceStrategyHash',
+  );
+  const governanceVersion = positiveInteger(
+    community.governanceVersion,
+    'community.governanceVersion',
+  );
+  const governanceStrategyHash = canonicalProtocolValue(
+    digestSchema,
+    community.governanceStrategyHash,
+    'community.governanceStrategyHash',
+  );
+  if (
+    manifestGovernanceVersion !== governanceCommitment.governanceVersion ||
+    manifestGovernanceStrategyHash !== governanceCommitment.digest
+  ) {
+    throw new IndexerPayloadError(
+      'A verified community manifest governance commitment must match its exact strategy.',
+    );
+  }
+  if (
+    governanceVersion < manifestGovernanceVersion ||
+    (governanceVersion === manifestGovernanceVersion &&
+      governanceStrategyHash !== manifestGovernanceStrategyHash)
+  ) {
+    throw new IndexerPayloadError(
+      'Current community governance cannot precede or conflict with its creation commitment.',
+    );
+  }
+
+  const parsed: VerifiedCommunity = {
+    communityAddress,
+    content,
+    createdAt,
+    createdSlot,
+    creatorIdentityId,
+    creatorSequence,
+    governanceStrategyHash,
+    governanceVersion,
+    latestActionAuthority,
+    manifestAuthority,
+    manifestCid: canonicalProtocolValue(cidSchema, community.manifestCid, 'community.manifestCid'),
+    manifestCreatedAt: canonicalProtocolValue(
+      timestampSchema,
+      community.manifestCreatedAt,
+      'community.manifestCreatedAt',
+    ),
+    manifestGovernanceStrategyHash,
+    manifestGovernanceVersion,
+    manifestHash,
+    manifestVerified: true,
+    networkId,
+    objectId,
+    schemaVersion: 2,
+    signingKeyId,
+    updatedAt,
+    updatedSlot,
+  };
+  return parsed as DirectVerifiedCommunity | PublicVerifiedCommunity;
+}
+
 export function parseFeedResponse(value: unknown): FeedResponse {
   const response = record(value, 'response');
   if (!Array.isArray(response.posts) || response.posts.length > MAX_INDEXER_PAGE_ITEMS) {
@@ -360,60 +664,143 @@ export function validatePublicSearchQuery(
   return { kind: 'valid', query };
 }
 
-export function parseSearchResponse(value: unknown): SearchResponse {
+export function parseSearchResponse(
+  value: unknown,
+  expected?: { network: string },
+): SearchResponse {
   const response = record(value, 'response');
+  exactKeys(response, 'public search response', [
+    'canonical',
+    'meta',
+    'network',
+    'query',
+    'ranking',
+    'results',
+    'scope',
+  ]);
   const ranking = record(response.ranking, 'response.ranking');
+  exactKeys(ranking, 'public search response.ranking', ['deterministic', 'version']);
   if (
     response.canonical !== false ||
     response.scope !== 'public-finalized-projection' ||
     ranking.deterministic !== true ||
-    ranking.version !== 'public-match-v1' ||
+    ranking.version !== 'public-match-v2' ||
     !Array.isArray(response.results) ||
     response.results.length > MAX_SEARCH_RESULTS
   ) {
     throw new IndexerPayloadError('The public search response metadata is invalid.');
+  }
+  const network = canonicalProtocolValue(
+    networkIdSchema,
+    response.network,
+    'public search response.network',
+  );
+  if (expected !== undefined) {
+    const expectedNetwork = canonicalProtocolValue(
+      networkIdSchema,
+      expected.network,
+      'expected public search network',
+    );
+    if (network !== expectedNetwork) {
+      throw new IndexerPayloadError('The public search response changed its requested network.');
+    }
   }
   const responseQuery = string(response.query, 'response.query', 240);
   const queryState = validatePublicSearchQuery(responseQuery);
   if (queryState.kind !== 'valid' || queryState.query !== responseQuery) {
     throw new IndexerPayloadError('The public search response query is not canonical.');
   }
+  const meta = parseIndexerMeta(response.meta);
+  const results = response.results.map((item) => parseSearchItem(item, network));
+  for (const result of results) {
+    const requiredSlot =
+      result.kind === 'community'
+        ? BigInt(result.community.updatedSlot)
+        : result.kind === 'post' && result.post.verification.anchor !== null
+          ? BigInt(result.post.verification.anchor.slot)
+          : null;
+    if (
+      requiredSlot !== null &&
+      (meta.checkpointSlot === null || BigInt(meta.checkpointSlot) < requiredSlot)
+    ) {
+      throw new IndexerPayloadError(
+        'The public search checkpoint does not cover every returned finalized object.',
+      );
+    }
+  }
+  const resultKeys = results.map((result) => {
+    switch (result.kind) {
+      case 'community':
+        return `community:${result.community.networkId}:${result.community.communityAddress}`;
+      case 'person':
+        return `person:${result.identityId}`;
+      case 'post':
+        return `post:${result.post.id}`;
+    }
+  });
+  if (new Set(resultKeys).size !== resultKeys.length) {
+    throw new IndexerPayloadError('A public search response cannot repeat a result identifier.');
+  }
   return {
     canonical: false,
-    meta: parseIndexerMeta(response.meta),
+    meta,
+    network,
     query: responseQuery,
-    ranking: { deterministic: true, version: 'public-match-v1' },
-    results: response.results.map(parseSearchItem),
+    ranking: { deterministic: true, version: 'public-match-v2' },
+    results,
     scope: 'public-finalized-projection',
   };
 }
 
-function parseSearchItem(value: unknown): SearchItem {
+function parseSearchItem(value: unknown, network: string): SearchItem {
   const item = record(value, 'search result');
   const kind = oneOf(item.kind, 'search result.kind', ['person', 'post', 'community'] as const);
   const matchedBy = oneOf(item.matchedBy, 'search result.matchedBy', [
+    'community-description',
+    'community-name',
+    'community-slug',
     'display-name',
     'exact-identifier',
     'handle',
-    'manifest-reference',
     'post-body',
     'profile-bio',
   ] as const);
   switch (kind) {
-    case 'person':
+    case 'person': {
+      exactKeys(item, 'person search result', [
+        'bio',
+        'displayName',
+        'handle',
+        'identityId',
+        'kind',
+        'matchedBy',
+        'updatedAt',
+      ]);
       if (!['display-name', 'exact-identifier', 'handle', 'profile-bio'].includes(matchedBy)) {
         throw new IndexerPayloadError('A person search result has an invalid match reason.');
+      }
+      const identityId = canonicalProtocolValue(
+        identityIdSchema,
+        item.identityId,
+        'search result.identityId',
+      );
+      if (!identityBelongsToNetwork(identityId, network)) {
+        throw new IndexerPayloadError(
+          'A person search result belongs to a different WokeNet Solana deployment.',
+        );
       }
       return {
         bio: boundedString(item.bio, 'search result.bio', 10_000),
         displayName: utf8String(item.displayName, 'search result.displayName', 160),
         handle: nullableString(item.handle, 'search result.handle', 30),
-        identityId: string(item.identityId, 'search result.identityId', 300),
+        identityId,
         kind,
         matchedBy,
         updatedAt: validDate(item.updatedAt, 'search result.updatedAt'),
       };
+    }
     case 'post': {
+      exactKeys(item, 'post search result', ['kind', 'matchedBy', 'post']);
       if (!['exact-identifier', 'post-body'].includes(matchedBy)) {
         throw new IndexerPayloadError('A post search result has an invalid match reason.');
       }
@@ -424,6 +811,16 @@ function parseSearchItem(value: unknown): SearchItem {
         );
       }
       const post = parseIndexedPost(publicPost);
+      const postAuthor = canonicalProtocolValue(
+        identityIdSchema,
+        post.author.identityId,
+        'search result.post.author.identityId',
+      );
+      if (!identityBelongsToNetwork(postAuthor, network)) {
+        throw new IndexerPayloadError(
+          'A post search result belongs to a different WokeNet Solana deployment.',
+        );
+      }
       if (
         post.verification.state !== 'verified' ||
         !post.verification.signatureValid ||
@@ -436,10 +833,23 @@ function parseSearchItem(value: unknown): SearchItem {
       }
       return { kind, matchedBy, post: { ...post, visibility: 'public' } };
     }
-    case 'community':
-      throw new IndexerPayloadError(
-        'Community search results require verified metadata and an explicit public visibility proof.',
-      );
+    case 'community': {
+      if (!['community-description', 'community-name', 'community-slug'].includes(matchedBy)) {
+        throw new IndexerPayloadError('A community search result has an invalid match reason.');
+      }
+      exactKeys(item, 'community search result', ['community', 'kind', 'matchedBy']);
+      const community = parseVerifiedCommunity(item.community, 'public') as PublicVerifiedCommunity;
+      if (community.networkId !== network) {
+        throw new IndexerPayloadError(
+          'A community search result belongs to a different WokeNet Solana deployment.',
+        );
+      }
+      return {
+        community,
+        kind,
+        matchedBy: matchedBy as CommunitySearchMatch,
+      };
+    }
   }
 }
 

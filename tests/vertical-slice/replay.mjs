@@ -25,9 +25,15 @@ try {
   assert.equal(before.following[0]?.reason.kind, 'following');
   assert.equal(before.tombstonedPost?.objectId, metadata.tombstonedPostObjectId);
   assert.ok(before.tombstonedPost?.tombstonedAt, 'tombstoned post retains deletion projection');
+  assert.equal(before.community?.manifestVerified, true, 'community manifest is verified');
+  assert.equal(before.community?.objectId, metadata.communityObjectId);
+  assert.equal(before.community?.content.name, metadata.communityName);
+  assert.equal(before.communityDirectory.length, 1);
+  assert.equal(before.communityDirectory[0]?.communityAddress, metadata.communityAddress);
 
   await projection.clearProjection(networkId);
   assert.equal(await projection.getIdentity(metadata.authorIdentityId), undefined);
+  assert.equal(await projection.getCommunity(networkId, metadata.communityAddress), undefined);
   assert.deepEqual(
     await projection.getFeed({
       networkId,
@@ -49,7 +55,7 @@ try {
     profileSchemaV2ActivationSlot: 0n,
   });
   assert.equal(replay.mode, 'applied');
-  assert.equal(replay.eventCount, 8, 'replay validates exactly every durable fixture event');
+  assert.equal(replay.eventCount, 9, 'replay validates exactly every durable fixture event');
 
   const after = await snapshot(projection, metadata);
   assert.equal(
@@ -74,6 +80,13 @@ async function snapshot(projection, fixture) {
     author: await projection.getIdentity(fixture.authorIdentityId),
     viewer: await projection.getIdentity(fixture.viewerIdentityId),
     profile: await projection.getProfile(fixture.authorIdentityId),
+    community: await projection.getCommunity(networkId, fixture.communityAddress),
+    communityDirectory: (
+      await projection.listPublicCommunities({
+        networkId,
+        limit: 20,
+      })
+    ).communities,
     post: await projection.getPost(fixture.postObjectId),
     tombstonedPost: await projection.getPost(fixture.tombstonedPostObjectId),
     chronological: await projection.getFeed({

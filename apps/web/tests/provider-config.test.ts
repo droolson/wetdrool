@@ -4,10 +4,14 @@ import {
   describeEndpoint,
   getIndexerBaseUrl,
   getProviderSummaries,
+  getWokeNetNetworkId,
   parseHttpEndpoint,
   parseRelayEndpoint,
   ProviderConfigurationError,
 } from '../lib/provider-config';
+
+const NETWORK_ID =
+  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 
 describe('provider configuration', () => {
   it('accepts an HTTP endpoint and exposes only its origin for display', () => {
@@ -48,6 +52,20 @@ describe('provider configuration', () => {
 
   it('returns no indexer when the setting is intentionally empty', () => {
     expect(getIndexerBaseUrl({ WOKESOCIAL_INDEXER_URL: '  ' })).toBeNull();
+  });
+
+  it('reads the server-only WokeNet deployment scope with explicit precedence', () => {
+    expect(
+      getWokeNetNetworkId({
+        INDEXER_NETWORK_ID: 'invalid-fallback',
+        WOKENET_NETWORK_ID: NETWORK_ID,
+      }),
+    ).toBe(NETWORK_ID);
+    expect(getWokeNetNetworkId({ INDEXER_NETWORK_ID: NETWORK_ID })).toBe(NETWORK_ID);
+    expect(getWokeNetNetworkId({ WOKENET_NETWORK_ID: '  ' })).toBeNull();
+    expect(() => getWokeNetNetworkId({ WOKENET_NETWORK_ID: 'devnet' })).toThrow(
+      ProviderConfigurationError,
+    );
   });
 
   it('describes configured, invalid, and absent provider lists honestly', () => {

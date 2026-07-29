@@ -124,13 +124,13 @@ Dependencies: repository audit.
   real.
   - Evidence: `pnpm setup` installs checksum-verified toolchains under `.local`,
     starts healthy PostgreSQL/Redis/Kubo containers, validates configuration, and
-    applies the ordered projection migrations through
-    `0016_manifest_ingestion_state.sql`. `pnpm dev` reloads the selected environment for
-    every child process, starts the private ClamAV/media profile, applies all
-    local service migrations idempotently, enables advisory authorization only
-    after rejecting non-loopback or production use, and excludes the
-    containerized media worker from duplicate Turbo startup. Standalone relay
-    and moderation defaults remain locked.
+    applies all 17 ordered projection migrations through
+    `0017_verified_community_discovery.sql`. `pnpm dev` reloads the selected
+    environment for every child process, starts the private ClamAV/media
+    profile, applies all local service migrations idempotently, enables advisory
+    authorization only after rejecting non-loopback or production use, and
+    excludes the containerized media worker from duplicate Turbo startup.
+    Standalone relay and moderation defaults remain locked.
 
 ### Phase 1 exit evidence
 
@@ -186,10 +186,16 @@ development toolchains.
 - [ ] Implement communities, membership, scoped roles, and governance
   configuration.
   - Implemented subset: community creation, versioned governance commitments,
-    membership state, stored roles, and immutable one-active-member-one-vote
-    proposals/votes/finalization with quorum and approval thresholds.
-    Role-based authorization, community-scoped delegation audiences, other
-    governance models, and proposal execution remain planned.
+    schema-v2 signed creation manifests bound to the exact executable strategy,
+    immutable creation root, and PDA nonce; privacy-safe public
+    directory/address detail; membership state; stored roles; and immutable
+    one-active-member-one-vote proposals/votes/finalization with quorum and
+    approval thresholds. Community metadata is immutable in the current
+    program. The existing creator-only membership setter is not exposed as
+    member consent; self-join/leave, ban/removal semantics, role-based
+    authorization, community-scoped delegation audiences, lifecycle/update
+    instructions, other governance models, and proposal execution remain
+    planned.
 - [ ] Implement signed post references, reply/quote/repost/reaction references,
   and deletion tombstones.
   - Implemented subset: immutable post references, reaction
@@ -251,11 +257,14 @@ Dependencies: phase 2 protocol identifiers and events.
 
 - [x] Define one canonical source for all versioned protocol object schemas.
   - Evidence: `packages/protocol` defines strict modular Zod schemas and typed
-    builders for all 29 current v1 portable object families. Its checked-in
-    Draft 2020-12 signed-envelope schema is generated from the same registry,
-    exported as `@wokesocial/protocol/schema/v1`, and fails `schema:check`
-    when stale. Rust consumption and cross-language golden conformance remain
-    separate open gates.
+    builders for all 29 current portable object families. Profiles and
+    communities use schema version 2 for current creation; the other families
+    remain on schema version 1, while frozen profile/community v1 shapes remain
+    read-compatible. Its checked-in Draft 2020-12 signed-envelope schema is
+    generated from the same registry, exported as
+    `@wokesocial/protocol/schema/v1`, and fails `schema:check` when stale. Rust
+    consumption and cross-language golden conformance remain separate open
+    gates.
 - [x] Implement deterministic canonical serialization, stable identifiers,
   content hashing, signature creation, and signature verification.
   - Evidence: protocol unit tests cover canonical-byte equality, NFC rejection,
@@ -294,8 +303,11 @@ Dependencies: phase 2 protocol identifiers and events.
     historical authorization and replay invariants. Identity, handles,
     social/governance/recovery, and
     payment configuration/offerings/receipts/entitlements retain exact-network
-    and raw-event provenance. Sixteen ordered, checksummed migrations, 189 unit
-    cases across 20 files, and 27 fresh-PostgreSQL cases across 11 files pass.
+    and raw-event provenance. Schema-v2 community creation additionally binds
+    the immutable root authority, signed/PDA nonce, replacement sequence, and
+    exact governance commitment before public projection. Seventeen ordered,
+    checksummed migrations, 202 unit cases across 21 files, and 30
+    fresh-PostgreSQL cases across 12 files pass.
     Fork/reorg handling, independent-provider reconciliation, production
     metrics, and production-scale rebuilds above 50,000 events remain
     incomplete.
@@ -348,16 +360,20 @@ Dependencies: phase 2 protocol identifiers and events.
     before an explicitly confirmed, per-network locked atomic replacement.
 - [ ] Implement complete search and discovery with visibility and personal-safety enforcement.
   - Implemented subset: memory and PostgreSQL projections search current public
-    display names/bios, canonical active handles, and verified public posts. The
-    deterministic `public-match-v1` response is network-scoped, checkpointed in
-    the same repeatable-read snapshot, rate/concurrency/statement-time bounded,
-    and excludes unlisted and tombstoned posts. Indexed NFKC/ASCII-folded
-    PostgreSQL fields and prefix-only fallback for terms without an extractable
-    ASCII trigram avoid non-indexable unauthenticated substring predicates.
-    Unverified community references fail closed. The flagship strictly parses
-    this replaceable contract, caps provider response bytes, and renders real,
-    empty, invalid-query, and unavailable states without fabricated results.
-    Event/creator and verified public-community discovery, viewer-aware
+    display names/bios, canonical active handles, verified public posts, and
+    verified public-community names/slugs/descriptions. The deterministic
+    `public-match-v2` response is network-scoped, checkpointed in the same
+    repeatable-read snapshot, rate/concurrency/statement-time bounded, and
+    excludes unlisted/tombstoned posts plus unlisted/private/restricted or
+    unverified communities. Indexed NFKC/ASCII-folded PostgreSQL fields and
+    prefix-only fallback for terms without an extractable ASCII trigram avoid
+    non-indexable unauthenticated substring predicates. A bounded community
+    directory lists public manifests; address detail additionally permits
+    unlisted manifests while private/restricted/unknown states share a 404 and
+    no public endpoint returns memberships. The flagship strictly parses and
+    rechecks governance/visibility proofs, caps provider response bytes, and
+    renders real, empty, invalid-query, not-found, and unavailable states
+    without fabricated results. Event/creator discovery, viewer-aware
     block/mute enforcement, production-scale relevance/load evidence, and
     independent-provider conformance remain open.
 - [x] Implement non-authoritative multi-relay protocol and failover.
@@ -387,12 +403,13 @@ Dependencies: phase 2 protocol identifiers and events.
 - [ ] Test full projection rebuild and alternate-provider reconciliation.
   - Implemented subset: PostgreSQL tests rebuild from synthetic inputs, and the
     connected gate completely clears its network projection and reconstructs
-    identity, profile, posts, follow, tombstone, checkpoint, and suppression
-    from actual finalized validator history plus signed CAS manifests. Durable
-    accepted/pending/terminal replay, accepted-obsolete suppression without
-    provider I/O, and late hydration/deactivation parity pass in memory and
-    PostgreSQL. Alternate storage/RPC reconciliation, fork/reorg evidence, and
-    rebuilds above the current 50,000-event bound remain planned.
+    identity, profile, public community discovery, posts, follow, tombstone,
+    checkpoint, and suppression from actual finalized validator history plus
+    signed CAS manifests. Durable accepted/pending/terminal replay,
+    accepted-obsolete suppression without provider I/O, and late
+    hydration/deactivation parity pass in memory and PostgreSQL. Alternate
+    storage/RPC reconciliation, fork/reorg evidence, and rebuilds above the
+    current 50,000-event bound remain planned.
 
 ## 4. Flagship web application
 
@@ -408,9 +425,12 @@ Dependencies: phases 1-3 public interfaces.
   - Implemented subset: 46 App Router page files cover the complete required
     route-shell surface. The current production build emits 32 static route
     entries, including the framework `_not-found` entry, plus 15 dynamic routes.
-    Unsupported mutations are visibly disabled rather than reporting false
-    success. Route presence alone does not satisfy the production-quality
-    interaction, data, and end-to-end acceptance criteria for every screen.
+    Community directory, address-routed public/unlisted detail, exact-governance
+    proof presentation, and public community search consume the strict open
+    indexer contract. Joining, membership, administration, and governance writes
+    remain visibly disabled rather than reporting false success. Route presence
+    alone does not satisfy the production-quality interaction, data, and
+    end-to-end acceptance criteria for every screen.
 - [ ] Implement responsive navigation and polished loading, empty, error,
   offline, and degraded-network states.
   - Implemented subset: responsive navigation, skip link, loading/error
@@ -440,12 +460,12 @@ Dependencies: phases 1-3 public interfaces.
     complete offline caching, independent-provider conformance, and cross-device
     enforcement remain open.
 - [x] Add WCAG 2.2 AA automated checks and manual critical-flow procedures.
-  - Evidence: 208 desktop and mobile-viewport Chromium tests pass with two
-    intentional desktop-only passkey-lifecycle skips, including 90 axe A/AA scans over 45
-    route fixtures, keyboard skip-link and navigation,
-    high-contrast state, responsive layouts, local preference/export flows,
-    semantic connected-post coverage, and disabled destructive/report
-    mutations. The manual matrix in
+  - Evidence: 210 desktop and mobile-viewport Chromium tests pass with two
+    intentional mobile-project skips for desktop-only passkey-lifecycle flows,
+    including 90 axe A/AA scans over 45 route fixtures, keyboard skip-link and
+    navigation, high-contrast state, responsive layouts, local
+    preference/export flows, semantic connected-post coverage, and disabled
+    destructive/report mutations. The manual matrix in
     `docs/ACCESSIBILITY.md` remains required before a WCAG conformance claim.
 
 ## 5. Moderation, governance, and safety
@@ -532,8 +552,9 @@ threat-model mitigations.
     supports discoverable sign-in plus list/add/revoke service passkeys. Each
     additional passkey unwraps and rewraps the same root, and revocation requires
     fresh step-up, deletes that wrapper, and revokes service sessions.
-    Thirty-four auth unit, four isolated PostgreSQL, one auth-service browser integration,
-    95 web unit, and two desktop web virtual-authenticator lifecycle flows pass.
+    Thirty-four auth unit, four isolated PostgreSQL, one auth-service browser
+    integration, 109 web unit, and two desktop web virtual-authenticator
+    lifecycle flows pass.
   - Remaining scope: create the actual protocol identity/delegation through a
     simulated and finalized Solana program transaction, connect service-passkey
     revocation to the separate WokeNet protocol delegation/device-authority lifecycle,
@@ -694,11 +715,11 @@ This gate is deliberately cross-phase and is the first integrated milestone.
 
 `pnpm test:vertical-slice` passed on the final naming/PDA state from a fresh
 Solana local validator and disposable PostgreSQL on 2026-07-29. It finalized
-nine local transactions, applied eight projected events
-from eight program transactions, produced zero dead letters, compared pre/post
-  replay state exactly, and passed production desktop and mobile-viewport Chromium without
-request interception. It is local development evidence, not devnet,
-mainnet-beta, Seeker, or `$WOKE`-mint evidence.
+ten local transactions, applied nine durable projected events, produced zero
+dead letters, compared pre/post replay state exactly, and passed eight
+production desktop and mobile-viewport Chromium checks without request
+interception. It is local development evidence, not devnet, mainnet-beta,
+Seeker, or `$WOKE`-mint evidence.
 
 - [x] A user creates an identity on a real local validator.
 - [x] The user creates or updates a profile.
@@ -707,6 +728,8 @@ mainnet-beta, Seeker, or `$WOKE`-mint evidence.
 - [x] The local WokeNet program anchors the manifest hash and reference.
 - [x] The indexer validates the event, content hash, and signature.
 - [x] The web feed displays the verified post.
+- [x] The public directory, exact-network search, and address-routed detail
+  display the verified community without exposing private membership data.
 - [x] A second identity follows the first.
 - [x] The following feed includes the post.
 - [x] The network projection is completely cleared and rebuilt solely from

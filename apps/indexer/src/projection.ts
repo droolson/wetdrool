@@ -1,5 +1,7 @@
 import type {
   BlockProjection,
+  CommunityDirectoryQuery,
+  CommunityDirectorySnapshot,
   CommunityMembershipProjection,
   CommunityProjection,
   DelegationProjection,
@@ -34,7 +36,7 @@ export interface VerifiedManifest {
   readonly signingKeyId: string;
   readonly authorIdentityId: string;
   readonly createdAt: string;
-  readonly type: 'profile' | 'post' | 'tombstone';
+  readonly type: 'profile' | 'post' | 'community' | 'tombstone';
   readonly content: unknown;
 }
 
@@ -88,6 +90,7 @@ export interface ProjectionStore {
     networkId: string,
     communityAddress: string,
   ): Promise<CommunityProjection | undefined>;
+  listPublicCommunities(query: CommunityDirectoryQuery): Promise<CommunityDirectorySnapshot>;
   getCommunityMemberships(
     networkId: string,
     communityAddress: string,

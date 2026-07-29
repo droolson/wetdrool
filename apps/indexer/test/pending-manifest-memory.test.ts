@@ -1,7 +1,15 @@
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import type { NetworkId, PostContent, ProfileContent } from '@wokesocial/protocol';
+import {
+  communityGovernanceStrategyCommitment,
+  encodeMultibaseBase64Url,
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  type CommunityContent,
+  type NetworkId,
+  type PostContent,
+  type ProfileContent,
+} from '@wokesocial/protocol';
 
 import {
   MemoryProjectionStore,
@@ -79,6 +87,34 @@ describe('memory pending manifest disposition', () => {
     await expect(
       projection.deadLetter(networkId, second.event.transactionSignature, second.event.logIndex),
     ).resolves.toBeUndefined();
+
+    const rebuiltRetryAt = '2026-07-28T12:20:00.000Z';
+    const rebuiltDeferral = {
+      ...deferral(),
+      eventBody: { encodedData: 'first-rebuilt' },
+      failureDetail: 'Rebuilt retry metadata replaces the previous scheduling payload.',
+      nextAttemptAt: rebuiltRetryAt,
+    };
+    await projection.rebuildProjection(networkId, [
+      { event: identityCreated() },
+      { event: first.event, pendingManifest: rebuiltDeferral },
+      { event: second.event, manifest: second.manifest },
+    ]);
+    await expect(projection.duePendingManifestEvents(networkId, retryAt, 10)).resolves.toEqual([]);
+    await expect(
+      projection.deadLetter(networkId, first.event.transactionSignature, first.event.logIndex),
+    ).resolves.toEqual({ attempts: 2, nextAttemptAt: rebuiltRetryAt });
+    await expect(
+      projection.duePendingManifestEvents(networkId, rebuiltRetryAt, 10),
+    ).resolves.toEqual([
+      {
+        event: first.event,
+        attempts: 2,
+        eventBody: { encodedData: 'first-rebuilt' },
+        failureDetail: 'Rebuilt retry metadata replaces the previous scheduling payload.',
+        nextAttemptAt: rebuiltRetryAt,
+      },
+    ]);
   });
 
   it('durably defers an unavailable profile while advancing liveness exactly once', async () => {
@@ -338,6 +374,108 @@ describe('memory pending manifest disposition', () => {
       projection.deadLetter(networkId, skipped.event.transactionSignature, skipped.event.logIndex),
     ).resolves.toBeUndefined();
   });
+
+  it('retains a private shell across community retry, promotion, quarantine, and rebuild paths', async () => {
+    const projection = await seededProjection();
+    const pending = communityItem(1n, 2n, 60, 'public');
+    await expect(projection.deferManifestEvent(pending.event, deferral())).resolves.toBe(true);
+    await expect(
+      projection.getCommunity(networkId, pending.event.communityAddress),
+    ).resolves.toMatchObject({
+      manifestVerified: false,
+      manifestGovernanceVersion: 1,
+      manifestGovernanceStrategyHash: pending.event.governanceStrategyHash,
+    });
+    await expect(projection.listPublicCommunities({ networkId, limit: 10 })).resolves.toMatchObject(
+      { communities: [] },
+    );
+
+    await expect(projection.promoteManifestEvent(pending.event, pending.manifest)).resolves.toBe(
+      true,
+    );
+    await expect(
+      projection.getCommunity(networkId, pending.event.communityAddress),
+    ).resolves.toMatchObject({
+      manifestVerified: true,
+      objectId: pending.manifest.objectId,
+      content: { name: 'Community 60' },
+    });
+    await expect(projection.listPublicCommunities({ networkId, limit: 10 })).resolves.toMatchObject(
+      {
+        communities: [{ communityAddress: pending.event.communityAddress }],
+      },
+    );
+    await expect(projection.getIdentity(identityId)).resolves.toMatchObject({
+      identitySequence: 1n,
+    });
+
+    await projection.rebuildProjection(networkId, [
+      { event: identityCreated() },
+      { event: pending.event, manifest: pending.manifest },
+    ]);
+    await expect(
+      projection.getCommunity(networkId, pending.event.communityAddress),
+    ).resolves.toMatchObject({ manifestVerified: true, content: { name: 'Community 60' } });
+
+    const quarantinedProjection = await seededProjection();
+    const quarantined = communityItem(1n, 2n, 61, 'private');
+    await quarantinedProjection.quarantineManifestEvent(quarantined.event, {
+      eventBody: {},
+      failureCode: 'manifest-invalid',
+      failureDetail: 'Invalid signed community bytes.',
+    });
+    await expect(
+      quarantinedProjection.getCommunity(networkId, quarantined.event.communityAddress),
+    ).resolves.toMatchObject({ manifestVerified: false });
+    await expect(
+      quarantinedProjection.listPublicCommunities({ networkId, limit: 10 }),
+    ).resolves.toMatchObject({ communities: [] });
+    await quarantinedProjection.rebuildProjection(networkId, [
+      { event: identityCreated() },
+      { event: quarantined.event, terminalFailureCode: 'manifest-invalid' },
+    ]);
+    await expect(
+      quarantinedProjection.getCommunity(networkId, quarantined.event.communityAddress),
+    ).resolves.toMatchObject({ manifestVerified: false });
+  });
+
+  it('paginates equal-slot mixed-case addresses in raw ASCII order', async () => {
+    const projection = await seededProjection();
+    const rawHigherAddress = publicKey(1);
+    const rawLowerAddress = publicKey(52);
+    expect(rawHigherAddress).toMatch(/[A-Z]/u);
+    expect(rawHigherAddress).toMatch(/[a-z]/u);
+    expect(rawLowerAddress).toMatch(/[A-Z]/u);
+    expect(rawLowerAddress).toMatch(/[a-z]/u);
+    expect(rawHigherAddress > rawLowerAddress).toBe(true);
+
+    const first = communityItem(1n, 2n, 62, 'public');
+    const second = communityItem(2n, 2n, 63, 'public');
+    await projection.apply(
+      { ...first.event, communityAddress: rawHigherAddress, transactionIndex: 0 },
+      first.manifest,
+    );
+    await projection.apply(
+      { ...second.event, communityAddress: rawLowerAddress, transactionIndex: 1 },
+      second.manifest,
+    );
+
+    const firstPage = await projection.listPublicCommunities({ networkId, limit: 1 });
+    expect(firstPage).toMatchObject({
+      communities: [{ communityAddress: rawHigherAddress }],
+      next: { createdSlot: 2n, communityAddress: rawHigherAddress },
+    });
+    if (firstPage.next === undefined) throw new Error('Expected a second directory page.');
+    await expect(
+      projection.listPublicCommunities({
+        networkId,
+        limit: 1,
+        before: firstPage.next,
+      }),
+    ).resolves.toMatchObject({
+      communities: [{ communityAddress: rawLowerAddress }],
+    });
+  });
 });
 
 async function seededProjection(): Promise<MemoryProjectionStore> {
@@ -412,6 +550,56 @@ function postItem(sequence: bigint, slot: bigint, signatureSeed: number, body: s
   };
 }
 
+function communityItem(
+  sequence: bigint,
+  slot: bigint,
+  signatureSeed: number,
+  visibility: CommunityContent['visibility'],
+) {
+  const strategy = communityGovernanceStrategyCommitment({
+    governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  });
+  const event = {
+    ...eventBase(slot, signatureSeed),
+    type: 'community-created' as const,
+    communityAddress: publicKey(signatureSeed + 90),
+    creatorIdentityId: identityId,
+    authority: rootAuthority,
+    communityNonce: encodeMultibaseBase64Url(
+      Uint8Array.from({ length: 16 }, (_, index) => signatureSeed + index),
+    ),
+    creatorSequence: sequence,
+    manifestCid: cid(signatureSeed),
+    manifestHash: digest(signatureSeed),
+    governanceVersion: strategy.governanceVersion,
+    governanceStrategyHash: strategy.digest,
+  };
+  const content = {
+    slug: `community-${String(signatureSeed)}`,
+    name: `Community ${String(signatureSeed)}`,
+    description: 'A retry-path fixture.',
+    visibility,
+    membershipPolicy: 'open',
+    governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+    federationPolicy: { mode: 'open', allow: [], block: [] },
+    replacement: { sequence: 1 },
+  } satisfies CommunityContent;
+  return {
+    event,
+    manifest: {
+      objectId: objectId('community', signatureSeed),
+      cid: event.manifestCid,
+      payloadHash: event.manifestHash,
+      schemaVersion: 2 as const,
+      signingKeyId: `${identityId}#root/${rootAuthority}`,
+      authorIdentityId: identityId,
+      createdAt: event.blockTime,
+      type: 'community' as const,
+      content,
+    } satisfies VerifiedManifest,
+  };
+}
+
 function manifest(
   event: {
     readonly objectId: string;
@@ -457,7 +645,7 @@ function eventBase(slot: bigint, signatureSeed: number) {
   };
 }
 
-function objectId(type: 'profile' | 'post', seed: number): string {
+function objectId(type: 'community' | 'profile' | 'post', seed: number): string {
   return `wokesocialobj:v1:${type}:${digest(seed)}`;
 }
 

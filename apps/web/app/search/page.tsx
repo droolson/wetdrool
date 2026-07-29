@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { CommunityCard } from '@/components/community-card';
 import { PostCard } from '@/components/post-card';
 import {
   searchPublic,
@@ -11,7 +12,7 @@ import {
   type SearchResult,
   validatePublicSearchQuery,
 } from '@/lib/indexer';
-import { formatUtcDate } from '@/lib/presentation';
+import { abbreviate, formatUtcDate } from '@/lib/presentation';
 
 export const metadata: Metadata = {
   title: 'Search',
@@ -35,10 +36,12 @@ function statusFor(result: SearchResult | null, queryState: PublicSearchQuerySta
 
 function matchLabel(result: SearchItem): string {
   const labels = {
+    'community-description': 'Community manifest description',
+    'community-name': 'Community name',
+    'community-slug': 'Community slug',
     'display-name': 'Current display name',
     'exact-identifier': 'Exact public identifier',
     handle: 'Active handle',
-    'manifest-reference': 'Anchored manifest reference',
     'post-body': 'Verified public post',
     'profile-bio': 'Current public bio',
   } as const;
@@ -48,6 +51,9 @@ function matchLabel(result: SearchItem): string {
 function SearchResultCard({ result }: { result: SearchItem }) {
   if (result.kind === 'post') {
     return <PostCard post={result.post} />;
+  }
+  if (result.kind === 'community') {
+    return <CommunityCard community={result.community} matchedBy={result.matchedBy} />;
   }
 
   return (
@@ -91,13 +97,13 @@ export default async function SearchPage({
         title="Search public network state."
       >
         <p>
-          The configured indexer can search current public profiles and verified posts. It is
-          replaceable, and its result order is never canonical.
+          The configured indexer can search current public profiles, verified posts, and schema-v2
+          public communities. It is replaceable, and its result order is never canonical.
         </p>
       </AppPageHeader>
 
       <form action="/search" className="search-bar" method="get" role="search">
-        <label htmlFor="network-search">Search public posts or people</label>
+        <label htmlFor="network-search">Search public posts, people, or communities</label>
         <div>
           <input
             autoComplete="off"
@@ -192,6 +198,12 @@ export default async function SearchPage({
                 </dd>
               </div>
               <div>
+                <dt>WokeNet deployment</dt>
+                <dd title={result.value.network}>
+                  <code>{abbreviate(result.value.network, 8)}</code>
+                </dd>
+              </div>
+              <div>
                 <dt>Ranking</dt>
                 <dd>{result.value.ranking.version}</dd>
               </div>
@@ -199,7 +211,15 @@ export default async function SearchPage({
           </header>
           <ol>
             {result.value.results.map((item) => (
-              <li key={item.kind === 'post' ? `post:${item.post.id}` : `person:${item.identityId}`}>
+              <li
+                key={
+                  item.kind === 'post'
+                    ? `post:${item.post.id}`
+                    : item.kind === 'community'
+                      ? `community:${item.community.communityAddress}`
+                      : `person:${item.identityId}`
+                }
+              >
                 <SearchResultCard result={item} />
               </li>
             ))}

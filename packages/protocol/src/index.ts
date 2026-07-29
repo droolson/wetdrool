@@ -4,6 +4,7 @@ export * from './canonical.js';
 export * from './constants.js';
 export * from './content-cid.js';
 export * from './encoding.js';
+export * from './governance.js';
 export * from './identifiers.js';
 export * from './manifest-uri.js';
 export * from './schemas.js';

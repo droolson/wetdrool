@@ -5,7 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 import { encodeMultibaseBase64Url } from '@wokesocial/protocol';
 
-import { GOVERNANCE_STRATEGY_HASH, protocolEventSchema } from '../src/index.js';
+import {
+  GOVERNANCE_STRATEGY_HASH,
+  LEGACY_GOVERNANCE_STRATEGY_HASH,
+  protocolEventSchema,
+} from '../src/index.js';
 import { testCid } from './cid-fixtures.js';
 
 const programId = publicKey(1);
@@ -189,6 +193,7 @@ const fixtures = [
     communityAddress: publicKey(41),
     creatorIdentityId: identityId,
     authority: publicKey(42),
+    communityNonce: encodeMultibaseBase64Url(new Uint8Array(16)),
     creatorSequence: 1n,
     manifestCid: testCid(3),
     manifestHash: digest(43),
@@ -511,6 +516,23 @@ describe('protocol event network and key bindings', () => {
     for (const { family, event } of fixtures) {
       expect(protocolEventSchema.safeParse(event).success, family).toBe(true);
     }
+  });
+
+  it('retains the legacy proposal strategy hash only for immutable event replay', () => {
+    const proposal = fixtures.find(({ family }) => family === 'governance-proposal')?.event;
+    expect(proposal).toBeDefined();
+    expect(
+      protocolEventSchema.safeParse({
+        ...proposal,
+        governanceStrategyHash: LEGACY_GOVERNANCE_STRATEGY_HASH,
+      }).success,
+    ).toBe(true);
+    expect(
+      protocolEventSchema.safeParse({
+        ...proposal,
+        governanceStrategyHash: digest(250),
+      }).success,
+    ).toBe(false);
   });
 
   it('rejects malformed common network, program, and transaction keys in every family', () => {

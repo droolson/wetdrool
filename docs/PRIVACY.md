@@ -144,15 +144,33 @@ It must not silently convert private preferences, recovery data, or message cont
 The implemented public profile projection retains only public pronouns, gender,
 chosen-family labels, and location. Protected references remain available from
 the verified source manifest to authorized clients but are not copied into the
-public indexer projection. The implemented `public-match-v1` search projection
-is limited to current public display names/bios, active handles, and verified
-posts whose visibility is `public`. Unlisted/restricted posts and tombstoned
-posts are excluded in both memory and PostgreSQL implementations. Anchored
-community references are also excluded until the indexer can verify a signed
-public-visibility manifest. Canonical queries contain 3–120 normalized Unicode
-code points. The web client warns that a query is transmitted to the selected
-indexer and retained in the URL; operators must disclose and bound any
-reverse-proxy/application query logging before public use.
+public indexer projection. The implemented `public-match-v2` search projection
+is limited to current public display names/bios, active handles, verified posts
+whose visibility is `public`, and verified public-community names, slugs, and
+descriptions. Unlisted/restricted posts, tombstoned posts, unlisted communities,
+protected communities, and unverified community shells are excluded in both
+memory and PostgreSQL implementations. Direct community detail permits verified
+public or unlisted manifests, but private/restricted communities return the
+same not-found response as an unknown address. Public community responses do
+not include membership lists. Direct governance proposal and vote endpoints
+apply the same parent-community visibility gate so protected or unverified
+communities cannot leak voter identities, membership addresses, or vote choices
+through a known child PDA. The official publication pipeline rejects
+private/restricted community manifests before signing or storage until
+authenticated encryption is connected. Canonical search queries contain 3–120
+normalized Unicode code points. The web client warns that a query is
+transmitted to the selected indexer and retained in the URL; operators must
+disclose and bound any reverse-proxy/application query logging before public
+use.
+
+This API policy is data minimization, not chain secrecy. Every onchain
+`CommunityCreated` event exposes a community PDA, creator identity, manifest
+CID, and commitment hashes to Solana validators, RPC providers, explorers, and
+other observers. A not-found response prevents the official indexer from
+amplifying a private or restricted community, but it cannot conceal that
+onchain event. Protected community metadata must therefore be encrypted before
+publication, and the current official publication pipeline fails closed
+instead of pretending otherwise.
 
 Historical profile compatibility is bounded by one immutable
 `INDEXER_PROFILE_V2_ACTIVATION_SLOT` per WokeNet. Before that slot, the indexer

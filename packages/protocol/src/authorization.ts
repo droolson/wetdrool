@@ -57,7 +57,7 @@ const AUTHORIZATION_REQUIREMENTS = {
   reaction: policy(['social.react'], ['target-exists', 'replacement-chain']),
   bookmark: policy(['preferences.bookmark'], ['target-exists', 'replacement-chain']),
   'media-manifest': policy(['content.media']),
-  community: policy(['community.create'], ['replacement-chain']),
+  community: policy(['community.create'], ['replacement-chain'], 'root-only'),
   'community-membership': policy(
     ['community.membership'],
     ['target-exists', 'community-authority', 'community-membership', 'replacement-chain'],
@@ -100,9 +100,21 @@ const AUTHORIZATION_REQUIREMENTS = {
   'notification-preference': policy(['preferences.notification'], ['replacement-chain']),
 } as const satisfies Record<PortablePayloadType, ObjectAuthorizationRequirement>;
 
+const LEGACY_COMMUNITY_AUTHORIZATION_REQUIREMENT = policy(
+  ['community.create'],
+  ['replacement-chain'],
+);
+
 export function authorizationRequirementFor(
   payloadOrType: PortablePayload | PortablePayloadType,
 ): ObjectAuthorizationRequirement {
+  if (
+    typeof payloadOrType !== 'string' &&
+    payloadOrType.type === 'community' &&
+    payloadOrType.schemaVersion === 1
+  ) {
+    return LEGACY_COMMUNITY_AUTHORIZATION_REQUIREMENT;
+  }
   return AUTHORIZATION_REQUIREMENTS[
     typeof payloadOrType === 'string' ? payloadOrType : payloadOrType.type
   ];

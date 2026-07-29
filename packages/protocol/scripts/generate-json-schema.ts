@@ -3,7 +3,11 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { format } from 'prettier';
 import { z } from 'zod';
 
-import { PORTABLE_OBJECT_TYPES } from '../src/constants.js';
+import {
+  COMMUNITY_SCHEMA_VERSION,
+  PORTABLE_OBJECT_TYPES,
+  PROFILE_SCHEMA_VERSION,
+} from '../src/constants.js';
 import { signedEnvelopeSchema } from '../src/schemas.js';
 
 const outputUrl = new URL('../schemas/wokesocial-signed-envelope-v1.schema.json', import.meta.url);
@@ -21,10 +25,11 @@ const artifact = {
   description:
     'Structural interchange schema for every WokeSocial v1 portable object and its Ed25519 proof.',
   $comment:
-    'JSON Schema validates the protocol-v1 read surface, including frozen schema-version-1 profiles and protected schema-version-2 profiles. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, and current external authorization policy from the protocol library. New objects MUST use the current creation schema/builders.',
+    'JSON Schema validates the protocol-v1 read surface, including frozen schema-version-1 profiles and communities plus their current schema-version-2 shapes. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, and current external authorization policy from the protocol library. New objects MUST use the current creation schema/builders.',
   'x-wokesocial-protocol-version': '1.0',
   'x-wokesocial-schema-versions': [1, 2],
-  'x-wokesocial-current-profile-schema-version': 2,
+  'x-wokesocial-current-profile-schema-version': PROFILE_SCHEMA_VERSION,
+  'x-wokesocial-current-community-schema-version': COMMUNITY_SCHEMA_VERSION,
   'x-wokesocial-object-types': PORTABLE_OBJECT_TYPES,
 };
 

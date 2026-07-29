@@ -9,14 +9,18 @@ import postgres, { type Sql, type TransactionSql } from 'postgres';
 import { describe, expect, it } from 'vitest';
 
 import {
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
   buildTombstonePayload,
   canonicalizeEnvelope,
+  communityGovernanceStrategyCommitment,
   createPayloadBuilderIdentity,
   encodeMultibaseBase64Url,
   getObjectId,
   signPayload,
+  type CommunityContent,
   type EncryptedContentReference,
   type NetworkId,
   type PortablePayload,
@@ -30,6 +34,8 @@ import { LocalContentAddressedStorage, type StorageReceipt } from '@wokesocial/s
 import {
   buildIndexerApp,
   loadDurableRawEventLedger,
+  EXPECTED_INDEXER_MIGRATION_COUNT,
+  LATEST_INDEXER_MIGRATION,
   ManifestVerifier,
   MemoryProjectionStore,
   OpenIndexer,
@@ -86,6 +92,18 @@ describe('PostgreSQL indexer integration', () => {
     if (runtimeRole === undefined) throw new Error('Expected an indexer runtime role.');
 
     try {
+      const [migrationLedger] = await runtimeSql<
+        { migration_count: number; has_latest: boolean }[]
+      >`
+        SELECT
+          count(*)::integer AS migration_count,
+          bool_or(version = ${LATEST_INDEXER_MIGRATION}) AS has_latest
+        FROM schema_migrations
+      `;
+      expect(migrationLedger).toEqual({
+        migration_count: EXPECTED_INDEXER_MIGRATION_COUNT,
+        has_latest: true,
+      });
       await expect(projection.readiness()).resolves.toBeUndefined();
       await migrationSql`
         REVOKE INSERT ON posts FROM ${migrationSql(runtimeRole)}
@@ -953,6 +971,29 @@ describe('PostgreSQL indexer integration', () => {
         }),
         author.privateKey,
       );
+      const communityContent = {
+        slug: 'river-commons',
+        name: 'River Commons',
+        description: 'A verified public community projected from finalized events.',
+        visibility: 'public',
+        membershipPolicy: 'open',
+        governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+        federationPolicy: {
+          mode: 'open',
+          allow: [],
+          block: [],
+        },
+        replacement: { sequence: 1 },
+      } satisfies CommunityContent;
+      const community = await publish(
+        storage,
+        buildCommunityPayload(author.builder, communityContent, {
+          createdAt: new Date('2026-07-28T13:04:00.000Z'),
+          nonce: nonce(4),
+        }),
+        author.privateKey,
+      );
+      const communityGovernance = communityGovernanceStrategyCommitment(communityContent);
       const tombstoneContent: TombstoneContent = {
         target: { id: post.objectId, cid: post.receipt.cid },
         reason: 'author-deleted',
@@ -968,7 +1009,7 @@ describe('PostgreSQL indexer integration', () => {
       );
       const postReference = bs58.encode(randomBytes(32));
       const communityAddress = bs58.encode(randomBytes(32));
-      const strategy1 = encodeMultibaseBase64Url(randomBytes(32));
+      const strategy1 = communityGovernance.digest;
       const strategy2 = encodeMultibaseBase64Url(randomBytes(32));
       const nextRootAuthority = bs58.encode(randomBytes(32));
       const delegateAuthority = bs58.encode(randomBytes(32));
@@ -1054,9 +1095,10 @@ describe('PostgreSQL indexer integration', () => {
           communityAddress,
           creatorIdentityId: author.identityId,
           authority: authorAuthority,
+          communityNonce: community.envelope.payload.nonce,
           creatorSequence: 5n,
-          manifestCid: post.receipt.cid,
-          manifestHash: post.envelope.proof.payloadHash,
+          manifestCid: community.receipt.cid,
+          manifestHash: community.envelope.proof.payloadHash,
           governanceVersion: 1,
           governanceStrategyHash: strategy1,
         },
@@ -1281,9 +1323,31 @@ describe('PostgreSQL indexer integration', () => {
         stateSequence: 1n,
       });
       await expect(projection.getCommunity(networkId, communityAddress)).resolves.toMatchObject({
-        manifestVerified: false,
+        manifestAuthority: authorAuthority,
+        manifestGovernanceStrategyHash: strategy1,
+        manifestGovernanceVersion: 1,
+        manifestVerified: true,
+        objectId: community.objectId,
         governanceVersion: 2,
         governanceStrategyHash: strategy2,
+      });
+      await expect(
+        projection.searchPublic({
+          networkId,
+          term: communityContent.name,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({
+        checkpoint: 15n,
+        results: [
+          {
+            kind: 'community',
+            community: {
+              communityAddress,
+              objectId: community.objectId,
+            },
+          },
+        ],
       });
       await expect(
         projection.searchPublic({

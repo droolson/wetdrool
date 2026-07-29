@@ -57,11 +57,13 @@ pub const COMMUNITY_ROLE_ADMIN: u16 = 1 << 2;
 pub const VALID_COMMUNITY_ROLES: u16 =
     COMMUNITY_ROLE_MEMBER | COMMUNITY_ROLE_MODERATOR | COMMUNITY_ROLE_ADMIN;
 
-/// The only executable governance strategy in v1. The digest is SHA-256 over:
-/// `wokesocial:governance:one-active-member-one-vote:v1;quorum-bps=5000;approval-bps=5001;abstain=quorum-only`.
+/// The only executable governance strategy in v1. The digest is SHA-256 over
+/// the UTF-8 domain `wokenet:community-governance-strategy:v1`, a NUL byte,
+/// and the RFC 8785 canonical JSON strategy descriptor:
+/// `{"abstainTreatment":"quorum-only","approvalBasisPoints":5001,"execution":"outcome-record-only","model":"one-active-member-one-vote","quorumBasisPoints":5000,"version":1}`.
 pub const ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH: [u8; MANIFEST_HASH_BYTES] = [
-    46, 103, 181, 4, 56, 32, 56, 6, 227, 238, 34, 184, 15, 5, 131, 152, 36, 10, 237, 225, 159, 118,
-    162, 108, 176, 166, 41, 208, 234, 179, 144, 211,
+    157, 228, 91, 3, 18, 196, 74, 120, 218, 76, 61, 70, 178, 130, 168, 136, 138, 236, 102,
+    13, 66, 36, 42, 13, 118, 19, 131, 75, 148, 53, 117, 113,
 ];
 pub const GOVERNANCE_QUORUM_BPS: u16 = 5_000;
 pub const GOVERNANCE_APPROVAL_BPS: u16 = 5_001;

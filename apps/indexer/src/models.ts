@@ -1,4 +1,4 @@
-import type { PostContent, ProfileContent } from '@wokesocial/protocol';
+import type { CommunityContent, PostContent, ProfileContent } from '@wokesocial/protocol';
 
 export interface IdentityProjection {
   readonly identityId: string;
@@ -62,21 +62,60 @@ export interface BlockProjection {
   readonly updatedAt: string;
 }
 
-export interface CommunityProjection {
+interface CommunityProjectionBase {
   readonly networkId: string;
   readonly communityAddress: string;
   readonly creatorIdentityId: string;
-  readonly authority: string;
+  /** Immutable root authority that signed the CommunityCreated manifest. */
+  readonly manifestAuthority: string;
+  /** Signer of the latest finalized creator-authorized community action. */
+  readonly latestActionAuthority: string;
   readonly creatorSequence: bigint;
   readonly manifestCid: string;
   readonly manifestHash: string;
-  readonly manifestVerified: false;
+  /** Immutable governance commitment carried by CommunityCreated. */
+  readonly manifestGovernanceVersion: number;
+  /** Immutable strategy commitment carried by CommunityCreated. */
+  readonly manifestGovernanceStrategyHash: string;
+  /** Current onchain governance state, which may advance independently. */
   readonly governanceVersion: number;
   readonly governanceStrategyHash: string;
   readonly createdSlot: bigint;
   readonly createdAt: string;
   readonly updatedSlot: bigint;
   readonly updatedAt: string;
+}
+
+export interface UnverifiedCommunityProjection extends CommunityProjectionBase {
+  readonly manifestVerified: false;
+}
+
+export interface VerifiedCommunityProjection extends CommunityProjectionBase {
+  readonly manifestVerified: true;
+  readonly objectId: string;
+  readonly schemaVersion: 2;
+  readonly signingKeyId: string;
+  readonly manifestCreatedAt: string;
+  readonly content: CommunityContent;
+}
+
+export type CommunityProjection = UnverifiedCommunityProjection | VerifiedCommunityProjection;
+
+export interface CommunityDirectoryCursor {
+  readonly createdSlot: bigint;
+  readonly communityAddress: string;
+}
+
+export interface CommunityDirectoryQuery {
+  readonly networkId: string;
+  readonly limit: number;
+  readonly before?: CommunityDirectoryCursor;
+}
+
+export interface CommunityDirectorySnapshot {
+  readonly checkpoint: bigint | undefined;
+  readonly communities: readonly VerifiedCommunityProjection[];
+  readonly next?: CommunityDirectoryCursor;
 }
 
 export interface CommunityMembershipProjection {
@@ -388,7 +427,14 @@ export interface FeedCursor {
 }
 
 export type PublicSearchMatch =
-  'display-name' | 'exact-identifier' | 'handle' | 'post-body' | 'profile-bio';
+  | 'community-description'
+  | 'community-name'
+  | 'community-slug'
+  | 'display-name'
+  | 'exact-identifier'
+  | 'handle'
+  | 'post-body'
+  | 'profile-bio';
 
 export interface PublicSearchPersonCandidate {
   readonly kind: 'person';
@@ -404,7 +450,13 @@ export interface PublicSearchPostCandidate {
   readonly entry: FeedEntry;
 }
 
-export type PublicSearchCandidate = PublicSearchPersonCandidate | PublicSearchPostCandidate;
+export interface PublicSearchCommunityCandidate {
+  readonly kind: 'community';
+  readonly community: VerifiedCommunityProjection;
+}
+
+export type PublicSearchCandidate =
+  PublicSearchCommunityCandidate | PublicSearchPersonCandidate | PublicSearchPostCandidate;
 
 export type PublicSearchResult = PublicSearchCandidate & {
   readonly matchedBy: PublicSearchMatch;

@@ -3,10 +3,13 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 import anchor from '@coral-xyz/anchor';
 import {
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityPayload,
   PROFILE_SCHEMA_VERSION,
   buildPostPayload,
   buildProfilePayload,
   canonicalizeEnvelope,
+  communityGovernanceStrategyCommitment,
   createPayloadBuilderIdentity,
   decodeMultibaseBase64Url,
   getObjectId,
@@ -33,9 +36,12 @@ const PDA_VERSION = Buffer.from([1]);
 const CONFIG_SEED = Buffer.from('config');
 const IDENTITY_SEED = Buffer.from('identity');
 const POST_SEED = Buffer.from('post');
+const COMMUNITY_SEED = Buffer.from('community');
 const FOLLOW_SEED = Buffer.from('follow');
 const TOMBSTONE_SEED = Buffer.from('tombstone');
 const AUTHOR_DISPLAY_NAME = 'Avery Sol';
+const COMMUNITY_NAME = 'Kind Technology';
+const COMMUNITY_SLUG = 'kind-technology';
 const POST_BODY =
   'A real signed post crossed WokeNet localnet, canonical storage, replay, and this production feed.';
 const TOMBSTONED_POST_BODY = 'This validator post must be suppressed by its on-chain tombstone.';
@@ -73,10 +79,12 @@ const authorNonce = nonce(17);
 const viewerNonce = nonce(71);
 const postNonce = nonce(127);
 const tombstonedPostNonce = nonce(181);
+const communityNonce = nonce(211);
 const authorIdentity = identityAddress(program.programId, authorAuthority.publicKey, authorNonce);
 const viewerIdentity = identityAddress(program.programId, viewerAuthority.publicKey, viewerNonce);
 const postReference = postAddress(program.programId, authorIdentity, postNonce);
 const tombstonedPostReference = postAddress(program.programId, authorIdentity, tombstonedPostNonce);
+const communityReference = communityAddress(program.programId, authorIdentity, communityNonce);
 const followEdge = PublicKey.findProgramAddressSync(
   [PDA_PREFIX, PDA_VERSION, FOLLOW_SEED, viewerIdentity.toBuffer(), authorIdentity.toBuffer()],
   program.programId,
@@ -142,6 +150,36 @@ const tombstonedPost = await publishEnvelope(
     }),
     authorAuthority.secretKey.subarray(0, 32),
   ),
+);
+const community = await publishEnvelope(
+  storage,
+  signPayload(
+    buildCommunityPayload(
+      authorBuilder,
+      {
+        slug: COMMUNITY_SLUG,
+        name: COMMUNITY_NAME,
+        description: 'A public community for building humane technology together.',
+        visibility: 'public',
+        membershipPolicy: 'open',
+        governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+        federationPolicy: {
+          mode: 'open',
+          allow: [],
+          block: [],
+        },
+        replacement: { sequence: 1 },
+      },
+      {
+        createdAt: new Date('2026-07-28T14:03:00.000Z'),
+        nonce: communityNonce,
+      },
+    ),
+    authorAuthority.secretKey.subarray(0, 32),
+  ),
+);
+const communityGovernance = communityGovernanceStrategyCommitment(
+  community.envelope.payload.content,
 );
 
 const transactionSignatures = [];
@@ -296,6 +334,27 @@ transactionSignatures.push(
     .signers([authorAuthority])
     .rpc(),
 );
+transactionSignatures.push(
+  await program.methods
+    .createCommunity({
+      expectedCreatorSequence: new BN(4),
+      communityNonce,
+      manifestHash: digestBytes(community.envelope.proof.payloadHash),
+      manifestUri: `ipfs://${community.cid}`,
+      governanceVersion: communityGovernance.governanceVersion,
+      governanceStrategyHash: Array.from(communityGovernance.bytes),
+    })
+    .accountsStrict({
+      config,
+      creatorIdentity: authorIdentity,
+      community: communityReference,
+      rootAuthority: authorAuthority.publicKey,
+      payer: deployer.publicKey,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([authorAuthority])
+    .rpc(),
+);
 
 await waitForCommitment(connection, transactionSignatures, 'finalized', 90_000);
 const [authorBalance, viewerBalance] = await Promise.all([
@@ -310,8 +369,16 @@ await writeFile(
   `${JSON.stringify(
     {
       authorDisplayName: AUTHOR_DISPLAY_NAME,
+      authorAuthority: authorAuthority.publicKey.toBase58(),
       authorIdentityId,
       authorIdentityAddress: authorIdentity.toBase58(),
+      communityAddress: communityReference.toBase58(),
+      communityCid: community.cid,
+      communityGovernanceDigest: communityGovernance.digest,
+      communityName: COMMUNITY_NAME,
+      communityObjectId: community.objectId,
+      communityPayloadHash: community.envelope.proof.payloadHash,
+      communitySlug: COMMUNITY_SLUG,
       followEdge: followEdge.toBase58(),
       networkId,
       postBody: POST_BODY,
@@ -350,6 +417,19 @@ function identityAddress(programId, authority, identityNonce) {
 function postAddress(programId, authorIdentity, postNonce) {
   return PublicKey.findProgramAddressSync(
     [PDA_PREFIX, PDA_VERSION, POST_SEED, authorIdentity.toBuffer(), Buffer.from(postNonce)],
+    programId,
+  )[0];
+}
+
+function communityAddress(programId, creatorIdentity, communityNonce) {
+  return PublicKey.findProgramAddressSync(
+    [
+      PDA_PREFIX,
+      PDA_VERSION,
+      COMMUNITY_SEED,
+      creatorIdentity.toBuffer(),
+      Buffer.from(communityNonce),
+    ],
     programId,
   )[0];
 }

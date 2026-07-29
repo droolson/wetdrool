@@ -33,6 +33,7 @@ import {
   buildTombstonePayload,
   createPayloadBuilderIdentity,
   signingKeyIdFor,
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   type EncryptedContentReference,
   type MediaReference,
   type ObjectReference,
@@ -243,16 +244,14 @@ export function createValidPayloads(): readonly PortablePayload[] {
       fixedOptions,
     ),
     buildCommunityPayload(
-      identity,
+      rootIdentity,
       {
         slug: 'kind-tech',
         name: 'Kind Technology',
         description: 'A community for humane technology.',
         visibility: 'public',
         membershipPolicy: 'open',
-        governanceModel: 'one-member-one-vote',
-        governanceThreshold: { kind: 'simple-majority' },
-        governanceQuorum: { kind: 'members', minimum: '10' },
+        governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
         federationPolicy: {
           mode: 'open',
           allow: [],

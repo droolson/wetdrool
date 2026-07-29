@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+const COMMUNITY_ADDRESS = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+
 const ROUTES = [
   '/',
   '/home',
@@ -22,8 +24,8 @@ const ROUTES = [
   '/events',
   '/communities',
   '/community/example-community',
-  '/community/example-community/admin',
-  '/community/example-community/governance',
+  `/community/${COMMUNITY_ADDRESS}/admin`,
+  `/community/${COMMUNITY_ADDRESS}/governance`,
   '/profile/example-identity',
   '/profile/example-identity/edit',
   '/creator/example-identity',
@@ -98,12 +100,45 @@ test('public search validates locally and degrades without fabricating results',
   await expect(
     page.getByRole('heading', { name: 'Use no more than 120 normalized Unicode code points.' }),
   ).toBeVisible();
-  await expect(page.getByLabel('Search public posts or people')).toHaveValue('');
+  await expect(page.getByLabel('Search public posts, people, or communities')).toHaveValue('');
 
   await page.goto('/search?q=portable');
   await expect(page.getByRole('heading', { name: 'Connect an indexer to search.' })).toBeVisible();
   await expect(page.locator('body')).not.toContainText('Sponsored result');
   await expect(page.locator('.post-card')).toHaveCount(0);
+});
+
+test('community discovery rejects unsafe URL state and never treats slugs as addresses', async ({
+  page,
+}) => {
+  await page.goto('/communities?before=not%2Bopaque');
+  await expect(
+    page.getByRole('heading', { name: 'That community page reference is not valid.' }),
+  ).toBeVisible();
+  await expect(page.getByText('No request was sent to the configured indexer')).toBeVisible();
+  await expect(page.locator('.community-card')).toHaveCount(0);
+
+  await page.goto('/community/portable-commons');
+  await expect(
+    page.getByRole('heading', { name: 'That is not a canonical Solana community address.' }),
+  ).toBeVisible();
+  await expect(page.getByText('Slugs and display names are not accepted')).toBeVisible();
+  await expect(page.locator('.community-proof')).toHaveCount(0);
+
+  await page.goto(`/community/${COMMUNITY_ADDRESS}`);
+  await expect(
+    page.getByRole('heading', { name: 'Connect an indexer and WokeNet network scope.' }),
+  ).toBeVisible();
+  await expect(page.locator('.community-proof')).toHaveCount(0);
+
+  for (const section of ['admin', 'governance'] as const) {
+    await page.goto(`/community/portable-commons/${section}`);
+    await expect(
+      page.getByRole('heading', { name: 'That is not a canonical Solana community address.' }),
+    ).toBeVisible();
+    await expect(page.getByText('No provider request was sent')).toBeVisible();
+    await expect(page.getByText('Never interpret a slug or display name')).toBeVisible();
+  }
 });
 
 test('projected feed routes reject unsafe scope before contacting a provider', async ({ page }) => {

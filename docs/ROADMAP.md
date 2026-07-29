@@ -28,7 +28,7 @@ foundation and experimental subsets across phases 2–4:
 - independently replaceable crypto, fixture, and seven-mode feed-engine
   packages;
 - signed relay and moderation-provider service subsets; and
-- a production-built complete required web route surface with 208 passing
+- a production-built complete required web route surface with 210 passing
   desktop and mobile-viewport browser cases, two intentional duplicate
   mobile-viewport lifecycle skips, and 90 automated axe checks across 45 route
   fixtures; and
@@ -91,8 +91,8 @@ The first complete vertical slice spans Phases 1–3. It has priority over broad
 | 0 | Repository audit, product/specification baseline, architecture and ADR decisions, dependency plan | Verified baseline | Required documents reviewed; decisions recorded; no unsupported implementation claims |
 | 1 | Monorepo, design system, local infrastructure, documentation foundation | In progress; implemented local subset verified | Clean install; real setup/dev/test/build commands; local dependencies healthy |
 | 2 | WokeNet identity, profile, delegation, follows, communities, post references | Experimental Solana local-program subset; no public deployment | Anchor/Rust local-validator checks; account/PDA/cost documentation matches code; verified devnet deployment remains open |
-| 3 | Signed manifests, storage adapters, publication, open indexer, feeds | Experimental connected subset with consumer-safe home and bounded chronological/public-following indexer projections; local Solana slice verified | Complete object/event breadth; alternate-provider reconciliation; operator conformance |
-| 4 | Complete flagship core social experience | Complete route surface plus local-state, consumer-safe home, strict chronological pagination, and unauthenticated public following-preview subsets; authenticated following/transactions, recommendation-provider integration, cross-device safety, and offline caching remain open | Essential browser flows and accessible responsive states pass |
+| 3 | Signed manifests, storage adapters, publication, open indexer, feeds | Experimental connected subset with consumer-safe home, bounded chronological/public-following feeds, exact community-manifest verification, privacy-safe community directory/detail, and `public-match-v2`; local Solana slice verified | Complete object/event breadth; alternate-provider reconciliation; operator conformance |
+| 4 | Complete flagship core social experience | Complete route surface plus local-state, consumer-safe home, strict chronological pagination, address-routed community discovery/detail, and unauthenticated public following-preview subsets; community membership/join, authenticated following/transactions, recommendation-provider integration, cross-device safety, and offline caching remain open | Essential browser flows and accessible responsive states pass |
 | 5 | Moderation, reports, appeals, blocklists, governance, safety center | Signed provider and one-member-one-vote program subsets implemented | Permission, evidence privacy, tombstone, appeal, and audit tests pass |
 | 6 | Passkeys, recovery, sponsorship, device management, Seeker Android | Key wrapping, replaceable relying-party service, durable ceremonies/sessions, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, browser registration/sign-in, and a non-release Android/MWA connection/deployment/feed foundation implemented; protocol onboarding, WokeNet delegation lifecycle, recovery, mobile transaction flow, device evidence, and release remain open | Recovery/delegation and sponsor anti-abuse tests pass; custody design reviewed; reproducible signed APK verified |
 | 7 | E2EE messages and relay infrastructure | Relay plus pairwise real-WASM adapter implemented; volatile storage/browser integration keep messaging non-production | One-to-one E2EE and metadata tests pass; group path remains Experimental until gated |
@@ -185,10 +185,12 @@ This milestone is the highest-priority proof of architecture.
 - A failed publication can retry without duplication.
 - The exact clean-run and verification commands are documented.
 
-The local version of this gate passed via `pnpm test:vertical-slice`: nine
-transactions finalized on a Solana local validator, the verified post reached the production API and
-browser, the tombstoned post was suppressed, and a cleared projection replayed
-to exact state equivalence with zero dead letters.
+The local version of this gate passed via `pnpm test:vertical-slice`: ten
+transactions finalized on a Solana local validator; verified post and
+schema-v2 community manifests reached the production API and browser; the
+tombstoned post was suppressed; and a cleared projection replayed nine durable
+events to exact state equivalence with zero dead letters. Eight production
+browser checks passed across the pre/post-replay runs.
 
 This proof does not satisfy devnet/mainnet-beta deployment, Seeker Android,
 token-mint, or production evidence and does not complete the broader product,
@@ -586,10 +588,17 @@ Do not report percent complete without a defined denominator. Prefer verified re
 
 ## 23. Immediate next milestone
 
-The next protocol milestone is a **verified WokeNet deployment rehearsal on
-Solana devnet**: reproducible program build, exact genesis/program/deployment
-record, reviewed authority, finalized indexing, signed-manifest anchoring, feed
-display, follow, tombstone suppression, and projection rebuild.
+The next product milestone is a **signed community membership and join flow**
+across the flagship client, wallet boundary, WokeNet program, finalized
+indexer, and community UI. It must preserve the discovery privacy rules, show
+the exact transaction intent before signing, wait for finalized confirmation,
+and never imply membership from an optimistic or provider-only response.
+
+A verified WokeNet deployment rehearsal on Solana devnet remains a release
+gate, not the current product-build focus: it still requires a reproducible
+program build, exact genesis/program/deployment record, reviewed authority,
+finalized indexing, signed-manifest anchoring, feed display, follow, tombstone
+suppression, and projection rebuild.
 
 In parallel, the next mobile milestone is to take the existing native Seeker
 Android foundation through exact Mobile Wallet Adapter transaction-intent

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import { MAX_DESCRIPTION_BYTES, MAX_ROLES, MAX_RULES } from './constants.js';
+import {
+  COMMUNITY_SCHEMA_VERSION,
+  MAX_DESCRIPTION_BYTES,
+  MAX_ROLES,
+  MAX_RULES,
+} from './constants.js';
+import { communityGovernanceStrategySchema } from './governance.js';
 import {
   authorizationScopeSchema,
   commonPayloadFields,
@@ -98,7 +104,11 @@ const federationPolicySchema = z
     }
   });
 
-export const communityContentSchema = z
+/**
+ * Frozen schema-version-1 community shape. It remains readable so historical
+ * signatures continue to verify, but new builders use the exact v2 binding.
+ */
+export const legacyCommunityContentSchema = z
   .object({
     slug: communitySlugSchema,
     name: nonEmptyLimitedString(160),
@@ -154,6 +164,31 @@ export const communityContentSchema = z
       content.governanceThreshold.kind === 'supermajority',
     'Supermajority governance requires a bounded supermajority threshold.',
   );
+
+export const communityContentSchema = z
+  .object({
+    slug: communitySlugSchema,
+    name: nonEmptyLimitedString(160),
+    description: limitedString(MAX_DESCRIPTION_BYTES).default(''),
+    avatar: objectReferenceSchema.optional(),
+    banner: objectReferenceSchema.optional(),
+    visibility: z.enum(['public', 'unlisted', 'private', 'restricted']),
+    membershipPolicy: z.enum(['open', 'request', 'invite']),
+    governance: communityGovernanceStrategySchema,
+    governanceRuleSet: typedObjectReferenceSchema(['community-rule-set']).optional(),
+    moderationRuleSet: typedObjectReferenceSchema(['community-rule-set']).optional(),
+    federationPolicy: federationPolicySchema,
+    treasury: z
+      .object({
+        account: solanaPublicKeySchema,
+        policy: objectReferenceSchema,
+        assetAllowList: z.array(nonEmptyLimitedString(128)).max(64).default([]),
+      })
+      .strict()
+      .optional(),
+    replacement: replacementSchema,
+  })
+  .strict();
 
 export const communityMembershipContentSchema = z
   .object({
@@ -367,8 +402,18 @@ export const eventContentSchema = z
 export const communityPayloadSchema = z
   .object({
     ...commonPayloadFields,
+    schemaVersion: z.literal(COMMUNITY_SCHEMA_VERSION),
     type: z.literal('community'),
     content: communityContentSchema,
+  })
+  .strict();
+
+export const legacyCommunityPayloadSchema = z
+  .object({
+    ...commonPayloadFields,
+    schemaVersion: z.literal(1),
+    type: z.literal('community'),
+    content: legacyCommunityContentSchema,
   })
   .strict();
 
@@ -425,6 +470,7 @@ export const eventPayloadSchema = z
   );
 
 export type CommunityContent = z.infer<typeof communityContentSchema>;
+export type LegacyCommunityContent = z.infer<typeof legacyCommunityContentSchema>;
 export type CommunityMembershipContent = z.infer<typeof communityMembershipContentSchema>;
 export type CommunityRoleContent = z.infer<typeof communityRoleContentSchema>;
 export type CommunityRuleSetContent = z.infer<typeof communityRuleSetContentSchema>;
@@ -432,6 +478,7 @@ export type GovernanceProposalContent = z.infer<typeof governanceProposalContent
 export type GovernanceVoteContent = z.infer<typeof governanceVoteContentSchema>;
 export type EventContent = z.infer<typeof eventContentSchema>;
 export type CommunityPayload = z.infer<typeof communityPayloadSchema>;
+export type LegacyCommunityPayload = z.infer<typeof legacyCommunityPayloadSchema>;
 export type CommunityMembershipPayload = z.infer<typeof communityMembershipPayloadSchema>;
 export type CommunityRolePayload = z.infer<typeof communityRolePayloadSchema>;
 export type CommunityRuleSetPayload = z.infer<typeof communityRuleSetPayloadSchema>;

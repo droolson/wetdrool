@@ -10,6 +10,8 @@ import {
   calculateMigrationChecksum,
 } from '@wokesocial/config/migration-integrity';
 
+import { EXPECTED_INDEXER_MIGRATION_COUNT, LATEST_INDEXER_MIGRATION } from './migration-version.js';
+
 const MIGRATION_LOCK_NAMESPACE = 0x574f4b45;
 const MIGRATION_LOCK_RESOURCE = 0x494e4458;
 
@@ -44,6 +46,14 @@ export async function migrate(databaseUrl: string): Promise<void> {
     const files = (await readdir(directory))
       .filter((file) => /^\d+_[a-z0-9_]+\.sql$/u.test(file))
       .sort();
+    if (
+      files.length !== EXPECTED_INDEXER_MIGRATION_COUNT ||
+      files.at(-1) !== LATEST_INDEXER_MIGRATION
+    ) {
+      throw new Error(
+        `Indexer migration catalog must contain exactly ${String(EXPECTED_INDEXER_MIGRATION_COUNT)} files through ${LATEST_INDEXER_MIGRATION}.`,
+      );
+    }
     const migrations = await Promise.all(
       files.map(async (version) => {
         const source = await readFile(join(directory, version), 'utf8');

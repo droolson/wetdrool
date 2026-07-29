@@ -842,8 +842,13 @@ fn governance_delegation_accepts_either_social_or_community_scope() {
 
 #[test]
 fn governance_strategy_and_windows_are_canonical_and_bounded() {
-    const STRATEGY: &str = "wokesocial:governance:one-active-member-one-vote:v1;\
-quorum-bps=5000;approval-bps=5001;abstain=quorum-only";
+    const STRATEGY: &str = concat!(
+        "wokenet:community-governance-strategy:v1",
+        "\0",
+        "{\"abstainTreatment\":\"quorum-only\",\"approvalBasisPoints\":5001,",
+        "\"execution\":\"outcome-record-only\",\"model\":\"one-active-member-one-vote\",",
+        "\"quorumBasisPoints\":5000,\"version\":1}"
+    );
     assert_eq!(
         solana_sha256_hasher::hash(STRATEGY.as_bytes()).to_bytes(),
         ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH

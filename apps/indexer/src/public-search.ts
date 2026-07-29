@@ -73,6 +73,32 @@ function rankCandidate(
   candidate: PublicSearchCandidate,
 ): RankedCandidate | undefined {
   switch (candidate.kind) {
+    case 'community': {
+      const slug = normalizePublicSearchTerm(candidate.community.content.slug);
+      const name = normalizePublicSearchTerm(candidate.community.content.name);
+      const description = normalizePublicSearchTerm(candidate.community.content.description);
+      const rank = bestRank([
+        exactPrefixOrContains(slug, term, 'community-slug', 970, 890, 810, containsIsIndexable),
+        exactPrefixOrContains(name, term, 'community-name', 870, 790, 710, containsIsIndexable),
+        exactPrefixOrContains(
+          description,
+          term,
+          'community-description',
+          500,
+          500,
+          500,
+          containsIsIndexable,
+        ),
+      ]);
+      return rank === undefined
+        ? undefined
+        : {
+            candidate,
+            ...rank,
+            stableId: candidate.community.communityAddress,
+            updatedAt: candidate.community.updatedAt,
+          };
+    }
     case 'person': {
       const identityId = normalizePublicSearchTerm(candidate.identityId);
       const handle =

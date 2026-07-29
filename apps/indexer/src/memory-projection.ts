@@ -23,8 +23,11 @@ import {
 import { deriveRecoveryPolicyAddress, deriveRecoveryRequestAddress } from './recovery-addresses.js';
 import type {
   BlockProjection,
+  CommunityDirectoryQuery,
+  CommunityDirectorySnapshot,
   CommunityMembershipProjection,
   CommunityProjection,
+  VerifiedCommunityProjection,
   DelegationProjection,
   FeedEntry,
   FeedQuery,
@@ -230,9 +233,13 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     event: ProtocolEvent,
     deferral: ManifestDeferral,
   ): Promise<boolean> {
-    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'community-created'
+    ) {
       throw new ProjectionError(
-        'Only profile and post manifest events can be deferred.',
+        'Only profile, post, and community manifest events can be deferred.',
         'manifest-mismatch',
       );
     }
@@ -280,13 +287,19 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       // while its off-chain bytes are temporarily unavailable.
       this.#profiles.delete(event.identityId);
       this.#latestProfileManifestEvents.set(event.identityId, eventKey);
-    } else if (event.postReference !== undefined) {
+    } else if (event.type === 'post-published' && event.postReference !== undefined) {
       // Preserve the on-chain reference so later lifecycle events can resolve
       // it without exposing unverified post content.
       this.#postReferences.set(
         postReferenceKey(event.networkId, event.postReference),
         event.objectId,
       );
+    } else if (event.type === 'community-created') {
+      const key = communityKey(event.networkId, event.communityAddress);
+      if (this.#communities.has(key)) {
+        throw stale('Community address was already projected.');
+      }
+      this.#communities.set(key, unverifiedCommunityProjection(event));
     }
 
     this.#identities.set(sequenceAdvance.identityId, {
@@ -370,9 +383,13 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     event: ProtocolEvent,
     manifest: VerifiedManifest,
   ): Promise<boolean> {
-    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'community-created'
+    ) {
       throw new ProjectionError(
-        'Only profile and post manifest events can be promoted.',
+        'Only profile, post, and community manifest events can be promoted.',
         'manifest-mismatch',
       );
     }
@@ -409,7 +426,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           updatedAt: event.blockTime,
         });
       }
-    } else {
+    } else if (event.type === 'post-published') {
       const verified = requireManifest(event, manifest, 'post');
       const tombstonedAt = this.#laterTombstoneAt(event);
       this.#posts.set(verified.objectId, {
@@ -425,6 +442,25 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         transactionSignature: event.transactionSignature,
         verified: true,
         ...(tombstonedAt === undefined ? {} : { tombstonedAt }),
+      });
+    } else {
+      const verified = requireManifest(event, manifest, 'community');
+      const key = communityKey(event.networkId, event.communityAddress);
+      const community = this.#communities.get(key);
+      if (community === undefined) {
+        throw stale('A pending community shell must exist before manifest promotion.');
+      }
+      this.#communities.set(key, {
+        ...community,
+        manifestVerified: true,
+        objectId: verified.objectId,
+        schemaVersion: 2,
+        signingKeyId: verified.signingKeyId,
+        manifestCreatedAt: verified.createdAt,
+        content: verified.content as Extract<
+          CommunityProjection,
+          { readonly manifestVerified: true }
+        >['content'],
       });
     }
 
@@ -455,9 +491,13 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     event: ProtocolEvent,
     rejection: TerminalManifestRejection,
   ): Promise<boolean> {
-    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'community-created'
+    ) {
       throw new ProjectionError(
-        'Only profile and post manifest events can transition from pending to terminal.',
+        'Only profile, post, and community manifest events can transition from pending to terminal.',
         'manifest-mismatch',
       );
     }
@@ -511,6 +551,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     if (
       event.type !== 'profile-updated' &&
       event.type !== 'post-published' &&
+      event.type !== 'community-created' &&
       event.type !== 'tombstoned'
     ) {
       throw new ProjectionError(
@@ -562,6 +603,12 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           tombstonedAt: event.blockTime,
         });
       }
+    } else if (event.type === 'community-created') {
+      const key = communityKey(event.networkId, event.communityAddress);
+      if (this.#communities.has(key)) {
+        throw stale('Community address was already projected.');
+      }
+      this.#communities.set(key, unverifiedCommunityProjection(event));
     }
 
     const identity = this.#requireIdentity(sequenceAdvance.identityId);
@@ -1187,21 +1234,18 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         if (this.#communities.has(key)) {
           throw stale('Community address was already projected.');
         }
+        const verified = requireManifest(event, manifest, 'community');
         this.#communities.set(key, {
-          networkId: event.networkId,
-          communityAddress: event.communityAddress,
-          creatorIdentityId: event.creatorIdentityId,
-          authority: event.authority,
-          creatorSequence: event.creatorSequence,
-          manifestCid: event.manifestCid,
-          manifestHash: event.manifestHash,
-          manifestVerified: false,
-          governanceVersion: event.governanceVersion,
-          governanceStrategyHash: event.governanceStrategyHash,
-          createdSlot: event.slot,
-          createdAt: event.blockTime,
-          updatedSlot: event.slot,
-          updatedAt: event.blockTime,
+          ...unverifiedCommunityProjection(event),
+          manifestVerified: true,
+          objectId: verified.objectId,
+          schemaVersion: 2,
+          signingKeyId: verified.signingKeyId,
+          manifestCreatedAt: verified.createdAt,
+          content: verified.content as Extract<
+            CommunityProjection,
+            { readonly manifestVerified: true }
+          >['content'],
         });
         break;
       }
@@ -1221,7 +1265,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         }
         this.#communities.set(key, {
           ...community,
-          authority: event.authority,
+          latestActionAuthority: event.authority,
           creatorSequence: event.creatorSequence,
           governanceVersion: event.governanceVersion,
           governanceStrategyHash: event.governanceStrategyHash,
@@ -1279,7 +1323,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         });
         this.#communities.set(communityMapKey, {
           ...community,
-          authority: event.authority,
+          latestActionAuthority: event.authority,
           creatorSequence: event.authoritySequence,
           updatedSlot: event.slot,
           updatedAt: event.blockTime,
@@ -1412,7 +1456,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         this.#proposalByCommunityManifest.set(manifestKey, event.proposalAddress);
         this.#communities.set(communityMapKey, {
           ...community,
-          authority: event.authority,
+          latestActionAuthority: event.authority,
           creatorSequence: event.proposerSequence,
           updatedSlot: event.slot,
           updatedAt: event.blockTime,
@@ -2098,9 +2142,11 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           item.event.logIndex,
         );
         const existingRecord = this.#deadLetters.get(operationalKey);
+        const rebuiltDeferral = normalizedManifestDeferral(item.pendingManifest);
+        this.#pendingManifestDeferrals.set(key, rebuiltDeferral);
         this.#deadLetters.set(operationalKey, {
           attempts: existingRecord?.attempts ?? 1,
-          nextAttemptAt: existingRecord?.nextAttemptAt ?? item.pendingManifest.nextAttemptAt,
+          nextAttemptAt: rebuiltDeferral.nextAttemptAt,
         });
       }
     }
@@ -2261,6 +2307,43 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     communityAddress: string,
   ): Promise<CommunityProjection | undefined> {
     return this.#communities.get(communityKey(networkId, communityAddress));
+  }
+
+  async listPublicCommunities(query: CommunityDirectoryQuery): Promise<CommunityDirectorySnapshot> {
+    assertCommunityDirectoryLimit(query.limit);
+    const matches = [...this.#communities.values()]
+      .filter(
+        (community): community is VerifiedCommunityProjection =>
+          community.networkId === query.networkId &&
+          community.manifestVerified &&
+          community.content.visibility === 'public' &&
+          (query.before === undefined ||
+            community.createdSlot < query.before.createdSlot ||
+            (community.createdSlot === query.before.createdSlot &&
+              community.communityAddress < query.before.communityAddress)),
+      )
+      .sort((left, right) =>
+        left.createdSlot === right.createdSlot
+          ? compareRawStringsDescending(left.communityAddress, right.communityAddress)
+          : left.createdSlot < right.createdSlot
+            ? 1
+            : -1,
+      )
+      .slice(0, query.limit + 1);
+    const communities = matches.slice(0, query.limit);
+    const last = communities.at(-1);
+    return {
+      checkpoint: this.#checkpoints.get(query.networkId),
+      communities,
+      ...(matches.length > query.limit && last !== undefined
+        ? {
+            next: {
+              createdSlot: last.createdSlot,
+              communityAddress: last.communityAddress,
+            },
+          }
+        : {}),
+    };
   }
 
   async getCommunityMemberships(
@@ -2459,6 +2542,16 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           reason: { kind: 'chronological' },
         },
       });
+    }
+
+    for (const community of this.#communities.values()) {
+      if (
+        community.networkId === query.networkId &&
+        community.manifestVerified &&
+        community.content.visibility === 'public'
+      ) {
+        candidates.push({ kind: 'community', community });
+      }
     }
 
     return {
@@ -3196,6 +3289,30 @@ function reactionKey(
   return `${networkId}\u0000${reactorIdentityId}\u0000${targetPostReference}\u0000${reactionKind}`;
 }
 
+function unverifiedCommunityProjection(
+  event: Extract<ProtocolEvent, { readonly type: 'community-created' }>,
+): CommunityProjection {
+  return {
+    networkId: event.networkId,
+    communityAddress: event.communityAddress,
+    creatorIdentityId: event.creatorIdentityId,
+    manifestAuthority: event.authority,
+    latestActionAuthority: event.authority,
+    creatorSequence: event.creatorSequence,
+    manifestCid: event.manifestCid,
+    manifestHash: event.manifestHash,
+    manifestVerified: false,
+    manifestGovernanceVersion: event.governanceVersion,
+    manifestGovernanceStrategyHash: event.governanceStrategyHash,
+    governanceVersion: event.governanceVersion,
+    governanceStrategyHash: event.governanceStrategyHash,
+    createdSlot: event.slot,
+    createdAt: event.blockTime,
+    updatedSlot: event.slot,
+    updatedAt: event.blockTime,
+  };
+}
+
 function deadLetterKey(networkId: string, signature: string, logIndex: number): string {
   return `${networkId}\u0000${signature}\u0000${logIndex}`;
 }
@@ -3356,9 +3473,15 @@ function comparePosition(left: EventPosition, right: EventPosition): number {
   return signature === 0 ? left.logIndex - right.logIndex : signature;
 }
 
+function compareRawStringsDescending(left: string, right: string): number {
+  if (left === right) return 0;
+  return left > right ? -1 : 1;
+}
+
 function scopeForObjectType(objectType: string): number | undefined {
   if (objectType === 'profile') return 1 << 0;
   if (objectType === 'post') return 1 << 1;
+  if (objectType === 'community') return 1 << 3;
   return undefined;
 }
 
@@ -3426,6 +3549,12 @@ function assertPendingManifestLimit(limit: number): void {
   }
 }
 
+function assertCommunityDirectoryLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+    throw new RangeError('Community directory limit must be between 1 and 50.');
+  }
+}
+
 function stale(message: string): ProjectionError {
   return new ProjectionError(message, 'stale-event');
 }
@@ -3448,6 +3577,17 @@ function requireManifest(
   if (manifest.type !== expectedType) {
     throw new ProjectionError(
       `Expected ${expectedType}, received ${manifest.type}.`,
+      'manifest-mismatch',
+    );
+  }
+  if (
+    expectedType === 'community' &&
+    (event.type !== 'community-created' ||
+      manifest.schemaVersion !== 2 ||
+      manifest.signingKeyId !== `${event.creatorIdentityId}#root/${event.authority}`)
+  ) {
+    throw new ProjectionError(
+      'Community manifest signer does not match its immutable creation authority.',
       'manifest-mismatch',
     );
   }

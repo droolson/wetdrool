@@ -3,6 +3,8 @@ export const PROTOCOL_VERSION = '1.0' as const;
 export const SCHEMA_VERSION = 1 as const;
 /** Current schema version for newly created profile objects. */
 export const PROFILE_SCHEMA_VERSION = 2 as const;
+/** Current schema version for newly created community objects. */
+export const COMMUNITY_SCHEMA_VERSION = 2 as const;
 export const SIGNATURE_DOMAIN = 'woke.social/protocol/signed-object' as const;
 
 export const MAX_INLINE_POST_BYTES = 10_000;

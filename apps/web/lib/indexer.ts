@@ -11,7 +11,12 @@ import {
   type SearchResponse,
 } from './indexer-contract';
 import { endpointFor, readIndexerJson } from './indexer-transport';
-import { describeEndpoint, getIndexerBaseUrl, ProviderConfigurationError } from './provider-config';
+import {
+  describeEndpoint,
+  getIndexerBaseUrl,
+  getWokeNetNetworkId,
+  ProviderConfigurationError,
+} from './provider-config';
 
 export {
   IndexerPayloadError,
@@ -200,8 +205,10 @@ export async function searchPublic(query: string): Promise<SearchResult> {
   }
   const normalizedQuery = queryState.query;
   let base: URL | null;
+  let network: string | null;
   try {
     base = getIndexerBaseUrl();
+    network = getWokeNetNetworkId();
   } catch (error) {
     return degraded('invalid-configuration', providerError(error));
   }
@@ -211,9 +218,17 @@ export async function searchPublic(query: string): Promise<SearchResult> {
       'Set WOKESOCIAL_INDEXER_URL to a compatible indexer. No search results are fabricated.',
     );
   }
+  if (!network) {
+    return degraded(
+      'unconfigured',
+      'Set the server-only WOKENET_NETWORK_ID so public search and community address routes use the same Solana deployment.',
+    );
+  }
   const endpoint = endpointFor(
     base,
-    `v1/search/public?q=${encodeURIComponent(normalizedQuery)}&limit=30`,
+    `v1/search?network=${encodeURIComponent(network)}&q=${encodeURIComponent(
+      normalizedQuery,
+    )}&limit=30`,
   );
   try {
     const response = await fetch(endpoint, {
@@ -228,7 +243,7 @@ export async function searchPublic(query: string): Promise<SearchResult> {
       );
     }
     try {
-      const value = parseSearchResponse(await readIndexerJson(response));
+      const value = parseSearchResponse(await readIndexerJson(response), { network });
       if (value.query !== normalizedQuery) {
         return degraded(
           'invalid-response',

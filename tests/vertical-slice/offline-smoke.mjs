@@ -1,9 +1,12 @@
 import { strict as assert } from 'node:assert';
 
 import {
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
   canonicalizeEnvelope,
+  communityGovernanceStrategyCommitment,
   createPayloadBuilderIdentity,
   decodeCanonicalEnvelope,
   signPayload,
@@ -25,6 +28,26 @@ const builder = createPayloadBuilderIdentity(
   'root',
 );
 const privateKey = authority.secretKey.subarray(0, 32);
+const communityPayload = buildCommunityPayload(
+  builder,
+  {
+    slug: 'offline-smoke',
+    name: 'Offline Smoke',
+    description: 'Signed community construction without a validator.',
+    visibility: 'public',
+    membershipPolicy: 'open',
+    governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+    federationPolicy: { mode: 'open', allow: [], block: [] },
+    replacement: { sequence: 1 },
+  },
+  {
+    createdAt: new Date('2026-07-28T14:02:00.000Z'),
+    nonce: deterministicNonce(3),
+  },
+);
+const communityGovernance = communityGovernanceStrategyCommitment(communityPayload.content);
+assert.equal(communityGovernance.governanceVersion, 1);
+assert.equal(communityGovernance.bytes.byteLength, 32);
 
 for (const payload of [
   buildProfilePayload(
@@ -45,6 +68,7 @@ for (const payload of [
     createdAt: new Date('2026-07-28T14:01:00.000Z'),
     nonce: deterministicNonce(2),
   }),
+  communityPayload,
 ]) {
   const envelope = signPayload(payload, privateKey);
   const bytes = canonicalizeEnvelope(envelope);

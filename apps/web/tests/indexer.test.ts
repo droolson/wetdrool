@@ -1,4 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  communityGovernanceStrategyCommitment,
+} from '@wokesocial/protocol';
 
 import {
   getHomeFeed,
@@ -20,10 +25,13 @@ import {
 
 const NETWORK_ID =
   'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+const SECOND_NETWORK_ID =
+  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:11111111111111111111111111111111';
 const PROTOCOL_DIGEST = `u${'A'.repeat(43)}`;
 const PROJECTED_POST_ID = `wokesocialobj:v1:post:${PROTOCOL_DIGEST}`;
 const PROJECTED_POST_CID = 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm';
 const PROJECTED_TRANSACTION_SIGNATURE = '1'.repeat(64);
+const COMMUNITY_ADDRESS = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 
 const VERIFIED_POST = {
   author: {
@@ -49,6 +57,48 @@ const VERIFIED_POST = {
     signatureValid: true,
     state: 'verified',
   },
+} as const;
+
+const VERIFIED_COMMUNITY_CONTENT = {
+  description: 'A public space for portable social software.',
+  federationPolicy: {
+    allow: [],
+    block: [],
+    mode: 'open',
+  },
+  governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  membershipPolicy: 'open',
+  name: 'River Commons',
+  replacement: { sequence: 1 },
+  slug: 'river-commons',
+  visibility: 'public',
+} as const;
+const COMMUNITY_GOVERNANCE_COMMITMENT = communityGovernanceStrategyCommitment(
+  VERIFIED_COMMUNITY_CONTENT,
+);
+const VERIFIED_COMMUNITY = {
+  communityAddress: COMMUNITY_ADDRESS,
+  content: VERIFIED_COMMUNITY_CONTENT,
+  createdAt: '2026-07-28T12:01:00.000Z',
+  createdSlot: '42',
+  creatorIdentityId: VERIFIED_POST.author.identityId,
+  creatorSequence: '7',
+  governanceStrategyHash: COMMUNITY_GOVERNANCE_COMMITMENT.digest,
+  governanceVersion: COMMUNITY_GOVERNANCE_COMMITMENT.governanceVersion,
+  latestActionAuthority: '11111111111111111111111111111111',
+  manifestAuthority: '11111111111111111111111111111111',
+  manifestCid: PROJECTED_POST_CID,
+  manifestCreatedAt: '2026-07-28T12:00:00.000Z',
+  manifestGovernanceStrategyHash: COMMUNITY_GOVERNANCE_COMMITMENT.digest,
+  manifestGovernanceVersion: COMMUNITY_GOVERNANCE_COMMITMENT.governanceVersion,
+  manifestHash: PROTOCOL_DIGEST,
+  manifestVerified: true,
+  networkId: NETWORK_ID,
+  objectId: `wokesocialobj:v1:community:${PROTOCOL_DIGEST}`,
+  schemaVersion: 2,
+  signingKeyId: `${VERIFIED_POST.author.identityId}#root/${'1'.repeat(32)}`,
+  updatedAt: '2026-07-28T12:01:00.000Z',
+  updatedSlot: '42',
 } as const;
 
 describe('typed indexer response parsing', () => {
@@ -453,16 +503,11 @@ describe('post identifiers', () => {
 
 describe('typed public-search response parsing', () => {
   const originalIndexerUrl = process.env['WOKESOCIAL_INDEXER_URL'];
+  const originalNetworkId = process.env['WOKENET_NETWORK_ID'];
   const communityResult = {
+    community: VERIFIED_COMMUNITY,
     kind: 'community',
-    matchedBy: 'exact-identifier',
-    communityAddress: '11111111111111111111111111111111',
-    creatorIdentityId: VERIFIED_POST.author.identityId,
-    manifestHash: 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-    manifestUri: 'ipfs://bafy-community',
-    metadataVerified: false,
-    governanceVersion: 1,
-    updatedAt: '2026-07-28T12:00:00.000Z',
+    matchedBy: 'community-name',
   } as const;
   const response = {
     canonical: false,
@@ -471,10 +516,11 @@ describe('typed public-search response parsing', () => {
       indexedAt: '2026-07-28T12:01:00.000Z',
       source: 'WokeNet open indexer',
     },
+    network: NETWORK_ID,
     query: 'river',
     ranking: {
       deterministic: true,
-      version: 'public-match-v1',
+      version: 'public-match-v2',
     },
     scope: 'public-finalized-projection',
     results: [
@@ -495,8 +541,13 @@ describe('typed public-search response parsing', () => {
           visibility: 'public',
         },
       },
+      communityResult,
     ],
   } as const;
+
+  beforeEach(() => {
+    process.env['WOKENET_NETWORK_ID'] = NETWORK_ID;
+  });
 
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -505,12 +556,24 @@ describe('typed public-search response parsing', () => {
     } else {
       process.env['WOKESOCIAL_INDEXER_URL'] = originalIndexerUrl;
     }
+    if (originalNetworkId === undefined) {
+      delete process.env['WOKENET_NETWORK_ID'];
+    } else {
+      process.env['WOKENET_NETWORK_ID'] = originalNetworkId;
+    }
   });
 
   it('accepts bounded public-only result variants and proof-bearing posts', () => {
     const parsed = parseSearchResponse(response);
-    expect(parsed.results.map((result) => result.kind)).toEqual(['person', 'post']);
+    expect(parsed.results.map((result) => result.kind)).toEqual(['person', 'post', 'community']);
     expect(parsed.results[0]).toMatchObject({ handle: 'river', matchedBy: 'handle' });
+    expect(parsed.results[2]).toMatchObject({
+      community: {
+        communityAddress: COMMUNITY_ADDRESS,
+        content: { name: 'River Commons', visibility: 'public' },
+      },
+      matchedBy: 'community-name',
+    });
   });
 
   it('accepts the protocol display-name byte limit and rejects values beyond it', () => {
@@ -608,13 +671,141 @@ describe('typed public-search response parsing', () => {
     ).toThrow('explicit public visibility');
   });
 
-  it('rejects community results without verified metadata and public visibility proof', () => {
+  it.each([
+    [
+      'an unverified community',
+      {
+        ...VERIFIED_COMMUNITY,
+        manifestVerified: false,
+      },
+    ],
+    [
+      'an unlisted community',
+      {
+        ...VERIFIED_COMMUNITY,
+        content: { ...VERIFIED_COMMUNITY_CONTENT, visibility: 'unlisted' },
+      },
+    ],
+    [
+      'a mismatched manifest governance commitment',
+      {
+        ...VERIFIED_COMMUNITY,
+        manifestGovernanceStrategyHash: `u${'B'.repeat(43)}`,
+      },
+    ],
+    [
+      'a membership roster',
+      {
+        ...VERIFIED_COMMUNITY,
+        memberships: [{ memberIdentityId: VERIFIED_POST.author.identityId }],
+      },
+    ],
+  ])('rejects %s from community discovery', (_label, community) => {
     expect(() =>
       parseSearchResponse({
         ...response,
-        results: [communityResult],
+        results: [{ ...communityResult, community }],
       }),
-    ).toThrow('verified metadata and an explicit public visibility proof');
+    ).toThrow();
+  });
+
+  it('accepts a verified creation manifest after current onchain governance advances', () => {
+    const currentGovernanceHash = `u${'B'.repeat(43)}`;
+    const parsed = parseSearchResponse({
+      ...response,
+      results: [
+        {
+          ...communityResult,
+          community: {
+            ...VERIFIED_COMMUNITY,
+            governanceStrategyHash: currentGovernanceHash,
+            governanceVersion: 2,
+          },
+        },
+      ],
+    });
+
+    expect(parsed.results[0]).toMatchObject({
+      community: {
+        governanceStrategyHash: currentGovernanceHash,
+        governanceVersion: 2,
+        manifestGovernanceStrategyHash: COMMUNITY_GOVERNANCE_COMMITMENT.digest,
+        manifestGovernanceVersion: 1,
+      },
+      kind: 'community',
+    });
+  });
+
+  it('rejects a response or community result from a different WokeNet deployment', () => {
+    expect(() => parseSearchResponse(response, { network: SECOND_NETWORK_ID })).toThrow(
+      'changed its requested network',
+    );
+
+    const secondIdentity = `wokesocialid:v1:${SECOND_NETWORK_ID}:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE`;
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [
+          {
+            ...communityResult,
+            community: {
+              ...VERIFIED_COMMUNITY,
+              creatorIdentityId: secondIdentity,
+              networkId: SECOND_NETWORK_ID,
+              signingKeyId: `${secondIdentity}#root/${'1'.repeat(32)}`,
+            },
+          },
+        ],
+      }),
+    ).toThrow('different WokeNet Solana deployment');
+  });
+
+  it('rejects community or post results newer than the declared search checkpoint', () => {
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [
+          {
+            ...communityResult,
+            community: {
+              ...VERIFIED_COMMUNITY,
+              updatedAt: '2026-07-28T12:02:00.000Z',
+              updatedSlot: '43',
+            },
+          },
+        ],
+      }),
+    ).toThrow('checkpoint does not cover');
+
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        results: [
+          {
+            ...response.results[1],
+            post: {
+              ...response.results[1].post,
+              verification: {
+                ...VERIFIED_POST.verification,
+                anchor: {
+                  ...VERIFIED_POST.verification.anchor,
+                  slot: 43,
+                },
+              },
+            },
+          },
+        ],
+      }),
+    ).toThrow('checkpoint does not cover');
+  });
+
+  it('rejects the superseded public-match-v1 recipe', () => {
+    expect(() =>
+      parseSearchResponse({
+        ...response,
+        ranking: { deterministic: true, version: 'public-match-v1' },
+      }),
+    ).toThrow('metadata is invalid');
   });
 
   it('rejects cross-kind ranking reasons and oversized result arrays', () => {
@@ -651,7 +842,9 @@ describe('typed public-search response parsing', () => {
     });
     expect(fetch).toHaveBeenCalledOnce();
     expect(String(fetch.mock.calls[0]?.[0])).toBe(
-      'https://indexer.example/operator/v1/search/public?q=river%20chen&limit=30',
+      `https://indexer.example/operator/v1/search?network=${encodeURIComponent(
+        NETWORK_ID,
+      )}&q=river%20chen&limit=30`,
     );
   });
 
@@ -664,6 +857,20 @@ describe('typed public-search response parsing', () => {
       detail: 'Use at least 3 normalized Unicode code points.',
       kind: 'degraded',
       reason: 'invalid-response',
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not search an indexer default when the explicit WokeNet scope is absent', async () => {
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    delete process.env['WOKENET_NETWORK_ID'];
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(searchPublic('river')).resolves.toMatchObject({
+      detail: expect.stringContaining('WOKENET_NETWORK_ID'),
+      kind: 'degraded',
+      reason: 'unconfigured',
     });
     expect(fetch).not.toHaveBeenCalled();
   });

@@ -21,8 +21,9 @@ Every payload carries:
 
 - `protocol: "wokesocial"`
 - `protocolVersion: "1.0"`
-- `schemaVersion: 1` for all non-profile families and historical profiles;
-  current profiles use `schemaVersion: 2`
+- `schemaVersion: 1` for most current families and frozen historical
+  profile/community objects; current profiles and communities use
+  `schemaVersion: 2`
 - a canonical WokeNet ID,
   `wokenet:v1:<genesis-hash-base58-32>:<program-id-base58-32>`
 - an author identity bound to that network
@@ -82,7 +83,11 @@ intentionally incompatible and rejected.
 
 `authorizationRequirementFor` returns the signing mode, required scope, and external checks for each type. `verifyEnvelope` always performs schema, network/author/key binding, intrinsic authorization, hash, and signature validation. If an external authorizer is supplied, it also receives the complete payload, object ID, and declared enforcement requirements.
 
-Only `delegation` is intrinsically root-only in v1. All other delegated signatures still require an external decision that the key existed, held the required scope, matched the current root-rotation epoch, and was not revoked at `createdAt`.
+`delegation` and current schema-v2 `community` objects are intrinsically
+root-only. Frozen schema-v1 community objects remain readable with their
+historical root-or-delegation rule. All other delegated signatures still
+require an external decision that the key existed, held the required scope,
+matched the current root-rotation epoch, and was not revoked at `createdAt`.
 
 ## Revisions and deletion
 
@@ -115,15 +120,22 @@ This is metadata about already encrypted bytes. This package does not encrypt, d
 
 ## Communities, federation, and governance
 
-Community objects support public, unlisted, private, and restricted visibility. Their bounded configuration includes:
+Current schema-v2 community objects support public, unlisted, private, and
+restricted visibility. Their bounded configuration includes:
 
-- owner, role-consensus, one-member-one-vote, token-weighted, reputation-weighted-with-cap, delegated-voting, moderator-council, consensus, and supermajority models;
-- explicit quorum and simple-majority, bounded-supermajority, or consensus thresholds;
-- required cap/policy/council metadata for the corresponding model;
+- the exact `one-active-member-one-vote` governance strategy accepted by the
+  current onchain program, including fixed quorum, approval, abstention, and
+  outcome-record-only execution semantics;
 - bounded cross-network federation allow/block lists and an optional policy document;
 - an optional WokeNet treasury account using the Solana-compatible 32-byte public-key representation, policy reference, and bounded asset allow-list.
 
-These fields are portable policy declarations. This package cannot verify membership snapshots, reputation, delegated voting chains, council composition, treasury ownership, federation behavior, quorum, or proposal execution. Those checks belong to finalized onchain state and independently operated indexers/clients.
+The frozen schema-v1 community read path retains historical owner,
+role-consensus, token-weighted, reputation-weighted, delegated-voting,
+moderator-council, consensus, and supermajority declarations. Current builders
+reject those legacy shapes. These fields are portable policy declarations. This
+package cannot verify membership snapshots, treasury ownership, federation
+behavior, quorum, votes, or proposal execution. Those checks belong to
+finalized onchain state and independently operated indexers/clients.
 
 ## Compatibility and limits
 
@@ -149,19 +161,24 @@ Notable representation limits include:
 - media per post: 10;
 - extension entries: 32.
 
-Profile schema compatibility is versioned within protocol version `1.0`:
+Profile and community schema compatibility is versioned within protocol version
+`1.0`:
 
-- `schemaVersion: 1` is the frozen historical profile shape. The read and
-  verification APIs continue to accept it so existing signed objects retain
-  their canonical bytes, IDs, and signatures.
-- `schemaVersion: 2` is the current profile shape. Public identity attributes
-  may remain inline, while followers-only/private pronouns, gender,
-  chosen-family labels, and location require encrypted content references.
-- `buildProfilePayload`, `buildPortablePayload`, and `signPayload` enforce the
-  current creation surface. `portablePayloadSchema`, `signedEnvelopeSchema`,
-  `decodeCanonicalEnvelope`, and `verifyEnvelope` provide the versioned read
-  path. Code that validates new-object submissions directly should use
-  `currentPortablePayloadSchema` or `currentSignedEnvelopeSchema`.
+- `schemaVersion: 1` contains the frozen historical profile and community
+  shapes. The read and verification APIs continue to accept them so existing
+  signed objects retain their canonical bytes, IDs, signatures, and historical
+  authorization semantics.
+- `schemaVersion: 2` is current for profile and community creation. Profile
+  privacy requires encrypted content references for followers-only/private
+  pronouns, gender, chosen-family labels, and location. Communities require the
+  exact one-active-member-one-vote governance commitment and root-key
+  authorization.
+- `buildProfilePayload`, `buildCommunityPayload`, `buildPortablePayload`, and
+  `signPayload` enforce the current creation surface.
+  `portablePayloadSchema`, `signedEnvelopeSchema`, `decodeCanonicalEnvelope`,
+  and `verifyEnvelope` provide the versioned read path. Code that validates
+  new-object submissions directly should use `currentPortablePayloadSchema` or
+  `currentSignedEnvelopeSchema`.
 
 The protocol package intentionally does not infer network activation from an
 object's self-declared version. The open indexer fixes one immutable

@@ -5,7 +5,10 @@ import postgres, { type Sql } from 'postgres';
 import { describe, expect, it } from 'vitest';
 
 import {
+  communityGovernanceStrategyCommitment,
   encodeMultibaseBase64Url,
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  type CommunityContent,
   type NetworkId,
   type PostContent,
   type ProfileContent,
@@ -33,6 +36,222 @@ const programId = publicKey(2);
 const retryAt = '2026-07-28T12:05:00.000Z';
 
 describe('PostgreSQL pending manifest ingestion state', () => {
+  it('hydrates community shells, preserves immutable governance proof, and rebuilds discovery', async () => {
+    await migrate(migrationDatabaseUrl);
+    const fixture = identityFixture();
+    const projection = new PostgresProjectionStore(databaseUrl);
+    const maintenance = postgres(migrationDatabaseUrl, { max: 1 });
+    const created = identityCreated(fixture);
+    const pending = communityItem(fixture, 1n, 2n, 80, 'public');
+    const updatedStrategy = digest(81);
+    const currentAuthority = publicKey(84);
+    const governanceUpdated: ProtocolEvent = {
+      ...eventBase(fixture.networkId, 3n, 81),
+      type: 'community-governance-updated',
+      communityAddress: pending.event.communityAddress,
+      creatorIdentityId: fixture.identityId,
+      authority: currentAuthority,
+      creatorSequence: 2n,
+      previousGovernanceVersion: 1,
+      governanceVersion: 2,
+      previousStrategyHash: pending.event.governanceStrategyHash,
+      governanceStrategyHash: updatedStrategy,
+    };
+
+    try {
+      await projection.apply(created);
+      await projection.deferManifestEvent(pending.event, deferral());
+      await expect(
+        projection.duePendingManifestEvents(fixture.networkId, retryAt, 10),
+      ).resolves.toMatchObject([{ event: { type: 'community-created', creatorSequence: 1n } }]);
+      await expect(
+        projection.getCommunity(fixture.networkId, pending.event.communityAddress),
+      ).resolves.toMatchObject({ manifestVerified: false });
+      await expect(
+        projection.listPublicCommunities({ networkId: fixture.networkId, limit: 10 }),
+      ).resolves.toMatchObject({ communities: [] });
+
+      await projection.promoteManifestEvent(pending.event, pending.manifest);
+      await projection.apply(governanceUpdated);
+      await expect(
+        projection.getCommunity(fixture.networkId, pending.event.communityAddress),
+      ).resolves.toMatchObject({
+        manifestVerified: true,
+        manifestAuthority: fixture.rootAuthority,
+        latestActionAuthority: currentAuthority,
+        signingKeyId: `${fixture.identityId}#root/${fixture.rootAuthority}`,
+        manifestGovernanceVersion: 1,
+        manifestGovernanceStrategyHash: pending.event.governanceStrategyHash,
+        governanceVersion: 2,
+        governanceStrategyHash: updatedStrategy,
+        content: { name: 'Community 80' },
+      });
+      await expect(
+        projection.listPublicCommunities({ networkId: fixture.networkId, limit: 10 }),
+      ).resolves.toMatchObject({
+        communities: [{ communityAddress: pending.event.communityAddress }],
+      });
+      await expect(
+        maintenance`
+          UPDATE communities
+          SET
+            governance_version = manifest_governance_version,
+            governance_strategy_hash = ${updatedStrategy}
+          WHERE network_id = ${fixture.networkId}
+            AND community_address = ${pending.event.communityAddress}
+        `,
+      ).rejects.toThrow('communities_governance_advances_manifest_check');
+      await expect(
+        maintenance`
+          UPDATE communities
+          SET manifest_authority = ${currentAuthority}
+          WHERE network_id = ${fixture.networkId}
+            AND community_address = ${pending.event.communityAddress}
+        `,
+      ).rejects.toThrow('communities_manifest_binding_check');
+
+      await projection.rebuildProjection(fixture.networkId, [
+        { event: created },
+        { event: pending.event, manifest: pending.manifest },
+        { event: governanceUpdated },
+      ]);
+      await expect(
+        projection.listPublicCommunities({ networkId: fixture.networkId, limit: 10 }),
+      ).resolves.toMatchObject({
+        communities: [
+          {
+            manifestAuthority: fixture.rootAuthority,
+            latestActionAuthority: currentAuthority,
+            manifestGovernanceVersion: 1,
+            governanceVersion: 2,
+            content: { name: 'Community 80' },
+          },
+        ],
+      });
+    } finally {
+      await projection.clearProjection(fixture.networkId).catch(() => undefined);
+      await purgeRawNetwork(maintenance, fixture.networkId);
+      await Promise.all([projection.close(), maintenance.end({ timeout: 5 })]);
+    }
+  }, 30_000);
+
+  it('paginates equal-slot mixed-case community addresses with PostgreSQL C ordering', async () => {
+    await migrate(migrationDatabaseUrl);
+    const fixture = identityFixture();
+    const projection = new PostgresProjectionStore(databaseUrl);
+    const maintenance = postgres(migrationDatabaseUrl, { max: 1 });
+    const writer = postgres(migrationDatabaseUrl, { max: 1 });
+    const inspection = postgres(databaseUrl, { max: 1 });
+    const writerReady = deferred();
+    const releaseWriter = deferred();
+    let pendingWriter: Promise<unknown> | undefined;
+    const rawHigherAddress = publicKey(1);
+    const rawLowerAddress = publicKey(52);
+    const changedAuthority = publicKey(85);
+    const first = communityItem(fixture, 1n, 2n, 82, 'public');
+    const second = communityItem(fixture, 2n, 2n, 83, 'public');
+    const firstEvent: ProtocolEvent = {
+      ...first.event,
+      communityAddress: rawHigherAddress,
+      transactionIndex: 0,
+    };
+    const secondEvent: ProtocolEvent = {
+      ...second.event,
+      communityAddress: rawLowerAddress,
+      transactionIndex: 1,
+    };
+
+    expect(rawHigherAddress).toMatch(/[A-Z]/u);
+    expect(rawHigherAddress).toMatch(/[a-z]/u);
+    expect(rawLowerAddress).toMatch(/[A-Z]/u);
+    expect(rawLowerAddress).toMatch(/[a-z]/u);
+    expect(rawHigherAddress > rawLowerAddress).toBe(true);
+
+    try {
+      await projection.apply(identityCreated(fixture));
+      await projection.apply(firstEvent, first.manifest);
+      await projection.apply(secondEvent, second.manifest);
+
+      const firstPage = await projection.listPublicCommunities({
+        networkId: fixture.networkId,
+        limit: 1,
+      });
+      expect(firstPage).toMatchObject({
+        communities: [{ communityAddress: rawHigherAddress }],
+        next: { createdSlot: 2n, communityAddress: rawHigherAddress },
+      });
+      if (firstPage.next === undefined) throw new Error('Expected a second directory page.');
+      await expect(
+        projection.listPublicCommunities({
+          networkId: fixture.networkId,
+          limit: 1,
+          before: firstPage.next,
+        }),
+      ).resolves.toMatchObject({
+        communities: [{ communityAddress: rawLowerAddress }],
+      });
+
+      pendingWriter = writer.begin(async (sql) => {
+        await sql.unsafe('LOCK TABLE indexer_checkpoints IN ACCESS EXCLUSIVE MODE');
+        await sql`
+          UPDATE communities
+          SET
+            latest_action_authority = ${changedAuthority},
+            updated_slot = 3,
+            updated_at = '2026-07-28T12:00:03.000Z'
+          WHERE network_id = ${fixture.networkId}
+        `;
+        await sql`
+          UPDATE indexer_checkpoints
+          SET
+            finalized_slot = 3,
+            transaction_signature = 'directory-snapshot-three',
+            log_index = 0
+          WHERE network_id = ${fixture.networkId}
+        `;
+        writerReady.resolve();
+        await releaseWriter.promise;
+      });
+      await writerReady.promise;
+
+      const duringCommit = projection.listPublicCommunities({
+        networkId: fixture.networkId,
+        limit: 10,
+      });
+      await waitForBlockedDirectoryCheckpoint(inspection);
+      releaseWriter.resolve();
+      await pendingWriter;
+
+      await expect(duringCommit).resolves.toMatchObject({
+        checkpoint: 2n,
+        communities: [
+          { communityAddress: rawHigherAddress, latestActionAuthority: fixture.rootAuthority },
+          { communityAddress: rawLowerAddress, latestActionAuthority: fixture.rootAuthority },
+        ],
+      });
+      await expect(
+        projection.listPublicCommunities({ networkId: fixture.networkId, limit: 10 }),
+      ).resolves.toMatchObject({
+        checkpoint: 3n,
+        communities: [
+          { communityAddress: rawHigherAddress, latestActionAuthority: changedAuthority },
+          { communityAddress: rawLowerAddress, latestActionAuthority: changedAuthority },
+        ],
+      });
+    } finally {
+      releaseWriter.resolve();
+      await pendingWriter?.catch(() => undefined);
+      await projection.clearProjection(fixture.networkId).catch(() => undefined);
+      await purgeRawNetwork(maintenance, fixture.networkId);
+      await Promise.all([
+        projection.close(),
+        maintenance.end({ timeout: 5 }),
+        writer.end({ timeout: 5 }),
+        inspection.end({ timeout: 5 }),
+      ]);
+    }
+  }, 30_000);
+
   it('promotes without replaying sequence and preserves superseding profiles and tombstones', async () => {
     await migrate(migrationDatabaseUrl);
     const fixture = identityFixture();
@@ -536,6 +755,57 @@ function postItem(
   return { event, manifest: manifest(event, 'post', content) };
 }
 
+function communityItem(
+  fixture: IdentityFixture,
+  sequence: bigint,
+  slot: bigint,
+  signatureSeed: number,
+  visibility: CommunityContent['visibility'],
+) {
+  const strategy = communityGovernanceStrategyCommitment({
+    governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  });
+  const event = {
+    ...eventBase(fixture.networkId, slot, signatureSeed),
+    type: 'community-created' as const,
+    communityAddress: publicKey(signatureSeed + 90),
+    creatorIdentityId: fixture.identityId,
+    authority: fixture.rootAuthority,
+    communityNonce: encodeMultibaseBase64Url(
+      Uint8Array.from({ length: 16 }, (_, index) => signatureSeed + index),
+    ),
+    creatorSequence: sequence,
+    manifestCid: cid(signatureSeed),
+    manifestHash: digest(signatureSeed),
+    governanceVersion: strategy.governanceVersion,
+    governanceStrategyHash: strategy.digest,
+  };
+  const content = {
+    slug: `community-${String(signatureSeed)}`,
+    name: `Community ${String(signatureSeed)}`,
+    description: 'A PostgreSQL hydration fixture.',
+    visibility,
+    membershipPolicy: 'open',
+    governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+    federationPolicy: { mode: 'open', allow: [], block: [] },
+    replacement: { sequence: 1 },
+  } satisfies CommunityContent;
+  return {
+    event,
+    manifest: {
+      objectId: objectId('community', signatureSeed),
+      cid: event.manifestCid,
+      payloadHash: event.manifestHash,
+      schemaVersion: 2 as const,
+      signingKeyId: `${fixture.identityId}#root/${fixture.rootAuthority}`,
+      authorIdentityId: fixture.identityId,
+      createdAt: event.blockTime,
+      type: 'community' as const,
+      content,
+    } satisfies VerifiedManifest,
+  };
+}
+
 function manifest(
   event: Extract<ProtocolEvent, { type: 'profile-updated' | 'post-published' }>,
   type: 'profile' | 'post',
@@ -580,7 +850,7 @@ function digest(seed: number): string {
   return encodeMultibaseBase64Url(Uint8Array.from({ length: 32 }, () => seed));
 }
 
-function objectId(type: 'profile' | 'post', seed: number): string {
+function objectId(type: 'community' | 'profile' | 'post', seed: number): string {
   return `wokesocialobj:v1:${type}:${digest(seed)}`;
 }
 
@@ -591,6 +861,30 @@ function cid(seed: number): string {
 
 function publicKey(seed: number): string {
   return bs58.encode(Uint8Array.from({ length: 32 }, () => seed));
+}
+
+function deferred(): { readonly promise: Promise<void>; readonly resolve: () => void } {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+async function waitForBlockedDirectoryCheckpoint(sql: Sql): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const rows = await sql<{ blocked: number }[]>`
+      SELECT count(*)::integer AS blocked
+      FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND query LIKE '%FROM indexer_checkpoints%'
+    `;
+    if ((rows[0]?.blocked ?? 0) > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('Timed out waiting for a blocked community-directory checkpoint read.');
 }
 
 async function purgeRawNetwork(sql: Sql, networkId: NetworkId): Promise<void> {

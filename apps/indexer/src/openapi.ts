@@ -147,12 +147,12 @@ export const openApiDocument = {
       get: {
         summary: 'Search the configured network’s public projection',
         description:
-          'Searches current public profile fields, canonical active handles, and verified non-tombstoned public posts. Retired identities are excluded from new person discovery, while their historical signed public posts remain searchable. Communities remain excluded until a signed public manifest is verified. Private fields are never indexed.',
+          'Searches current public profile fields, canonical active handles, verified non-tombstoned public posts, and verified public community manifests. The successful response includes the canonical operator-configured network identifier that scoped every result. Retired identities are excluded from new person discovery, while their historical signed public posts remain searchable. Unlisted, private, restricted, and unverified communities are excluded. Private fields are never indexed.',
         parameters: searchParameters,
         responses: {
           '200': {
             description:
-              'Bounded results with checkpoint metadata and the deterministic public-match-v1 ranking version',
+              'Bounded results with checkpoint metadata and the deterministic public-match-v2 ranking version',
           },
           '400': { description: 'Invalid or unknown query input' },
           '429': { description: 'Search rate limit exceeded' },
@@ -167,11 +167,12 @@ export const openApiDocument = {
       get: {
         summary: 'Search one explicit WokeNet public projection',
         description:
-          'Low-level replaceable search endpoint. Retired identities are suppressed as people without erasing historical signed public posts. The index is rebuildable and is not canonical protocol state.',
+          'Low-level replaceable search endpoint. The successful response echoes the canonical explicit network identifier that scoped every result. Retired identities are suppressed as people without erasing historical signed public posts. The index is rebuildable and is not canonical protocol state.',
         parameters: [networkParameter, ...searchParameters],
         responses: {
           '200': {
-            description: 'Bounded current-profile and verified-public-post results',
+            description:
+              'Bounded current-profile, verified-public-post, and verified-public-community results',
           },
           '400': { description: 'Invalid or unknown query input' },
           '429': { description: 'Search rate limit exceeded' },
@@ -263,11 +264,46 @@ export const openApiDocument = {
         },
       },
     },
+    '/v1/communities': {
+      get: {
+        summary: 'List verified public communities',
+        description:
+          'Returns a bounded live keyset ordered by (createdSlot descending, communityAddress descending). Only signed schema-v2 public community manifests whose CID, payload hash, root signature, immutable manifestAuthority, PDA nonce, and exact onchain governance strategy commitment were verified are eligible. The separately exposed latestActionAuthority is the signer of the latest finalized creator-authorized community action; it is not a persistent community controller. Unlisted communities are address-readable but excluded from this directory; private, restricted, and unverified shells are never returned.',
+        parameters: [
+          networkParameter,
+          {
+            name: 'limit',
+            in: 'query',
+            schema: { type: 'integer', minimum: 1, maximum: 50, default: 30 },
+          },
+          {
+            name: 'before',
+            in: 'query',
+            description:
+              'Opaque exclusive community-directory-v1 cursor bound to the requested network and immutable creation-order tuple.',
+            schema: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 512,
+              pattern: '^[A-Za-z0-9_-]+$',
+            },
+          },
+        ],
+        responses: {
+          '200': {
+            description:
+              'Verified public communities, checkpoint metadata, recipe identity, and nextCursor when another page exists',
+          },
+          '400': { description: 'Invalid network, limit, or scoped cursor' },
+          '429': { description: 'Directory rate limit exceeded' },
+        },
+      },
+    },
     '/v1/communities/{communityAddress}': {
       get: {
-        summary: 'Read a community, governance strategy anchor, and memberships',
+        summary: 'Read one verified public or unlisted community',
         description:
-          'Community manifest metadata is anchored but is explicitly marked unverified until the portable protocol defines a community envelope schema.',
+          'Returns signed community content and verification metadata, including immutable manifestAuthority and the latest finalized community-action signer as latestActionAuthority, without membership or roster data. Unverified shells and private or restricted communities fail closed as not found.',
         parameters: [
           {
             name: 'communityAddress',
@@ -278,7 +314,10 @@ export const openApiDocument = {
           networkParameter,
         ],
         responses: {
-          '200': { description: 'Projected community and membership state' },
+          '200': {
+            description:
+              'Verified signed community content, governance binding, and projection checkpoint metadata',
+          },
           '400': { description: 'Invalid community address or network' },
           '404': { description: 'Community not found' },
         },
@@ -288,7 +327,7 @@ export const openApiDocument = {
       get: {
         summary: 'List governance proposals projected for a community',
         description:
-          'Returns a deterministic rebuildable projection. Proposal manifests are anchored but not interpreted by the indexer.',
+          'Returns a deterministic rebuildable projection only when the parent community has a verified public or unlisted manifest. Proposal manifests are anchored but not interpreted by the indexer. Protected or unverified parents fail closed as not found.',
         parameters: [
           {
             name: 'communityAddress',
@@ -369,6 +408,8 @@ export const openApiDocument = {
     '/v1/governance/proposals/{proposalAddress}': {
       get: {
         summary: 'Read one projected governance proposal',
+        description:
+          'Requires a verified public or unlisted parent community. Protected or unverified parents return the same not-found response as an unknown proposal.',
         parameters: [
           {
             name: 'proposalAddress',
@@ -388,6 +429,8 @@ export const openApiDocument = {
     '/v1/governance/proposals/{proposalAddress}/votes': {
       get: {
         summary: 'List projected votes for one governance proposal',
+        description:
+          'Requires a verified public or unlisted parent community so a protected community cannot leak a participation roster through a known proposal address.',
         parameters: [
           {
             name: 'proposalAddress',
@@ -407,6 +450,8 @@ export const openApiDocument = {
     '/v1/governance/votes/{voteAddress}': {
       get: {
         summary: 'Read one projected governance vote',
+        description:
+          'Requires a verified public or unlisted parent community. Protected or unverified parent state fails closed as not found.',
         parameters: [
           {
             name: 'voteAddress',

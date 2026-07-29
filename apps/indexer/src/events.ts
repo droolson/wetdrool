@@ -9,6 +9,7 @@ import {
   handleSchema,
   identityIdSchema,
   networkIdSchema,
+  nonceSchema,
   objectIdSchema,
   solanaPublicKeySchema,
   timestampSchema,
@@ -27,7 +28,10 @@ const u8Schema = z.number().int().min(0).max(255);
 const nonnegativeU64Schema = z.bigint().nonnegative().max(18_446_744_073_709_551_615n);
 const positiveU64Schema = z.bigint().positive().max(18_446_744_073_709_551_615n);
 const nonnegativeI64Schema = z.bigint().nonnegative().max(9_223_372_036_854_775_807n);
-export const GOVERNANCE_STRATEGY_HASH = 'uwm8vfQxM7tZkfr0DZsEnFVxa4ZgsIPg8DsCn-xbX_HA' as const;
+export const GOVERNANCE_STRATEGY_HASH = 'uneRbAxLESnjaTD1GsoKoiIrsZg1CJCoNdhODS5Q1dXE' as const;
+/** Historical program commitment retained solely for immutable event replay. */
+export const LEGACY_GOVERNANCE_STRATEGY_HASH =
+  'uwm8vfQxM7tZkfr0DZsEnFVxa4ZgsIPg8DsCn-xbX_HA' as const;
 export const GOVERNANCE_QUORUM_BPS = 5_000 as const;
 export const GOVERNANCE_APPROVAL_BPS = 5_001 as const;
 const ZERO_DIGEST = 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
@@ -285,6 +289,7 @@ const communityCreatedEventSchema = z
     communityAddress: solanaPublicKeySchema,
     creatorIdentityId: identityIdSchema,
     authority: solanaPublicKeySchema,
+    communityNonce: nonceSchema.optional(),
     creatorSequence: z.bigint().positive(),
     manifestCid: cidSchema,
     manifestHash: digestSchema,
@@ -517,7 +522,10 @@ const proposalCreatedEventSchema = z
   })
   .strict()
   .superRefine((event, context) => {
-    if (event.governanceStrategyHash !== GOVERNANCE_STRATEGY_HASH) {
+    if (
+      event.governanceStrategyHash !== GOVERNANCE_STRATEGY_HASH &&
+      event.governanceStrategyHash !== LEGACY_GOVERNANCE_STRATEGY_HASH
+    ) {
       context.addIssue({
         code: 'custom',
         path: ['governanceStrategyHash'],

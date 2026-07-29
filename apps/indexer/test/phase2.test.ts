@@ -3,12 +3,15 @@ import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildCommunityPayload,
   buildPostPayload,
   canonicalizeEnvelope,
+  communityGovernanceStrategyCommitment,
   createPayloadBuilderIdentity,
   encodeMultibaseBase64Url,
   getObjectId,
   signPayload,
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   type NetworkId,
   type PostContent,
 } from '@wokesocial/protocol';
@@ -221,8 +224,34 @@ describe('Phase-2 projection and authorization', () => {
       permanence: 'deletion-compatible',
     });
 
-    const strategy1 = digest(11);
+    const communityEnvelope = signPayload(
+      buildCommunityPayload(
+        builder,
+        {
+          slug: 'phase-two',
+          name: 'Phase Two',
+          description: 'Verified metadata that survives governance updates.',
+          visibility: 'public',
+          membershipPolicy: 'open',
+          governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+          federationPolicy: { mode: 'open', allow: [], block: [] },
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T15:06:00.000Z'),
+          nonce: bytes(16, 21),
+        },
+      ),
+      rootPrivateKey,
+    );
+    const communityReceipt = await storage.put(canonicalizeEnvelope(communityEnvelope), {
+      permanence: 'deletion-compatible',
+    });
+    const strategy1 = communityGovernanceStrategyCommitment({
+      governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+    }).digest;
     const strategy2 = digest(12);
+    const strategy3 = digest(13);
     const events: ProtocolEvent[] = [
       {
         ...base(1n, 1),
@@ -283,9 +312,10 @@ describe('Phase-2 projection and authorization', () => {
         communityAddress,
         creatorIdentityId: identityId,
         authority: rootAuthority,
+        communityNonce: communityEnvelope.payload.nonce,
         creatorSequence: 4n,
-        manifestCid: receipt.cid,
-        manifestHash: digest(10),
+        manifestCid: communityReceipt.cid,
+        manifestHash: communityEnvelope.proof.payloadHash,
         governanceVersion: 1,
         governanceStrategyHash: strategy1,
       },
@@ -337,24 +367,36 @@ describe('Phase-2 projection and authorization', () => {
       },
       {
         ...base(11n, 12),
+        type: 'community-governance-updated',
+        communityAddress,
+        creatorIdentityId: identityId,
+        authority: nextRootAuthority,
+        creatorSequence: 9n,
+        previousGovernanceVersion: 2,
+        governanceVersion: 3,
+        previousStrategyHash: strategy2,
+        governanceStrategyHash: strategy3,
+      },
+      {
+        ...base(12n, 13),
         type: 'delegation-created',
         identityId,
         delegationAddress: publicKey(84),
         delegateAuthority: currentDelegateAuthority,
         delegationSequence: 2n,
-        identitySequence: 9n,
+        identitySequence: 10n,
         scopes: 1,
         issuedAtRootRotationCount: 1n,
         expiresAtSlot: 100n,
       },
       {
-        ...base(12n, 13),
+        ...base(13n, 14),
         type: 'delegation-revoked',
         identityId,
         delegationAddress: publicKey(84),
         delegateAuthority: currentDelegateAuthority,
         delegationSequence: 2n,
-        identitySequence: 10n,
+        identitySequence: 11n,
         delegationStateSequence: 2n,
       },
     ];
@@ -372,9 +414,15 @@ describe('Phase-2 projection and authorization', () => {
       stateSequence: 1n,
     });
     await expect(projection.getCommunity(networkId, communityAddress)).resolves.toMatchObject({
-      governanceVersion: 2,
-      governanceStrategyHash: strategy2,
-      manifestVerified: false,
+      manifestAuthority: rootAuthority,
+      latestActionAuthority: nextRootAuthority,
+      governanceVersion: 3,
+      governanceStrategyHash: strategy3,
+      manifestGovernanceVersion: 1,
+      manifestGovernanceStrategyHash: strategy1,
+      manifestVerified: true,
+      signingKeyId: `${identityId}#root/${rootAuthority}`,
+      content: { name: 'Phase Two' },
     });
     await expect(
       projection.getCommunityMemberships(networkId, communityAddress),
@@ -400,10 +448,10 @@ describe('Phase-2 projection and authorization', () => {
       authorize(projection, delegateAuthority, 'delegation', 'profile', 11n, 12),
     ).resolves.toBe(false);
     await expect(
-      authorize(projection, currentDelegateAuthority, 'delegation', 'profile', 11n, 12),
+      authorize(projection, currentDelegateAuthority, 'delegation', 'profile', 12n, 13),
     ).resolves.toBe(true);
     await expect(
-      authorize(projection, currentDelegateAuthority, 'delegation', 'profile', 12n, 13),
+      authorize(projection, currentDelegateAuthority, 'delegation', 'profile', 13n, 14),
     ).resolves.toBe(false);
 
     const before = await snapshot(projection);

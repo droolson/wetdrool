@@ -891,8 +891,15 @@ function isManifestUnavailable(
 
 function isDeferrableManifestEvent(
   event: ProtocolEvent,
-): event is Extract<ProtocolEvent, { readonly type: 'profile-updated' | 'post-published' }> {
-  return event.type === 'profile-updated' || event.type === 'post-published';
+): event is Extract<
+  ProtocolEvent,
+  { readonly type: 'profile-updated' | 'post-published' | 'community-created' }
+> {
+  return (
+    event.type === 'profile-updated' ||
+    event.type === 'post-published' ||
+    event.type === 'community-created'
+  );
 }
 
 function retryDelay(attempt: number, base: number, maximum: number): number {

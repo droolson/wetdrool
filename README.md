@@ -32,11 +32,11 @@ requirement may contain a tested subset without being complete.
 | Monorepo and local infrastructure | Implemented and verified locally with PostgreSQL, Redis, Kubo, and hardened service-container profiles |
 | WokeNet | The protocol namespace, Anchor program, portable identifiers, deployment manifest schema, SDK boundaries, and indexer bindings are implemented for Solana. Local-validator evidence exists; no devnet or mainnet-beta WokeNet program deployment has been published |
 | Social protocol | Solana local-validator tests cover 41 instructions, 19 account layouts, and 33 events for identity/profile references, one-way identity deactivation, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, and a quarantined legacy payment ABI |
-| Signed content and storage | A strict 29-family portable object registry, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
-| Open indexer | Finalized Solana RPC synchronization, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical onchain profile-v2 commitments plus an immutable legacy cutoff, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, sixteen PostgreSQL migrations, RPC failover, DLQ, provenance, and REST APIs are implemented. The consumer-safe home response remains separate from a noncanonical `/v1/feed` projection with explicit-or-default network resolution, checkpoint/provenance/resolved-network/viewer scope, and terminal recipe-bound cursors; fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
+| Signed content and storage | A strict 29-family portable object registry, including schema-v2 communities with an exact executable-governance commitment and read-compatible historical v1 objects, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
+| Open indexer | Finalized Solana RPC synchronization, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical profile-v2 and governance-bound community-v2 manifest verification, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, ordered PostgreSQL migrations, RPC failover, DLQ, provenance, and REST APIs are implemented. Privacy-safe verified-community directory/detail plus deterministic `public-match-v2` search complement the consumer-safe home and noncanonical `/v1/feed` projections; fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Feed service | Independently replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and third-party reconciliation engine implemented and tested |
 | Relay | Replaceable signed WebSocket transport, bounded finalized key and expiring opaque-topic subscription authorizer HTTP adapters, and multi-relay failover client implemented and tested; independent authorizer deployments and E2EE remain external |
-| Flagship web application | Complete required route surface, production build, responsive/a11y states, local composer/preferences/export, provider settings, and real passkey-service registration/sign-in implemented. The consumer-safe home feed, strict bounded chronological pagination, and an explicitly public, unauthenticated following-graph preview are connected to the open indexer; exact-identity hiding remains device-local, and media-only posts retain verified references without connected gateway playback. Authenticated following, recommendation-provider integration, cross-device safety, and complete offline caching remain open; unsupported onchain mutations fail closed |
+| Flagship web application | Complete required route surface, production build, responsive/a11y states, local composer/preferences/export, provider settings, and real passkey-service registration/sign-in implemented. The consumer-safe home feed, strict bounded chronological pagination, address-routed verified community directory/detail, `public-match-v2` search, and an explicitly public unauthenticated following-graph preview are connected to the open indexer; exact-identity hiding remains device-local, and media-only posts retain verified references without connected gateway playback. Community joining/membership, authenticated following, recommendation-provider integration, cross-device safety, and complete offline caching remain open; unsupported onchain mutations fail closed |
 | Moderation and safety | Replaceable signed label/report/appeal service, encrypted durable PostgreSQL case ledger, retention/legal-hold lifecycle, transparency aggregation, locked-by-default authorization, and restricted case reads are implemented; production authorizer/SSO and complete specialist product workflows remain blocked |
 | Passkeys and recovery | Replaceable WebAuthn service, durable one-time ceremonies/sessions, discoverable browser registration/sign-in, and ciphertext-only PRF key-bundle sync implemented and tested; protocol-identity creation, recovery, sponsorship, and complete device flows remain open |
 | End-to-end encrypted messaging | Experimental pairwise-only adapter delegates real Olm sessions to pinned Matrix Rust crypto WASM, authenticates outer envelopes before state mutation, and passes 13 adversarial real-device cases; volatile storage, browser packaging, attachments, safety UX, and reporting remain non-production |
@@ -63,18 +63,19 @@ not evidence of a devnet or mainnet-beta deployment.
   bootstrap, execution, authority mutation, and unpause fail without state or
   balance changes; no successful payment flow exists.
 - `pnpm test:vertical-slice` starts a fresh validator and disposable PostgreSQL,
-  finalizes nine real local transactions, verifies exact signed CAS content
-  through the production indexer, suppresses a tombstoned post, clears and
-  exactly replays the projection, and exercises production Next.js on desktop
-  and mobile-viewport Chromium. This is local Solana program evidence, not a public
-  deployment claim.
+  finalizes ten real local transactions, verifies exact signed post and
+  schema-v2 community CAS content through the production indexer, suppresses a
+  tombstoned post, clears and exactly replays nine durable events, and exercises
+  production Next.js before and after replay with eight desktop and
+  mobile-viewport Chromium checks. This is local Solana program evidence, not a
+  public deployment claim.
 - Package tests cover deterministic canonical bytes and identifiers, Ed25519
   verification across 29 portable object families, local CAS integrity, storage
   replication, recoverable SDK publication, manifest verification, exhaustive
   current-IDL indexing, and in-memory rebuild. The current focused evidence
   includes 149 configuration unit cases plus four verified-database-TLS
-  integration cases, 189 indexer unit cases across 20 files, 27 isolated
-  indexer PostgreSQL cases across 11 files, 38 feed-service cases, and 25
+  integration cases, 202 indexer unit cases across 21 files, 30 isolated
+  indexer PostgreSQL cases across 12 files, 38 feed-service cases, and 25
   shared rate-limiter unit cases plus six real-Redis integration cases.
 - Relay tests exercise 81 unit cases and 34 real-loopback WebSocket integration
   cases, including signed envelopes, locked-by-default authorization, bounded
@@ -95,8 +96,8 @@ not evidence of a devnet or mainnet-beta deployment.
 - Container integration tests pass against PostgreSQL and Kubo. The PostgreSQL
   test projects signed profile/post/tombstone manifests, a follow edge, duplicate
   delivery, feed filtering, and deterministic rebuild.
-- The 46-page Next.js route surface builds for production; 95 web unit tests and
-  208 desktop and mobile-viewport Playwright cases pass, with two deliberate
+- The 46-page Next.js route surface builds for production; 109 web unit tests
+  and 210 desktop and mobile-viewport Playwright cases pass, with two deliberate
   duplicate mobile-viewport passkey lifecycle cases skipped. The suite includes
   automated axe WCAG A/AA checks across 45 route fixtures in both desktop and
   mobile-viewport projects, plus
@@ -175,7 +176,7 @@ apps/
 packages/
   protocol/             Implemented canonical schemas, signatures, hashes, and IDs
   storage/              Local, memory, multi-provider, IPFS, and Arweave adapters
-  sdk/                  Publication pipeline plus quarantined legacy payment helpers
+  sdk/                  Post/profile/community publication plus quarantined legacy payment helpers
   ui/                   Implemented accessible design-system subset
   config/               Implemented shared typed local configuration
   crypto/               WebCrypto hashing, HKDF, sealed envelopes, and passkey key wrapping

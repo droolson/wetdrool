@@ -8,6 +8,7 @@ import {
   eventPayloadSchema,
   governanceProposalPayloadSchema,
   governanceVotePayloadSchema,
+  legacyCommunityPayloadSchema,
 } from './community-schemas.js';
 import {
   mediaManifestPayloadSchema,
@@ -83,7 +84,9 @@ const currentPortablePayloadUnionSchema = z.discriminatedUnion('type', [
 
 function validatePortablePayload(
   payload:
-    z.infer<typeof currentPortablePayloadUnionSchema> | z.infer<typeof legacyProfilePayloadSchema>,
+    | z.infer<typeof currentPortablePayloadUnionSchema>
+    | z.infer<typeof legacyProfilePayloadSchema>
+    | z.infer<typeof legacyCommunityPayloadSchema>,
   context: {
     addIssue(issue: { code: 'custom'; path?: PropertyKey[] | undefined; message: string }): void;
   },
@@ -143,9 +146,8 @@ function validatePortablePayload(
 /**
  * Current object-creation schema.
  *
- * All object families other than profile remain on schema version 1. Profiles
- * use schema version 2 so newly signed objects cannot reintroduce protected
- * inline profile values.
+ * Profiles and communities use schema version 2. Other object families remain
+ * on schema version 1.
  */
 export const currentPortablePayloadSchema = currentPortablePayloadUnionSchema.superRefine(
   (payload, context) => {
@@ -156,11 +158,15 @@ export const currentPortablePayloadSchema = currentPortablePayloadUnionSchema.su
 /**
  * Versioned read schema for immutable protocol history.
  *
- * The only historical alternative is the frozen schema-version-1 profile
- * shape. Use currentPortablePayloadSchema or the builders for new objects.
+ * Frozen schema-version-1 profile and community shapes remain read-compatible.
+ * Use currentPortablePayloadSchema or the builders for new objects.
  */
 export const portablePayloadSchema = z
-  .union([legacyProfilePayloadSchema, currentPortablePayloadUnionSchema])
+  .union([
+    legacyProfilePayloadSchema,
+    legacyCommunityPayloadSchema,
+    currentPortablePayloadUnionSchema,
+  ])
   .superRefine((payload, context) => {
     validatePortablePayload(payload, context);
   });

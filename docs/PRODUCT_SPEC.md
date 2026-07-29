@@ -296,19 +296,21 @@ The initial recommendation model may use declared interests, follows, freshness,
 
 **PS-SRCH-001 — Partially integrated.** The open indexer and flagship now share a strict,
 replaceable public-search contract for active handles, current public profile names/bios, verified
-non-tombstoned public posts. Canonical queries contain 3–120 NFKC-normalized Unicode code points;
-queries and results are network-scoped, rate-limited, checkpointed, database-time-bounded, and
-ordered by the published deterministic `public-match-v1` policy. Contains matching requires an
+non-tombstoned public posts, and verified public communities. Canonical queries contain 3–120
+NFKC-normalized Unicode code points; queries and results are network-scoped, rate-limited,
+checkpointed, database-time-bounded, and ordered by the published deterministic
+`public-match-v2` policy. Contains matching requires an
 ASCII alphanumeric run of at least three characters; other valid terms, including punctuation-only,
 emoji-only, and short `@` handle terms, remain exact/prefix-only. The web client validates every
-result variant and proof-bearing post, caps provider response bytes, shows honest empty/degraded
-states, and never substitutes sample or sponsored results.
+result variant, proof-bearing post, and verified-community projection; caps provider response
+bytes; shows honest empty/degraded states; and never substitutes sample or sponsored results.
 
 Private fields are excluded and tombstones remove posts from both memory and PostgreSQL search.
-Community results fail closed because the current anchored community references do not verify
-manifest visibility. Event/creator-specific discovery, viewer-aware block/mute enforcement,
-verified public-community manifests, visibility variants beyond public posts, independent provider
-conformance, and production-scale relevance/load evidence remain open.
+Community discovery is address-routed and fail closed: directory/search include verified public
+manifests only, direct detail additionally permits unlisted manifests, private/restricted and
+unverified communities resolve as not found, and public responses never include membership lists.
+Event/creator-specific discovery, viewer-aware block/mute enforcement, community membership/join
+UX, independent provider conformance, and production-scale relevance/load evidence remain open.
 
 - Search results state which indexer produced them.
 - Deleted or access-revoked content is removed from official results once the relevant update is ingested.
@@ -564,9 +566,9 @@ The product cannot be described as production-ready until:
 
 | Capability group | Status | Evidence |
 |---|---|---|
-| Public experience and onboarding | Partial | Complete route surface, 208 passing desktop and mobile-viewport browser cases, bounded provider-backed public search, and real passkey service-account lifecycle coverage; wallet and protocol-identity onboarding remain fail-closed |
+| Public experience and onboarding | Partial | Complete route surface, 210 passing desktop and mobile-viewport browser cases, bounded provider-backed public search, and real passkey service-account lifecycle coverage; wallet and protocol-identity onboarding remain fail-closed |
 | Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass Solana local-validator tests; durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and sessions pass, while protocol onboarding, WokeNet delegation lifecycle, recovery product UX, sponsorship, and public-cluster execution remain open |
-| Signed publishing and social graph | Verified text-post vertical slice; broader interactions partial | Nine finalized transactions, signed CAS manifest, exact PostgreSQL replay, root/delegated social program tests |
+| Signed publishing and social graph | Verified post/community vertical slice; broader interactions partial | Ten finalized transactions, signed post and schema-v2 community CAS manifests, nine-event PostgreSQL replay, root/delegated social program tests |
 | Feeds, search, and discovery | Partial | Seven-mode replaceable feed engine plus a separate consumer-safe home feed, strict bounded indexer-backed chronological pagination, an unauthenticated public following-graph preview, device-local exact-identity hiding, and indexed bounded profile/post search. Authenticated following, recommendation-provider integration, cross-device safety, independent-provider conformance, complete offline caching, and production-scale evidence remain |
 | Communities and governance | Partial | Community/membership plus immutable one-member-one-vote proposal, vote, and finalization accounts pass 16 validator flows; other models, execution, and enabled web mutations remain open |
 | Moderation and appeals | Partial | Strict signed provider intake/active labels/restricted reads plus an encrypted runtime-delete-protected PostgreSQL case/appeal ledger, legal holds, due/expiry transitions, and transparency aggregation pass; production object authorization/SSO, a separately credentialed retention executor, and complete specialist product workflows remain blocked |

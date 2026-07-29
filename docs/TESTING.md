@@ -16,10 +16,10 @@ are regression evidence only.
 
 | Surface | Current verified evidence | Important limit |
 | --- | --- | --- |
-| Protocol objects | All 29 v1 object families, deterministic RFC 8785 bytes and IDs, exact canonical-envelope decoding, NFC rejection, Ed25519 verification, changed-payload rejection, authorization denial, and generated Draft 2020-12 schema drift | TypeScript fixtures only; no shared Rust/TypeScript golden corpus |
-| Storage and SDK | Local CAS round-trip/deletion/corruption, permanence-consent gate, multi-provider quorum, Arweave-compatible receipt/readback validation, operation-scoped signed/recoverable publication, eight IDL-aligned instruction builders including one-way identity deactivation, strict RPC parsing, and exact-byte version-0/legacy compile/sign/simulate/broadcast/finalize execution | No funded live Arweave uploader, production provider, complete generated account client, flagship wallet/Mobile Wallet Adapter signer integration, executable-artifact attestation, or public-cluster transaction path |
+| Protocol objects | All 29 current portable object families—schema v2 for profile/community creation, schema v1 for the other families, and frozen profile/community v1 read compatibility—plus deterministic RFC 8785 bytes and IDs, exact canonical-envelope decoding, NFC rejection, Ed25519 verification, changed-payload rejection, authorization denial, and generated Draft 2020-12 schema drift | TypeScript fixtures only; no shared Rust/TypeScript golden corpus |
+| Storage and SDK | Local CAS round-trip/deletion/corruption, permanence-consent gate, multi-provider quorum, Arweave-compatible receipt/readback validation, operation-scoped signed/recoverable publication, root-only schema-v2 community publication with caller-persisted retry coordinates, exact PDA validation, and landed-but-response-lost reconciliation, eight IDL-aligned instruction builders including one-way identity deactivation, strict RPC parsing, and exact-byte version-0/legacy compile/sign/simulate/broadcast/finalize execution | No funded live Arweave uploader, production provider, complete generated account client, flagship wallet/Mobile Wallet Adapter signer integration, executable-artifact attestation, or public-cluster transaction path |
 | WokeNet program | Twenty-five Rust sizing/validation/PDA/discriminator/sequence/allocation tests, an SBF build, and 28 Solana local-validator cases including root-authorized identity deactivation, handles, root/delegated actions, delayed recovery, governance, fail-closed legacy-payment quarantine, adversarial authorization/substitution/replay, and transaction/compute/rent ceilings | Local evidence only; no devnet/mainnet-beta deployment, successful payment flow, `$WOKE` mint, replacement payment ABI, full fuzz/cross-language matrix, or independent audit |
-| Indexer/PostgreSQL | Finalized Solana RPC sync; exact decoding/projection of all 33 IDL events; canonical onchain profile-v2 commitment; exact CIDv1/base32-lower/raw/SHA-256 URI validation; accepted/pending/terminal raw disposition; checkpoint-independent bounded hydration; detached, non-gating tombstone metadata; suppression-aware exact-source replay; one-way identity deactivation; sixteen ordered migrations; exact-network APIs; and bounded indexed public search | Fork/reorg behavior, independent-provider reconciliation, viewer-aware search, and production-scale rebuild evidence remain open; the current rebuild refuses more than 50,000 events |
+| Indexer/PostgreSQL | Finalized Solana RPC sync; exact decoding/projection of all 33 IDL events; canonical onchain profile-v2 commitment; root-authority, signed/PDA-nonce, and exact-governance verification for schema-v2 communities; privacy-safe public/unlisted community projection; exact CIDv1/base32-lower/raw/SHA-256 URI validation; accepted/pending/terminal raw disposition; checkpoint-independent bounded hydration; detached, non-gating tombstone metadata; suppression-aware exact-source replay; one-way identity deactivation; seventeen ordered migrations; exact-network APIs; deterministic community-directory pagination; and bounded indexed `public-match-v2` search | Fork/reorg behavior, independent-provider reconciliation, viewer-aware search, and production-scale rebuild evidence remain open; the current rebuild refuses more than 50,000 events |
 | Feed provider | 38 cases cover all seven modes, transparent scoring, bounded trending, provider provenance/checkpoints, cursor binding, third-party reconciliation, local safety filtering, redirect-only-origin rejection, and fail-closed limiter startup ownership | Production candidate collection and a curated discovery registry are operator/client integrations |
 | Crypto/passkey wrapping | 12 vectors cover random/hash/HKDF/AES-GCM and credential-bound WebAuthn-PRF Ed25519-seed wrapping, including substitution and malformed inputs | Package-level vectors do not prove protocol onboarding, recovery, or external review |
 | Configuration | Unit cases plus real-TLS integration cover runtime-mode consistency, Solana cluster/RPC naming, origin/domain boundaries, verified database TLS and hostname/CA rejection, migration integrity, trusted proxies, secret isolation, service-specific parsers, shared Redis/HMAC admission configuration, and nonlocal fail-closed requirements | Configuration tests are guardrails, not production certificate, secret-manager, public-provider, or multi-replica evidence |
@@ -30,7 +30,7 @@ are regression evidence only.
 | Moderation provider | 56 unit cases and four isolated PostgreSQL cases cover signed object verification, encrypted restricted evidence, append-only history, runtime-role delete denial, readiness privileges, legal holds, due/review/expiry transitions, and retention-safe maintenance | Production object authorizer, operator SSO, specialist workflows, and a separately credentialed reviewed retention executor remain open |
 | Media worker | 70 adversarial unit cases, three real Sharp/FFmpeg/ffprobe integrations, and a real ClamAV 1.5.3 benign/EICAR container check cover resumability, hashes, MIME/container checks, filesystem races, bounds, metadata-free processing, HLS/waveforms, authorization, scanner protocol/freshness/provenance, and unsigned publication | Flagship browser upload, production multi-provider storage, codec sandbox/isolation evidence, load testing, and external review remain open |
 | Kubo | Real local container publish, returned-CID verification, gateway retrieval, health, and unpin | No production provider or multi-gateway fault exercise |
-| Connected local slice | Fresh Solana local validator, signed local CAS, nine finalized transactions, production sync/API, destructive projection replay with exact equivalence, production Next, desktop and mobile-viewport Chromium | Local core text-post/follow/tombstone journey only; not devnet/mainnet-beta, Seeker Android, `$WOKE`, or full product breadth |
+| Connected local slice | Fresh Solana local validator, signed local CAS, ten finalized transactions, verified public community creation/discovery, production sync/API, nine-event destructive projection replay with exact public-state equivalence, production Next, and eight desktop/mobile production-browser checks across both runs | Local identity/profile/text-post/community/follow/tombstone journey only; not devnet/mainnet-beta, community joining, Seeker Android, `$WOKE`, or full product breadth |
 | Public Solana deployment | None | No WokeNet program is recorded on devnet or mainnet-beta |
 | `$WOKE` replacement | Portable asset schema truthfully accepts SOL or exact SPL metadata and rejects `{ kind: "woke" }`; local program tests prove the legacy ABI fails closed without state/balance changes | No mint exists; legacy ABI cannot execute or be unpaused; mint-aware ABI/migration/audit absent |
 | Seeker Android | Non-release Expo/React Native foundation with Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed, honest failure states, focused unit tests, and Android export metadata | No verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication |
@@ -104,7 +104,9 @@ production build.
 - Invalid canonical JSON, unknown critical schema fields, signature mismatch,
   author-key mismatch, CID/hash substitution, gateway corruption, and manifest
   downgrade, including a legacy profile presented at/after the immutable
-  profile-v2 activation slot and a rebuild attempted with a different cutoff.
+  profile-v2 activation slot, a schema-v2 community with a delegated or
+  wrong-root signer, a signed nonce different from the PDA nonce, a mismatched
+  governance commitment, and a rebuild attempted with a different cutoff.
   CID vectors include wrong case, length, fixed CID header, multicodec,
   multihash, and base32 padding; malformed references must become terminal
   before provider I/O.
@@ -129,14 +131,19 @@ validator and does the following:
 
 1. Start a fresh Solana local validator and PostgreSQL projection.
 2. Create two identities and an inclusive profile through the program.
-3. Canonicalize and sign a text manifest.
+3. Canonicalize and sign text-post and schema-v2 public-community manifests.
 4. Store and independently re-read the exact bytes by content address.
-5. Anchor the address and hash onchain.
-6. Index only finalized/eligible events and verify the manifest.
-7. Follow the author and display the verified post in the web feed.
-8. Clear every row in the selected network projection.
-9. Rebuild it from program history and stored signed manifests.
-10. Compare the rebuilt API response with the pre-rebuild response.
+5. Anchor both references and the community PDA through finalized transactions.
+6. Bind the community's signed nonce, creation root, and exact governance
+   strategy to its finalized creation event.
+7. Index only finalized/eligible events and verify both manifests.
+8. Follow the author and display the verified post and discoverable community
+   in the production web application.
+9. Clear every row in the selected network projection.
+10. Rebuild nine durable events from program history and stored signed
+    manifests.
+11. Recheck the feed, address-routed community detail, bounded directory, and
+    exact-network public search before and after replay.
 
 The connected harness checks exact object ID, CID, payload hash, finalized
 anchor, tombstone suppression, following projection, zero replay dead letters,

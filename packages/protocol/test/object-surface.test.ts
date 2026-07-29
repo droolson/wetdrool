@@ -226,6 +226,85 @@ describe('object authorization policy', () => {
     );
   });
 
+  it('requires a root signature for community objects', () => {
+    expect(authorizationRequirementFor('community')).toMatchObject({
+      signing: 'root-only',
+      scopes: ['community.create'],
+    });
+    const community = createValidPayloads().find(({ type }) => type === 'community');
+    if (community === undefined) {
+      throw new Error('Expected a community fixture.');
+    }
+    const delegatedCommunity = {
+      ...community,
+      signingKey: signingKeyIdFor(author, publicKey, 'delegation'),
+    };
+
+    expect(() => signPayload(delegatedCommunity, privateKey)).toThrow(
+      'community objects must be signed by an identity root key',
+    );
+  });
+
+  it('continues to verify frozen schema-v1 communities signed by a delegated key', async () => {
+    const currentCommunity = createValidPayloads().find(({ type }) => type === 'community');
+    if (
+      currentCommunity === undefined ||
+      currentCommunity.type !== 'community' ||
+      currentCommunity.schemaVersion !== 2
+    ) {
+      throw new Error('Expected a community fixture.');
+    }
+    const legacyCommunity = portablePayloadSchema.parse({
+      ...currentCommunity,
+      schemaVersion: 1,
+      signingKey: signingKeyIdFor(author, publicKey, 'delegation'),
+      content: {
+        slug: currentCommunity.content.slug,
+        name: currentCommunity.content.name,
+        description: currentCommunity.content.description,
+        visibility: currentCommunity.content.visibility,
+        membershipPolicy: currentCommunity.content.membershipPolicy,
+        governanceModel: 'one-member-one-vote',
+        governanceThreshold: { kind: 'simple-majority' },
+        governanceQuorum: { kind: 'members', minimum: '10' },
+        federationPolicy: currentCommunity.content.federationPolicy,
+        replacement: currentCommunity.content.replacement,
+      },
+    });
+    expect(authorizationRequirementFor(legacyCommunity).signing).toBe('root-or-delegation');
+    const serialized = canonicalize(legacyCommunity);
+    if (serialized === undefined) {
+      throw new Error('Expected a canonical legacy community payload.');
+    }
+    const payloadHash = digestSha256Multibase(new TextEncoder().encode(serialized));
+    const signature = ed25519.sign(
+      canonicalizeProofDescriptor({
+        domain: SIGNATURE_DOMAIN,
+        version: 1,
+        algorithm: 'Ed25519',
+        keyId: legacyCommunity.signingKey,
+        network: legacyCommunity.network,
+        objectType: legacyCommunity.type,
+        payloadHash,
+      }),
+      privateKey,
+    );
+
+    await expect(
+      verifyEnvelope({
+        payload: legacyCommunity,
+        proof: {
+          algorithm: 'Ed25519',
+          keyId: legacyCommunity.signingKey,
+          payloadHash,
+          signature: encodeMultibaseBase64Url(signature),
+        },
+      }),
+    ).resolves.toMatchObject({
+      envelope: { payload: { type: 'community', schemaVersion: 1 } },
+    });
+  });
+
   it('rejects a cryptographically valid delegated-key delegation during verification', async () => {
     const delegateKey = signingKeyIdFor(
       author,

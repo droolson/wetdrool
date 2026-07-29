@@ -151,9 +151,13 @@ On-chain delegated actions are projected from finalized program output, while ro
 delegation epochs, scopes, expiry, and revocation prevent a delegated envelope from substituting
 for a root-authorized action.
 
-Community manifest CIDs and hashes are anchored and exposed with `manifestVerified: false`. The
-portable protocol package does not yet define a community envelope schema, so this indexer does not
-invent one or claim signature/schema verification.
+Community shells begin unverified. The current protocol package defines the
+schema-v2 community envelope, and the indexer promotes a shell only after
+verifying its immutable creation root, root signing key, signed/event PDA nonce,
+initial replacement sequence, and exact governance commitment. Verified API
+responses expose that creation binding as `manifestAuthority` and separately
+expose the signer of the latest finalized community action as
+`latestActionAuthority`; the latter is provenance, not a persistent controller.
 
 Migration `0003_handle_projection.sql` adds current global handle claims. Claim and release events
 are bound to the exact normalized 3–30 byte handle, its SHA-256 digest, claim address, identity,
@@ -270,6 +274,16 @@ retained as historical, replay-verifiable profile state. Promotion does not
 reactivate the identity, and public person search/discovery continues to
 exclude it.
 
+Migration `0017_verified_community_discovery.sql` binds a community's immutable
+creation authority, schema-v2 manifest, signed/event nonce, replacement
+sequence, and exact governance commitment before marking it verified. It keeps
+later onchain governance state separate from the creation commitment, adds
+privacy-scoped public directory/search indexes, and requeues legacy community
+events so a rebuild can hydrate them through the same verifier. Public
+directories expose only verified public communities; exact-address detail may
+also return verified unlisted communities, while private, restricted,
+unverified, and malformed records remain undiscoverable.
+
 The content-reference boundary is shared with the program and SDK. A canonical
 content ID is exactly a CIDv1 base32-lowercase string using the `raw` multicodec
 and a 32-byte SHA-256 multihash; the textual prefilter is
@@ -292,7 +306,7 @@ them. It receives only the two security-definer transitions needed to accept or
 reject an exact pending fingerprint. Migration/maintenance credentials remain
 separate.
 
-The deterministic `public-match-v1` order ranks exact public identifiers and canonical handles
+The deterministic `public-match-v2` order ranks exact public identifiers and canonical handles
 before current public text, then uses recency and Unicode code-point order for ties. Identifiers
 are eligible only by exact or prefix match. Normalization is NFKC, collapses Unicode Separator
 runs, trims surrounding spaces, and folds ASCII `A-Z` only; non-ASCII text is intentionally
@@ -376,6 +390,7 @@ In addition to verified feed and post routes, the service exposes replaceable pr
 - `GET /v1/identities/{identityId}/security`
 - `GET /v1/handles/{handle}?network=...`
 - `GET /v1/identities/{identityId}/handles`
+- `GET /v1/communities?network=...&limit=...&cursor=...`
 - `GET /v1/communities/{communityAddress}?network=...`
 - `GET /v1/communities/{communityAddress}/proposals?network=...`
 - `GET /v1/governance/proposals/{proposalAddress}?network=...`
@@ -398,7 +413,7 @@ verifiable sources.
 ## Verification
 
 Test counts change as the package evolves; use the commands below for current
-evidence. The migration ledger contains sixteen ordered, checksummed
+evidence. The migration ledger contains seventeen ordered, checksummed
 migrations. Current tests exercise Solana JSON-RPC/PostgreSQL behavior, but do
 not prove production fork/reorg behavior, independent-provider reconciliation,
 or rebuilds above the configured 50,000-event bound.

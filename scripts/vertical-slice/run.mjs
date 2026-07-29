@@ -372,6 +372,8 @@ async function main() {
   });
   const firstFeed = await waitForExpectedFeed(indexerUrl, fixture, indexer);
   await assertFeedContract(firstFeed, fixture);
+  const firstCommunity = await waitForExpectedCommunity(indexerUrl, fixture, indexer);
+  await assertCommunityContracts(indexerUrl, firstCommunity, fixture);
 
   step('Exercising the production-built Next application before projection replay');
   await state.portReservation.release([29]);
@@ -402,6 +404,8 @@ async function main() {
   step('Restarting the production indexer over the replayed projection');
   indexer = startIndexer(indexerEnvironment);
   await waitForExpectedFeed(indexerUrl, fixture, indexer);
+  const replayedCommunity = await waitForExpectedCommunity(indexerUrl, fixture, indexer);
+  await assertCommunityContracts(indexerUrl, replayedCommunity, fixture);
 
   step('Exercising the production-built Next application after projection replay');
   await verifyProductionWeb(
@@ -455,6 +459,9 @@ async function verifyProductionWeb(environment, webPort, webUrl, indexerUrl, fix
           ...process.env,
           PLAYWRIGHT_BASE_URL: webUrl,
           VERTICAL_SLICE_EXPECTED_AUTHOR: fixture.authorDisplayName,
+          VERTICAL_SLICE_EXPECTED_COMMUNITY: fixture.communityName,
+          VERTICAL_SLICE_EXPECTED_COMMUNITY_ADDRESS: fixture.communityAddress,
+          VERTICAL_SLICE_EXPECTED_COMMUNITY_SLUG: fixture.communitySlug,
           VERTICAL_SLICE_EXPECTED_POST: fixture.postBody,
           VERTICAL_SLICE_EXPECTED_POST_ID: fixture.postObjectId,
           VERTICAL_SLICE_SUPPRESSED_POST: fixture.tombstonedPostBody,
@@ -621,10 +628,136 @@ async function assertFeedContract(feed, fixture) {
   }
 }
 
+async function waitForExpectedCommunity(indexerUrl, fixture, child) {
+  let accepted;
+  const query = new URLSearchParams({ network: fixture.networkId });
+  await waitForHttp(
+    `${indexerUrl}/v1/communities/${encodeURIComponent(fixture.communityAddress)}?${query.toString()}`,
+    child,
+    SUCCESS_TIMEOUT_MS,
+    async (response) => {
+      if (!response.ok) {
+        return false;
+      }
+      const body = await response.json();
+      if (
+        body?.community?.communityAddress !== fixture.communityAddress ||
+        body.community.objectId !== fixture.communityObjectId ||
+        body.community.manifestVerified !== true
+      ) {
+        return false;
+      }
+      accepted = body;
+      return true;
+    },
+  );
+  return accepted;
+}
+
+async function assertCommunityContracts(indexerUrl, detail, fixture) {
+  const community = detail?.community;
+  if (
+    detail?.canonical !== false ||
+    detail?.projection !== 'wokenet-open-indexer' ||
+    detail?.network !== fixture.networkId ||
+    Object.hasOwn(detail, 'memberships') ||
+    community?.networkId !== fixture.networkId ||
+    community?.communityAddress !== fixture.communityAddress ||
+    community?.objectId !== fixture.communityObjectId ||
+    community?.manifestCid !== fixture.communityCid ||
+    community?.manifestHash !== fixture.communityPayloadHash ||
+    community?.manifestVerified !== true ||
+    community?.schemaVersion !== 2 ||
+    community?.manifestAuthority !== fixture.authorAuthority ||
+    community?.latestActionAuthority !== fixture.authorAuthority ||
+    community?.signingKeyId !== `${fixture.authorIdentityId}#root/${fixture.authorAuthority}` ||
+    community?.governanceVersion !== 1 ||
+    community?.governanceStrategyHash !== fixture.communityGovernanceDigest ||
+    community?.manifestGovernanceVersion !== 1 ||
+    community?.manifestGovernanceStrategyHash !== fixture.communityGovernanceDigest ||
+    community?.content?.name !== fixture.communityName ||
+    community?.content?.slug !== fixture.communitySlug ||
+    community?.content?.visibility !== 'public' ||
+    community?.content?.replacement?.sequence !== 1
+  ) {
+    throw new Error('Community detail did not preserve the verified validator fixture.');
+  }
+
+  const directoryQuery = new URLSearchParams({
+    network: fixture.networkId,
+    limit: '20',
+  });
+  const directory = await requiredJson(
+    `${indexerUrl}/v1/communities?${directoryQuery.toString()}`,
+    'community directory',
+  );
+  const directoryCommunity = directory.communities?.find(
+    (candidate) => candidate.communityAddress === fixture.communityAddress,
+  );
+  if (
+    directory?.canonical !== false ||
+    directory?.projection !== 'wokenet-open-indexer' ||
+    directory?.recipe !== 'community-directory-v1' ||
+    directory?.network !== fixture.networkId ||
+    Object.hasOwn(directory, 'memberships') ||
+    !Array.isArray(directory.communities) ||
+    directory.communities.some(
+      (candidate) =>
+        candidate?.manifestVerified !== true || candidate?.content?.visibility !== 'public',
+    ) ||
+    directoryCommunity?.objectId !== fixture.communityObjectId
+  ) {
+    throw new Error('Community directory did not expose only verified public projections.');
+  }
+
+  const searchQuery = new URLSearchParams({
+    network: fixture.networkId,
+    q: fixture.communityName,
+    limit: '30',
+  });
+  const search = await requiredJson(
+    `${indexerUrl}/v1/search?${searchQuery.toString()}`,
+    'public community search',
+  );
+  const searchCommunity = search.results?.find(
+    (candidate) =>
+      candidate?.kind === 'community' &&
+      candidate?.community?.communityAddress === fixture.communityAddress,
+  );
+  if (
+    search?.canonical !== false ||
+    search?.network !== fixture.networkId ||
+    search?.ranking?.version !== 'public-match-v2' ||
+    searchCommunity?.community?.objectId !== fixture.communityObjectId ||
+    searchCommunity?.community?.content?.visibility !== 'public'
+  ) {
+    throw new Error('Public search did not preserve the verified community fixture.');
+  }
+}
+
+async function requiredJson(url, label) {
+  const response = await fetch(url, {
+    headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(3_000),
+  });
+  if (!response.ok) {
+    throw new Error(`${label} returned HTTP ${response.status}.`);
+  }
+  return response.json();
+}
+
 function assertFixture(fixture, expectedNetworkId) {
   const requiredStrings = [
     'authorDisplayName',
+    'authorAuthority',
     'authorIdentityId',
+    'communityAddress',
+    'communityCid',
+    'communityGovernanceDigest',
+    'communityName',
+    'communityObjectId',
+    'communityPayloadHash',
+    'communitySlug',
     'postBody',
     'postCid',
     'postObjectId',
@@ -641,7 +774,7 @@ function assertFixture(fixture, expectedNetworkId) {
   if (fixture.networkId !== expectedNetworkId || fixture.programId !== PROGRAM_ID) {
     throw new Error('Fixture metadata was produced for an unexpected network or program.');
   }
-  if (!Array.isArray(fixture.transactionSignatures) || fixture.transactionSignatures.length < 8) {
+  if (!Array.isArray(fixture.transactionSignatures) || fixture.transactionSignatures.length < 10) {
     throw new Error('Fixture metadata does not prove the expected finalized transactions.');
   }
 }

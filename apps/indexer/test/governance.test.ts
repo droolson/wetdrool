@@ -1,7 +1,18 @@
+import { ed25519 } from '@noble/curves/ed25519.js';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
+import {
+  buildCommunityPayload,
+  canonicalizeEnvelope,
+  createPayloadBuilderIdentity,
+  encodeMultibaseBase64Url,
+  getContentCid,
+  signPayload,
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  type CommunityContent,
+  type NetworkId,
+} from '@wokesocial/protocol';
 import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
@@ -26,11 +37,10 @@ import {
   type SolanaEventMaterializationError,
   type VoteCastEvent,
 } from '../src/index.js';
-import { testCid } from './cid-fixtures.js';
 
 const strategyBytes = Uint8Array.from([
-  194, 111, 47, 125, 12, 76, 238, 214, 100, 126, 189, 3, 102, 193, 39, 21, 92, 90, 225, 152, 44, 32,
-  248, 60, 14, 192, 167, 251, 22, 215, 252, 112,
+  157, 228, 91, 3, 18, 196, 74, 120, 218, 76, 61, 70, 178, 130, 168, 136, 138, 236, 102, 13, 66, 36,
+  42, 13, 118, 19, 131, 75, 148, 53, 117, 113,
 ]);
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
 const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
@@ -39,7 +49,8 @@ const creatorAddress = publicKey(3);
 const voterAddress = publicKey(4);
 const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
 const voterIdentityId = `wokesocialid:v1:${networkId}:${voterAddress}`;
-const creatorAuthority = publicKey(5);
+const creatorPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 51);
+const creatorAuthority = bs58.encode(ed25519.getPublicKey(creatorPrivateKey));
 const voterAuthority = publicKey(6);
 const communityAddress = publicKey(7);
 const creatorMembershipAddress = await deriveCommunityMembershipAddress(
@@ -59,6 +70,88 @@ const proposalAddress = await deriveGovernanceProposalAddress(
   proposalManifestHash,
 );
 const voteAddress = await deriveGovernanceVoteAddress(programId, proposalAddress, voterAddress);
+const creatorBuilderIdentity = createPayloadBuilderIdentity(
+  networkId,
+  creatorIdentityId,
+  ed25519.getPublicKey(creatorPrivateKey),
+  'root',
+);
+const communityContent = {
+  slug: 'governance-lab',
+  name: 'Governance Lab',
+  description: 'A verified governance fixture.',
+  visibility: 'public',
+  membershipPolicy: 'open',
+  governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+  federationPolicy: { mode: 'open', allow: [], block: [] },
+  replacement: { sequence: 1 },
+} satisfies CommunityContent;
+const communityEnvelope = signPayload(
+  buildCommunityPayload(creatorBuilderIdentity, communityContent, {
+    createdAt: new Date('2026-07-28T12:04:00.000Z'),
+    nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 1),
+  }),
+  creatorPrivateKey,
+);
+const communityManifestBytes = canonicalizeEnvelope(communityEnvelope);
+const communityManifestCid = await getContentCid(communityManifestBytes);
+const communityManifestByCid = new Map([[communityManifestCid, communityManifestBytes]]);
+const communityManifestSource = {
+  get(cid: string): Promise<Uint8Array> {
+    const bytes = communityManifestByCid.get(cid);
+    return bytes === undefined
+      ? Promise.reject(new Error(`Unknown test CID ${cid}.`))
+      : Promise.resolve(bytes);
+  },
+};
+
+describe('community manifest verification invariants', () => {
+  const verifier = new ManifestVerifier(communityManifestSource, {
+    authorize: () => Promise.resolve(true),
+  });
+
+  it('rejects missing and mismatched schema-v2 PDA nonces', async () => {
+    const creation = communityCreationEvent();
+    const { communityNonce, ...missingNonce } = creation;
+    expect(communityNonce).toBe(communityEnvelope.payload.nonce);
+    await expect(verifier.forEvent(missingNonce as ProtocolEvent)).rejects.toMatchObject({
+      code: 'object-mismatch',
+    });
+    await expect(
+      verifier.forEvent({
+        ...creation,
+        communityNonce: encodeMultibaseBase64Url(Uint8Array.from({ length: 16 }, () => 99)),
+      }),
+    ).rejects.toMatchObject({ code: 'object-mismatch' });
+  });
+
+  it('rejects non-creation root and delegated community signing keys terminally', async () => {
+    await expect(
+      verifier.forEvent({ ...communityCreationEvent(), authority: publicKey(99) }),
+    ).rejects.toMatchObject({ code: 'unauthorized-key' });
+
+    const delegatedBytes = Buffer.from(
+      new TextDecoder().decode(communityManifestBytes).replaceAll('#root/', '#delegation/'),
+      'utf8',
+    );
+    const delegatedCid = await getContentCid(delegatedBytes);
+    const delegatedSource = {
+      get(cid: string): Promise<Uint8Array> {
+        return cid === delegatedCid
+          ? Promise.resolve(delegatedBytes)
+          : Promise.reject(new Error('Unknown delegated community fixture.'));
+      },
+    };
+    await expect(
+      new ManifestVerifier(delegatedSource, {
+        authorize: () => Promise.resolve(true),
+      }).forEvent({
+        ...communityCreationEvent(),
+        manifestCid: delegatedCid,
+      }),
+    ).rejects.toMatchObject({ code: 'manifest-invalid' });
+  });
+});
 
 describe('governance Anchor events', () => {
   it('strictly decodes and materializes all three final IDL layouts', async () => {
@@ -203,20 +296,47 @@ describe('governance projection', () => {
     const projection = new MemoryProjectionStore();
     const indexer = new OpenIndexer(
       projection,
-      new ManifestVerifier(new MemoryContentAddressedStorage(), {
-        authorize: () => Promise.resolve(false),
+      new ManifestVerifier(communityManifestSource, {
+        authorize: () => Promise.resolve(true),
       }),
     );
     const firstNetworkEvents = governanceEvents();
-    const secondNetworkEvents = firstNetworkEvents.map((event) =>
-      moveEventToNetwork(event, secondNetworkId),
+    const secondCreatorIdentityId = creatorIdentityId.replace(networkId, secondNetworkId);
+    const secondEnvelope = signPayload(
+      buildCommunityPayload(
+        createPayloadBuilderIdentity(
+          secondNetworkId,
+          secondCreatorIdentityId,
+          ed25519.getPublicKey(creatorPrivateKey),
+          'root',
+        ),
+        communityContent,
+        {
+          createdAt: new Date('2026-07-28T12:04:00.000Z'),
+          nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 2),
+        },
+      ),
+      creatorPrivateKey,
     );
+    const secondBytes = canonicalizeEnvelope(secondEnvelope);
+    const secondCid = await getContentCid(secondBytes);
+    communityManifestByCid.set(secondCid, secondBytes);
+    const secondNetworkEvents = firstNetworkEvents.map((event) => {
+      const moved = moveEventToNetwork(event, secondNetworkId);
+      return moved.type === 'community-created'
+        ? {
+            ...moved,
+            communityNonce: secondEnvelope.payload.nonce,
+            manifestCid: secondCid,
+            manifestHash: secondEnvelope.proof.payloadHash,
+          }
+        : moved;
+    });
 
     for (const event of [...firstNetworkEvents, ...secondNetworkEvents]) {
       await expect(indexer.ingest(event)).resolves.toMatchObject({ applied: true });
     }
 
-    const secondCreatorIdentityId = creatorIdentityId.replace(networkId, secondNetworkId);
     await expect(projection.getIdentity(creatorIdentityId)).resolves.toMatchObject({
       networkId,
       identityAddress: creatorAddress,
@@ -582,8 +702,8 @@ async function fixtureThrough(eventCount: number) {
   const projection = new MemoryProjectionStore();
   const indexer = new OpenIndexer(
     projection,
-    new ManifestVerifier(new MemoryContentAddressedStorage(), {
-      authorize: () => Promise.resolve(false),
+    new ManifestVerifier(communityManifestSource, {
+      authorize: () => Promise.resolve(true),
     }),
   );
   const events = governanceEvents();
@@ -620,9 +740,10 @@ function governanceEvents(): readonly ProtocolEvent[] {
       communityAddress,
       creatorIdentityId,
       authority: creatorAuthority,
+      communityNonce: communityEnvelope.payload.nonce,
       creatorSequence: 1n,
-      manifestCid: fakeCid(),
-      manifestHash: digest(20),
+      manifestCid: communityManifestCid,
+      manifestHash: communityEnvelope.proof.payloadHash,
       governanceVersion: 1,
       governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
     },
@@ -710,6 +831,15 @@ function governanceEvents(): readonly ProtocolEvent[] {
       outcome: 'accepted',
     },
   ];
+}
+
+function communityCreationEvent(): Extract<ProtocolEvent, { readonly type: 'community-created' }> {
+  const event = governanceEvents().find(
+    (candidate): candidate is Extract<ProtocolEvent, { readonly type: 'community-created' }> =>
+      candidate.type === 'community-created',
+  );
+  if (event === undefined) throw new Error('Expected a community creation fixture.');
+  return event;
 }
 
 function moveEventToNetwork(event: ProtocolEvent, targetNetworkId: NetworkId): ProtocolEvent {
@@ -875,10 +1005,6 @@ function digest(seed: number): string {
 
 function bytes(length: number, seed: number): Uint8Array {
   return Uint8Array.from({ length }, (_, index) => (seed + index) % 256);
-}
-
-function fakeCid(): string {
-  return testCid(0);
 }
 
 function stableJson(value: unknown): string {

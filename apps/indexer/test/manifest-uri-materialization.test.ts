@@ -1,7 +1,7 @@
 import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseWokeManifestUri } from '@wokesocial/protocol';
+import { encodeMultibaseBase64Url, parseWokeManifestUri } from '@wokesocial/protocol';
 import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
 import {
@@ -44,6 +44,7 @@ describe('Solana manifest URI materialization', () => {
       expect(event).toMatchObject({
         type: 'community-created',
         manifestCid: cid,
+        communityNonce: encodeMultibaseBase64Url(new Uint8Array(16)),
       });
     },
   );

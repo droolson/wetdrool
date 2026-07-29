@@ -35,8 +35,10 @@ export const SCOPE_PROFILE = 1;
 export const SCOPE_SOCIAL = 1 << 2;
 export const SCOPE_COMMUNITY = 1 << 3;
 export const GOVERNANCE_STRATEGY =
-  "wokesocial:governance:one-active-member-one-vote:v1;" +
-  "quorum-bps=5000;approval-bps=5001;abstain=quorum-only";
+  "wokenet:community-governance-strategy:v1\0" +
+  '{"abstainTreatment":"quorum-only","approvalBasisPoints":5001,' +
+  '"execution":"outcome-record-only","model":"one-active-member-one-vote",' +
+  '"quorumBasisPoints":5000,"version":1}';
 export const GOVERNANCE_STRATEGY_HASH = Array.from(
   createHash("sha256").update(GOVERNANCE_STRATEGY).digest(),
 );

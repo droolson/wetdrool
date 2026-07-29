@@ -3,17 +3,20 @@ import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
   canonicalizeEnvelope,
+  communityGovernanceStrategyCommitment,
   createPayloadBuilderIdentity,
-  encodeMultibaseBase64Url,
   getObjectId,
   signPayload,
+  WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   type NetworkId,
   type PortablePayload,
   type PostContent,
   type ProfileContent,
+  type CommunityContent,
   type SignedEnvelope,
 } from '@wokesocial/protocol';
 import { RateLimitBackendUnavailableError, type RateLimiter } from '@wokesocial/rate-limit';
@@ -28,6 +31,8 @@ import {
   OPEN_INDEXER_FEED_RECIPE,
   ProjectionError,
   ProjectionRootKeyAuthorizer,
+  type GovernanceProposalProjection,
+  type GovernanceVoteProjection,
 } from '../src/index.js';
 import {
   projectionSecurityNetworkId,
@@ -339,8 +344,9 @@ describe('indexer HTTP contract', () => {
       expect(personSearch.statusCode).toBe(200);
       expect(personSearch.json()).toMatchObject({
         canonical: false,
+        network: networkId,
         query: 'river',
-        ranking: { deterministic: true, version: 'public-match-v1' },
+        ranking: { deterministic: true, version: 'public-match-v2' },
         scope: 'public-finalized-projection',
         results: [
           {
@@ -598,7 +604,29 @@ describe('indexer HTTP contract', () => {
     const fixture = await indexedFixture();
     const authority = bs58.encode(publicKey);
     const communityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 41));
-    const strategyHash = encodeMultibaseBase64Url(Uint8Array.from({ length: 32 }, () => 42));
+    const communityManifest = await publish(
+      fixture.storage,
+      buildCommunityPayload(
+        builderIdentity,
+        {
+          slug: 'kind-builders',
+          name: 'Kind Builders',
+          description: 'Building public infrastructure with care.',
+          visibility: 'public',
+          membershipPolicy: 'open',
+          governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+          federationPolicy: { mode: 'open', allow: [], block: [] },
+          replacement: { sequence: 1 },
+        },
+        {
+          createdAt: new Date('2026-07-28T14:04:30.000Z'),
+          nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 61),
+        },
+      ),
+    );
+    const governance = communityGovernanceStrategyCommitment({
+      governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+    });
     await fixture.indexer.ingest({
       ...eventBase(4n, 4, '2026-07-28T14:04:00.000Z'),
       type: 'delegation-created',
@@ -617,11 +645,12 @@ describe('indexer HTTP contract', () => {
       communityAddress,
       creatorIdentityId: identityId,
       authority,
+      communityNonce: communityManifest.envelope.payload.nonce,
       creatorSequence: 4n,
-      manifestCid: fixture.post.receipt.cid,
-      manifestHash: fixture.post.envelope.proof.payloadHash,
-      governanceVersion: 1,
-      governanceStrategyHash: strategyHash,
+      manifestCid: communityManifest.receipt.cid,
+      manifestHash: communityManifest.envelope.proof.payloadHash,
+      governanceVersion: governance.governanceVersion,
+      governanceStrategyHash: governance.digest,
     });
     await fixture.indexer.ingest({
       ...eventBase(6n, 6, '2026-07-28T14:06:00.000Z'),
@@ -648,6 +677,153 @@ describe('indexer HTTP contract', () => {
       reactionStateSequence: 1n,
       active: true,
     });
+    const indexAdditionalCommunity = async (
+      visibility: CommunityContent['visibility'],
+      seed: number,
+      creatorSequence: bigint,
+      slot: bigint,
+    ) => {
+      const address = bs58.encode(Uint8Array.from({ length: 32 }, () => seed));
+      const manifest = await publish(
+        fixture.storage,
+        buildCommunityPayload(
+          builderIdentity,
+          {
+            slug: `${visibility}-community-${String(seed)}`,
+            name: `${visibility} Community ${String(seed)}`,
+            description: `${visibility} directory sentinel ${String(seed)}`,
+            visibility,
+            membershipPolicy: 'open',
+            governance: WOKENET_ONE_MEMBER_ONE_VOTE_V1,
+            federationPolicy: { mode: 'open', allow: [], block: [] },
+            replacement: { sequence: 1 },
+          },
+          {
+            createdAt: new Date(`2026-07-28T14:${String(10 + seed).padStart(2, '0')}:00.000Z`),
+            nonce: Uint8Array.from({ length: 16 }, (_, index) => index + seed),
+          },
+        ),
+      );
+      await fixture.indexer.ingest({
+        ...eventBase(slot, seed, `2026-07-28T14:${String(10 + seed).padStart(2, '0')}:01.000Z`),
+        type: 'community-created',
+        communityAddress: address,
+        creatorIdentityId: identityId,
+        authority,
+        communityNonce: manifest.envelope.payload.nonce,
+        creatorSequence,
+        manifestCid: manifest.receipt.cid,
+        manifestHash: manifest.envelope.proof.payloadHash,
+        governanceVersion: governance.governanceVersion,
+        governanceStrategyHash: governance.digest,
+      });
+      return { address, manifest };
+    };
+    const unlisted = await indexAdditionalCommunity('unlisted', 47, 7n, 8n);
+    const privateCommunity = await indexAdditionalCommunity('private', 48, 8n, 9n);
+    const newestPublic = await indexAdditionalCommunity('public', 49, 9n, 10n);
+    const unverifiedAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 50));
+    await fixture.projection.quarantineManifestEvent(
+      {
+        ...eventBase(11n, 50, '2026-07-28T15:00:01.000Z'),
+        type: 'community-created',
+        communityAddress: unverifiedAddress,
+        creatorIdentityId: identityId,
+        authority,
+        communityNonce: communityManifest.envelope.payload.nonce,
+        creatorSequence: 10n,
+        manifestCid: communityManifest.receipt.cid,
+        manifestHash: communityManifest.envelope.proof.payloadHash,
+        governanceVersion: governance.governanceVersion,
+        governanceStrategyHash: governance.digest,
+      },
+      {
+        eventBody: {},
+        failureCode: 'manifest-invalid',
+        failureDetail: 'Unverified shell fixture.',
+      },
+    );
+    const hiddenGovernance = [
+      {
+        communityAddress: privateCommunity.address,
+        proposalAddress: bs58.encode(Uint8Array.from({ length: 32 }, () => 52)),
+        voteAddress: bs58.encode(Uint8Array.from({ length: 32 }, () => 53)),
+      },
+      {
+        communityAddress: unverifiedAddress,
+        proposalAddress: bs58.encode(Uint8Array.from({ length: 32 }, () => 54)),
+        voteAddress: bs58.encode(Uint8Array.from({ length: 32 }, () => 55)),
+      },
+    ].map(({ communityAddress: hiddenCommunityAddress, proposalAddress, voteAddress }, index) => {
+      const proposal = {
+        networkId,
+        communityAddress: hiddenCommunityAddress,
+        proposalAddress,
+        proposerIdentityId: identityId,
+        authority,
+        proposerSequence: 11n + BigInt(index),
+        previousCommunitySequence: 1n,
+        manifestHash: communityManifest.envelope.proof.payloadHash,
+        manifestUri: `ipfs://${communityManifest.receipt.cid}`,
+        manifestVerified: false,
+        governanceVersion: governance.governanceVersion,
+        governanceStrategyHash: governance.digest,
+        votingModel: 'one-active-member-one-vote',
+        eligibleMemberCount: 1n,
+        opensAtSlot: 12n,
+        closesAtSlot: 20n,
+        quorumBps: 5000,
+        approvalBps: 5001,
+        yesVotes: 1n,
+        noVotes: 0n,
+        abstainVotes: 0n,
+        stateSequence: 1n,
+        outcome: 'pending',
+        createdSlot: 12n,
+        createdAt: '2026-07-28T15:01:00.000Z',
+      } satisfies GovernanceProposalProjection;
+      const vote = {
+        networkId,
+        communityAddress: hiddenCommunityAddress,
+        proposalAddress,
+        voteAddress,
+        voterIdentityId: identityId,
+        membershipAddress: bs58.encode(Uint8Array.from({ length: 32 }, () => 56 + index)),
+        authority,
+        voterSequence: 13n + BigInt(index),
+        membershipStateSequence: 1n,
+        proposalStateSequence: 1n,
+        choice: 'yes',
+        yesVotes: 1n,
+        noVotes: 0n,
+        abstainVotes: 0n,
+        castSlot: 13n,
+        castAt: '2026-07-28T15:02:00.000Z',
+      } satisfies GovernanceVoteProjection;
+      return { proposal, vote };
+    });
+    vi.spyOn(fixture.projection, 'getGovernanceProposal').mockImplementation(
+      async (requestedNetworkId, proposalAddress) =>
+        requestedNetworkId === networkId
+          ? hiddenGovernance.find(({ proposal }) => proposal.proposalAddress === proposalAddress)
+              ?.proposal
+          : undefined,
+    );
+    const getGovernanceVotesByProposal = vi
+      .spyOn(fixture.projection, 'getGovernanceVotesByProposal')
+      .mockImplementation(async (requestedNetworkId, proposalAddress) => {
+        const match =
+          requestedNetworkId === networkId
+            ? hiddenGovernance.find(({ proposal }) => proposal.proposalAddress === proposalAddress)
+            : undefined;
+        return match === undefined ? [] : [match.vote];
+      });
+    vi.spyOn(fixture.projection, 'getGovernanceVote').mockImplementation(
+      async (requestedNetworkId, voteAddress) =>
+        requestedNetworkId === networkId
+          ? hiddenGovernance.find(({ vote }) => vote.voteAddress === voteAddress)?.vote
+          : undefined,
+    );
     const app = await buildIndexerApp({ projection: fixture.projection, logger: false });
 
     try {
@@ -669,13 +845,19 @@ describe('indexer HTTP contract', () => {
       expect(community.statusCode).toBe(200);
       expect(community.json()).toMatchObject({
         canonical: false,
+        projection: 'wokenet-open-indexer',
+        network: networkId,
         community: {
           communityAddress,
-          manifestVerified: false,
+          manifestVerified: true,
+          objectId: communityManifest.objectId,
+          manifestAuthority: authority,
+          latestActionAuthority: authority,
           governanceVersion: 1,
+          content: { slug: 'kind-builders', visibility: 'public' },
         },
-        memberships: [{ memberIdentityId: identityId, roles: 1, active: true }],
       });
+      expect(community.json()).not.toHaveProperty('memberships');
       const communityWithoutNetwork = await app.inject({
         method: 'GET',
         url: `/v1/communities/${communityAddress}`,
@@ -683,12 +865,118 @@ describe('indexer HTTP contract', () => {
       expect(communityWithoutNetwork.statusCode).toBe(400);
       const communitySearch = await app.inject({
         method: 'GET',
-        url: `/v1/search?network=${encodeURIComponent(networkId)}&q=${encodeURIComponent(
-          communityAddress,
-        )}`,
+        url: `/v1/search?network=${encodeURIComponent(networkId)}&q=builders`,
       });
       expect(communitySearch.statusCode).toBe(200);
-      expect(communitySearch.json()).toMatchObject({ results: [] });
+      expect(communitySearch.json()).toMatchObject({
+        network: networkId,
+        ranking: { version: 'public-match-v2' },
+        results: [
+          {
+            kind: 'community',
+            matchedBy: 'community-slug',
+            community: { communityAddress, manifestVerified: true },
+          },
+        ],
+      });
+      const directory = await app.inject({
+        method: 'GET',
+        url: `/v1/communities?network=${encodeURIComponent(networkId)}&limit=1`,
+      });
+      expect(directory.statusCode).toBe(200);
+      const oversizedDirectory = await app.inject({
+        method: 'GET',
+        url: `/v1/communities?network=${encodeURIComponent(networkId)}&limit=51`,
+      });
+      expect(oversizedDirectory.statusCode).toBe(400);
+      expect(directory.json()).toMatchObject({
+        canonical: false,
+        projection: 'wokenet-open-indexer',
+        recipe: 'community-directory-v1',
+        network: networkId,
+        communities: [{ communityAddress: newestPublic.address, manifestVerified: true }],
+      });
+      expect(directory.body).not.toContain('private directory sentinel');
+      expect(directory.body).not.toContain('unlisted directory sentinel');
+      const directoryCursor = directory.json<{ nextCursor: string | null }>().nextCursor;
+      expect(directoryCursor).toMatch(/^[A-Za-z0-9_-]+$/u);
+      const nextDirectory = await app.inject({
+        method: 'GET',
+        url: `/v1/communities?network=${encodeURIComponent(
+          networkId,
+        )}&limit=1&before=${encodeURIComponent(directoryCursor ?? '')}`,
+      });
+      expect(nextDirectory.statusCode).toBe(200);
+      expect(nextDirectory.json()).toMatchObject({
+        communities: [{ communityAddress }],
+        nextCursor: null,
+      });
+      const foreignNetwork = `wokenet:v1:${bs58.encode(
+        Uint8Array.from({ length: 32 }, () => 51),
+      )}:${programId}`;
+      const crossNetworkCursor = await app.inject({
+        method: 'GET',
+        url: `/v1/communities?network=${encodeURIComponent(
+          foreignNetwork,
+        )}&limit=1&before=${encodeURIComponent(directoryCursor ?? '')}`,
+      });
+      expect(crossNetworkCursor.statusCode).toBe(400);
+      expect(crossNetworkCursor.json()).toMatchObject({
+        error: { code: 'invalid-community-cursor' },
+      });
+
+      for (const [address, expectedStatus] of [
+        [unlisted.address, 200],
+        [privateCommunity.address, 404],
+        [unverifiedAddress, 404],
+      ] as const) {
+        const detail = await app.inject({
+          method: 'GET',
+          url: `/v1/communities/${address}?network=${encodeURIComponent(networkId)}`,
+        });
+        expect(detail.statusCode).toBe(expectedStatus);
+        const proposals = await app.inject({
+          method: 'GET',
+          url: `/v1/communities/${address}/proposals?network=${encodeURIComponent(networkId)}`,
+        });
+        expect(proposals.statusCode).toBe(expectedStatus);
+      }
+
+      for (const { proposal, vote } of hiddenGovernance) {
+        const proposalDetail = await app.inject({
+          method: 'GET',
+          url: `/v1/governance/proposals/${proposal.proposalAddress}?network=${encodeURIComponent(networkId)}`,
+        });
+        expect(proposalDetail.statusCode).toBe(404);
+        expect(proposalDetail.json()).toEqual({
+          error: { code: 'not-found', message: 'Proposal was not found.' },
+        });
+
+        const proposalVotes = await app.inject({
+          method: 'GET',
+          url: `/v1/governance/proposals/${proposal.proposalAddress}/votes?network=${encodeURIComponent(networkId)}`,
+        });
+        expect(proposalVotes.statusCode).toBe(404);
+        expect(proposalVotes.json()).toEqual({
+          error: { code: 'not-found', message: 'Proposal was not found.' },
+        });
+
+        const voteDetail = await app.inject({
+          method: 'GET',
+          url: `/v1/governance/votes/${vote.voteAddress}?network=${encodeURIComponent(networkId)}`,
+        });
+        expect(voteDetail.statusCode).toBe(404);
+        expect(voteDetail.json()).toEqual({
+          error: { code: 'not-found', message: 'Vote was not found.' },
+        });
+
+        for (const response of [proposalDetail, proposalVotes, voteDetail]) {
+          expect(response.body).not.toContain('voterIdentityId');
+          expect(response.body).not.toContain('membershipAddress');
+          expect(response.body).not.toContain('choice');
+        }
+      }
+      expect(getGovernanceVotesByProposal).not.toHaveBeenCalled();
 
       const reactions = await app.inject({
         method: 'GET',
@@ -763,7 +1051,7 @@ async function indexedFixture(selectedProfileContent: ProfileContent = profileCo
     sequence: 2n,
   });
 
-  return { indexer, post, postReference, projection };
+  return { indexer, post, postReference, projection, storage };
 }
 
 function eventBase(slot: bigint, signatureSeed: number, blockTime: string) {

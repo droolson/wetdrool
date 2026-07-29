@@ -1,9 +1,14 @@
 import {
   PROFILE_SCHEMA_VERSION,
+  buildCommunityPayload,
   buildPostPayload,
   buildProfilePayload,
   canonicalizePayload,
+  communityGovernanceStrategyCommitment,
   decodeMultibaseBase64Url,
+  solanaPublicKeySchema,
+  type CommunityContent,
+  type CommunityPayload,
   type PayloadBuildOptions,
   type PayloadBuilderIdentity,
   type PostContent,
@@ -20,7 +25,13 @@ import type {
   StoragePolicy,
 } from '@wokesocial/storage';
 
-import { assertFinalized, type ChainConfirmation, type ProtocolChainWriter } from './chain.js';
+import {
+  assertFinalized,
+  deriveWokeCommunityAddress,
+  type ChainConfirmation,
+  type CommunityChainConfirmation,
+  type ProtocolChainWriter,
+} from './chain.js';
 
 export type PublicationStage =
   'validating' | 'signing' | 'storing' | 'anchoring' | 'confirming' | 'complete';
@@ -32,11 +43,11 @@ export interface PublicationProgress {
   readonly message: string;
 }
 
-export interface PublicationResult {
+export interface PublicationResult<Confirmation extends ChainConfirmation = ChainConfirmation> {
   readonly envelope: SignedEnvelope;
   readonly objectId: string;
   readonly storage: ReplicatedPublication;
-  readonly chain: ChainConfirmation;
+  readonly chain: Confirmation;
 }
 
 interface AnchorInput {
@@ -46,7 +57,9 @@ interface AnchorInput {
   readonly payloadHash: Uint8Array;
 }
 
-type AnchorWriter = (input: AnchorInput) => Promise<ChainConfirmation>;
+type AnchorWriter<Confirmation extends ChainConfirmation> = (
+  input: AnchorInput,
+) => Promise<Confirmation>;
 
 export interface PublicationPipelineOptions {
   readonly identity: PayloadBuilderIdentity;
@@ -63,6 +76,15 @@ export interface PublicationOperationOptions<
   Payload extends PortablePayload,
 > extends PayloadBuildOptions {
   readonly signer: PublicationSigner<Payload>;
+}
+
+/**
+ * Community creation derives its onchain PDA from the signed nonce. Callers
+ * must persist and reuse both fields after an ambiguous publication failure.
+ */
+export interface CommunityPublicationOperationOptions extends PublicationOperationOptions<CommunityPayload> {
+  readonly createdAt: Date;
+  readonly nonce: Uint8Array;
 }
 
 export class PublicationError extends Error {
@@ -109,6 +131,79 @@ export class PublicationPipeline {
     );
   }
 
+  async publishCommunity(
+    content: CommunityContent,
+    policy: StoragePolicy,
+    options: CommunityPublicationOperationOptions,
+  ): Promise<PublicationResult<CommunityChainConfirmation>> {
+    this.#progress('validating', 'Validating the community manifest.');
+    if (
+      !(options.createdAt instanceof Date) ||
+      !Number.isFinite(options.createdAt.getTime()) ||
+      !(options.nonce instanceof Uint8Array) ||
+      options.nonce.byteLength !== 16
+    ) {
+      throw new PublicationError(
+        'Community publication requires an explicit valid createdAt and 16-byte nonce that callers persist and reuse for retries.',
+        'validating',
+      );
+    }
+    if (content.replacement.sequence !== 1) {
+      throw new PublicationError(
+        'Community publication only supports the first manifest sequence because the current program has no community-manifest update path.',
+        'validating',
+      );
+    }
+    if (!['public', 'unlisted'].includes(content.visibility)) {
+      throw new PublicationError(
+        'Private and restricted community publication is disabled until encrypted publication is connected.',
+        'validating',
+      );
+    }
+
+    const payload = buildCommunityPayload(this.#identity, content, options);
+    if (!payload.signingKey.startsWith(`${payload.author}#root/`)) {
+      throw new PublicationError(
+        'community objects must be signed by an identity root key.',
+        'validating',
+      );
+    }
+    const governance = communityGovernanceStrategyCommitment(payload.content);
+    const communityNonce = decodeMultibaseBase64Url(payload.nonce, 16);
+    const communityAddress = await deriveWokeCommunityAddress({
+      networkId: payload.network,
+      creatorIdentityId: payload.author,
+      communityNonce,
+    });
+    return this.#publish(payload, options.signer, policy, async (anchor) => {
+      const input = {
+        ...anchor,
+        communityAddress,
+        communityNonce,
+        governanceVersion: governance.governanceVersion,
+        governanceStrategyHash: governance.bytes,
+      };
+      const reconciliation = await this.#chain.reconcileCommunityCreation(input);
+      const confirmation =
+        reconciliation.status === 'existing'
+          ? reconciliation.confirmation
+          : reconciliation.status === 'absent'
+            ? await this.#chain.createCommunity(input)
+            : (() => {
+                throw new TypeError(
+                  'Community creation reconciliation returned an invalid status.',
+                );
+              })();
+      const confirmedAddress = solanaPublicKeySchema.parse(confirmation.communityAddress);
+      if (confirmedAddress !== communityAddress) {
+        throw new TypeError(
+          'Community chain confirmation does not match the PDA derived from the signed nonce.',
+        );
+      }
+      return { ...confirmation, communityAddress: confirmedAddress };
+    });
+  }
+
   async updateProfile(
     content: ProfileContent,
     policy: StoragePolicy,
@@ -130,12 +225,15 @@ export class PublicationPipeline {
     );
   }
 
-  async #publish<Payload extends PortablePayload>(
+  async #publish<
+    Payload extends PortablePayload,
+    Confirmation extends ChainConfirmation = ChainConfirmation,
+  >(
     payload: Payload,
     signer: PublicationSigner<Payload>,
     policy: StoragePolicy,
-    anchor: AnchorWriter,
-  ): Promise<PublicationResult> {
+    anchor: AnchorWriter<Confirmation>,
+  ): Promise<PublicationResult<Confirmation>> {
     let objectId: string | undefined;
     let stored: ReplicatedPublication | undefined;
     let stage: PublicationStage = 'signing';
@@ -175,7 +273,7 @@ export class PublicationPipeline {
         objectId,
         cid: stored.cid,
       });
-      assertFinalized(chain);
+      const finalizedChain = assertFinalized(chain);
       this.#progress('complete', 'Publication is finalized and verifiable.', {
         objectId,
         cid: stored.cid,
@@ -185,7 +283,7 @@ export class PublicationPipeline {
         envelope: verified.envelope,
         objectId,
         storage: stored,
-        chain,
+        chain: finalizedChain,
       };
     } catch (error) {
       throw new PublicationError(
@@ -197,7 +295,10 @@ export class PublicationPipeline {
     }
   }
 
-  async #anchor(writer: AnchorWriter, input: AnchorInput): Promise<ChainConfirmation> {
+  async #anchor<Confirmation extends ChainConfirmation>(
+    writer: AnchorWriter<Confirmation>,
+    input: AnchorInput,
+  ): Promise<Confirmation> {
     return writer(input);
   }
 
