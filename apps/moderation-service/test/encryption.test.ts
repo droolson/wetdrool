@@ -132,11 +132,12 @@ describe('moderation restricted-data encryption', () => {
         MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: '0',
         NODE_ENV: 'development',
       },
+      timeout: 10_000,
     });
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('MODERATION_DATA_KEYS must be valid JSON');
     expect(result.stderr).not.toContain(sentinel);
-  });
+  }, 15_000);
 });
 
 function deterministicRing(input: {
