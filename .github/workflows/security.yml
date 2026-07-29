@@ -55,7 +55,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      security-events: write
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -67,4 +66,17 @@ jobs:
           languages: javascript-typescript
 
       - name: Analyze
+        id: analyze
         uses: github/codeql-action/analyze@3b0bd1d116c0bde30213346b22d4f634d96a2fb0 # v3
+        with:
+          output: ${{ runner.temp }}/codeql-results
+          upload: never
+          upload-database: false
+
+      - name: Preserve SARIF report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          if-no-files-found: error
+          name: codeql-sarif-${{ github.sha }}
+          path: ${{ steps.analyze.outputs.sarif-output }}
+          retention-days: 30

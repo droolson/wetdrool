@@ -119,8 +119,11 @@ Dependencies: repository audit.
   integration tests, builds, dependency review, and secret scanning.
   - Evidence: CI includes frozen installation,
     workspace/browser/container/program/connected-vertical-slice gates,
-    dependency review/audit, CodeQL, and a checksum-pinned Gitleaks wrapper. The
-    current pnpm audit reports no known vulnerabilities.
+    dependency review/audit, CodeQL, and a checksum-pinned Gitleaks wrapper.
+    CodeQL runs the pinned JavaScript/TypeScript suite and retains its SARIF as
+    a private workflow artifact because GitHub code scanning is not enabled for
+    this private repository; it does not pretend that an unavailable SARIF
+    upload succeeded. The current pnpm audit reports no known vulnerabilities.
 - [x] Make `pnpm setup`, `pnpm dev`, `pnpm test`,
   `pnpm test:integration`, `pnpm test:e2e`, `pnpm test:programs`,
   `pnpm test:vertical-slice`, `pnpm lint`, `pnpm typecheck`, and `pnpm build`

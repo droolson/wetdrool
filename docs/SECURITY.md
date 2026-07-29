@@ -519,6 +519,12 @@ No row is satisfied until evidence is linked from a release report.
 The repository defines pinned commands for install, format, lint, type checks,
 unit/build, container integration, browser, and local-validator checks. CI
 workflows configure dependency review, audit, CodeQL, and secret scanning.
+Until GitHub code scanning is explicitly enabled for the private repository,
+the CodeQL job runs analysis without an unavailable code-scanning upload and
+retains the SARIF report as a private workflow artifact for 30 days. Enabling
+the GitHub feature later should be an explicit repository-owner decision; CI
+must not report the current plan boundary as a source-code finding or silently
+claim that results reached the code-scanning dashboard.
 Container image scanning, SBOM/provenance, and a unified clean release-security
 report remain requirements rather than completed checks.
 
