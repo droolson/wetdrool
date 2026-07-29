@@ -3,10 +3,10 @@
 ## Current status
 
 WokeSocial and WokeNet are pre-release software. No version is currently
-supported for production WokeNet use, and no security control should be
-considered verified without evidence in the release report. The design
-requirements and threat model are in `docs/SECURITY.md` and
-`docs/THREAT_MODEL.md`.
+supported for production WokeSocial use or a public WokeNet deployment on
+Solana, and no security control should be considered verified without evidence
+in the release report. The design requirements and threat model are in
+`docs/SECURITY.md` and `docs/THREAT_MODEL.md`.
 
 ## Reporting a vulnerability
 
@@ -22,7 +22,7 @@ an explicit production blocker.
 
 A useful initial report includes:
 
-- Affected revision, component, environment, and network.
+- Affected revision, component, environment, and Solana cluster/deployment.
 - Preconditions and a minimal reproduction using synthetic data.
 - Expected and observed impact.
 - Whether exploitation may be active.
@@ -49,8 +49,10 @@ privacy or service harm.
 
 High-priority areas include:
 
-- Wallet prompts, transaction substitution, payments, sponsorship, WokeNet
-  programs, and native Firedancer validator/RPC behavior.
+- Wallet prompts, transaction substitution, future mint-aware payments,
+  sponsorship, WokeNet programs, and Solana RPC/provider behavior.
+- Mobile Wallet Adapter intent handling, Seeker Android isolation, signed APK
+  provenance, and signing-key protection.
 - Root identity, passkeys, delegated keys, recovery, and revocation.
 - Private messaging, restricted-content encryption, and device membership.
 - Signature, canonical serialization, manifest hash, CID, and indexer validation.

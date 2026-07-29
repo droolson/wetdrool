@@ -46,11 +46,6 @@ jobs:
       - name: Verify workspace and pinned dependencies
         run: pnpm workspace:check
 
-      - name: Verify pinned native Firedancer fork
-        run: |
-          wokenet_source_root="$(mktemp -d)/firedancer"
-          pnpm wokenet:materialize -- "$wokenet_source_root"
-
       - name: Run quality, tests, and build
         run: pnpm verify
 

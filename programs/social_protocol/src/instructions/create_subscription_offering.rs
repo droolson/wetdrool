@@ -11,9 +11,9 @@ use crate::{
         CreatorSubscriptionOffering, Identity, PaymentConfig, ProtocolConfig, SubscriptionInterval,
     },
     validation::{
-        calculate_native_payment_allocation, checked_increment, checked_next_sequence,
-        validate_manifest, validate_nonzero_hash, validate_protocol_fee,
-        validate_subscription_splits,
+        calculate_legacy_lamport_payment_allocation, checked_increment, checked_next_sequence,
+        validate_legacy_lamport_payment_execution, validate_manifest, validate_nonzero_hash,
+        validate_protocol_fee, validate_subscription_splits,
     },
 };
 
@@ -97,6 +97,7 @@ pub fn handle_create_subscription_offering(
     ctx: Context<CreateSubscriptionOffering>,
     args: CreateSubscriptionOfferingArgs,
 ) -> Result<()> {
+    validate_legacy_lamport_payment_execution()?;
     require!(
         args.offering_nonce.iter().any(|byte| *byte != 0),
         SocialProtocolError::InvalidPaymentNonce
@@ -131,7 +132,7 @@ pub fn handle_create_subscription_offering(
         creator_identity_key,
         ctx.accounts.root_authority.key(),
     )?;
-    calculate_native_payment_allocation(
+    calculate_legacy_lamport_payment_allocation(
         args.price_lamports,
         args.max_protocol_fee_bps,
         &recipient_splits,

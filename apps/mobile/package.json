@@ -1,0 +1,38 @@
+{
+  "name": "@wokesocial/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WokeSocial Android client for Solana Mobile and Seeker",
+  "license": "Apache-2.0",
+  "main": "./index.js",
+  "scripts": {
+    "android": "expo run:android",
+    "build": "expo export --platform android --output-dir dist",
+    "build:apk": "eas build --platform android --profile dapp-store",
+    "dev": "expo start --dev-client",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@solana/web3.js": "1.98.4",
+    "@wallet-ui/react-native-web3js": "4.2.1",
+    "@wokesocial/indexer-client": "workspace:*",
+    "@wokesocial/protocol": "workspace:*",
+    "expo": "57.0.8",
+    "expo-build-properties": "57.0.7",
+    "expo-dev-client": "57.0.9",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-nitro-modules": "0.36.3",
+    "react-native-quick-base64": "3.0.1",
+    "react-native-quick-crypto": "1.1.6"
+  },
+  "devDependencies": {
+    "@babel/core": "7.29.7",
+    "@types/react": "19.2.17",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}

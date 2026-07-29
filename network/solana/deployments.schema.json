@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://woke.social/schemas/solana-deployments-v1.json",
+  "title": "WokeNet Solana deployments",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "chain", "protocol", "deployments", "wokeToken"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "chain": { "const": "solana" },
+    "protocol": { "const": "wokenet" },
+    "deployments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["localnet", "devnet", "mainnetBeta"],
+      "properties": {
+        "localnet": { "$ref": "#/$defs/deployment" },
+        "devnet": { "$ref": "#/$defs/deployment" },
+        "mainnetBeta": { "$ref": "#/$defs/deployment" }
+      }
+    },
+    "wokeToken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "standard",
+        "tokenProgramId",
+        "mint",
+        "decimals",
+        "mintAuthority",
+        "freezeAuthority",
+        "extensions"
+      ],
+      "properties": {
+        "status": { "enum": ["not-created", "devnet", "mainnet-beta"] },
+        "standard": { "const": "spl-token-2022" },
+        "tokenProgramId": {
+          "const": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        "mint": { "$ref": "#/$defs/nullablePublicKey" },
+        "decimals": {
+          "anyOf": [{ "type": "null" }, { "type": "integer", "minimum": 0, "maximum": 18 }]
+        },
+        "mintAuthority": { "$ref": "#/$defs/nullablePublicKey" },
+        "freezeAuthority": { "$ref": "#/$defs/nullablePublicKey" },
+        "extensions": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "publicKey": {
+      "type": "string",
+      "pattern": "^[1-9A-HJ-NP-Za-km-z]{32,44}$"
+    },
+    "nullablePublicKey": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/publicKey" }]
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "cluster", "genesisHash", "programId", "rpcUrlEnvironmentVariable"],
+      "properties": {
+        "status": {
+          "enum": ["development-only", "not-deployed", "devnet", "mainnet-beta"]
+        },
+        "cluster": { "enum": ["localnet", "devnet", "mainnet-beta"] },
+        "genesisHash": { "$ref": "#/$defs/nullablePublicKey" },
+        "programId": { "$ref": "#/$defs/nullablePublicKey" },
+        "rpcUrlEnvironmentVariable": {
+          "type": "string",
+          "pattern": "^SOLANA_[A-Z0-9_]+_RPC_URL$"
+        }
+      }
+    }
+  }
+}

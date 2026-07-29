@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "WokeSocial",
+    "slug": "wokesocial",
+    "scheme": "wokesocial",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "social.woke.app",
+      "versionCode": 1
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ]
+  }
+}

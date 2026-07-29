@@ -10,23 +10,23 @@ export const metadata: Metadata = {
 
 const FEEDS = [
   {
-    copy: 'The only feed currently connected to the typed production web contract.',
+    copy: 'A compact verified-post contract for the configured network’s newest public activity.',
     href: '/home',
     status: 'Connected when configured',
     title: 'Home',
     tone: 'plum' as const,
   },
   {
-    copy: 'Posts from a verified active relationship graph for the signed-in viewer.',
+    copy: 'A clearly labeled public preview of posts selected by one verified follow graph.',
     href: '/feed/following',
-    status: 'Identity endpoint required',
-    title: 'Following',
+    status: 'Public preview connected',
+    title: 'Following preview',
     tone: 'coral' as const,
   },
   {
-    copy: 'A strict slot-and-position ordering with a stable, replayable cursor.',
+    copy: 'Finalized event-time ordering with a stable, recipe-bound opaque cursor.',
     href: '/feed/chronological',
-    status: 'Dedicated endpoint required',
+    status: 'Connected when configured',
     title: 'Chronological',
     tone: 'sky' as const,
   },
@@ -50,13 +50,14 @@ export default function FeedsPage() {
   return (
     <div className="product-page page-shell">
       <AppPageHeader
-        actions={<StatusBadge tone="pending">One connected contract</StatusBadge>}
+        actions={<StatusBadge tone="verified">Three typed feed routes</StatusBadge>}
         eyebrow="Feed directory"
         title="Choose the recipe, not just the app."
       >
         <p>
           Each feed is a distinct contract with its own source, ordering, cursor, filters, and
-          explanation. A route is never marked connected merely because another feed works.
+          explanation. Following remains a public graph preview until passkey sessions can prove a
+          WokeNet identity binding.
         </p>
       </AppPageHeader>
 

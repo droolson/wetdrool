@@ -261,7 +261,7 @@ export function createValidPayloads(): readonly PortablePayload[] {
         treasury: {
           account: network.split(':')[2] ?? '',
           policy: objectReference('community-rule-set'),
-          assetAllowList: ['WOKE'],
+          assetAllowList: ['SOL'],
         },
         replacement: { sequence: 1 },
       },
@@ -384,7 +384,7 @@ export function createValidPayloads(): readonly PortablePayload[] {
         offeringKind: 'subscription',
         title: 'Supporter membership',
         description: 'Optional monthly support.',
-        price: { asset: { kind: 'woke' }, amount: '10000000' },
+        price: { asset: { kind: 'sol' }, amount: '10000000' },
         billing: { kind: 'recurring', interval: 'month' },
         recipientSplits: [{ recipient: author, basisPoints: 10_000 }],
         benefits: ['Supporter badge'],
@@ -406,7 +406,7 @@ export function createValidPayloads(): readonly PortablePayload[] {
         payment: {
           transactionSignature: '1'.repeat(64),
           finalizedSlot: '123456',
-          asset: { kind: 'woke' },
+          asset: { kind: 'sol' },
           amount: '10000000',
         },
         validity: {
@@ -425,7 +425,7 @@ export function createValidPayloads(): readonly PortablePayload[] {
         payment: {
           transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 2)),
           finalizedSlot: '123457',
-          asset: { kind: 'woke' },
+          asset: { kind: 'sol' },
           amount: '1000000',
         },
         recipientSplits: [{ recipient: otherIdentity, basisPoints: 10_000 }],

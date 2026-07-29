@@ -440,7 +440,7 @@ describe('object-specific validation invariants', () => {
         ...payload,
         content: {
           ...payload.content,
-          price: { asset: { kind: 'sol' }, amount: '1' },
+          price: { asset: { kind: 'woke' }, amount: '1' },
         },
       }),
     ).toThrow();

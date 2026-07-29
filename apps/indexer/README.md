@@ -391,15 +391,14 @@ In addition to verified feed and post routes, the service exposes replaceable pr
 - `GET /v1/payments/receipts/{receiptAddress}?network=...`
 - `GET /v1/payments/entitlements/{entitlementAddress}?network=...`
 
-Every response is convenience state. WokeNet accounts, signed portable
-objects, and finalized receipts remain the independently verifiable sources.
+Every response is convenience state. WokeSocial program accounts on Solana,
+signed portable objects, and finalized receipts remain the independently
+verifiable sources.
 
 ## Verification
 
-The current package evidence is 184 passing unit cases across 20 files and 27
-isolated PostgreSQL integration cases across the 11 files selected by
-`test:integration`. The migration ledger contains sixteen ordered, checksummed
-migrations. These results are Solana-format/PostgreSQL evidence; they do not
-cover native Firedancer RPC, fork/reorg behavior, independent-provider
-reconciliation, or production-scale rebuilds above the current 50,000-event
-bound.
+Test counts change as the package evolves; use the commands below for current
+evidence. The migration ledger contains sixteen ordered, checksummed
+migrations. Current tests exercise Solana JSON-RPC/PostgreSQL behavior, but do
+not prove production fork/reorg behavior, independent-provider reconciliation,
+or rebuilds above the configured 50,000-event bound.

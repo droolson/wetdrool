@@ -26,16 +26,18 @@ use crate::{
     },
     validation::{
         authorize_identity_action, authorize_identity_action_any_scope, calculate_governance_tally,
-        calculate_native_payment_allocation, calculate_subscription_window, checked_decrement,
-        checked_increment, checked_next_sequence, checked_recovery_execute_after, handle_hash,
-        record_recovery_approval, recovery_guardian_index, validate_community_roles,
-        validate_delegation_scopes, validate_governance_commitment, validate_handle,
-        validate_handle_hash, validate_manifest, validate_manifest_uri,
-        validate_membership_snapshot, validate_payment_aliases, validate_payment_config_snapshot,
-        validate_payment_nonce, validate_payment_split_shape, validate_profile_schema_version,
-        validate_proposal_window, validate_protocol_fee, validate_reaction_kind,
-        validate_recovery_approval_invariant, validate_recovery_policy,
-        validate_recovery_request_current, validate_recovery_target, validate_subscription_splits,
+        calculate_legacy_lamport_payment_allocation, calculate_subscription_window,
+        checked_decrement, checked_increment, checked_next_sequence,
+        checked_recovery_execute_after, handle_hash, record_recovery_approval,
+        recovery_guardian_index, validate_community_roles, validate_delegation_scopes,
+        validate_governance_commitment, validate_handle, validate_handle_hash,
+        validate_legacy_lamport_payment_execution, validate_legacy_lamport_payment_policy,
+        validate_manifest, validate_manifest_uri, validate_membership_snapshot,
+        validate_payment_aliases, validate_payment_config_snapshot, validate_payment_nonce,
+        validate_payment_split_shape, validate_profile_schema_version, validate_proposal_window,
+        validate_protocol_fee, validate_reaction_kind, validate_recovery_approval_invariant,
+        validate_recovery_policy, validate_recovery_request_current, validate_recovery_target,
+        validate_subscription_splits,
     },
 };
 
@@ -947,9 +949,9 @@ fn governance_membership_snapshot_orders_same_slot_changes_by_sequence() {
 }
 
 #[test]
-fn native_payment_allocator_is_exact_order_independent_and_conservative() {
+fn legacy_lamport_allocator_is_exact_order_independent_and_conservative() {
     let splits = payment_splits(&[5_000, 5_000]);
-    let allocation = calculate_native_payment_allocation(101, 250, &splits)
+    let allocation = calculate_legacy_lamport_payment_allocation(101, 250, &splits)
         .expect("valid payment must allocate");
     assert_eq!(allocation.fee_lamports, 2);
     assert_eq!(allocation.distributable_lamports, 99);
@@ -959,12 +961,13 @@ fn native_payment_allocator_is_exact_order_independent_and_conservative() {
         101
     );
 
-    let tie = calculate_native_payment_allocation(3, 0, &splits)
+    let tie = calculate_legacy_lamport_payment_allocation(3, 0, &splits)
         .expect("raw identity ordering must break equal remainders");
     assert_eq!(tie.recipient_amounts, vec![2, 1]);
 
-    let maximum = calculate_native_payment_allocation(u64::MAX, MAX_PROTOCOL_FEE_BPS, &splits)
-        .expect("u128 intermediates must support the full native transfer range");
+    let maximum =
+        calculate_legacy_lamport_payment_allocation(u64::MAX, MAX_PROTOCOL_FEE_BPS, &splits)
+            .expect("u128 intermediates must support the full lamport transfer range");
     assert_eq!(
         u128::from(maximum.fee_lamports)
             + maximum
@@ -977,10 +980,13 @@ fn native_payment_allocator_is_exact_order_independent_and_conservative() {
 }
 
 #[test]
-fn native_payment_allocator_rejects_malformed_splits_and_rounding_underflow() {
-    assert!(calculate_native_payment_allocation(0, 0, &payment_splits(&[10_000])).is_err());
-    assert!(calculate_native_payment_allocation(1, 0, &payment_splits(&[5_000, 5_000])).is_err());
-    assert!(calculate_native_payment_allocation(
+fn legacy_lamport_allocator_rejects_malformed_splits_and_rounding_underflow() {
+    assert!(calculate_legacy_lamport_payment_allocation(0, 0, &payment_splits(&[10_000])).is_err());
+    assert!(
+        calculate_legacy_lamport_payment_allocation(1, 0, &payment_splits(&[5_000, 5_000]))
+            .is_err()
+    );
+    assert!(calculate_legacy_lamport_payment_allocation(
         10,
         MAX_PROTOCOL_FEE_BPS + 1,
         &payment_splits(&[10_000])
@@ -1066,6 +1072,13 @@ fn payment_policy_snapshots_fail_closed_on_pause_or_any_preview_drift() {
     );
     payment_config.enabled = false;
     assert!(validate_payment_config_snapshot(&payment_config, 7, 250, fee_destination).is_err());
+}
+
+#[test]
+fn legacy_lamport_as_woke_payment_abi_cannot_execute_or_be_unpaused() {
+    assert!(validate_legacy_lamport_payment_execution().is_err());
+    assert!(validate_legacy_lamport_payment_policy(true).is_err());
+    assert!(validate_legacy_lamport_payment_policy(false).is_ok());
 }
 
 #[test]
@@ -1224,7 +1237,7 @@ fn identity_deactivation_discriminators_are_frozen() {
 }
 
 #[test]
-fn native_woke_payment_discriminators_are_frozen() {
+fn legacy_woke_named_payment_discriminators_are_frozen() {
     assert_discriminator::<crate::instruction::InitializePaymentConfig>([
         38, 187, 7, 244, 201, 111, 164, 182,
     ]);

@@ -1,202 +1,96 @@
 # WokeSocial SDK
 
-`@wokesocial/sdk` contains provider-neutral client operations that do not
-silently trust the flagship service. The implemented subset includes:
+`@wokesocial/sdk` contains provider-neutral client operations for WokeSocial.
+It does not silently trust the flagship service or choose a Solana RPC
+provider for the caller.
+
+The implemented surface includes:
 
 - recoverable signed-manifest publication through replaceable storage and
   transaction adapters;
-- ordered provider health/failover selection;
-- portable payment planning for native WOKE and exact future SPL assets;
-- a WokeNet-native payment client for protocol configuration, offerings,
-  tips, weekly subscription settlement, simulation checks, and finalized
-  account proofs; and
-- a concrete Solana-format transaction executor for WOKE instructions, with
-  operation-scoped signing, exact-byte simulation and broadcast, and bounded
+- ordered provider health checks and failover;
+- portable payment planning for SOL and explicitly allowlisted SPL assets;
+- PDA derivation, instruction builders, and finalized-account verification for
+  the checked-in WokeSocial Solana program; and
+- exact-byte Solana transaction simulation, signing, submission, and bounded
   finalized confirmation.
 
-## WokeNet binding
+## WokeNet deployment binding
 
-Every native operation requires an injected `WokeNetContext` with an
-`endpoint`, `genesisHash`, and `programAddress`. The SDK has no mainnet,
-testnet, or localnet default and does not accept a legacy `solana:` network
-identifier. `createWokeNetContext` validates and normalizes that binding;
-the simulation and finalized-account verifiers require the same three values.
+WokeNet is the WokeSocial protocol/deployment namespace on Solana. It is not a
+separate blockchain, RPC protocol, validator network, or native currency.
 
-The PDA helpers implement the program's exact versioned seeds for protocol and
-payment config, identities, subscription offerings, payment receipts,
+The historical `WokeNetContext` API binds an operation to:
+
+- a Solana JSON-RPC endpoint;
+- the endpoint's Solana genesis hash; and
+- one deployed WokeSocial program address.
+
+`createWokeNetContext` validates and normalizes those values. The context has no
+implicit cluster default. A production client should compare multiple
+independent RPC providers because a genesis-hash response alone cannot prove
+that an RPC provider is honest.
+
+The PDA helpers implement the program's versioned seeds for protocol and
+payment configuration, identities, subscription offerings, payment receipts,
 subscription entitlements, and upgradeable-loader program data.
 
-The eight Anchor builders match the checked-in program IDL:
+## Quarantined legacy payment ABI
 
-- `buildDeactivateWokeIdentityInstruction`
-- `buildInitializeWokePaymentConfigInstruction`
-- `buildUpdateWokePaymentConfigInstruction`
-- `buildRotateWokePaymentAuthorityInstruction`
-- `buildCreateWokeSubscriptionOfferingInstruction`
-- `buildRetireWokeSubscriptionOfferingInstruction`
-- `buildSendWokeTipInstruction`
-- `buildSettleWokeSubscriptionInstruction`
+Several exported functions retain `Woke` in their names because they match the
+checked-in Anchor IDL and existing client ABI. The old instruction layout moves
+System Program lamports, which are SOL—not `$WOKE`.
 
-Builders return Solana Kit-compatible instruction objects containing the WokeSocial
-program address, exact ordered account metadata, and Anchor/Borsh instruction
-data. They do not hold keys or silently select an RPC. Identity deactivation is
-one-way protocol retirement, not content deletion; the builder deliberately
-does not collapse those separate user decisions.
+That legacy payment path is fail-closed:
 
-## Exact transaction execution
+- the current program rejects tip settlement, subscription-offering creation,
+  and subscription settlement before any transfer;
+- payment configuration cannot be unpaused; and
+- the portable schema rejects `{ kind: 'woke' }`.
 
-`executeWokePaymentTransaction` turns a built tip or subscription settlement
-into a complete version-0 transaction by default; pass `version: "legacy"` for
-a legacy message. It:
+The old builders, allocation calculator, simulation decoder, and finalized
+proof readers remain available for compatibility, audit, and regression
+testing. They must not be presented as an enabled payment feature, and clients
+should not ask users to sign those settlement instructions. A future `$WOKE`
+asset would require a real SPL or Token-2022 mint, an explicit mint-aware
+program ABI, allowlisting, and new security review.
 
-1. validates the remote endpoint as HTTPS (loopback HTTP remains available for
-   local development), forbids RPC redirects, streams every JSON response
-   through a 4 MiB decompressed-byte ceiling with strict UTF-8/bigint parsing,
-   and binds the instruction to the context program;
-2. queries and repeatedly rechecks `getGenesisHash`;
-3. obtains `getLatestBlockhash`, binds its blockhash and last-valid height, and
-   compiles exactly one instruction with `@solana/kit`;
-4. calls the supplied signer once with a copy of the exact compiled message and
-   the complete required-signer address list plus the enforced transaction-fee
-   ceiling;
-5. accepts detached 64-byte signatures only, rejects missing, duplicate, or
-   unexpected signers, and verifies every Ed25519 signature locally against
-   the compiled bytes;
-6. encodes one immutable wire-transaction snapshot and calls
-   `simulateTransaction` with `sigVerify: true`,
-   `replaceRecentBlockhash: false`, and `innerInstructions: true`;
-7. rejects simulation errors, replacement blockhashes, stale context slots,
-   oversized RPC-controlled collections, fees above the approved ceiling,
-   unparsed or unexpected System Program instructions, extra or changed WOKE
-   transfers, changed Anchor settlement events, and extra or substituted
-   receipt/entitlement account creation;
-8. reconciles every simulated native account-balance delta against only the
-   bounded network fee, exact rent funding, and approved WOKE transfers, so a
-   direct program-owned lamport mutation cannot hide outside parsed System
-   Program CPIs;
-9. sends the same base64 wire bytes with preflight skipped (the exact bytes
-   were already simulated), zero provider-managed retries, and verifies that
-   `sendTransaction` returns the deterministic fee-payer signature; and
-10. polls `getSignatureStatuses` to internally consistent, explicit `finalized`
-    commitment while checking genesis and block-height expiry. Ambiguous sends
-    may rebroadcast only the same signed bytes, within fixed attempt and time
-    limits.
+The portable planner in `payments.ts` supports:
 
-The signer is an operation argument, not constructor state. The SDK never
-accepts or retains private-key bytes:
+- native SOL as `{ kind: 'sol' }`; and
+- exact SPL-token metadata as `{ kind: 'spl', ... }` when that exact asset is
+  allowlisted by the caller.
 
-```ts
-const result = await executeWokePaymentTransaction({
-  built,
-  feePayer,
-  signer: async ({
-    messageBytes,
-    maxTransactionFeeLamports,
-    requiredSignerAddresses,
-    abortSignal,
-  }) => {
-    // Delegate to a wallet, passkey-backed signer, hardware wallet, or other
-    // key boundary. Return one detached signature per required address.
-    return signExactMessage({
-      messageBytes,
-      maxTransactionFeeLamports,
-      requiredSignerAddresses,
-      abortSignal,
-    });
-  },
-});
-```
+It uses integer base units, checked bounds, floor-rounded protocol fees, and a
+deterministic Hamilton/largest-remainder allocation. The simulation matcher
+requires the observed transfers to equal the approved plan.
 
-`executeWokeInstruction` supports the other checked-in WOKE builders. It
-requires an operation-specific `verifySimulation` callback because config and
-offering administration do not share one universal effects predicate. There
-is deliberately no `skipSimulation` option.
+## Exact Solana transaction boundary
 
-Execution limits have conservative defaults and hard maxima, including a
-1,000,000-lamport default `maxTransactionFeeLamports` ceiling. Callers can
-lower or explicitly raise that ceiling. The simulated fee is returned as
-`simulatedFeeLamports`; the signed blockhash fixes the applicable fee schedule
-for the transaction. An expired blockhash is terminal for that operation: the
-SDK never fetches a new blockhash and silently asks the signer again. A caller
-that still wants the operation must explicitly build a new execution attempt
-and approve new message bytes.
+`executeWokeInstruction` provides the common transaction boundary used by the
+historical builders. It:
 
-### RPC and trust boundary
+1. requires an HTTP(S) Solana RPC endpoint and forbids redirects;
+2. bounds and strictly parses JSON-RPC responses;
+3. repeatedly verifies the configured genesis hash;
+4. compiles one exact instruction and passes immutable message bytes to the
+   injected signer;
+5. validates every detached Ed25519 signature locally;
+6. simulates the exact signed bytes with signature verification;
+7. sends those same bytes without provider-managed retries; and
+8. polls to explicit `finalized` status within fixed block-height, attempt, and
+   time bounds.
 
-The executor uses the context endpoint directly through Solana Kit's HTTP RPC
-client and requires these methods:
+The signer is supplied per operation. The SDK never accepts or retains private
+key bytes. There is no `skipSimulation` option.
 
-- `getGenesisHash`
-- `getLatestBlockhash`
-- `getMinimumBalanceForRentExemption` for exact receipt/entitlement funding
-- `simulateTransaction` with signature verification and inner instructions
-- `sendTransaction`
-- `getSignatureStatuses`
-- `getBlockHeight`
+Simulation is not settlement proof. A caller must verify the finalized
+program-owned receipt or entitlement account before accepting a successful
+settlement. The context binds a program address, not its executable byte hash;
+deployment tooling must separately verify the program artifact and upgrade
+authority.
 
-There is no Agave or Frankendancer fallback. A native Firedancer endpoint that
-does not implement this surface cannot execute or finalize payments through
-this API; the SDK fails within its configured bounds instead of fabricating
-confirmation. Genesis checks validate only the provider-reported network
-identity; the Solana-format signed message does not cryptographically include
-the genesis hash, and a dishonest RPC can lie. Higher-assurance clients should
-compare independent providers and verify the finalized receipt/entitlement
-accounts.
-
-The settlement decoder is pinned to the current program event discriminators
-and account layouts (457-byte payment receipts and 210-byte subscription
-entitlements). Program upgrades that change those wire layouts require a
-coordinated SDK update. A finalized signature also does not replace the
-stronger account-state checks in `verifyFinalizedWokeTipReceipt` and
-`verifyFinalizedWokeSubscriptionProof`.
-
-Native balance reconciliation proves the simulated lamport effects of the
-exact signed bytes. It does not decode or prove the final receipt/entitlement
-account data, and simulation can never substitute for a finalized account
-read. `finalized: true` in the execution result means the transaction signature
-reached internally consistent finalized status; callers must still run the
-appropriate `verifyFinalized...` function before treating protocol settlement
-state as proven.
-
-The context binds a program address, not an executable byte hash. Deployment
-verification must separately attest the WokeSocial program artifact and its
-upgrade authority; the transaction executor cannot detect a malicious program
-upgrade at the same address.
-
-## Native WOKE allocation and verification
-
-`calculateWokeNativePaymentPlan` mirrors the on-chain unsigned-128 allocation
-algorithm for one to three native WOKE recipients. It:
-
-- accepts only unsigned-64 lamport inputs and a protocol fee from 0 through
-  1,000 basis points;
-- floors the protocol fee;
-- orders recipients by their decoded 32-byte identity addresses;
-- applies Hamilton/largest-remainder allocation with that raw-byte tie-break;
-- requires every recipient to receive at least one lamport;
-- verifies exact value conservation; and
-- rejects aliases across payer identity, payer authority, fee destination,
-  recipient identities, and recipient destinations.
-
-`assertWokePaymentSimulationMatches` is intentionally simulation-only. Its
-input must come from `simulateTransaction`, contain every parsed System Program
-`Transfer` opcode in execution order, and contain exactly one parsed
-`WokeTipSettled` or `SubscriptionSettled` event. It rejects a failed
-simulation, the wrong endpoint/genesis/program, an extra or reordered transfer,
-substituted terms, incorrect allocation, duplicate settlement events, and an
-invalid subscription window. System account-creation opcodes are not payment
-transfers and must not be included in the parsed transfer list.
-
-`verifyFinalizedWokeTipReceipt` and
-`verifyFinalizedWokeSubscriptionProof` use an injected
-`WokePaymentAccountReader`. They request only `finalized` data and verify the
-returned endpoint, genesis, owner program, PDA, account slot, bump, receipt
-snapshot, settlement terms, allocation, and entitlement linkage. A successful
-simulation is not settlement proof; only these matching finalized accounts are.
-
-The lower-level portable planner also uses integer base units. Its native asset
-discriminator is `{ kind: 'woke' }`; `{ kind: 'sol' }` is retired and rejected.
-Exact SPL metadata remains explicitly allowlisted for future protocol support.
+## Verification
 
 ```sh
 pnpm --filter @wokesocial/sdk lint

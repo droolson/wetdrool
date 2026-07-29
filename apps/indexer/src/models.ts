@@ -377,6 +377,11 @@ export interface FeedQuery {
   readonly before?: FeedCursor;
 }
 
+export interface FeedSnapshot {
+  readonly checkpoint: bigint | undefined;
+  readonly entries: readonly FeedEntry[];
+}
+
 export interface FeedCursor {
   readonly createdAt: string;
   readonly objectId: string;

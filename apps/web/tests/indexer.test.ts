@@ -11,6 +11,19 @@ import {
   searchPublic,
   validatePublicSearchQuery,
 } from '../lib/indexer';
+import {
+  getProjectedFeed,
+  parseProjectedFeedResponse,
+  validateFeedCursor,
+  validateFollowingViewer,
+} from '../lib/projected-feed';
+
+const NETWORK_ID =
+  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+const PROTOCOL_DIGEST = `u${'A'.repeat(43)}`;
+const PROJECTED_POST_ID = `wokesocialobj:v1:post:${PROTOCOL_DIGEST}`;
+const PROJECTED_POST_CID = 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm';
+const PROJECTED_TRANSACTION_SIGNATURE = '1'.repeat(64);
 
 const VERIFIED_POST = {
   author: {
@@ -116,7 +129,312 @@ describe('typed indexer response parsing', () => {
         body: null,
         bodyReference: null,
       }),
-    ).toThrow('inline body or a body reference');
+    ).toThrow('inline body, body reference, or media');
+  });
+
+  it('accepts a media-only post without inventing body text', () => {
+    const parsed = parseIndexedPost({
+      ...VERIFIED_POST,
+      body: null,
+      bodyReference: null,
+      media: [
+        {
+          altText: 'A purple sunrise over the water.',
+          bytes: 512,
+          cid: 'bafy-media',
+          digest: 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+          mediaType: 'image/webp',
+        },
+      ],
+    });
+
+    expect(parsed.body).toBeNull();
+    expect(parsed.media).toEqual([
+      expect.objectContaining({
+        altText: 'A purple sunrise over the water.',
+        mediaType: 'image/webp',
+      }),
+    ]);
+  });
+});
+
+const PROJECTED_FEED_RESPONSE = {
+  canonical: false,
+  entries: [
+    {
+      author: {
+        active: true,
+        identityId: VERIFIED_POST.author.identityId,
+      },
+      post: {
+        anchoredSlot: '42',
+        authorIdentityId: VERIFIED_POST.author.identityId,
+        cid: PROJECTED_POST_CID,
+        content: {
+          body: VERIFIED_POST.body,
+          format: 'plain',
+          language: 'en',
+          media: [],
+          quotePolicy: 'allowed',
+          replyPolicy: 'anyone',
+          visibility: { kind: 'public' },
+        },
+        createdAt: VERIFIED_POST.createdAt,
+        networkId: NETWORK_ID,
+        objectId: PROJECTED_POST_ID,
+        payloadHash: PROTOCOL_DIGEST,
+        signingKeyId: `${VERIFIED_POST.author.identityId}#root/${'1'.repeat(32)}`,
+        transactionSignature: PROJECTED_TRANSACTION_SIGNATURE,
+        verified: true,
+      },
+      profile: {
+        content: { displayName: VERIFIED_POST.author.displayName },
+        identityId: VERIFIED_POST.author.identityId,
+      },
+      reason: { kind: 'chronological' },
+    },
+  ],
+  meta: {
+    checkpointSlot: 42,
+    indexedAt: '2026-07-28T12:01:00.000Z',
+    source: 'WokeNet open indexer',
+  },
+  mode: 'chronological',
+  network: NETWORK_ID,
+  nextCursor: null,
+  projection: 'wokenet-open-indexer',
+  recipe: 'wokenet-open-indexer-feed-v1',
+  viewer: null,
+} as const;
+
+describe('typed projected-feed parsing and requests', () => {
+  const originalIndexerUrl = process.env['WOKESOCIAL_INDEXER_URL'];
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (originalIndexerUrl === undefined) {
+      delete process.env['WOKESOCIAL_INDEXER_URL'];
+    } else {
+      process.env['WOKESOCIAL_INDEXER_URL'] = originalIndexerUrl;
+    }
+  });
+
+  it('maps the replaceable low-level projection into proof-bearing post cards', () => {
+    const parsed = parseProjectedFeedResponse(PROJECTED_FEED_RESPONSE, {
+      mode: 'chronological',
+    });
+
+    expect(parsed.entries[0]).toMatchObject({
+      post: {
+        author: { displayName: 'Ari' },
+        body: VERIFIED_POST.body,
+        media: [],
+        verification: {
+          anchor: { finality: 'finalized', slot: 42 },
+          state: 'verified',
+        },
+      },
+      reason: { kind: 'chronological' },
+    });
+    expect(parsed.network).toBe(NETWORK_ID);
+    expect(parsed.nextCursor).toBeNull();
+    expect(parsed.recipe).toBe('wokenet-open-indexer-feed-v1');
+    expect(() =>
+      parseProjectedFeedResponse(
+        { ...PROJECTED_FEED_RESPONSE, recipe: 'provider-invented-feed-v1' },
+        { mode: 'chronological' },
+      ),
+    ).toThrow(IndexerPayloadError);
+  });
+
+  it('accepts an explicitly scoped public following projection', () => {
+    const response = {
+      ...PROJECTED_FEED_RESPONSE,
+      entries: [
+        {
+          ...PROJECTED_FEED_RESPONSE.entries[0],
+          reason: {
+            followedIdentityId: VERIFIED_POST.author.identityId,
+            kind: 'following',
+          },
+        },
+      ],
+      mode: 'following',
+      viewer: VERIFIED_POST.author.identityId,
+    } as const;
+
+    expect(
+      parseProjectedFeedResponse(response, {
+        mode: 'following',
+        viewer: VERIFIED_POST.author.identityId,
+      }),
+    ).toMatchObject({
+      mode: 'following',
+      viewer: VERIFIED_POST.author.identityId,
+    });
+  });
+
+  it.each([
+    [
+      'a nonpublic post',
+      {
+        ...PROJECTED_FEED_RESPONSE,
+        entries: [
+          {
+            ...PROJECTED_FEED_RESPONSE.entries[0],
+            post: {
+              ...PROJECTED_FEED_RESPONSE.entries[0].post,
+              content: {
+                ...PROJECTED_FEED_RESPONSE.entries[0].post.content,
+                visibility: { kind: 'unlisted' },
+              },
+            },
+          },
+        ],
+      },
+    ],
+    [
+      'an unsafe anchor slot',
+      {
+        ...PROJECTED_FEED_RESPONSE,
+        entries: [
+          {
+            ...PROJECTED_FEED_RESPONSE.entries[0],
+            post: {
+              ...PROJECTED_FEED_RESPONSE.entries[0].post,
+              anchoredSlot: '9007199254740992',
+            },
+          },
+        ],
+      },
+    ],
+    [
+      'a duplicate post',
+      {
+        ...PROJECTED_FEED_RESPONSE,
+        entries: [PROJECTED_FEED_RESPONSE.entries[0], PROJECTED_FEED_RESPONSE.entries[0]],
+      },
+    ],
+    [
+      'a tombstoned post',
+      {
+        ...PROJECTED_FEED_RESPONSE,
+        entries: [
+          {
+            ...PROJECTED_FEED_RESPONSE.entries[0],
+            post: {
+              ...PROJECTED_FEED_RESPONSE.entries[0].post,
+              tombstonedAt: '2026-07-28T12:02:00.000Z',
+            },
+          },
+        ],
+      },
+    ],
+    [
+      'a malformed protocol field',
+      {
+        ...PROJECTED_FEED_RESPONSE,
+        entries: [
+          {
+            ...PROJECTED_FEED_RESPONSE.entries[0],
+            post: {
+              ...PROJECTED_FEED_RESPONSE.entries[0].post,
+              transactionSignature: 'not-a-wokenet-signature',
+            },
+          },
+        ],
+      },
+    ],
+    [
+      'a nonempty page without a checkpoint',
+      {
+        ...PROJECTED_FEED_RESPONSE,
+        meta: {
+          ...PROJECTED_FEED_RESPONSE.meta,
+          checkpointSlot: null,
+        },
+      },
+    ],
+    [
+      'a cursor on an empty page',
+      {
+        ...PROJECTED_FEED_RESPONSE,
+        entries: [],
+        nextCursor: 'opaque_cursor',
+      },
+    ],
+  ])('rejects %s', (_label, response) => {
+    expect(() => parseProjectedFeedResponse(response, { mode: 'chronological' })).toThrow(
+      IndexerPayloadError,
+    );
+  });
+
+  it('rejects pages outside descending finalized-time and object-ID order', () => {
+    const olderEntry = {
+      ...PROJECTED_FEED_RESPONSE.entries[0],
+      post: {
+        ...PROJECTED_FEED_RESPONSE.entries[0].post,
+        createdAt: '2026-07-28T11:59:00.000Z',
+        objectId: `wokesocialobj:v1:post:u${'B'.repeat(43)}`,
+      },
+    } as const;
+
+    expect(() =>
+      parseProjectedFeedResponse(
+        {
+          ...PROJECTED_FEED_RESPONSE,
+          entries: [olderEntry, PROJECTED_FEED_RESPONSE.entries[0]],
+        },
+        { mode: 'chronological' },
+      ),
+    ).toThrow('descending finalized time and object-ID order');
+  });
+
+  it('validates viewer identities and opaque cursor URL state before a request', () => {
+    expect(validateFollowingViewer(VERIFIED_POST.author.identityId)).toEqual({
+      kind: 'valid',
+      viewer: VERIFIED_POST.author.identityId,
+    });
+    expect(validateFollowingViewer('ari')).toMatchObject({ kind: 'invalid' });
+    expect(validateFollowingViewer(['one', 'two'])).toMatchObject({ kind: 'invalid' });
+    expect(validateFeedCursor('abc_DEF-123')).toEqual({
+      cursor: 'abc_DEF-123',
+      kind: 'valid',
+    });
+    expect(validateFeedCursor('not+opaque')).toMatchObject({ kind: 'invalid' });
+  });
+
+  it('requests the default-network chronological route with an encoded opaque cursor', async () => {
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/operator/';
+    const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+      Response.json(PROJECTED_FEED_RESPONSE),
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(
+      getProjectedFeed({ cursor: 'abc_DEF-123', mode: 'chronological' }),
+    ).resolves.toMatchObject({
+      endpoint: 'https://indexer.example',
+      kind: 'ready',
+      value: { mode: 'chronological' },
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      'https://indexer.example/operator/v1/feed?limit=20&mode=chronological&before=abc_DEF-123',
+    );
+  });
+
+  it('does not transmit malformed viewer or cursor input', async () => {
+    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(
+      getProjectedFeed({ mode: 'following', viewer: 'not-an-identity' }),
+    ).resolves.toMatchObject({ kind: 'degraded', reason: 'invalid-response' });
+    await expect(
+      getProjectedFeed({ cursor: 'not+opaque', mode: 'chronological' }),
+    ).resolves.toMatchObject({ kind: 'degraded', reason: 'invalid-response' });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 

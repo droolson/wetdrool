@@ -25,8 +25,8 @@ const ENDPOINT_KEYS: Readonly<
     plural: false,
   },
   rpc: {
-    key: 'WOKENET_RPC_ENDPOINTS',
-    label: 'WokeNet RPC',
+    key: 'SOLANA_RPC_ENDPOINTS',
+    label: 'Solana RPC',
     plural: true,
   },
   gateway: {

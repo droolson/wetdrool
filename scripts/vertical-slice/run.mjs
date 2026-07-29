@@ -323,16 +323,16 @@ async function main() {
     NEXT_PUBLIC_APP_ORIGIN: webUrl,
     NEXT_PUBLIC_INDEXER_URL: indexerUrl,
     NEXT_PUBLIC_PROGRAM_ID: PROGRAM_ID,
-    NEXT_PUBLIC_WOKENET: 'localnet',
-    NEXT_PUBLIC_WOKENET_RPC_URL: rpcUrl,
+    NEXT_PUBLIC_SOLANA_CLUSTER: 'localnet',
+    NEXT_PUBLIC_SOLANA_RPC_URL: rpcUrl,
     NODE_ENV: 'production',
     RATE_LIMIT_DANGEROUSLY_USE_MEMORY_STORE: '1',
     RATE_LIMIT_DEPLOYMENT_ID: 'vertical-slice',
     RATE_LIMIT_KEY_SECRET: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI',
     SESSION_SECRET: 'vertical-slice-local-session-secret-only',
-    WOKENET_COMMITMENT: 'finalized',
-    WOKENET_RPC_URLS: rpcUrl,
-    WOKENET_WS_URLS: websocketUrl,
+    SOLANA_COMMITMENT: 'finalized',
+    SOLANA_RPC_URLS: rpcUrl,
+    SOLANA_WS_URLS: websocketUrl,
   };
   const indexerEnvironment = {
     ...serviceEnvironment,
@@ -971,7 +971,8 @@ function assertLocalOnlyEnvironment() {
     PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL,
     SOLANA_RPC_URL: process.env.SOLANA_RPC_URL,
     SOLANA_RPC_URLS: process.env.SOLANA_RPC_URLS,
-    WOKENET_RPC_URLS: process.env.WOKENET_RPC_URLS,
+    SOLANA_WS_URL: process.env.SOLANA_WS_URL,
+    SOLANA_WS_URLS: process.env.SOLANA_WS_URLS,
   })) {
     if (value !== undefined && /\b(?:api\.mainnet-beta|mainnet|devnet|testnet)\b/iu.test(value)) {
       throw new Error(`${name} points at a non-local network; vertical-slice execution refused.`);

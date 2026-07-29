@@ -2300,7 +2300,7 @@
       "oneOf": [
         {
           "type": "object",
-          "properties": { "kind": { "type": "string", "const": "woke" } },
+          "properties": { "kind": { "type": "string", "const": "sol" } },
           "required": ["kind"],
           "additionalProperties": false
         },

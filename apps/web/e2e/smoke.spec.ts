@@ -106,6 +106,22 @@ test('public search validates locally and degrades without fabricating results',
   await expect(page.locator('.post-card')).toHaveCount(0);
 });
 
+test('projected feed routes reject unsafe scope before contacting a provider', async ({ page }) => {
+  await page.goto('/feed/chronological?before=not%2Bopaque');
+  await expect(
+    page.getByRole('heading', { name: 'That feed page reference is not valid.' }),
+  ).toBeVisible();
+  await expect(page.getByText('No request was sent to the configured indexer.')).toBeVisible();
+  await expect(page.locator('.post-card')).toHaveCount(0);
+
+  await page.goto('/feed/following?viewer=not-an-identity');
+  await expect(
+    page.getByRole('heading', { name: 'That public identity is not canonical.' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Public WokeSocial identity ID')).toHaveValue('not-an-identity');
+  await expect(page.locator('.post-card')).toHaveCount(0);
+});
+
 test('mobile navigation opens with keyboard-accessible links', async ({ page }) => {
   await page.setViewportSize({ height: 844, width: 390 });
   await page.goto('/');

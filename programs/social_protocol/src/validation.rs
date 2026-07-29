@@ -4,13 +4,14 @@ use crate::{
     constants::{
         ACCOUNT_VERSION, BASIS_POINTS_DENOMINATOR, COMMUNITY_ROLE_MEMBER,
         CURRENT_PROFILE_SCHEMA_VERSION, GOVERNANCE_APPROVAL_BPS, GOVERNANCE_QUORUM_BPS,
-        MANIFEST_HASH_BYTES, MAX_GOVERNANCE_START_DELAY_SLOTS, MAX_GOVERNANCE_VOTING_SLOTS,
-        MAX_HANDLE_BYTES, MAX_MANIFEST_URI_BYTES, MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS,
-        MAX_RECOVERY_DELAY_SLOTS, MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS,
-        MIN_GOVERNANCE_VOTING_SLOTS, MIN_HANDLE_BYTES, MIN_RECOVERY_DELAY_SLOTS,
-        MIN_RECOVERY_GUARDIANS, ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PDA_PREFIX, PDA_VERSION,
-        REACTION_CELEBRATE, REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT,
-        VALID_COMMUNITY_ROLES, VALID_DELEGATION_SCOPES, WEEK_SECONDS,
+        LEGACY_LAMPORT_PAYMENT_ABI_ENABLED, MANIFEST_HASH_BYTES, MAX_GOVERNANCE_START_DELAY_SLOTS,
+        MAX_GOVERNANCE_VOTING_SLOTS, MAX_HANDLE_BYTES, MAX_MANIFEST_URI_BYTES,
+        MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS, MAX_RECOVERY_DELAY_SLOTS,
+        MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS, MIN_GOVERNANCE_VOTING_SLOTS,
+        MIN_HANDLE_BYTES, MIN_RECOVERY_DELAY_SLOTS, MIN_RECOVERY_GUARDIANS,
+        ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PDA_PREFIX, PDA_VERSION, REACTION_CELEBRATE,
+        REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT, VALID_COMMUNITY_ROLES,
+        VALID_DELEGATION_SCOPES, WEEK_SECONDS,
     },
     errors::SocialProtocolError,
     state::{
@@ -70,6 +71,29 @@ pub fn checked_decrement(value: u64) -> Result<u64> {
     value
         .checked_sub(1)
         .ok_or_else(|| error!(SocialProtocolError::ArithmeticUnderflow))
+}
+
+/// Rejects every call through the retired lamport-as-WOKE instruction ABI.
+///
+/// The old implementation invokes the System Program, so its unit is SOL
+/// lamports rather than a WOKE asset. Keeping the ABI fail-closed prevents a
+/// misleading or wallet-draining payment prompt while a correctly typed SOL
+/// and/or SPL-token replacement is designed.
+pub fn validate_legacy_lamport_payment_execution() -> Result<()> {
+    require!(
+        LEGACY_LAMPORT_PAYMENT_ABI_ENABLED,
+        SocialProtocolError::PaymentsDisabled
+    );
+    Ok(())
+}
+
+/// Allows policy maintenance only while the retired payment ABI stays paused.
+pub fn validate_legacy_lamport_payment_policy(requested_enabled: bool) -> Result<()> {
+    require!(
+        !requested_enabled || LEGACY_LAMPORT_PAYMENT_ABI_ENABLED,
+        SocialProtocolError::PaymentsDisabled
+    );
+    Ok(())
 }
 
 pub fn validate_nonzero_hash(hash: &[u8; MANIFEST_HASH_BYTES]) -> Result<()> {
@@ -818,7 +842,7 @@ pub fn validate_payment_aliases(
     Ok(())
 }
 
-pub fn calculate_native_payment_allocation(
+pub fn calculate_legacy_lamport_payment_allocation(
     gross_lamports: u64,
     fee_bps: u16,
     splits: &[PaymentSplit],

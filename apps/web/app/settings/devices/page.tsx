@@ -50,7 +50,7 @@ export default function DeviceSettingsPage() {
           </div>
           <div>
             <dt>Not changed here</dt>
-            <dd>Protocol identity, WokeNet authority, and onchain delegations</dd>
+            <dd>Protocol identity, WokeSocial authority, and onchain delegations</dd>
           </div>
           <div>
             <dt>Revocation policy</dt>

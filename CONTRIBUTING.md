@@ -15,9 +15,11 @@ welcome from people of every identity and experience level. Participation is gov
 
 ## Required toolchain
 
-The repository pins Node 22.23.1, pnpm 11.2.2, Rust, Anchor, the
-Solana-format compatibility toolchain, and the exact official Firedancer source
-used for WokeNet. Do not silently substitute newer versions.
+The repository pins Node 22.23.1, pnpm 11.2.2, Rust, Anchor, and the Solana
+toolchain used to build and test WokeNet programs. Do not silently substitute
+newer versions. The non-release Seeker Android foundation must likewise keep its
+Android, Kotlin, Expo/React Native, native-module, and Mobile Wallet Adapter
+versions pinned.
 
 ```sh
 corepack enable
@@ -33,9 +35,10 @@ needed.
 ## Repository conventions
 
 - Applications live in `apps/*`; shared TypeScript packages live in `packages/*`.
-- WokeNet programs use the Solana-compatible Rust and Anchor workspace
-  rather than pnpm workspaces; Agave/local-validator results are compatibility
-  evidence only.
+- WokeNet programs use the Rust and Anchor workspace rather than pnpm
+  workspaces. The disposable Solana local validator provides local development
+  evidence; public claims require a recorded Solana cluster and program
+  deployment.
 - Shared protocol schemas are defined once and imported by clients and services.
 - PostgreSQL is a replayable projection, and Redis is disposable coordination.
 - External dependencies use exact versions. Internal packages use `workspace:` references.
@@ -56,11 +59,16 @@ pnpm test
 pnpm build
 ```
 
-Use `pnpm test:e2e` for browser flows and `pnpm test:programs` for the
-Anchor/Agave compatibility-oracle suite. Use `pnpm wokenet:check` for the
-pinned native-Firedancer policy/source gate. These commands fail if no workspace
-or toolchain implements the requested gate; an empty test stage is not reported
-as success.
+Use `pnpm test:e2e` for responsive-web browser flows and
+`pnpm test:programs` for the Anchor program suite against the disposable Solana
+local validator. These commands fail if no workspace or toolchain implements
+the requested gate; an empty test stage is not reported as success.
+
+The Seeker Android foundation is a separate release artifact. Changes to it
+require its focused lint/type/test/build checks. A release additionally requires
+Mobile Wallet Adapter intent/device tests, an installable reproducible signed
+APK, recorded signing provenance, secure update/rollback evidence, and explicit
+distribution approval.
 
 For local infrastructure:
 

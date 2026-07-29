@@ -1,13 +1,14 @@
 # Operations
 
-Last reviewed: 2026-07-28
+Last reviewed: 2026-07-29
 
 ## Document status
 
-This is the target operations contract for WokeSocial on the sovereign WokeNet.
-No native WokeNet validator/RPC environment, staging service, or
-production service is deployed, and there are no production alerts, backups,
-runbook automations, on-call schedules, or completed incident exercises.
+This is the target operations contract for WokeSocial and its WokeNet program
+deployment on Solana. No WokeNet program is deployed to devnet or
+mainnet-beta, no staging or production service is deployed, and there are no
+production alerts, backups, runbook automations, on-call schedules, or
+completed incident exercises.
 
 The local foundation is operationally testable: PostgreSQL, Redis, and Kubo have
 health-checked Compose services; authentication, feed, relay, moderation,
@@ -15,23 +16,23 @@ media-worker, and ClamAV profiles have hardened OCI builds and explicit
 liveness/readiness; the indexer has structured logging, an OpenTelemetry
 ingestion span, and a read-only API. Container integrations exercise
 PostgreSQL rebuild, Kubo publication, WebAuthn persistence, real media
-processors, and live ClamAV benign/malware verdicts. These local checks do not
-satisfy any production-readiness claim. Unless a section says otherwise, the
-controls and procedures below remain **Planned**.
+processors, and live ClamAV benign/malware verdicts. A non-release Expo/React
+Native Seeker foundation also exists with Mobile Wallet Adapter connection
+code, exact deployment checks, a read-only feed, and tests; no Seeker-device or
+signed-APK release evidence exists. These local checks do not satisfy any
+production-readiness claim. Unless a section says otherwise, the controls and
+procedures below remain **Planned**.
 
 The canonical public origin is `https://woke.social`. `sociallywoke.com` and
 `www.sociallywoke.com` are redirect-only legacy origins and must never become
 an alternate application, identity namespace, RPC surface, or cookie scope.
 
-WokeNet is a sovereign protocol forked from Solana. Its native asset is
-WOKE with 9 decimal places. The wire/base-unit identifier `lamports` may remain
-in compatibility schemas, where `1 WOKE = 1,000,000,000 lamports`; it does not
-mean the runtime asset is SOL. Native validator and RPC operation is Firedancer
-only. That path is **Experimental**, has no verified production binary or
-native connected-slice evidence, and blocks production activation. Existing
-Agave/Solana local-validator results are an explicitly labeled compatibility
-oracle for Solana-format program, transaction, and RPC behavior; they are not
-native WokeNet runtime evidence.
+WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+Solana. Solana validators and RPC providers are external dependencies. No
+`$WOKE` mint exists. The legacy lamport-denominated payment ABI is quarantined,
+cannot execute or be unpaused, and never grants entitlements. Portable metadata
+may truthfully identify SOL or an exact SPL asset but may not relabel either as
+`$WOKE`.
 
 This document does not authorize production-network activity. See
 [DEPLOYMENT.md](./DEPLOYMENT.md) for the explicit manual production boundary and
@@ -40,12 +41,14 @@ This document does not authorize production-network activity. See
 ## Operating principles
 
 - Preserve user safety and key integrity before availability metrics.
-- Treat finalized WokeNet state and signed protocol objects as canonical;
-  treat service databases as replayable projections.
-- Keep native Firedancer evidence separate from Agave/Solana compatibility-oracle
-  evidence in alerts, dashboards, releases, and incident records.
-- Treat WOKE as the only native fee and settlement asset; preserve `lamports`
-  only as the 9-decimal Solana-compatible wire/base unit.
+- Treat finalized WokeNet program state on the exact Solana deployment and
+  signed protocol objects as canonical; treat service databases as replayable
+  projections.
+- Keep disposable Solana local-validator evidence separate from devnet,
+  mainnet-beta, provider-diversity, Seeker-device, and signed-APK evidence in
+  alerts, dashboards, releases, and incident records.
+- Treat SOL as the Solana network-fee asset. Do not execute the quarantined
+  payment ABI or claim that `$WOKE` exists.
 - Prefer degraded read-only behavior over ambiguous success or unsafe writes.
 - Never declare a transaction, publication, deletion, or recovery complete before
   its defined confirmation state.
@@ -67,7 +70,8 @@ roles MUST remain separated for high-impact changes.
 | Incident commander | Coordinates response, priorities, timeline, and handoffs | Deploy unreviewed program changes or suppress required notification |
 | Operations lead | Service health, capacity, failover, database and queue operations | Access user private content without approved purpose |
 | Security lead | Compromise analysis, containment, evidence, credential rotation | Unilaterally accept critical residual risk |
-| WokeNet release authority | Verifies Firedancer artifacts, network, program, and authority state | Satisfy production multisig quorum alone or substitute Agave compatibility evidence for native evidence |
+| WokeNet release authority | Verifies the reviewed SBF artifact, exact Solana deployment, and program-authority state | Satisfy production multisig quorum alone or substitute local-validator evidence for public-deployment evidence |
+| Android release authority | Verifies source, dependencies, package/certificate identity, reproducible APK, signing provenance, and distribution target | Control signing custody, approve security/privacy review, and publish alone |
 | Safety lead | User harm, moderation escalation, evidence minimization | Expand evidence access or retention without review |
 | Communications lead | Operator/user/status updates | Make legal conclusions or unsupported attribution |
 | Privacy/legal contact | Advises notification, preservation, disclosure, and retention | Alter technical evidence without audit trail |
@@ -80,14 +84,15 @@ out-of-band communications, and a tested method for reaching multisig signers.
 
 | Component | Role | Canonical? | Expected failure behavior |
 | --- | --- | --- | --- |
-| WokeNet program and finalized ledger | Protocol authorization and compact public state | Yes, within documented protocol scope | Writes pause or remain pending; clients retain safe read/degraded mode |
+| WokeNet program on Solana and finalized ledger observations | Protocol authorization and compact public state | Yes, within documented protocol scope | Writes pause or remain pending; clients retain safe read/degraded mode |
 | Signed content manifests | Verifiable public/restricted object representation | Yes for represented content | Alternate provider retrieval; reject unverifiable bytes |
 | PostgreSQL indexer database | Query projection | No | Fail over or rebuild from protocol data |
 | Redis | Cache, queue coordination, rate limiting | No | Lose cache safely; sensitive limits fail safe; reconcile queued work |
 | Indexer | Reconstruction and query convenience | No | Mark stale, replay from checkpoint, permit alternate indexer |
 | Relay | Low-latency delivery | No | Reconnect elsewhere and reconcile durable signed state |
 | Feed provider | Ranking convenience | No | Fall back to chronological/following and enforce local safety controls |
-| WokeNet RPC provider | Native Firedancer transport | No | Health-score and switch; validate network/genesis/finality; never fail over to an Agave oracle in production |
+| Solana RPC provider | Transport to the selected Solana cluster | No | Health-score and switch; validate genesis/program/finality; cross-check sensitive reads |
+| Seeker Android client and MWA wallet | Native product surface and wallet handoff | No protocol authority beyond the exact user-approved signature | Fail closed on callback/account/network/transaction mismatch; preserve read-only or disconnected state |
 | Content gateway/pinner | Content transport and availability | No | Hash-verify alternate provider; expose degraded replication |
 | Media worker | Derivative convenience | No | Queue safely; permit protocol-compliant independent media |
 | ClamAV daemon | Private malware-scanning dependency | No | Media finalization fails closed; preserve resumable upload for safe retry |
@@ -130,12 +135,12 @@ exists. All requirements below beyond those subsets are **Planned**.
 - Timestamp in UTC, service, environment, region, instance, release digest.
 - Trace/correlation ID generated independently of user content.
 - Operation name, stable result code, duration, retry count.
-- WokeNet environment, genesis hash, native Firedancer version, RPC
-  provider alias, observed slot, commitment, and checkpoint where relevant.
+- Solana cluster, observed genesis hash, WokeNet program ID/deployment slot,
+  RPC provider alias, observed slot, commitment, and checkpoint where relevant.
 - The immutable per-network `INDEXER_PROFILE_V2_ACTIVATION_SLOT` in indexer
   release and rebuild records.
-- An explicit `compatibility-oracle` marker plus Agave/Solana tool versions for
-  tests that intentionally exercise the Solana-format compatibility path.
+- An explicit `local-validator` marker plus Solana/Anchor tool versions for
+  tests that intentionally exercise the disposable development path.
 - Queue name and lag, database migration version, storage provider alias, and
   manifest validation result where relevant.
 
@@ -170,9 +175,9 @@ moderation evidence, or full signed transaction payloads.
 
 Alerts MUST be actionable, routed to an owning role, deduplicated, and linked to
 a runbook. Page for user-impacting or security-critical conditions; create
-nonpaging tickets for trends. Every page must identify environment, genesis, and
-runtime so a compatibility oracle cannot be mistaken for a native or production
-WokeNet environment.
+nonpaging tickets for trends. Every page must identify environment, genesis,
+and program so local-validator, devnet, and mainnet-beta evidence cannot be
+conflated.
 
 High-priority pages include:
 
@@ -309,15 +314,13 @@ A database backup may shorten recovery, but it is not proof of correctness. Full
 replay remains a required capability.
 
 Current evidence is narrower than this runbook but no longer synthetic-only:
-the compatibility connected gate clears its network projection and
+the local Solana connected gate clears its network projection and
 deterministically reconstructs identity, profile, post, follow, tombstone,
-checkpoint, and suppression state from actual finalized Agave local-validator
+checkpoint, and suppression state from actual finalized local-validator
 history plus signed CAS manifests. The synchronizer handles finalized polling,
 checkpoints, retry/DLQ, RPC failover, and the same immutable profile-schema gate
-for live ingestion and rebuild against that compatibility oracle. This is not
-native WokeNet/Firedancer evidence. Native history, native RPC failover,
-production-scale timing, and independent-provider comparison remain
-unverified.
+for live ingestion and rebuild. This is not devnet/mainnet-beta,
+production-scale, or independent-provider evidence.
 
 ## Runbook: content gateway or storage-provider failure
 
@@ -418,9 +421,9 @@ screen sharing of secret material.
 1. Declare SEV-0 or SEV-1 based on scope and move to out-of-band coordination.
 2. Stop deployments and sponsorship. Disable affected service credentials and
    isolate control-plane access.
-3. Independently inspect the affected WokeNet genesis, native Firedancer
-   release, program ID, program-data address, binary hash, upgrade authority,
-   WOKE balances, and recent transactions.
+3. Independently inspect the affected Solana genesis, WokeNet program ID,
+   program-data address, deployed binary hash, deployment slot, upgrade
+   authority, sponsor balance, and recent transactions across trusted providers.
 4. Notify multisig signers through verified channels; do not collect root secrets
    centrally.
 5. Use the preapproved authority-rotation or narrowly scoped pause procedure only
@@ -431,23 +434,52 @@ screen sharing of secret material.
    required.
 8. Publish material program changes and incident facts.
 
-There is no safe generic rollback for a stateful WokeNet program. Any
-program action requires independent review of binary and state compatibility.
-Agave/Solana compatibility-oracle behavior cannot approve a native Firedancer
-production action.
+There is no safe generic rollback for a stateful WokeNet program. Any program
+action requires independent review of deployed binary and state compatibility.
+Disposable local-validator behavior cannot approve a devnet or mainnet-beta
+action.
 
 ## Runbook: sponsor abuse or unexpected fund movement
 
 1. Disable sponsorship without disabling ordinary user-funded protocol access.
 2. Preserve the transaction-policy version, simulations, signed messages,
    idempotency records, budget counters, and finalized outcomes.
-3. Check recipient, programs, instructions, native WOKE amount, 9-decimal
-   base-unit conversion, optional token identifiers, fees, blockhashes, and
-   subject limits against the allowlist.
+3. Check recipient, programs, instructions, SOL network-fee amount, optional
+   exact SPL token identifiers, fees, blockhashes, and subject limits against
+   the allowlist. Treat any legacy payment instruction, unpause attempt, or
+   SOL-as-`$WOKE` labeling as a security incident.
 4. Reconcile pending transactions and prevent automatic duplicate retries.
 5. Rotate the isolated sponsor key if compromise is possible; never use a
    production upgrade or treasury authority.
 6. Resume with reduced ceilings only after the bypass is understood and tested.
+
+Sponsors pay only the Solana transaction network fee unless a separately
+approved future mint-aware product path exists. They never make the legacy
+payment ABI executable.
+
+## Runbook: Seeker Android, MWA, signing, or distribution compromise
+
+Trigger: tampered/fake APK, unexpected signing certificate, signing/store
+account compromise, malicious update, MWA intent/callback substitution,
+unexpected wallet account/network/transaction, or sensitive mobile-data leak.
+
+1. Stop Android release promotion and distribution; do not publish an unsigned
+   or differently signed emergency replacement.
+2. Record APK hash, signing-certificate digest, source/build provenance, package
+   ID, version, distribution channel, wallet package, selected account,
+   configured Solana deployment, and non-sensitive callback evidence.
+3. Disable affected deep links, remote configuration, sponsorship, or mutation
+   features where the predesigned control is safe; retain verified read-only
+   status where possible.
+4. Warn users against additional wallet prompts and identify exact affected
+   versions/certificates without requesting seed phrases or private keys.
+5. Revoke compromised store/release credentials and invoke the separated
+   signing-key/update response with the required quorum.
+6. Rebuild from reviewed source and dependencies, reproduce the artifact,
+   verify the signing identity, and rerun device/MWA substitution, lifecycle,
+   permissions, privacy, accessibility, and rollback tests.
+7. Publish only through an approved update path and preserve incident evidence
+   for security, privacy, legal, and store coordination.
 
 ## Runbook: moderation or acute safety incident
 
@@ -653,10 +685,12 @@ Production operations are not ready until evidence exists for:
 - User/device key, operator credential, sponsor key, and program-authority
   compromise tabletops.
 - Moderation/safety escalation reviewed by qualified specialists.
-- Release, rollback, migration, native Firedancer, and production-network
-  ceremony rehearsals.
-- A verified native Firedancer validator/RPC build and connected-slice result;
-  Agave/Solana compatibility-oracle results are recorded separately and do not
-  satisfy this gate.
+- Release, rollback, migration, Solana devnet/mainnet-beta program-deployment,
+  and authority-ceremony rehearsals.
+- A verifiable public WokeNet deployment, independent Solana RPC
+  provider/failover result, and connected-slice result; local-validator results
+  are recorded separately and do not satisfy this gate.
+- A verified Seeker-device/MWA matrix, reproducible signed APK, signing
+  provenance, secure update/rollback drill, and approved distribution path.
 - Public status and incident-communication procedures.
 - Known limitations and remaining risks recorded in the release report.

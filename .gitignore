@@ -21,6 +21,7 @@ Thumbs.db
 # Node, pnpm, Turbo, Next.js, and tests
 node_modules/
 .pnpm-store/
+.expo/
 .turbo/
 .next/
 out/

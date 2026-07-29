@@ -40,14 +40,38 @@ export function PostCard({ post, prominent = false }: PostCardProps) {
         <StatusBadge tone={toneFor(proof.state)}>{verificationLabel(proof.state)}</StatusBadge>
       </header>
 
-      {post.body === null ? (
+      {post.body === null && post.media.length === 0 ? (
         <p className="post-card__body">
           This post’s text is stored in a separate content-addressed object that this view has not
           retrieved.
         </p>
-      ) : (
+      ) : post.body === null ? null : (
         <p className="post-card__body">{post.body}</p>
       )}
+
+      {post.media.length > 0 ? (
+        <section className="post-card__media" aria-label="Referenced media">
+          <div>
+            <strong>
+              {post.media.length} verified media{' '}
+              {post.media.length === 1 ? 'reference' : 'references'}
+            </strong>
+            <span>Gateway playback is not connected in this view.</span>
+          </div>
+          <ul>
+            {post.media.map((media) => (
+              <li key={`${media.cid}:${media.digest}`}>
+                <span>{media.mediaType}</span>
+                <span>
+                  {media.altText === null || media.altText.trim().length === 0
+                    ? 'No alt text supplied'
+                    : media.altText}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="post-card__meta">
         <time dateTime={post.createdAt}>{formatUtcDate(post.createdAt)}</time>

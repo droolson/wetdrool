@@ -194,13 +194,15 @@ pub enum SocialProtocolError {
     PaymentPolicySequenceMismatch,
     #[msg("The protocol fee is outside the supported basis-point range")]
     InvalidProtocolFee,
-    #[msg("Native WOKE payments are currently disabled")]
+    #[msg(
+        "The legacy lamport-payment ABI is disabled pending explicit SOL or SPL-token semantics"
+    )]
     PaymentsDisabled,
     #[msg("The replacement payment authority is invalid")]
     InvalidPaymentAuthority,
     #[msg("A payment receipt nonce cannot be all zeroes")]
     InvalidPaymentNonce,
-    #[msg("The native WOKE payment amount is invalid")]
+    #[msg("The lamport payment amount is invalid")]
     InvalidPaymentAmount,
     #[msg("The payment split set is malformed or outside the onchain bound")]
     InvalidPaymentSplits,

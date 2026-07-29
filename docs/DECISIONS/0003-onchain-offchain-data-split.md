@@ -8,8 +8,8 @@
 
 Solana provides public verifiability but has cost, account-size, transaction,
 privacy, and deletion constraints. Content storage offers capacity and
-portability but cannot independently establish protocol authorization or
-settlement.
+portability but cannot independently establish protocol authorization or any
+future approved mint-aware settlement.
 
 ## Decision
 
@@ -25,7 +25,7 @@ Keep sensitive and private data encrypted and off public ledgers.
 | Profile/post/media/policy bodies | Signed offchain manifest |
 | Manifest digest, locator commitment, author, nonce, revision pointer | Compact onchain reference when anchoring is required |
 | Large media | Content-addressed providers; never Solana accounts |
-| Payments and entitlement settlement | Onchain; terms body remains signed offchain |
+| Future mint-aware payments and entitlement settlement | Onchain only under a separately reviewed replacement ABI; terms body remains signed offchain. The legacy lamport ABI is quarantined and never grants paid access |
 | Public tombstone intent | Signed object and onchain reference for anchored content |
 | Email, phone, IP, legal identity, recovery contacts, device fingerprints | Private offchain only |
 | DMs, attachment keys, drafts, private preferences, private memberships | Encrypted client/relay/operator storage only |
@@ -65,7 +65,8 @@ explicit consent.
 - **Raw content/media onchain:** costly, privacy-hostile, size constrained, and
   effectively undeletable.
 - **Only offchain signed state:** insufficient for shared namespace,
-  authorization rotation, replay-safe public settlement, and portable anchors.
+  authorization rotation, replay-safe public state transitions, any future
+  approved mint-aware settlement, and portable anchors.
 - **Encrypted PII onchain:** ciphertext and metadata are permanent and key
   compromise makes disclosure irreversible.
 - **IPFS as automatic permanence:** content addressing does not guarantee

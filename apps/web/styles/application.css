@@ -222,6 +222,22 @@
   font-size: 0.74rem;
 }
 
+.feed-pagination {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1rem;
+  border-block-start: 1px solid var(--wokesocial-line);
+}
+
+.feed-pagination > span {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .post-card {
   display: grid;
   gap: 1.25rem;
@@ -235,6 +251,45 @@
 
 .post-card--prominent {
   padding: clamp(1.5rem, 5vw, 3rem);
+}
+
+.post-card__media {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--wokesocial-line);
+  border-radius: var(--wokesocial-radius-md);
+  background: color-mix(in srgb, var(--wokesocial-sky) 7%, var(--wokesocial-canvas-raised));
+}
+
+.post-card__media > div,
+.post-card__media li {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.post-card__media strong {
+  font-family: var(--wokesocial-font-display);
+  font-size: 0.9rem;
+}
+
+.post-card__media span {
+  color: var(--wokesocial-ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.post-card__media ul {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.post-card__media li {
+  padding-block-start: 0.55rem;
+  border-block-start: 1px solid var(--wokesocial-line);
 }
 
 .post-card__header {
@@ -651,6 +706,7 @@
 
   .composer__heading,
   .composer__toolbar,
+  .feed-pagination,
   .post-card__header,
   .post-card__footer,
   .providers-hero,
@@ -658,6 +714,10 @@
   .indexer-receipt > div:first-child {
     align-items: start;
     flex-direction: column;
+  }
+
+  .feed-pagination {
+    align-items: stretch;
   }
 
   .indexer-receipt dl,

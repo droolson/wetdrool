@@ -1,4 +1,4 @@
-# WokeSocial Protocol on WokeNet
+# WokeSocial Protocol: WokeNet on Solana
 
 ## Document status
 
@@ -6,10 +6,10 @@
 - **Implementation status:** Experimental core subset implemented and tested
 - **Conformance vectors:** TypeScript unit fixtures exist; shared
   Rust/TypeScript golden vectors are not created
-- **Compatibility-harness program ID:** `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`
-- **WokeNet deployment:** None; tests currently use a fresh
-  Solana-wire-compatible validator, not native Firedancer
-- **Last verified:** 2026-07-28
+- **Development-localnet program ID:** `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`
+- **Public WokeNet deployment:** None; tests use a disposable Solana local
+  validator
+- **Last verified:** 2026-07-29
 
 Normative words such as **MUST**, **MUST NOT**, **SHOULD**, and **MAY** describe
 the intended complete contract. The repository currently implements only the
@@ -29,15 +29,16 @@ The protocol defines:
 - rules for canonical bytes, hashes, identifiers, and signatures;
 - an event stream from which indexers can rebuild;
 - portable provider and moderation assertions;
-- noncustodial payment settlement references.
+- only under a separately approved mint-aware design, noncustodial payment
+  settlement references.
 
 The protocol does not make a hosted indexer, relay, database, feed algorithm,
 media processor, recovery vendor, or moderation provider authoritative.
 
 ## Design principles
 
-1. Put compact authorization and settlement facts onchain; put signed content
-   bodies offchain.
+1. Put compact authorization facts and any future approved mint-aware
+   settlement facts onchain; put signed content bodies offchain.
 2. Sign bytes that independent implementations can reproduce exactly.
 3. Bind every signature and identifier to a protocol version and network.
 4. Use immutable objects plus explicit revisions and tombstones.
@@ -58,7 +59,7 @@ Before a v1 release, the repository must contain a machine-readable registry for
 | Signature algorithms | `Ed25519` | Security review and cross-language vectors required |
 | Digest algorithms | `sha2-256` | New algorithm identifier and migration rules required |
 | Content codecs | Canonical JSON and raw binary media | New codec requires deterministic byte rules |
-| Delegation scopes | `profile`, `post`, `social`, `community`, `moderation`, `payment`, `message-directory`, `recovery-admin` | Least-privilege review |
+| Delegation scopes | `profile`, `post`, `social`, `community`, `moderation`, reserved future `payment`, `message-directory`, `recovery-admin` | Least-privilege review; legacy payment instructions never become executable through a scope |
 | Event types | Program events listed below | Event version bump for incompatible field changes |
 | Moderation taxonomy | Versioned separately | Published migration and label semantics |
 | Extension names | Reverse-DNS names | Collision-free ownership and criticality declaration |
@@ -70,17 +71,18 @@ machine-readable registry and implementation must agree.
 
 ### Network identifier
 
-A network is identified by all of:
+A WokeNet deployment is identified by:
 
 ```text
 wokenet:v1:<base58-genesis-hash>:<base58-program-id>
 ```
 
-The literal `wokenet:v1` binds the sovereign network family and namespace version.
-Human labels such as `localnet`, `testnet`, or `main network` are display hints,
-not cryptographic network identifiers. Clients MUST compare the RPC genesis
-hash and configured program ID before reading or signing. Pre-migration
-`solana:` identifiers are invalid and MUST NOT be silently reinterpreted.
+The literal `wokenet:v1` binds the application protocol namespace and version;
+it does not name a separate blockchain. Human labels such as `localnet`,
+`devnet`, or `mainnet-beta` are display/configuration hints, not cryptographic
+deployment identifiers. Clients MUST compare the observed Solana genesis hash
+and configured program ID before reading or signing. Pre-migration `solana:`
+identifiers are invalid and MUST NOT be silently reinterpreted.
 
 ### Identity identifier
 
@@ -112,7 +114,7 @@ identifier.
 
 | Value | Encoding |
 | --- | --- |
-| Solana-compatible public key, PDA, signature, WokeNet genesis hash | Canonical base58; decoded length validated |
+| Solana public key, PDA, signature, and cluster genesis hash | Canonical base58; decoded length validated |
 | Digest in JSON | Multibase base64url without padding, prefixed with `u` |
 | Random nonce | 16 cryptographically random bytes, multibase base64url without padding |
 | Timestamp | UTC RFC 3339 with exactly millisecond precision: `YYYY-MM-DDTHH:mm:ss.sssZ` |
@@ -294,10 +296,10 @@ and is never an application origin.
 
 ## WokeNet program model
 
-The program uses WokeNet’s Solana-compatible account, PDA, SBF, and
-transaction model. Those terms describe wire compatibility; they do not
-identify a Solana-operated cluster. Native execution is restricted to
-Firedancer by [ADR-0009](DECISIONS/0009-sovereign-wokenet-firedancer.md).
+WokeNet is the WokeSocial Anchor program and associated portable protocol
+deployed to Solana. Solana defines the account, PDA, SBF, transaction, fee, and
+validator runtime. WokeNet is not a fork, validator, or separate ledger. See
+[ADR-0009](DECISIONS/0009-wokenet-on-solana.md).
 
 ### PDA derivation
 
@@ -329,16 +331,16 @@ unbounded seeds.
 | Reaction | `b"reaction"`, `reactor_identity_pda`, `post_reference_pda`, `reaction_code_u8` | Implemented | Reusable add/remove state for one of four closed v1 reaction codes |
 | Governance proposal | `b"proposal"`, `community_pda`, `proposal_manifest_sha256[32]` | Implemented | Immutable policy reference, eligible-member-count snapshot, bounded voting window, strategy/threshold snapshot, checked tallies, and terminal outcome |
 | Governance vote | `b"vote"`, `proposal_pda`, `voter_identity_pda` | Implemented | One immutable vote per eligible identity and proposal; no token or wealth input |
-| Payment configuration | `b"payment_config"` | Implemented | Paused-by-default native WOKE fee policy and rotatable authority |
-| Creator offering | `b"subscription_offering"`, `creator_identity_pda`, `offering_nonce[16]` | Implemented | Immutable weekly WOKE offering terms and recipient splits |
-| Payment receipt | `b"payment_receipt"`, `payer_identity_pda`, `receipt_nonce[16]` | Implemented | Permanent cross-kind replay barrier and settlement snapshot |
-| Entitlement | `b"subscription_entitlement"`, `offering_pda`, `beneficiary_identity_pda` | Implemented | Checked settlement-backed paid-through state |
+| Payment configuration | `b"payment_config"` | Legacy, quarantined | Paused-by-default lamport ABI; cannot execute or be unpaused |
+| Creator offering | `b"subscription_offering"`, `creator_identity_pda`, `offering_nonce[16]` | Legacy, quarantined | Historical weekly offering and split layout; not `$WOKE` |
+| Payment receipt | `b"payment_receipt"`, `payer_identity_pda`, `receipt_nonce[16]` | Legacy, quarantined | Historical replay/accounting layout; not deployable payment evidence |
+| Entitlement | `b"subscription_entitlement"`, `offering_pda`, `beneficiary_identity_pda` | Legacy, quarantined | Historical paid-through layout; cannot grant product access |
 
 The implemented derivations have deterministic domain tests and are exercised
 by the Anchor local-validator suite. The program uses the fixed development ID
 `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; no PDA in this table is evidence
-of a native Firedancer cluster, WokeNet test deployment, or production
-deployment. Planned rows remain seed designs until implemented and tested.
+of a devnet or mainnet-beta deployment. Planned rows remain seed designs until
+implemented and tested.
 
 ### Handle rules
 
@@ -375,7 +377,7 @@ only with a separately versioned normalization and confusable-defense design.
 | Communities | `create_community`, `update_community_governance`, `set_community_membership` | Implemented subset: creator-root or community-scoped delegation for membership, manifest/governance commitments, reusable member state, and closed role bits; stored roles do not yet grant authorization |
 | Reactions | `set_reaction`, `set_reaction_delegated` | Implemented: root variant remains stable; delegated variant requires exact identity, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; both enforce four closed reaction codes, target-post validation, tombstone rejection on add, reusable remove/re-add state, and checked sequences |
 | Governance proposals/votes | `create_proposal`, `cast_vote`, `finalize_proposal` | Implemented conservative subset: one active member/one immutable vote, full-digest proposal uniqueness, numeric eligibility snapshot, checked actor/membership/proposal/community sequences, bounded slots, fixed strategy-compatible quorum/approval, and permissionless one-time finalization |
-| Native WOKE payments | `initialize_payment_config`, `update_payment_config`, `rotate_payment_authority`, `create_subscription_offering`, `retire_subscription_offering`, `send_woke_tip`, `settle_subscription` | Implemented compatibility-harness subset: upgrade-authority bootstrap, explicit pause, direct current-root WOKE tips, immutable weekly offerings with 1–3 current-root recipients, permanent payer/nonce receipts, checked entitlement CAS, and one-week manual renewals |
+| Legacy payments (quarantined) | `initialize_payment_config`, `update_payment_config`, `rotate_payment_authority`, `create_subscription_offering`, `retire_subscription_offering`, `send_woke_tip`, `settle_subscription` | Historical lamport ABI with regression tests. It must remain paused, cannot execute or be unpaused, and is not `$WOKE`. A future asset requires a real mint and new mint-aware ABI |
 
 ### Delayed guardian recovery
 
@@ -578,11 +580,12 @@ count, manifest, authority, window, and checked creator/community/proposal
 sequences. `VoteCast` records the immutable choice, voter/membership/authority,
 checked sequences, and all post-vote counts. `ProposalFinalized` records the
 final counts, participating and decisive denominators, threshold results,
-terminal outcome, permissionless finalizer, sequence, and slot. Payment flows
-emit seven versioned events covering configuration/authority changes, offering
-lifecycle, native WOKE tip settlement, and weekly subscription settlement.
-Their projections retain raw finalized-event provenance and never independently
-assert current eligibility, execution success, or refund outcome.
+terminal outcome, permissionless finalizer, sequence, and slot. The quarantined
+legacy payment flows emit seven versioned events covering configuration,
+authority, offering, tip, and subscription transitions. Their projections
+retain raw finalized-event provenance for migration/regression purposes and
+must not assert a usable `$WOKE` asset, current paid access, or permission to
+execute the legacy ABI.
 Current names and layouts remain experimental until the wider cross-language
 conformance fixtures are stabilized.
 
@@ -616,10 +619,10 @@ conformance fixtures are stabilized.
 | Appeal | Encrypted operator/community record; optional receipt | Affected identity | Append-only decision trail | Retention policy; never expose sensitive evidence publicly |
 | Governance proposal | WokeNet root plus signed proposal body | Community creator root or current `community` delegation | Immutable terms; a different full manifest digest is a new proposal | No current cancel/close path; terminal record remains |
 | Governance vote | WokeNet vote state/event | Snapshot-eligible active member root or current `social`/`community` delegation | Immutable one-per-identity vote; replacement is not supported | Vote and finalized tally history retained |
-| Creator offering | Signed terms plus optional onchain commitment | `payment` delegation or root | New terms version; no retroactive rewrite | Retire offering; settled periods remain |
-| Subscription entitlement | Onchain settlement or independently verifiable receipt | Program-validated payer/recipient | Period-specific | Expiry/refund status; settlement history remains |
-| Tip receipt | WokeNet transaction/program event | Payer | Immutable | Cannot erase settlement; UI may hide subject to policy |
-| Event | Signed social-event manifest; paid ticket settlement may be onchain | `post`/community authority | Immutable revisions | Cancel/tombstone; payment/refund metadata retained |
+| Future creator offering | Signed terms plus an optional replacement-ABI commitment | Future approved `payment` delegation or root | New terms version; no retroactive rewrite | Retire offering; legacy offering records remain non-entitling |
+| Future subscription entitlement | Replacement-ABI settlement or independently verifiable approved receipt | Future program-validated payer/recipient | Period-specific | Expiry/refund status; legacy entitlement records never grant access |
+| Future tip receipt | Replacement WokeNet program event | Payer | Immutable | Cannot erase approved settlement; quarantined legacy events are regression data only |
+| Event | Signed social-event manifest; future paid-ticket settlement requires the approved mint-aware ABI | `post`/community authority | Immutable revisions | Cancel/tombstone; future payment/refund metadata retained |
 | Notification preference | Encrypted client/operator preference | User device/session | Mutable | Immediate local/provider purge |
 | Deletion tombstone | Signed object and, for anchored content, WokeNet PDA/event | Original author or defined community authority | Immutable; correction is a separate scoped assertion | Official clients/indexers suppress named targets |
 
@@ -822,8 +825,9 @@ A delegation records:
 - monotonically increasing delegation version.
 
 Delegations cannot create broader delegations unless a separately reviewed
-scope expressly allows it. `payment` and `recovery-admin` are never implied by
-another scope.
+scope expressly allows it. The reserved future `payment` scope and
+`recovery-admin` are never implied by another scope; the former cannot enable
+the quarantined ABI.
 
 ### Community authority
 
@@ -838,8 +842,9 @@ member/one vote; token balance is never a governance weight.
   into a PDA; governance proposals instead commit their full 32-byte manifest
   digest, making duplicate semantic proposal creation permanent and explicit.
 - Signed payload nonces prevent byte-identical accidental replay.
-- Payment instructions bind payer, exact recipient, mint, amount, offering,
-  period, fee policy, and a unique receipt nonce.
+- Future approved mint-aware payment instructions bind payer, exact token
+  program/mint/accounts, recipient, amount, offering, period, fee policy, and a
+  unique receipt nonce. The legacy ABI is rejected before transfer.
 - Message envelopes use a conversation/session-specific monotonic or
   cryptographically unique replay identifier defined by the selected audited
   messaging protocol.
@@ -996,43 +1001,83 @@ The client re-applies blocks, mutes, tombstones, and sensitive-content controls.
 It retains chronological and following-feed fallbacks and allows behavioral
 personalization to be disabled.
 
-## Payments
+### Current open-indexer convenience mapping
 
-Payment instructions and receipts MUST:
+This subsection describes the current implemented read subset; it does not
+replace the normative provider interface above or make an indexer response
+canonical protocol state.
+
+- `/v1/feed/home` remains a separate consumer-safe response for the configured
+  default network.
+- `/v1/feed` accepts an explicit network or resolves the operator-configured
+  default and fails closed when neither exists. Each successful response declares
+  `canonical: false`, projection provenance, recipe, checkpoint metadata, resolved
+  network, and a null or exact public viewer scope.
+- Chronological and following recipes return verified, public, non-tombstoned
+  projections. Following is a public graph filter, not authentication, ownership
+  proof, or authorization for nonpublic content.
+- Each bounded opaque cursor carries the finalized-time/object-ID ordering
+  position and is cryptographically scoped to the resolved network, recipe, and
+  exact following viewer. A cursor cannot be reused across those scopes, and
+  `nextCursor: null` is terminal.
+- The reference web client requests fixed-size chronological pages, validates
+  response size, shape, provenance, network/viewer scope, and cursor continuity,
+  and exposes following only as an explicitly unauthenticated public-graph
+  preview. It re-applies device-local exact-identity hiding.
+- Media-only posts preserve verified media references in the read model, but the
+  reference client does not yet fetch or play those references through a gateway.
+
+Authenticated following, recommendation-provider integration, cross-device
+safety, independent-provider conformance, public-cluster evidence, and complete
+offline caching remain outside this implemented subset.
+
+## Payments: quarantined legacy ABI and future replacement
+
+No `$WOKE` mint exists. SOL and lamports are not `$WOKE`.
+
+The portable signed-object asset schema is separate from executable program
+instructions. It accepts `{ kind: "sol" }` for SOL or exact SPL token metadata
+and rejects `{ kind: "woke" }`. This truthful metadata support does not create a
+mint, authorize the legacy ABI, or establish an entitlement.
+
+The checked-in payment account family and instructions are a legacy
+lamport-denominated ABI. They are quarantined: the policy MUST remain paused,
+the instructions MUST NOT execute or be unpaused, flagship clients MUST NOT
+expose them, and their receipts/entitlements MUST NOT grant paid product access.
+Tests of this ABI are historical regression evidence only.
+
+Any future mint-aware payment instructions and receipts MUST:
 
 - use integer base units and checked arithmetic;
-- distinguish native WOKE from token assets and name the exact decimals,
-  recipient account, splits, fees, offering, period, and refund-policy hash;
-- for any future token asset, name the exact mint and token program;
-- reject unconfigured SPL mints and token programs;
+- name the exact SPL or Token-2022 mint, token program, decimals, authorities,
+  recipient token accounts, splits, fees, offering, period, and refund-policy
+  hash;
+- reject every unconfigured mint, token program, extension, and token account;
 - derive or validate associated token accounts without recipient substitution;
 - bind a unique receipt nonce to prevent duplicate settlement;
 - compare simulation results to the transaction presented for signing;
 - wait for finalized state before granting durable entitlement;
-- never route funds through an application-controlled custodial hot wallet.
+- never route funds through an application-controlled custodial hot wallet;
+- use a new ABI/version and explicit migration boundary rather than re-enabling
+  the legacy instructions.
 
-WOKE is the native currency and therefore has no mint or token-contract
-address. Wire-compatible program and RPC fields retain the base-unit term
-`lamport`; `1 WOKE = 1,000,000,000 lamports`. WokeNet production payment
-support remains disabled until the native Firedancer, genesis, program, SDK,
-indexer, UI, security, economic, legal, and authority gates pass.
+### Quarantined legacy lamport ABI
 
-### Implemented native WOKE settlement subset
+The current program retains a deliberately narrow historical subset that used
+System Program lamport transfers for direct tips and one-week creator
+subscription accounting. It does not implement `$WOKE`, SPL/Token-2022
+transfers, delegated payment signing, linked-wallet payment sources, gifts,
+monthly or annual periods, automatic renewal, escrow, refund execution,
+receipt/account closing, paid communities, paid events, or deployable payment
+operation.
 
-The current program implements a deliberately narrow, noncustodial
-compatibility-harness subset. It supports direct WOKE tips and manually signed
-one-week creator subscription settlements using Solana-compatible native
-transfers. It does not support token assets, delegated payment
-signing, linked-wallet payment sources, gifts, monthly or annual periods,
-automatic renewal, escrow, refund execution, receipt/account closing, paid
-communities, paid events, or WokeNet production operation.
-
-`PaymentConfig` can be created only once by the deployed program's verified
-upgrade authority. The proposed payment policy authority also signs bootstrap,
-and the configuration starts disabled. Policy updates use an exact expected
-sequence, permit a maximum fee of 1,000 basis points, and explicitly bind the
-fee destination. Authority rotation requires both the current and replacement
-authorities to sign. The payment events are:
+The frozen historical design allowed `PaymentConfig` creation only once by the
+deployed program's verified upgrade authority, required the proposed payment
+policy authority to cosign bootstrap, and started disabled. It specified exact
+sequence updates, a maximum fee of 1,000 basis points, an explicit fee
+destination, and dual-signed authority rotation. The current quarantine rejects
+bootstrap, updates, rotation, execution, and unpause before any payment state or
+balance changes. The retained IDL events are:
 
 - `PaymentConfigInitialized`
 - `PaymentConfigUpdated`
@@ -1044,20 +1089,19 @@ authorities to sign. The payment events are:
 
 The four payment account domains are:
 
-| Account | PDA seeds after `["wokesocial", 1]` | Allocated bytes | Compatibility-validator rent-exempt minimum |
+| Account | PDA seeds after `["wokesocial", 1]` | Allocated bytes | Historical local-validator rent-exempt minimum |
 | --- | --- | ---: | ---: |
 | `PaymentConfig` | `["payment_config"]` | 133 | 1,816,560 lamports |
 | `CreatorSubscriptionOffering` | `["subscription_offering", creator_identity, offering_nonce]` | 622 | 5,220,000 lamports |
 | `PaymentReceipt` | `["payment_receipt", payer_identity, receipt_nonce]` | 457 | 4,071,600 lamports |
 | `SubscriptionEntitlement` | `["subscription_entitlement", offering, payer_identity]` | 210 | 2,352,480 lamports |
 
-The payment source must be the payer identity's current root authority and must
-be a system account. A tip recipient and every offering split must resolve to
-the recipient identity's current root system account. The source, fee
-destination, recipient identities, and recipient destinations are checked for
-the relevant alias and substitution cases. A creator root rotation deliberately
-stales every existing offering; the creator must publish new terms under the
-new root epoch. Retirement is terminal.
+The frozen legacy rules required the payment source to be the payer identity's
+current root authority and a system account. They required tip/offering
+destinations to resolve to recipient identity root system accounts and defined
+alias/substitution checks, root-epoch staleness, and terminal retirement. These
+rules survive only as historical layouts and regression constraints; the
+runtime rejects the ABI before transfer.
 
 Identity retirement does not implicitly release a handle, dissolve a
 community, or retire a subscription offering. Because those cleanup actions
@@ -1066,31 +1110,35 @@ deactivation. Otherwise the resources and identifiers remain reserved or
 frozen with their history intact; post-retirement cleanup requires a future,
 explicitly versioned protocol transition rather than an indexer inference.
 
-An offering is immutable after creation and commits its manifest hash and URI,
-price, weekly interval, refund-policy hash, maximum protocol fee, creator root
-epoch, and one to three canonically ordered recipient identity/destination
-splits totaling 10,000 basis points. Refund behavior is metadata only in this
-subset; no instruction can custody or return funds.
+The historical offering layout was immutable after creation and committed its
+manifest hash/URI, price, weekly interval, refund-policy hash, maximum protocol
+fee, creator root epoch, and one to three canonically ordered recipient
+identity/destination splits totaling 10,000 basis points. Refund behavior was
+metadata only; no current instruction can create the offering, custody, or
+return funds.
 
-Fees and split amounts are computed using checked `u128` intermediates. The fee
-is `floor(gross * fee_bps / 10_000)`. The remaining lamports use Hamilton
-largest-remainder allocation; ties use raw recipient identity public-key bytes.
-Every declared recipient must receive at least one lamport, and the program
-checks that fee plus recipients equals the exact gross amount before issuing
-direct System Program transfers.
+Historical fee/split regression logic uses checked `u128` intermediates. The
+recorded formula is `floor(gross * fee_bps / 10_000)` with Hamilton
+largest-remainder allocation and public-key-byte tie breaks. The current
+runtime rejects the legacy instruction before allocation or any System Program
+transfer.
 
-A `PaymentReceipt` is permanent. Its PDA namespace is shared by tip and
-subscription kinds, so reusing one payer identity and nonce across either kind
-is rejected. It snapshots policy, terms, payer root epoch, fee, allocation,
-refund commitment, and settlement time. The program exposes no close path.
+The historical `PaymentReceipt` layout was permanent and shared one PDA
+namespace across tip/subscription kinds. It specified snapshots of policy,
+terms, payer root epoch, fee, allocation, refund commitment, and time with no
+close path. The quarantined runtime creates no new payment receipt.
 
-`SubscriptionEntitlement` is keyed by offering and beneficiary identity. Each
-settlement binds the expected entitlement sequence, advances validity from
-`max(validator_time, prior_paid_through)` by exactly 604,800 seconds, increments
-the settlement count, and records the permanent receipt. Prepayment is bounded
-to 52 weeks from current validator time. Clients and indexers grant durable
-access only after their configured finalized-state policy and independently
-verify the receipt and entitlement relationship.
+The legacy `SubscriptionEntitlement` layout is keyed by offering and beneficiary
+identity. Its historical transition rules referenced an expected sequence,
+604,800-second periods, a settlement count, a receipt, and a 52-week prepayment
+bound. The quarantine prevents new transitions, and any retained historical
+record must not grant product access. A replacement mint-aware ABI must define
+new receipt and entitlement semantics.
+
+A future `$WOKE` implementation additionally requires a real mint record,
+reviewed mint/freeze authorities and extensions, distribution/tokenomics/legal
+review, updated SDK/indexer/UI behavior, devnet rehearsal, adversarial tests,
+independent audit, and explicit release approval.
 
 ## Privacy rules
 
@@ -1149,7 +1197,7 @@ families:
 | `CHAIN_*` | Simulation mismatch, blockhash expiry, finality rollback |
 | `STORAGE_*` | Provider unavailable, replication shortfall, permanent-consent missing |
 | `PRIVACY_*` | Forbidden public field, unsafe audience, plaintext private content |
-| `PAYMENT_*` | Mint/recipient mismatch, overflow, duplicate receipt |
+| `PAYMENT_*` | Legacy ABI disabled/unpause rejected; future mint/recipient/token-account mismatch, overflow, duplicate receipt |
 | `RATE_LIMIT_*` | Sponsor, relay, upload, or API limits |
 
 User interfaces translate these into actionable, nontechnical recovery states
@@ -1168,7 +1216,9 @@ golden vectors for:
 - every account and event version;
 - every object schema, revision chain, and tombstone;
 - content CID and media-digest verification;
-- payment rounding, overflow, wrong mint, wrong recipient, and duplicate receipt;
+- legacy execute/unpause rejection with unchanged state/balances, plus future
+  mint-aware rounding, overflow, wrong token program/mint/account/recipient, and
+  duplicate receipt;
 - indexer replay, duplicate event, fork rollback, corrupt manifest, and missing
   provider behavior;
 - unknown critical and noncritical extension handling.
@@ -1183,13 +1233,14 @@ fixtures independently in each test suite is insufficient.
 | Versioned machine-readable schemas | Implemented for the current TypeScript v1 registry | Strict Zod schemas and builders cover all 29 current portable object families; a checked-in Draft 2020-12 signed-envelope artifact is generated from that registry and fails CI on drift. Rust consumption and cross-language conformance remain incomplete |
 | Canonicalization library wrappers | Implemented for the current TypeScript object subset | RFC 8785/JCS wrapper tests cover deterministic bytes, NFC rejection, exact canonical-envelope decoding, and stable IDs |
 | Cross-language golden vectors | Not implemented | None |
-| Anchor program and IDL | Experimental compatibility implementation | Native SBF build generates an IDL and TypeScript type for 41 instructions, 33 events, and 19 account families under compatibility-harness program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; legacy, identity-deactivation, recovery, and native-WOKE payment discriminators are frozen by native tests |
-| Account-size and transaction-cost analysis | Implemented for the current compatibility subset | Native serialization tests assert all 19 account layouts. The real-validator harness enforces transaction-size, compute, balance-conservation, substitution, replay, recovery, governance, and payment bounds. These measurements are Solana-wire compatibility evidence, not native Firedancer performance evidence |
-| Local-validator tests | Experimental compatibility coverage | Real-validator flows cover root and delegated identity/social actions, handles, governance, delayed guardian recovery, native WOKE tips, weekly subscriptions, receipts, entitlements, substitution, replay, and exact balance deltas. The full cross-language, passkey/email product, native-Firedancer, and public-network matrix remains incomplete |
-| Native Firedancer runtime | Blocked | The exact official upstream commit and ordered downstream patch queue are reproducibly pinned. A bounded native `getProgramAccounts` subset has direct account-database/RPC C tests, explicit supported/unsupported request shapes, and hard resource ceilings, but it is not production-complete or connected-cluster conformance. `getSignaturesForAddress`, `getSignatureStatuses`, `getTransaction`, `sendTransaction`, and `simulateTransaction` remain unimplemented; full native Firedancer has no production release, and no Agave fallback is permitted |
-| SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus eight IDL-aligned instructions, including one-way identity deactivation and native-WOKE administration/settlement builders, exact plans, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict RPC simulation/status parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit WokeNet endpoint/genesis/program context; a complete generated account client, flagship wallet/passkey signer integration, executable-artifact attestation, finalized receipt/entitlement proof orchestration, wallet UX, and native Firedancer evidence remain absent |
+| Anchor program and IDL | Experimental local implementation | SBF build generates an IDL and TypeScript type for 41 instructions, 33 events, and 19 account families under development program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; legacy, identity-deactivation, recovery, and quarantined payment discriminators are frozen by tests |
+| Account-size and transaction-cost analysis | Implemented for the current local subset | Serialization tests assert all 19 account layouts. The local-validator harness enforces transaction-size, compute, balance-conservation, substitution, replay, recovery, governance, and legacy payment bounds. These measurements are local Solana evidence only |
+| Local-validator tests | Experimental local coverage | Flows cover root and delegated identity/social actions, handles, governance, delayed guardian recovery, and fail-closed legacy-payment quarantine including rejected bootstrap/execute/rotation/unpause with unchanged state and balances. No successful payment flow exists; the full cross-language, passkey/email product, future mint-aware, devnet, and mainnet-beta matrix remains incomplete |
+| Public Solana deployment | Not performed | No WokeNet program is recorded on devnet or mainnet-beta |
+| `$WOKE` mint and mint-aware ABI | Not implemented | No mint exists; the legacy lamport ABI cannot execute or be unpaused |
+| SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus eight IDL-aligned instructions, including one-way identity deactivation and quarantined legacy payment builders, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict Solana RPC parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit endpoint/genesis/program context. A complete generated client, flagship wallet/Mobile Wallet Adapter integration, executable-artifact attestation, replacement mint-aware ABI, and product wallet UX remain absent |
 | Storage adapters and local CID verification | Implemented subset | Memory/local CAS, multi-provider quorum, IPFS HTTP/Kubo, and Arweave-compatible permanent-storage adapters are tested; no funded live Arweave uploader is configured |
-| Rebuildable indexer | Experimental connected implementation | Finalized Solana-compatible RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2 commitment, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, non-gating tombstone metadata, suppression-aware destructive replay, read APIs, PostgreSQL durability, and sixteen ordered migrations are implemented. The current evidence is 185 unit cases across 20 files and 27 PostgreSQL cases across 11 files. Native Firedancer RPC, fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
+| Rebuildable indexer | Experimental connected implementation | Finalized Solana RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2 commitment, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, non-gating tombstone metadata, suppression-aware destructive replay, read APIs including the bounded noncanonical feed mapping, PostgreSQL durability, and sixteen ordered migrations are implemented. Fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Alternate-provider conformance | Partial | Storage quorum/failover and real-loopback multi-relay failover/reconnect/deduplication are tested; independent RPC/indexer/feed conformance remains absent |
 | Independent security review | Not performed | None |
 

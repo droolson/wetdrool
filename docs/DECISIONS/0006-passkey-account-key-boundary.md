@@ -25,8 +25,8 @@ The passkey-first path separates three authorities:
 
 1. The WebAuthn credential authenticates an account session to the selected
    relying-party service.
-2. A locally generated Ed25519 root or delegated seed signs WokeNet transactions
-   and portable protocol objects.
+2. A locally generated Ed25519 root or delegated seed signs Solana transactions
+   invoking the selected WokeNet program and signs portable protocol objects.
 3. A supported WebAuthn credential's 32-byte PRF output derives a wrapping key
    for that Ed25519 seed entirely in the client.
 
@@ -144,6 +144,6 @@ authentication service and flagship browser path additionally verify:
 7. bounded cleanup for provisional accounts, ceremonies, and sessions.
 
 Remaining gates are root export/recovery UX, reviewed non-PRF fallback behavior,
-local-validator identity creation and rotation using only the unwrapped client
-key, WokeNet delegation/device-authority integration, load/restore evidence,
-and independent review of the browser-to-protocol flow.
+Solana local-validator identity creation and rotation using only the unwrapped
+client key, WokeNet delegation/device-authority integration, load/restore
+evidence, and independent review of the browser-to-protocol flow.

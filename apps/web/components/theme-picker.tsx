@@ -36,6 +36,18 @@ function subscribeToTheme(onChange: () => void) {
   };
 }
 
+function subscribeToHydration() {
+  return () => undefined;
+}
+
+function getHydratedClientSnapshot() {
+  return true;
+}
+
+function getHydratedServerSnapshot() {
+  return false;
+}
+
 function applyTheme(theme: Theme) {
   if (theme === 'system') {
     delete document.documentElement.dataset.theme;
@@ -46,6 +58,11 @@ function applyTheme(theme: Theme) {
 
 export function ThemePicker() {
   const theme = useSyncExternalStore(subscribeToTheme, getClientTheme, getServerTheme);
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getHydratedClientSnapshot,
+    getHydratedServerSnapshot,
+  );
 
   useEffect(() => {
     applyTheme(theme);
@@ -61,6 +78,7 @@ export function ThemePicker() {
       {THEMES.map((item) => (
         <button
           aria-pressed={theme === item.value}
+          disabled={!hydrated}
           key={item.value}
           onClick={() => selectTheme(item.value)}
           type="button"

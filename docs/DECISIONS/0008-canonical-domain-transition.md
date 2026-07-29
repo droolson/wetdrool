@@ -7,8 +7,8 @@
 ## Context
 
 The canonical public domain changed from `sociallywoke.com` to `woke.social`
-before any native WokeNet public network, public account, or production
-WebAuthn deployment.
+before any public WokeNet program deployment on Solana, public account, or
+production WebAuthn deployment.
 The prior hostname appeared not only in web metadata but also in portable-object
 and relay cryptographic domain separators. Treating the two names as
 interchangeable would create ambiguous signatures, topics, cookies, and relying
@@ -34,10 +34,12 @@ hosts remain separate deployments and are never silently rewritten to the
 flagship origin.
 
 WokeSocial and WokeNet are prelaunch names, not old-brand exceptions frozen
-into the wire protocol. Platform and chain identifiers move in the same change:
+into the wire protocol. Platform and protocol identifiers move in the same
+change:
 
 - portable objects declare protocol `wokesocial`;
-- network identifiers use `wokenet:v1:<genesis-hash>:<program-id>`;
+- network identifiers use
+  `wokenet:v1:<solana-genesis-hash>:<program-id>`;
 - portable signed objects use `woke.social/protocol/signed-object`;
 - the v1 JSON Schema identifier is hosted below `https://woke.social/`;
 - relay topics use `woke.social/relay/topic/v1`; and

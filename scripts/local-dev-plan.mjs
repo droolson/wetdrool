@@ -23,12 +23,14 @@ const LOCAL_DEV_URL_VARIABLES = [
   'NEXT_PUBLIC_MEDIA_WORKER_URL',
   'NEXT_PUBLIC_MODERATION_SERVICE_URL',
   'NEXT_PUBLIC_RELAY_URL',
-  'NEXT_PUBLIC_WOKENET_RPC_URL',
+  'NEXT_PUBLIC_SOLANA_RPC_URL',
   'REDIS_URL',
   'RELAY_ALLOWED_ORIGINS',
-  'WOKENET_RPC_ENDPOINTS',
-  'WOKENET_RPC_URLS',
-  'WOKENET_WS_URLS',
+  'SOLANA_RPC_ENDPOINTS',
+  'SOLANA_RPC_URL',
+  'SOLANA_RPC_URLS',
+  'SOLANA_WS_URL',
+  'SOLANA_WS_URLS',
   'WOKESOCIAL_AUTH_URL',
   'WOKESOCIAL_CONTENT_GATEWAYS',
   'WOKESOCIAL_INDEXER_URL',
@@ -64,6 +66,12 @@ export function assertSafeLocalDevelopmentEnvironment(environment) {
   if (appEnvironment !== 'development' || nodeEnvironment !== 'development') {
     throw new Error(
       'The root local-development commands require APP_ENV=development and NODE_ENV=development.',
+    );
+  }
+  const solanaCluster = environment.NEXT_PUBLIC_SOLANA_CLUSTER ?? 'localnet';
+  if (solanaCluster !== 'localnet') {
+    throw new Error(
+      'NEXT_PUBLIC_SOLANA_CLUSTER must be localnet for the root local-development stack.',
     );
   }
 

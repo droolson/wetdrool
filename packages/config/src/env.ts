@@ -36,11 +36,11 @@ const base58PublicKey = z
 const optionalPublicKey = z.preprocess(emptyToUndefined, base58PublicKey.optional());
 const legacyRedirectHostnames = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
 const retiredNetworkEnvironmentKeys = new Map([
-  ['NEXT_PUBLIC_SOLANA_CLUSTER', 'NEXT_PUBLIC_WOKENET'],
-  ['NEXT_PUBLIC_SOLANA_RPC_URL', 'NEXT_PUBLIC_WOKENET_RPC_URL'],
-  ['SOLANA_COMMITMENT', 'WOKENET_COMMITMENT'],
-  ['SOLANA_RPC_URLS', 'WOKENET_RPC_URLS'],
-  ['SOLANA_WS_URLS', 'WOKENET_WS_URLS'],
+  ['NEXT_PUBLIC_WOKENET', 'NEXT_PUBLIC_SOLANA_CLUSTER'],
+  ['NEXT_PUBLIC_WOKENET_RPC_URL', 'NEXT_PUBLIC_SOLANA_RPC_URL'],
+  ['WOKENET_COMMITMENT', 'SOLANA_COMMITMENT'],
+  ['WOKENET_RPC_URLS', 'SOLANA_RPC_URLS'],
+  ['WOKENET_WS_URLS', 'SOLANA_WS_URLS'],
 ]);
 
 function normalizeDnsHostname(hostname: string): string {
@@ -144,8 +144,8 @@ export const publicEnvironmentSchema = z.object({
   NEXT_PUBLIC_RELAY_URL: credentialFreeProtocolUrl(['ws:', 'wss:']).default(
     'ws://localhost:4200/v1/relay',
   ),
-  NEXT_PUBLIC_WOKENET: z.enum(['localnet', 'public-test']).default('localnet'),
-  NEXT_PUBLIC_WOKENET_RPC_URL: credentialFreeProtocolUrl(['http:', 'https:']).default(
+  NEXT_PUBLIC_SOLANA_CLUSTER: z.enum(['localnet', 'devnet', 'mainnet-beta']).default('localnet'),
+  NEXT_PUBLIC_SOLANA_RPC_URL: credentialFreeProtocolUrl(['http:', 'https:']).default(
     'http://127.0.0.1:8899',
   ),
 });
@@ -183,9 +183,9 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
       'redis://:local-development-only@127.0.0.1:6379',
     ),
     SESSION_SECRET: optionalSecret,
-    WOKENET_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('finalized'),
-    WOKENET_RPC_URLS: urlList(['http://127.0.0.1:8899']),
-    WOKENET_WS_URLS: urlList(['ws://127.0.0.1:8900']),
+    SOLANA_COMMITMENT: z.enum(['processed', 'confirmed', 'finalized']).default('finalized'),
+    SOLANA_RPC_URLS: urlList(['http://127.0.0.1:8899']),
+    SOLANA_WS_URLS: urlList(['ws://127.0.0.1:8900']),
     SPONSOR_DAILY_LAMPORT_LIMIT: z.coerce.number().int().nonnegative().default(0),
     SPONSOR_ENABLED: booleanFromEnvironment(false),
     SPONSOR_SIGNER_URI: optionalString.refine(
@@ -295,19 +295,20 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
         });
       }
 
-      if (environment.NEXT_PUBLIC_WOKENET !== 'public-test') {
+      const expectedSolanaCluster =
+        environment.APP_ENV === 'production' ? 'mainnet-beta' : 'devnet';
+      if (environment.NEXT_PUBLIC_SOLANA_CLUSTER !== expectedSolanaCluster) {
         context.addIssue({
           code: 'custom',
-          message:
-            'must use the only currently activatable non-local network outside local development',
-          path: ['NEXT_PUBLIC_WOKENET'],
+          message: `must be ${expectedSolanaCluster} when APP_ENV is ${environment.APP_ENV}`,
+          path: ['NEXT_PUBLIC_SOLANA_CLUSTER'],
         });
       }
-      if (environment.WOKENET_COMMITMENT !== 'finalized') {
+      if (environment.SOLANA_COMMITMENT !== 'finalized') {
         context.addIssue({
           code: 'custom',
           message: 'must be finalized outside local development',
-          path: ['WOKENET_COMMITMENT'],
+          path: ['SOLANA_COMMITMENT'],
         });
       }
 
@@ -323,7 +324,7 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
           'https:',
         ],
         ['NEXT_PUBLIC_RELAY_URL', environment.NEXT_PUBLIC_RELAY_URL, 'wss:'],
-        ['NEXT_PUBLIC_WOKENET_RPC_URL', environment.NEXT_PUBLIC_WOKENET_RPC_URL, 'https:'],
+        ['NEXT_PUBLIC_SOLANA_RPC_URL', environment.NEXT_PUBLIC_SOLANA_RPC_URL, 'https:'],
       ] as const;
       for (const [path, value, requiredProtocol] of browserEndpoints) {
         const url = new URL(value);
@@ -339,11 +340,11 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
       const secureServerEndpoints = [
         ['IPFS_API_URL', environment.IPFS_API_URL, 'https:'],
         ['IPFS_GATEWAY_URL', environment.IPFS_GATEWAY_URL, 'https:'],
-        ...environment.WOKENET_RPC_URLS.map(
-          (value, index) => [`WOKENET_RPC_URLS.${String(index)}`, value, 'https:'] as const,
+        ...environment.SOLANA_RPC_URLS.map(
+          (value, index) => [`SOLANA_RPC_URLS.${String(index)}`, value, 'https:'] as const,
         ),
-        ...environment.WOKENET_WS_URLS.map(
-          (value, index) => [`WOKENET_WS_URLS.${String(index)}`, value, 'wss:'] as const,
+        ...environment.SOLANA_WS_URLS.map(
+          (value, index) => [`SOLANA_WS_URLS.${String(index)}`, value, 'wss:'] as const,
         ),
       ] as const;
       for (const [path, value, requiredProtocol] of secureServerEndpoints) {
@@ -439,17 +440,17 @@ export function summarizeEnvironment(environment: ServerEnvironment) {
     appEnvironment: environment.APP_ENV,
     appOrigin: environment.NEXT_PUBLIC_APP_ORIGIN,
     authServiceOrigin: new URL(environment.NEXT_PUBLIC_AUTH_SERVICE_URL).origin,
-    commitment: environment.WOKENET_COMMITMENT,
+    commitment: environment.SOLANA_COMMITMENT,
     feedServiceOrigin: new URL(environment.NEXT_PUBLIC_FEED_SERVICE_URL).origin,
     hasProgramId: environment.NEXT_PUBLIC_PROGRAM_ID !== undefined,
     indexerOrigin: `http://${environment.INDEXER_HOST}:${environment.INDEXER_PORT}`,
     ipfsGatewayOrigin: new URL(environment.IPFS_GATEWAY_URL).origin,
     mediaWorkerOrigin: new URL(environment.NEXT_PUBLIC_MEDIA_WORKER_URL).origin,
     moderationServiceOrigin: new URL(environment.NEXT_PUBLIC_MODERATION_SERVICE_URL).origin,
-    rpcProviderCount: environment.WOKENET_RPC_URLS.length,
+    rpcProviderCount: environment.SOLANA_RPC_URLS.length,
+    solanaCluster: environment.NEXT_PUBLIC_SOLANA_CLUSTER,
     sponsorEnabled: environment.SPONSOR_ENABLED,
     telemetryEnabled: environment.OTEL_EXPORTER_OTLP_ENDPOINT !== undefined,
-    websocketProviderCount: environment.WOKENET_WS_URLS.length,
-    wokeNet: environment.NEXT_PUBLIC_WOKENET,
+    websocketProviderCount: environment.SOLANA_WS_URLS.length,
   } as const;
 }

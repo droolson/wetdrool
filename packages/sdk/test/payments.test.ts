@@ -18,9 +18,9 @@ const feeDestination = 'YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mnyfaf';
 
 function validInput(): PaymentPlanInput {
   return {
-    asset: { kind: 'woke' },
+    asset: { kind: 'sol' },
     grossAmount: '101',
-    allowedAssets: [{ kind: 'woke' }],
+    allowedAssets: [{ kind: 'sol' }],
     protocolFee: { basisPoints: 250, destination: feeDestination },
     recipientSplits: [
       { recipient: identityB, destination: destinationB, basisPoints: 5_000 },
@@ -42,14 +42,14 @@ describe('payment planning', () => {
     expect(plan.transfers).toEqual([
       {
         kind: 'protocol-fee',
-        asset: { kind: 'woke' },
+        asset: { kind: 'sol' },
         destination: feeDestination,
         amount: '2',
         basisPoints: 250,
       },
       {
         kind: 'recipient',
-        asset: { kind: 'woke' },
+        asset: { kind: 'sol' },
         destination: destinationA,
         amount: '50',
         recipient: identityA,
@@ -57,7 +57,7 @@ describe('payment planning', () => {
       },
       {
         kind: 'recipient',
-        asset: { kind: 'woke' },
+        asset: { kind: 'sol' },
         destination: destinationB,
         amount: '49',
         recipient: identityB,
@@ -163,7 +163,7 @@ describe('payment planning', () => {
       destination: transfer.destination,
       amount: transfer.amount,
     }));
-    observed.push({ asset: { kind: 'woke' }, destination: destinationA, amount: '1' });
+    observed.push({ asset: { kind: 'sol' }, destination: destinationA, amount: '1' });
 
     try {
       assertPaymentSimulationMatches(plan, observed);

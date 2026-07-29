@@ -17,8 +17,9 @@ infrastructure.
 Use four explicit state classes:
 
 1. **Verifiable protocol state:** finalized Solana accounts/events for compact
-   authorization, public relationship, reference, tombstone, governance, and
-   settlement facts.
+   authorization, public relationship, reference, tombstone, and governance
+   facts and, only under a separately approved mint-aware ABI, future
+   payment-settlement facts.
 2. **Signed portable objects:** immutable profiles, posts, media manifests,
    policies, and label assertions whose signatures and hashes can be verified
    independently.
@@ -39,8 +40,10 @@ flowchart LR
 ```
 
 A convenience service may order, label, cache, transport, or transform data. It
-may not create an identity, alter a signed object, override a tombstone, or grant
-a settlement entitlement without the documented verifiable input.
+may not create an identity, alter a signed object, override a tombstone, or
+grant paid access. Legacy payment accounts and events are never entitlement
+evidence; only a future approved mint-aware receipt may support an entitlement
+under documented verification rules.
 
 Private state is authoritative only within its narrow relationship: for
 example, conversation participants determine message plaintext and an operator
@@ -83,5 +86,5 @@ truth.
 ## Verification
 
 This decision is not implemented until a clean indexer rebuild reproduces a
-tested local-validator vertical slice and the client passes tests against an
-alternate indexer/provider set.
+tested Solana local-validator vertical slice and the client passes tests
+against an alternate indexer/provider set.

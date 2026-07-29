@@ -8,7 +8,9 @@ use crate::{
     errors::SocialProtocolError,
     events::PaymentConfigUpdated,
     state::{PaymentConfig, ProtocolConfig},
-    validation::{checked_increment, validate_protocol_fee},
+    validation::{
+        checked_increment, validate_legacy_lamport_payment_policy, validate_protocol_fee,
+    },
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -46,6 +48,7 @@ pub fn handle_update_payment_config(
     ctx: Context<UpdatePaymentConfig>,
     args: UpdatePaymentConfigArgs,
 ) -> Result<()> {
+    validate_legacy_lamport_payment_policy(args.enabled)?;
     validate_protocol_fee(args.fee_bps)?;
     require_eq!(
         ctx.accounts.payment_config.policy_sequence,

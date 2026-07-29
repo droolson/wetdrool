@@ -67,7 +67,7 @@ describe('indexer runtime configuration', () => {
 
   it('uses a minimal indexer-only nonlocal dependency set', () => {
     const config = readIndexerConfig(nonlocalEnvironment('staging'));
-    expect(config.sync?.rpcUrls).toEqual(['https://rpc.wokenet.test']);
+    expect(config.sync?.rpcUrls).toEqual(['https://rpc.solana.test']);
     expect(config.allowedOrigins).toEqual(['https://woke.social']);
     expect(config).not.toHaveProperty('sessionSecret');
     expect(config).not.toHaveProperty('redisUrl');
@@ -79,8 +79,8 @@ describe('indexer runtime configuration', () => {
       { ALLOWED_ORIGINS: 'http://woke.social' },
       { ALLOWED_ORIGINS: 'https://app.localhost' },
       { ALLOWED_ORIGINS: 'https://127.0.0.5' },
-      { WOKENET_RPC_URLS: 'http://rpc.wokenet.test' },
-      { WOKENET_RPC_URLS: 'https://[::ffff:127.0.0.1]' },
+      { SOLANA_RPC_URLS: 'http://rpc.solana.test' },
+      { SOLANA_RPC_URLS: 'https://[::ffff:127.0.0.1]' },
       {
         DATABASE_URL:
           'postgresql://indexer_runtime:secret@127.0.0.1/wokesocial?sslmode=verify-full',
@@ -106,6 +106,23 @@ describe('indexer runtime configuration', () => {
     delete missingIdentity.INDEXER_NETWORK_ID;
     delete missingIdentity.NEXT_PUBLIC_PROGRAM_ID;
     expect(() => readIndexerConfig(missingIdentity)).toThrow(/are required in staging/u);
+  });
+
+  it.each([
+    ['WOKENET_COMMITMENT', 'SOLANA_COMMITMENT'],
+    ['WOKENET_RPC_URLS', 'SOLANA_RPC_URLS'],
+  ])('rejects retired %s instead of silently ignoring it', (retiredName, replacementName) => {
+    expect(() => readIndexerConfig({ [retiredName]: 'retired-value' })).toThrow(
+      new RegExp(`${retiredName}.*${replacementName}`, 's'),
+    );
+  });
+
+  it('keeps Solana RPC credentials out of runtime URLs', () => {
+    expect(() =>
+      readIndexerConfig({
+        SOLANA_RPC_URLS: 'https://operator:secret@rpc.solana.test',
+      }),
+    ).toThrow('SOLANA_RPC_URLS must not contain URL credentials');
   });
 
   it.each(['SESSION_SECRET', 'SPONSOR_SIGNER_URI'])(
@@ -275,6 +292,6 @@ function nonlocalEnvironment(appEnvironment: 'staging' | 'production') {
     INDEXER_NETWORK_ID: networkId,
     NEXT_PUBLIC_PROGRAM_ID: programId,
     NODE_ENV: 'production',
-    WOKENET_RPC_URLS: 'https://rpc.wokenet.test',
+    SOLANA_RPC_URLS: 'https://rpc.solana.test',
   };
 }

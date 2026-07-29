@@ -28,6 +28,7 @@ import type {
   DelegationProjection,
   FeedEntry,
   FeedQuery,
+  FeedSnapshot,
   FollowProjection,
   GovernanceProposalProjection,
   GovernanceVoteProjection,
@@ -1808,7 +1809,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           event.distributableLamports !== allocation.distributableLamports ||
           event.recipientLamports !== allocation.recipientAmounts[0]
         ) {
-          throw stale('WOKE tip receipt does not match indexed identities or payment policy.');
+          throw stale('Legacy tip receipt does not match indexed identities or payment policy.');
         }
         this.#paymentReceipts.set(receiptKey, {
           networkId: event.networkId,
@@ -2519,6 +2520,17 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
               : { kind: 'chronological' as const },
         };
       });
+  }
+
+  async getFeedSnapshot(query: FeedQuery): Promise<FeedSnapshot> {
+    // getFeed has no await points, so both reads are taken from one
+    // uninterrupted in-memory projection state.
+    const entries = this.getFeed(query);
+    const checkpoint = this.#checkpoints.get(query.networkId);
+    return {
+      checkpoint,
+      entries: await entries,
+    };
   }
 
   async clearProjection(networkId: string): Promise<void> {

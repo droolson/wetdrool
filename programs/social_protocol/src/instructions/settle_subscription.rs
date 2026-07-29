@@ -13,9 +13,10 @@ use crate::{
         ProtocolConfig, SubscriptionEntitlement, SubscriptionInterval,
     },
     validation::{
-        calculate_native_payment_allocation, calculate_subscription_window, checked_increment,
-        validate_payment_aliases, validate_payment_config_snapshot, validate_payment_nonce,
-        validate_payment_source, validate_subscription_splits,
+        calculate_legacy_lamport_payment_allocation, calculate_subscription_window,
+        checked_increment, validate_legacy_lamport_payment_execution, validate_payment_aliases,
+        validate_payment_config_snapshot, validate_payment_nonce, validate_payment_source,
+        validate_subscription_splits,
     },
 };
 
@@ -151,6 +152,7 @@ pub fn handle_settle_subscription(
     ctx: Context<SettleSubscription>,
     args: SettleSubscriptionArgs,
 ) -> Result<()> {
+    validate_legacy_lamport_payment_execution()?;
     validate_payment_nonce(&args.receipt_nonce)?;
     require!(
         ctx.accounts.receipt.version == 0,
@@ -231,7 +233,7 @@ pub fn handle_settle_subscription(
         ctx.accounts.fee_destination.key(),
         &recipient_splits,
     )?;
-    let allocation = calculate_native_payment_allocation(
+    let allocation = calculate_legacy_lamport_payment_allocation(
         ctx.accounts.offering.price_lamports,
         ctx.accounts.payment_config.fee_bps,
         &recipient_splits,

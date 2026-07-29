@@ -1,19 +1,17 @@
 # WokeSocial Privacy and Data Lifecycle
 
 **Status:** Planning baseline requiring qualified legal review  
-**Last updated:** 2026-07-28
+**Last updated:** 2026-07-29
 
 ## 1. Scope and status
 
 This document specifies privacy requirements for the protocol, flagship client, operated services, and local development environment. It is technical implementation support, not legal advice or a claim of GDPR, CCPA, COPPA, or other regulatory compliance.
 
-The sovereign runtime is WokeNet, a protocol forked from Solana. Native
-validator and RPC operation is Firedancer only and remains **Experimental**;
-the Agave/Solana local harness is compatibility-oracle evidence, not native or
-production evidence, and production activation remains blocked. The native
-asset is WOKE with 9 decimals. `lamports` may remain only as the
-Solana-compatible wire/base-unit identifier
-(`1 WOKE = 1,000,000,000 lamports`). The canonical public origin is
+WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+Solana. Solana validators and RPC providers are external dependencies. Local
+validator evidence is not devnet/mainnet-beta or production evidence. No
+`$WOKE` mint exists, and the legacy lamport-denominated payment ABI is
+quarantined and never grants paid access. The canonical public origin is
 `https://woke.social`; `sociallywoke.com` is redirect-only and must not receive
 application data, authentication cookies, recovery links, or an independent
 identity namespace.
@@ -26,7 +24,10 @@ and signing seeds client-side, synchronizes only encrypted key wrappers,
 implements delayed guardian recovery without email/PII onchain, and provides an
 experimental pairwise encryption adapter with no server plaintext path. The
 media worker strips metadata in managed profiles, publishes unsigned output,
-and minimizes scanner evidence. Local analytics remain disabled.
+and minimizes scanner evidence. A non-release Seeker Android foundation exists,
+but production permissions, wallet handoff, device storage, telemetry,
+signed-APK, update, and distribution privacy evidence remains open. Local
+analytics remain disabled.
 These narrow technical choices are not privacy-law compliance evidence.
 Production operators must publish their actual purposes, providers,
 jurisdictions, retention periods, contacts, and lawful bases after qualified
@@ -64,9 +65,9 @@ Combining public fields can still create sensitive inferences. Indexers and clie
 
 ## 4. Data forbidden onchain
 
-The following must never be placed in WokeNet accounts, instructions,
-transaction memos, or public program events. Solana-format compatibility
-fixtures must enforce the same prohibition:
+The following must never be placed in WokeNet accounts, Solana instructions,
+transaction memos, or public program events. Program and client fixtures must
+enforce the same prohibition:
 
 - Email addresses
 - Phone numbers
@@ -199,9 +200,9 @@ the person to public search or discovery.
   receives PRF output or a plaintext Ed25519 seed.
 - Service-account IDs and credential metadata remain pseudonymous personal data
   subject to bounded retention, access control, export, and deletion policy.
-- Any embedded WokeNet signing-key design must document custody,
-  extraction resistance, backup, recovery, and device compromise. Agave/Solana
-  compatibility tooling must never become a production custodian.
+- Any embedded WokeNet signing-key design must document custody, extraction
+  resistance, backup, recovery, and device compromise. The flagship web/mobile
+  clients and Solana tooling must never become an undisclosed custodian.
 - Delegated session keys are device-bound, least-privileged, expiring, and revocable.
 - Private keys and secrets never enter logs, analytics, crash reports, support tools, or ordinary database columns.
 - Connected-device views show creation, last use at a suitably coarse level, scope, and revocation state.
@@ -292,6 +293,30 @@ Structured logging and OpenTelemetry-compatible instrumentation must:
 - Prevent error tracking from automatically attaching DOM content or form values.
 - Include automated redaction tests.
 
+### 8.4 Seeker Android and Mobile Wallet Adapter
+
+The non-release Android foundation uses Mobile Wallet Adapter so the selected
+wallet, not WokeSocial, retains private keys. A production data map must cover:
+
+- requested Android permissions and why each is necessary;
+- MWA intents, deep links, callbacks, wallet package, selected public account,
+  authorization/session metadata, cluster, and transaction summary;
+- device-local preferences, signed content, encrypted key/message state,
+  notification tokens, caches, backups, and deletion behavior;
+- clipboard, screenshots, app-switcher previews, crash reports, logs, and
+  diagnostics;
+- device/model identifiers, including the spoofable Seeker presentation hint,
+  which must not become an entitlement or protected-trait proxy; and
+- app-store/direct-distribution telemetry, install/update identifiers, regions,
+  retention, consent, and deletion paths.
+
+Seeds, private keys, wallet authorization secrets, message plaintext, recovery
+material, moderation evidence, and full signed transaction payloads are
+forbidden from analytics and ordinary logs. The app must request minimum
+permissions, exclude sensitive state from backup where appropriate, use
+platform secure storage for approved secrets, revalidate wallet callbacks, and
+offer usable local-data deletion.
+
 ## 9. Data inventory and default retention requirements
 
 The values below are planned privacy-protective defaults, not a legal determination. Production deviations require a documented purpose, approved review, and updated user notice.
@@ -310,6 +335,8 @@ The values below are planned privacy-protective defaults, not a legal determinat
 | Consented product analytics | 90 days at event level by default | Aggregate or delete; consent revocation request supported |
 | Recovery email | While recovery is enabled | Delete after removal plus a short documented safety delay |
 | Local drafts | Until user deletes or configured local expiry | Immediate local deletion and cache purge |
+| Android wallet/account and MWA session metadata | Minimum needed for the active connection/session | Clear on disconnect, expiry, account/network mismatch, or app-data deletion; never store wallet private keys |
+| Android notification token and crash/diagnostic data | Only after purpose disclosure and applicable consent | Rotate/delete on logout, revocation, consent withdrawal, or bounded retention expiry |
 | Moderation report | Through decision and appeal window | Default 365 days after closure, then delete or de-identify |
 | Restricted child-safety/legal evidence | Jurisdiction-specific | Separate reviewed schedule and legal hold controls |
 | Backups of replaceable projections | 30 days by default | Rotation; tombstones replayed before restore becomes active |
@@ -327,8 +354,9 @@ Before publication, the user sees:
 - Whether the provider is deletion-compatible or intentionally permanent
 - Public metadata such as timestamp, language, replies, content warnings, and accessibility fields
 - Onchain action and fee or sponsorship
-- Native WOKE amount where applicable, shown with fixed 9-decimal semantics;
-  interfaces may expose `lamports` only as a clearly labeled technical base unit
+- SOL network fee or future approved mint-aware asset metadata where
+  applicable; SOL/lamports must never be labeled `$WOKE`, and the quarantined
+  payment ABI must never produce a signing prompt
 - Edit and deletion limitations
 
 Audience controls are signed into the appropriate manifest. A visual-only audience control that uploads plaintext publicly is forbidden.
@@ -345,7 +373,9 @@ Stories default to deletion-compatible storage with an explicit expiry. Official
 - Event creators choose public, approximate, attendee-only encrypted, or external-location disclosure.
 - Location previews show the audience before publication.
 - Image location metadata is stripped by default.
-- Attendance and paid-ticket records are not presented as private if protocol or payment records expose them.
+- Future paid-ticket records are not presented as private if a separately
+  approved mint-aware protocol/payment design exposes them. No current
+  `$WOKE` ticket path exists.
 
 ### 11.3 Media processing
 
@@ -385,16 +415,19 @@ only after retirement: it is historical retention, not a current discoverable
 profile. A complete user-facing retirement interface is still absent. Clients
 must never present protocol identity deactivation as reversible or as proof
 that replicated content was deleted. V1 retirement also does not release a
-handle or retire communities and subscription offerings: cleanup that requires
-an active identity must happen first, otherwise those resources remain
-reserved/frozen pending a future protocol lifecycle.
+  handle or retire communities and legacy subscription-offering records:
+  cleanup that requires an active identity must happen first, otherwise those
+  non-entitling records remain reserved/frozen pending a future protocol
+  lifecycle.
 
 ### 12.2 Account deletion flow
 
 **PRIV-DEL-001 — Planned.** The deletion flow must:
 
 1. Authenticate with a current trusted method.
-2. Preview affected identities, devices, keys, content, communities, subscriptions, drafts, and provider copies.
+2. Preview affected identities, devices, keys, content, communities, future
+   approved subscriptions, legacy non-entitling records, drafts, and provider
+   copies.
 3. Distinguish reversible profile suppression, one-way protocol identity
    deactivation, and deletion.
 4. Cancel active delegated keys and sessions.
@@ -411,8 +444,8 @@ reserved/frozen pending a future protocol lifecycle.
 
 The product must state plainly that deletion cannot guarantee removal from:
 
-- WokeNet transaction history, account history, archives, or explorers,
-  including copies exported through Solana-compatible tooling
+- Solana transaction/account history containing WokeNet program activity,
+  archives, explorers, or copies exported through Solana tooling
 - Arweave or another intentionally permanent store
 - IPFS nodes or gateways outside operator control
 - Independent indexers, relays, clients, scrapers, or archives
@@ -444,7 +477,8 @@ Restoring an indexer or cache from backup must replay tombstones and revocations
 - Message ciphertext and locally available plaintext only after strong reauthentication
 - Provider configuration
 - Moderation actions and appeals involving the person, with third-party data minimized
-- Creator transaction and entitlement records
+- Future approved mint-aware creator transaction and entitlement records, plus
+  separately labeled legacy non-entitling regression records where retained
 
 The export is versioned, machine-readable, documented, and integrity-verifiable. It does not expose another person’s private information merely because they interacted with the exporter.
 
@@ -513,9 +547,9 @@ The privacy model remains **Planned** until all applicable checks pass.
 
 ### 18.1 Automated acceptance criteria
 
-- **PRIV-TST-001:** Forbidden personal-data fixtures are rejected before WokeNet
-  transaction construction in both native Firedancer and explicitly
-  labeled Solana-format compatibility paths.
+- **PRIV-TST-001:** Forbidden personal-data fixtures are rejected before Solana
+  transaction construction for WokeNet across local-validator, devnet, and
+  mainnet-beta configurations.
 - **PRIV-TST-002:** Logs, traces, analytics, and error reports contain no seeded secrets, emails, message plaintext, or private profile fields.
 - **PRIV-TST-003:** Pronoun and identity-attribute schemas reject protected
   plaintext and unencrypted references; public indexer projections retain only
@@ -532,6 +566,12 @@ The privacy model remains **Planned** until all applicable checks pass.
 - **PRIV-TST-013:** Message-report preview and submission contain exactly the selected evidence.
 - **PRIV-TST-014:** Retention jobs expire presence, envelopes, logs, analytics, and backups according to configuration.
 - **PRIV-TST-015:** Media metadata stripping removes seeded private location fields.
+- **PRIV-TST-016:** Android permissions, backup, clipboard, screenshots,
+  app-switcher previews, logs, telemetry, and crash reports do not expose seeded
+  wallet, recovery, message, or moderation secrets.
+- **PRIV-TST-017:** MWA connection, cancellation, timeout, account/network
+  switching, callback mutation, disconnect, background/resume, and app-data
+  deletion honor the documented inventory and retention rules.
 
 ### 18.2 Reproducible manual acceptance
 
@@ -543,6 +583,9 @@ The privacy model remains **Planned** until all applicable checks pass.
 - A person can export and migrate their identity without a proprietary API.
 - A privacy reviewer can trace each service-private data class to purpose, storage, access, retention, and deletion.
 - A keyboard-only user can manage consent, export, deactivation, and deletion.
+- A TalkBack and large-font Android user can understand wallet handoff,
+  transaction intent, privacy choices, disconnect, and local-data deletion on
+  the approved device matrix.
 
 ## 19. External review and launch blockers
 

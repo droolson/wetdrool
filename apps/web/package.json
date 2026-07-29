@@ -17,6 +17,8 @@
   "dependencies": {
     "@noble/curves": "2.2.0",
     "@wokesocial/crypto": "workspace:*",
+    "@wokesocial/indexer-client": "workspace:*",
+    "@wokesocial/protocol": "workspace:*",
     "@wokesocial/ui": "workspace:*",
     "next": "16.2.12",
     "react": "19.2.8",

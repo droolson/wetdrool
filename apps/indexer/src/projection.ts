@@ -5,6 +5,7 @@ import type {
   DelegationProjection,
   FeedEntry,
   FeedQuery,
+  FeedSnapshot,
   GovernanceProposalProjection,
   GovernanceVoteProjection,
   HandleProjection,
@@ -136,6 +137,7 @@ export interface ProjectionStore {
   ): Promise<SubscriptionEntitlementProjection | undefined>;
   searchPublic(query: PublicSearchQuery): Promise<PublicSearchSnapshot>;
   getFeed(query: FeedQuery): Promise<readonly FeedEntry[]>;
+  getFeedSnapshot(query: FeedQuery): Promise<FeedSnapshot>;
   clearProjection(networkId: string): Promise<void>;
   checkpoint(networkId: string): Promise<bigint | undefined>;
   close(): Promise<void>;

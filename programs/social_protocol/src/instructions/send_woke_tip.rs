@@ -9,9 +9,9 @@ use crate::{
     events::WokeTipSettled,
     state::{Identity, PaymentConfig, PaymentKind, PaymentReceipt, PaymentSplit, ProtocolConfig},
     validation::{
-        calculate_native_payment_allocation, validate_payment_aliases,
-        validate_payment_config_snapshot, validate_payment_identity, validate_payment_nonce,
-        validate_payment_source,
+        calculate_legacy_lamport_payment_allocation, validate_legacy_lamport_payment_execution,
+        validate_payment_aliases, validate_payment_config_snapshot, validate_payment_identity,
+        validate_payment_nonce, validate_payment_source,
     },
 };
 
@@ -107,6 +107,7 @@ pub struct SendWokeTip<'info> {
 }
 
 pub fn handle_send_woke_tip(ctx: Context<SendWokeTip>, args: SendWokeTipArgs) -> Result<()> {
+    validate_legacy_lamport_payment_execution()?;
     validate_payment_nonce(&args.receipt_nonce)?;
     require!(
         ctx.accounts.receipt.version == 0,
@@ -157,7 +158,7 @@ pub fn handle_send_woke_tip(ctx: Context<SendWokeTip>, args: SendWokeTipArgs) ->
         ctx.accounts.fee_destination.key(),
         &[split],
     )?;
-    let allocation = calculate_native_payment_allocation(
+    let allocation = calculate_legacy_lamport_payment_allocation(
         args.gross_lamports,
         ctx.accounts.payment_config.fee_bps,
         &[split],

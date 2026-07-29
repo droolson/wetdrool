@@ -39,14 +39,14 @@ const productionEnvironment = {
   NEXT_PUBLIC_MODERATION_SERVICE_URL: 'https://moderation.woke.social',
   NEXT_PUBLIC_PROGRAM_ID: '11111111111111111111111111111111',
   NEXT_PUBLIC_RELAY_URL: 'wss://relay.woke.social/v1/relay',
-  NEXT_PUBLIC_WOKENET: 'public-test',
-  NEXT_PUBLIC_WOKENET_RPC_URL: 'https://rpc.woke.social',
+  NEXT_PUBLIC_SOLANA_CLUSTER: 'mainnet-beta',
+  NEXT_PUBLIC_SOLANA_RPC_URL: 'https://rpc.woke.social',
   NODE_ENV: 'production',
   REDIS_URL: 'rediss://cache:secret@redis.woke.social',
   SESSION_SECRET: 'a-production-session-secret-with-32-characters',
-  WOKENET_COMMITMENT: 'finalized',
-  WOKENET_RPC_URLS: 'https://rpc.woke.social',
-  WOKENET_WS_URLS: 'wss://rpc.woke.social',
+  SOLANA_COMMITMENT: 'finalized',
+  SOLANA_RPC_URLS: 'https://rpc.woke.social',
+  SOLANA_WS_URLS: 'wss://rpc.woke.social',
 } as const;
 
 const stagingEnvironment = {
@@ -56,6 +56,7 @@ const stagingEnvironment = {
     'postgresql://migration:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
   DATABASE_URL:
     'postgresql://application:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
+  NEXT_PUBLIC_SOLANA_CLUSTER: 'devnet',
 } as const;
 
 describe('environment configuration', () => {
@@ -69,8 +70,8 @@ describe('environment configuration', () => {
     expect(environment.NEXT_PUBLIC_MEDIA_WORKER_URL).toBe('http://localhost:4500');
     expect(environment.NEXT_PUBLIC_MODERATION_SERVICE_URL).toBe('http://localhost:4400');
     expect(environment.NEXT_PUBLIC_RELAY_URL).toBe('ws://localhost:4200/v1/relay');
-    expect(environment.NEXT_PUBLIC_WOKENET).toBe('localnet');
-    expect(environment.WOKENET_COMMITMENT).toBe('finalized');
+    expect(environment.NEXT_PUBLIC_SOLANA_CLUSTER).toBe('localnet');
+    expect(environment.SOLANA_COMMITMENT).toBe('finalized');
     expect(environment.SPONSOR_ENABLED).toBe(false);
     expect(summarizeEnvironment(environment)).toMatchObject({
       rpcProviderCount: 1,
@@ -109,16 +110,16 @@ describe('environment configuration', () => {
   it('parses explicit provider lists and enabled sponsorship', () => {
     const environment = parseServerEnvironment({
       ALLOWED_ORIGINS: 'https://woke.social, https://app.woke.social',
-      WOKENET_RPC_URLS: 'https://rpc-one.example,https://rpc-two.example',
-      WOKENET_WS_URLS: 'wss://rpc-one.example,wss://rpc-two.example',
+      SOLANA_RPC_URLS: 'https://rpc-one.example,https://rpc-two.example',
+      SOLANA_WS_URLS: 'wss://rpc-one.example,wss://rpc-two.example',
       SPONSOR_DAILY_LAMPORT_LIMIT: '1000000',
       SPONSOR_ENABLED: '1',
       SPONSOR_SIGNER_URI: 'kms://development/sponsor',
     });
 
     expect(environment.ALLOWED_ORIGINS).toHaveLength(2);
-    expect(environment.WOKENET_RPC_URLS).toHaveLength(2);
-    expect(environment.WOKENET_WS_URLS).toHaveLength(2);
+    expect(environment.SOLANA_RPC_URLS).toHaveLength(2);
+    expect(environment.SOLANA_WS_URLS).toHaveLength(2);
     expect(environment.SPONSOR_ENABLED).toBe(true);
   });
 
@@ -132,7 +133,7 @@ describe('environment configuration', () => {
     );
     expect(() =>
       parsePublicEnvironment({
-        NEXT_PUBLIC_WOKENET_RPC_URL: 'https://user:password@rpc.example',
+        NEXT_PUBLIC_SOLANA_RPC_URL: 'https://user:password@rpc.example',
       }),
     ).toThrow(/must not include credentials/);
     expect(() =>
@@ -172,11 +173,11 @@ describe('environment configuration', () => {
   });
 
   it.each([
-    ['NEXT_PUBLIC_SOLANA_CLUSTER', 'NEXT_PUBLIC_WOKENET'],
-    ['NEXT_PUBLIC_SOLANA_RPC_URL', 'NEXT_PUBLIC_WOKENET_RPC_URL'],
-    ['SOLANA_COMMITMENT', 'WOKENET_COMMITMENT'],
-    ['SOLANA_RPC_URLS', 'WOKENET_RPC_URLS'],
-    ['SOLANA_WS_URLS', 'WOKENET_WS_URLS'],
+    ['NEXT_PUBLIC_WOKENET', 'NEXT_PUBLIC_SOLANA_CLUSTER'],
+    ['NEXT_PUBLIC_WOKENET_RPC_URL', 'NEXT_PUBLIC_SOLANA_RPC_URL'],
+    ['WOKENET_COMMITMENT', 'SOLANA_COMMITMENT'],
+    ['WOKENET_RPC_URLS', 'SOLANA_RPC_URLS'],
+    ['WOKENET_WS_URLS', 'SOLANA_WS_URLS'],
   ])('rejects retired %s instead of silently ignoring it', (retiredKey, replacementKey) => {
     expect(() => parseServerEnvironment({ [retiredKey]: 'retired-value' })).toThrow(
       new RegExp(`${retiredKey}.*${replacementKey}`, 's'),
@@ -188,7 +189,7 @@ describe('environment configuration', () => {
 
     expect(environment.APP_ENV).toBe('production');
     expect(environment.NODE_ENV).toBe('production');
-    expect(environment.NEXT_PUBLIC_WOKENET).toBe('public-test');
+    expect(environment.NEXT_PUBLIC_SOLANA_CLUSTER).toBe('mainnet-beta');
   });
 
   it.each(['DATABASE_URL', 'DATABASE_MIGRATION_URL'] as const)(
@@ -273,7 +274,7 @@ describe('environment configuration', () => {
     expect(() =>
       parseServerEnvironment({
         ...stagingEnvironment,
-        WOKENET_RPC_URLS: 'http://rpc.staging.woke.social',
+        SOLANA_RPC_URLS: 'http://rpc.staging.woke.social',
       }),
     ).toThrow(/non-local HTTPS endpoint/u);
   });
@@ -299,10 +300,10 @@ describe('environment configuration', () => {
         { NEXT_PUBLIC_MEDIA_WORKER_URL: `https://${hostname}` },
         { NEXT_PUBLIC_MODERATION_SERVICE_URL: `https://${hostname}` },
         { NEXT_PUBLIC_RELAY_URL: `wss://${hostname}/v1/relay` },
-        { NEXT_PUBLIC_WOKENET_RPC_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_SOLANA_RPC_URL: `https://${hostname}` },
         { REDIS_URL: `rediss://cache:secret@${hostname}` },
-        { WOKENET_RPC_URLS: `https://${hostname}` },
-        { WOKENET_WS_URLS: `wss://${hostname}` },
+        { SOLANA_RPC_URLS: `https://${hostname}` },
+        { SOLANA_WS_URLS: `wss://${hostname}` },
       ];
       for (const override of endpointOverrides) {
         expect(() =>
@@ -315,12 +316,12 @@ describe('environment configuration', () => {
     },
   );
 
-  it('keeps the production WokeNet selector disabled pending activation', () => {
+  it('accepts only explicit Solana cluster names', () => {
     expect(() =>
       parsePublicEnvironment({
-        NEXT_PUBLIC_WOKENET: 'production',
+        NEXT_PUBLIC_SOLANA_CLUSTER: 'production',
       }),
-    ).toThrow(/localnet.*public-test/);
+    ).toThrow(/localnet.*devnet.*mainnet-beta/);
   });
 
   it('rejects local production origins and file-based production sponsor keys', () => {
@@ -351,14 +352,14 @@ describe('environment configuration', () => {
     expect(() =>
       parseServerEnvironment({
         ...productionEnvironment,
-        NEXT_PUBLIC_WOKENET: 'localnet',
+        NEXT_PUBLIC_SOLANA_CLUSTER: 'localnet',
       }),
-    ).toThrow(/only currently activatable non-local network/u);
+    ).toThrow(/must be mainnet-beta/u);
     expect(() =>
       parseServerEnvironment({
         ...productionEnvironment,
         NEXT_PUBLIC_AUTH_SERVICE_URL: 'http://localhost:4300',
-        WOKENET_RPC_URLS: 'http://127.0.0.1:8899',
+        SOLANA_RPC_URLS: 'http://127.0.0.1:8899',
       }),
     ).toThrow(/non-local HTTPS endpoint/u);
     expect(() =>

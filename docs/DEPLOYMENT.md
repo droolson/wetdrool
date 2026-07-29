@@ -1,199 +1,151 @@
 # Deployment
 
-Last reviewed: 2026-07-28
+Last reviewed: 2026-07-29
 
 ## Document status
 
-This document specifies the intended provider-neutral deployment model. The
-local development foundation exists and has been tested: an environment
-template, digest-pinned PostgreSQL/Redis/Kubo Compose stack, project-local pinned
-chain toolchains, PostgreSQL migrations, Next.js and service applications, an
-experimental WokeNet social program, a reproducibly pinned native
-Firedancer downstream, hardened OCI builds, a private patched ClamAV profile,
-and CI workflows are present.
+This document defines the provider-neutral deployment contract for WokeSocial
+and WokeNet.
 
-Everything beyond the explicitly verified local procedures remains **Planned**.
-There is no native Firedancer cluster, public WokeNet test network, staging
-network, production genesis, production service, DNS, TLS, backup,
-artifact-promotion, or provider deployment.
+WokeSocial is the web and Android product plus its replaceable services.
+WokeNet is the protocol and Anchor-program deployment layer on Solana. This
+repository does not operate a separate blockchain, validator set, or RPC
+network.
 
-### Verified local deployment evidence
+The verified boundary is local development:
 
-- `pnpm setup` installs checksum-verified Rust 1.89.0, Anchor 0.32.1, and Agave
-  2.3.0 below the ignored `.local/toolchains` directory. Agave is used only by
-  the Solana-wire compatibility harness; it is not WokeNet runtime
-  software.
-- `pnpm test:programs` builds the Anchor program to native SBF and runs it on a
-  fresh compatibility validator using development program ID
-  `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`.
-- `pnpm wokenet:check` verifies the fail-closed native-Firedancer source,
-  exact patch-queue checksums, parsed TOML/genesis allocation, currency,
-  native-only build declarations, and RPC capability policy.
-- `pnpm wokenet:materialize -- /absolute/path` has been exercised against
-  the exact pinned official Firedancer commit and exact checked patch-queue
-  diff. The manual Linux workflow additionally clones a disposable tracked
-  checkout, reapplies only the pinned patch queue, clones and rebuilds OpenSSL
-  at its separately pinned commit, and performs a clean isolated build owned by
-  the attestation command. It runs the actual genesis/RPC test executables,
-  parses the localnet TOML through that freshly built native validator, verifies
-  native topology, ELF target/symbols, and the source-locked downstream
-  marker/version/commit from both executables, then records dependency,
-  toolchain, and distinct binary hashes and removes the complete temporary
-  checkout. A native build and cluster have not been verified on this macOS
-  host.
-- PostgreSQL and Kubo container integration tests pass. These tests do not
-  establish production backup, restore, performance, or provider readiness.
-- The web production build and implemented browser/accessibility suites pass.
-  No production artifact has been published.
-- Authentication, feed, relay, moderation, media-worker, and ClamAV images have
-  been locally built and smoke-tested with explicit liveness/readiness,
-  unprivileged users, read-only roots, dropped capabilities, bounded process
-  counts, and private/loopback exposure. The live media composition passes
-  benign and EICAR scans through the production ClamdScanner.
+- pinned Node, pnpm, Rust, Solana, and Anchor toolchains;
+- a disposable Solana local validator and development WokeNet program ID;
+- local PostgreSQL, Redis, Kubo, media, and malware-scanning services;
+- locally built web and service artifacts with focused integration evidence;
+  and
+- a non-release Expo/React Native Seeker foundation with Mobile Wallet Adapter
+  connection code, exact deployment checks, a read-only feed, tests, and Android
+  export metadata.
+
+No WokeNet program deployment is recorded on Solana devnet or mainnet-beta. No
+production service, DNS/TLS deployment, provider account, backup/restore
+attestation, `$WOKE` mint, signed APK, store submission, or public release is
+claimed.
 
 ## Deployment principles
 
+- Solana validators and RPC providers are external dependencies.
 - No mandatory hosting, RPC, indexer, relay, media, or storage provider.
 - Public protocol state remains independently verifiable without the flagship
   deployment.
 - PostgreSQL is a replayable projection; Redis is disposable coordination.
-- Services use immutable artifacts promoted between environments.
+- Services and clients use immutable, provenance-linked artifacts promoted
+  between environments.
 - Production credentials are never available to pull-request builds.
-- WokeNet production genesis, deployment, and real-fund operations are
-  manual, separately approved actions. General CI MUST stop before that
-  boundary.
-- Rollback, backup, provider evacuation, and degraded mode are designed before
-  launch.
-- Every release records source revision, dependency lockfiles, image digests,
-  schema versions, program binary hash, program IDs, configuration version, and
-  the immutable profile-v2 activation slot for each WokeNet.
+- Devnet/mainnet-beta program deployment, real-fund actions, Android signing,
+  and public distribution are manual, separately approved operations.
+- Rollback, backup, provider evacuation, degraded mode, and incident handling
+  are designed and rehearsed before launch.
+- Every release records the source revision, dependency lock, artifact digest,
+  protocol/schema versions, exact Solana genesis hash, program ID, deployment
+  slot, deployed program hash, and upgrade authority.
 
 ## Target topology
 
 ```mermaid
 flowchart TB
-    DNS["DNS and TLS"]
-    WEB["Web client / edge"]
-    API["Public service APIs"]
-    IDX["Indexer"]
-    REL["Relay"]
-    FEED["Feed and moderation services"]
-    MEDIA["Media workers"]
-    CLAM["Private ClamAV"]
-    AUTH["Replaceable WebAuthn service"]
-    PG["PostgreSQL projection"]
-    REDIS["Redis cache / queues / limits"]
-    RPC["Multiple native WokeNet RPC providers"]
-    WN["WokeNet / native Firedancer"]
-    STORAGE["Multiple content storage providers"]
-    OBS["Metrics, logs, traces, alerts"]
+    DNS["woke.social DNS and TLS"]
+    WEB["WokeSocial web"]
+    ANDROID["WokeSocial Seeker Android"]
+    WALLET["MWA-compatible Android wallet"]
+    API["Replaceable public APIs"]
+    IDX["Open indexer"]
+    SERVICES["Feed, relay, moderation, auth"]
+    MEDIA["Media worker and private ClamAV"]
+    PG["PostgreSQL projections"]
+    REDIS["Redis cache, queues, limits"]
+    RPC["Independent Solana RPC providers"]
+    SOLANA["Selected Solana cluster"]
+    PROGRAM["WokeNet program"]
+    STORAGE["Content-addressed storage providers"]
+    OBS["Privacy-controlled observability"]
 
     DNS --> WEB
-    DNS --> API
     WEB --> API
+    ANDROID --> API
+    ANDROID <--> WALLET
     WEB --> RPC
-    WEB --> STORAGE
+    ANDROID --> RPC
     API --> IDX
-    API --> REL
-    API --> FEED
+    API --> SERVICES
     API --> MEDIA
-    API --> AUTH
-    MEDIA --> CLAM
     IDX --> PG
-    FEED --> PG
-    API --> PG
+    SERVICES --> PG
     API --> REDIS
-    REL --> REDIS
+    SERVICES --> REDIS
     MEDIA --> REDIS
     IDX --> RPC
-    RPC --> WN
+    RPC --> SOLANA
+    SOLANA --> PROGRAM
+    WEB --> STORAGE
+    ANDROID --> STORAGE
     MEDIA --> STORAGE
     IDX --> STORAGE
     API --> OBS
     IDX --> OBS
-    REL --> OBS
-    FEED --> OBS
+    SERVICES --> OBS
     MEDIA --> OBS
 ```
 
-The topology may run on one development machine, a container platform, virtual
-machines, or multiple providers. Deployment adapters MUST not change protocol
+The topology may run on a development machine, container platform, virtual
+machines, or multiple providers. Deployment adapters do not change protocol
 semantics.
 
-## Environments and network boundaries
+## Environments and authority boundaries
 
-| Environment | Network runtime | Funds and data | Purpose | Deployment authority |
+| Environment | Solana target | Funds and data | Purpose | Authority |
 | --- | --- | --- | --- | --- |
-| Compatibility local/CI | Ephemeral Agave validator, explicitly not WokeNet | Generated test keys and fixtures only | Anchor/Solana-wire compatibility and connected application proof | Developer or restricted CI identity |
-| Native localnet | `firedancer-dev` on dedicated Linux | Disposable WOKE fixtures and synthetic data only | Native runtime development after the remaining required RPC methods and program-account conformance gates pass | Network developer |
-| Public test network | Native `firedancer`, independently operated | Valueless test WOKE and synthetic/non-sensitive data | Interoperability, consensus, failover, and deployment rehearsal | Test-network multisig |
-| Staging | Separate native Firedancer genesis | Synthetic data; staging-specific secrets only | Production-like release, recovery, and provider validation | Protected staging quorum |
-| Production | Native Firedancer, only after the activation and genesis gates | Real WOKE and minimum necessary private service data | Live WokeNet | Hardware-backed production quorums |
+| Local/CI | Disposable local validator | Generated keys, synthetic fixtures, local SOL only | Program, client, indexer, and connected-flow evidence | Developer or restricted CI identity |
+| Devnet | Solana devnet | Devnet SOL and synthetic/non-sensitive data | Public program deployment rehearsal, RPC failover, client/device integration | Protected devnet program authority |
+| Staging | Solana devnet or an explicitly recorded non-production target | Synthetic data and staging-only secrets | Production-like services, recovery, monitoring, and release rehearsal | Protected staging quorum |
+| Production | Solana mainnet-beta | Real network fees and minimum necessary service data | Public WokeSocial and WokeNet release | Hardware-backed production quorums |
 
-Every environment has a distinct genesis, keys, program IDs, databases,
-buckets, DNS names, API tokens, telemetry projects, and authority set. A visible
-network indicator and exact `wokenet:v1:<genesis>:<program>` verification are
-required in operator and end-user flows.
+Each environment has distinct program IDs, deployment records, authority keys,
+databases, buckets, API tokens, telemetry projects, mobile configuration, and
+signing identities. Operator and client surfaces show the cluster and exact
+deployment binding:
 
-Root production configuration now fails closed unless `APP_ENV` and `NODE_ENV`
-both select production, the active selector is the non-local public test
-network, commitment is finalized, browser/service/RPC/gateway endpoints use
-non-loopback HTTPS or WSS, Redis uses `rediss://`, database/cache endpoints are
-not loopback, and the program ID plus session secret are explicit. This is a
-configuration safety boundary, not deployment evidence or permission to launch
-a production WokeNet. Relay/auth/moderation unsafe memory or unverified modes
-also reject production; the public local media token is rejected.
+```text
+wokenet:v1:<solana-genesis-hash>:<social-protocol-program-id>
+```
 
-## Toolchain and bootstrap contract
+Human-readable cluster names never replace observed genesis verification.
 
-The repository MUST pin, as compatible exact versions:
+## `$WOKE` and payment boundary
 
-- Node in a version-manager file and `package.json` engines.
-- pnpm in the `packageManager` field.
-- All JavaScript dependencies in `pnpm-lock.yaml`.
-- Rust in `rust-toolchain.toml`.
-- Anchor and Solana-compatible CLI/build tools in a documented compatibility
-  matrix.
-- Official Firedancer repository, exact full commit, ordered downstream patches,
-  and patch checksums.
-- Container base images by digest.
-- Docker Compose schema and local service image versions.
-- CI actions by immutable commit SHA.
+No `$WOKE` mint exists. The legacy lamport-denominated payment ABI is
+quarantined, cannot execute, cannot be unpaused, and never grants an
+entitlement. Deployment and sponsorship tooling must reject it.
 
-“Latest” MUST NOT be used in reproducible build or deployment automation.
+Portable signed metadata may describe SOL with `{ kind: "sol" }` or an SPL
+asset with exact token metadata. `{ kind: "woke" }` is rejected. A future
+`$WOKE` release requires a separately approved SPL or Token-2022 mint, new
+mint-aware ABI, migration, devnet rehearsal, legal/security review, and
+explicit release authorization.
 
-As of 2026-07-28, Node 22.23.1 remains the newest published v22 artifact, while
-the Node project has announced a pending 22.x security release with HIGH as its
-maximum severity. Local reproducibility retains the exact 22.23.1 digest;
-production promotion MUST wait for the patched artifact and rotate every Node
-toolchain/base-image digest. ClamAV MUST remain at patched 1.5.3 or a later
-reviewed exact digest; 1.5.2 is prohibited for attacker-controlled uploads.
+## Toolchain and local bootstrap
 
-### Operator prerequisites
+Reproducible inputs include:
 
-Verified local prerequisites are:
+- Node and pnpm;
+- JavaScript dependencies and the committed lockfile;
+- Rust, Anchor, and Solana build/client tools;
+- Android, Kotlin, Expo/React Native, Mobile Wallet Adapter, and native-module
+  dependencies for Android artifacts;
+- container bases by immutable digest; and
+- CI actions by immutable commit.
 
-- Git.
-- The pinned Node runtime, Corepack, and pinned pnpm.
-- Docker Engine and Docker Compose for local services and image builds.
+“Latest” is not accepted in a reproducible build or release record.
 
-The supported bootstrap script downloads Rust/rustup, Anchor, and Agave into the
-repository-local ignored directory after verifying release checksums; it does
-not require or modify a global Rust, Anchor, or Solana installation. Its
-currently encoded host matrix is macOS arm64/x64 and Linux x64. Unsupported
-hosts must install the exact versions manually.
-
-Additional nonlocal operator prerequisites remain planned:
-
-- A dedicated supported Linux host satisfying Firedancer’s kernel, huge-page,
-  CPU, memory, NIC, and storage requirements.
-- `jq`, TLS tooling, and access to the selected secret and artifact systems.
-- Provider CLIs only in provider-specific wrappers, never in core protocol build
-  scripts.
-
-### Local bootstrap
-
-From a checkout with the verified host prerequisites:
+Local prerequisites are Git, the pinned Node/Corepack/pnpm runtime, and Docker
+Engine with Docker Compose. The project-local setup installs the pinned
+Rust/Solana/Anchor tools without relying on a global installation.
 
 ```sh
 corepack enable
@@ -203,468 +155,309 @@ pnpm infra:ps
 pnpm dev
 ```
 
-`pnpm setup` is limited to local/test resources: it installs project-local
-toolchains, starts or validates local PostgreSQL/Redis/Kubo, applies local
-migrations, validates safe configuration, and prints progress. The local
-validator and deterministic development wallet are prepared on demand by
-`pnpm test:programs`; setup does not leave a validator running. Neither command
-contacts a public WokeNet, publishes permanent content, changes DNS, or
-spends real funds.
+`pnpm setup` and `pnpm dev` are local/test-only. They do not deploy a program to
+a public Solana cluster, publish permanent content, change DNS, create a mint,
+sign an APK, or spend real funds.
 
-`pnpm dev` is also local/test-only. It loads the selected local environment,
-starts and waits for the base dependencies and private media profile, reapplies
-idempotent service migrations, and launches the non-media workspace processes.
-It refuses production mode and non-loopback service bindings before enabling
-process-local advisory relay/moderation overrides. Standalone services remain
-locked by default. The media worker stays containerized so ClamAV port 3310 is
-never published to the host.
-
-This sequence has been verified in the current development environment and in a
-fresh same-host no-hardlink clone of exact commit
-`1513571e61ccf16ff3a715bc975b355646a0e935`. That clone began without
-`node_modules`, completed a frozen cache-assisted install, passed canonical
-workspace verification plus the Rust/Anchor/SBF and IDL-drift gates, and
-remained clean. An independent supported-machine CI/bootstrap artifact with
-recorded versions is still required for production promotion.
+The disposable local validator is started on demand by the program and
+connected-slice test commands; it is not left running as a WokeNet service.
 
 ## Build and artifact promotion
 
-The planned release pipeline is:
+Web, service, WokeNet-program, and Android artifacts have separate release
+records and approvals.
 
-1. Verify the clean source revision and committed lockfiles.
+The application/program release pipeline is:
+
+1. Verify a clean source revision and committed lockfiles.
 2. Run formatting, lint, type checks, unit/integration/local-validator tests,
-   browser tests, security scans, and production builds.
-3. Build each service image once from a reviewed revision.
-4. Generate an SBOM, vulnerability report, provenance statement, and immutable
-   image digest.
-5. Materialize and reproducibly build the exact pinned native Firedancer
-   downstream; record source, patches, dependencies, toolchain, and binary
-   hashes.
-6. Build the social program reproducibly and record its binary hash, IDL, and
-   exact toolchain.
-7. Recreate or independently verify the environment genesis, feature set,
-   shred version, allocations, and ceremony attestations.
-8. Sign or attest artifacts using protected release identities.
-9. Deploy the same immutable digests to staging.
-10. Run native consensus/RPC, smoke, migration, failover, replay,
-    accessibility, and security checks.
-11. Promote the same digests to production after protected quorum approval; do
-    not rebuild.
+   responsive-web tests, security scans, and production builds.
+3. Build each service image once from the reviewed revision.
+4. Reproducibly build the WokeNet SBF artifact and record its hash, IDL, source
+   revision, and exact toolchain.
+5. Generate SBOMs, vulnerability reports, provenance, and immutable digests.
+6. Sign or attest artifacts through protected release identities.
+7. Deploy the same reviewed artifacts to staging and run smoke, migration,
+   failover, replay, accessibility, and security checks.
+8. Promote the same artifacts after quorum approval; do not rebuild.
 
-Target repository commands:
+Implemented local interfaces include:
 
 ```sh
-pnpm wokenet:check
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:integration
 pnpm test:programs
 pnpm test:e2e
+pnpm test:vertical-slice
 pnpm build
 ```
 
-These interfaces are implemented. `pnpm test` is the fast workspace suite;
-PostgreSQL and Kubo integrations run through their package
-`test:integration` scripts, while `pnpm test:programs` and `pnpm test:e2e`
-remain explicit. The full release-promotion sequence above is not implemented.
-`pnpm verify:all` composes the available local gates but assumes setup has
-already made the container dependencies available.
-
-Rust formatting, Clippy with warnings denied, and Rust unit tests have passed as
-native checks. The root `pnpm test:programs` wrapper performs the SBF build and
-local-validator suite. A unified clean release gate, reproducible/verifiable
-build attestations, and release artifact promotion remain planned.
+Those commands provide local evidence. They do not authorize or perform a
+public deployment.
 
 ## Configuration and secrets
 
-The repository MUST provide a `.env.example` containing names and safe
-descriptions only. Real values MUST come from a secret manager or protected local
-environment and MUST not be committed.
+`.env.example` contains names and safe placeholders only. Real secrets come
+from a protected secret interface and are never committed, printed, included in
+client bundles, or placed in `EXPO_PUBLIC_*` variables.
 
-Expected configuration groups include:
-
-| Group | Example names | Requirements |
+| Group | Current names or categories | Requirements |
 | --- | --- | --- |
-| Public web | `NEXT_PUBLIC_APP_ORIGIN`, `NEXT_PUBLIC_WOKENET`, `NEXT_PUBLIC_WOKENET_RPC_URL`, `NEXT_PUBLIC_PROGRAM_ID` | Values are public; validate origin, explicit environment, genesis-bound network, and program consistency |
-| RPC | `WOKENET_RPC_URLS`, `WOKENET_WS_URLS`, `WOKENET_COMMITMENT` | Ordered list with health scoring, native capability evidence, and failover; credentials redacted; retired `SOLANA_*` runtime variables are rejected |
-| Native network | Expected genesis hash, shred version, source/patch/build digests, validator/snapshot allowlists | Exact ceremony values; no arbitrary snapshot provider or Agave fallback |
-| Indexer | `INDEXER_DEPLOYMENT_SLOT`, `INDEXER_PROFILE_V2_ACTIVATION_SLOT`, `INDEXER_BATCH_SIZE`, `INDEXER_POLL_INTERVAL_MS`, `INDEXER_RETRY_*`, `INDEXER_SYNC_STALE_AFTER_MS`, `CONTENT_STORAGE_PATH` | Validate ranges; deployment and profile-v2 activation slots are immutable per network/program deployment; only a pre-activation legacy event without the appended commitment may reference v1, while current root/delegated events and every event at/after activation commit v2; every poll drains a checkpoint-independent, batch-bounded due-hydration queue; rebuild must reuse the cutoff, preserve accepted/pending/terminal raw disposition, and suppress provider I/O only for durably accepted obsolete post/profile manifests proven by the complete ordered ledger; readiness requires current finalized polling; mount durable referenced content read-only beside the event ledger |
-| Database | `DATABASE_URL` / `DATABASE_MIGRATION_URL`, `AUTH_DATABASE_URL` / `AUTH_DATABASE_MIGRATION_URL`, `MODERATION_DATABASE_URL` / `MODERATION_DATABASE_MIGRATION_URL` | Run schema changes as explicit advisory-locked one-shot jobs; never grant DDL or a migration URL to a long-running runtime; require verified TLS in nonlocal environments |
-| Redis | `REDIS_URL`, `RATE_LIMIT_KEY_SECRET`, `RATE_LIMIT_DEPLOYMENT_ID`, queue namespaces | Noncanonical; environment-specific; authenticated in every mode, `rediss://` and a nonlocal endpoint outside development; the rate-limit key is exactly 32 random bytes in canonical base64url, identical across replicas and stable through rolling deploys |
-| Storage | gateway lists, pinning endpoints, Arweave adapter settings, local root | Multiple providers supported; write credentials server-only |
-| Relay | public relay URLs; `RELAY_KEY_AUTHORIZER_*` and `RELAY_SUBSCRIPTION_AUTHORIZER_*` endpoint, readiness, credential, and timeout settings | Multiple client endpoints; independently deployed finalized key and opaque-topic policy/membership authorities; HTTPS in production; short-lived nonce/network/checkpoint-bound decisions |
-| Media | `MEDIA_WORKER_*` listener/origins, byte/type limits, private roots, strong bearer secret, private `CLAMD_*` endpoint, scan/database-age limits | No cloud metadata or unrelated secrets in workers; clamd TCP never public; UTC required for bounded database timestamp checks |
-| Authentication | RP ID/origins, session issuer/audience, recovery settings | Production origins exact; secrets separately injected |
-| Sponsorship | enable flag, network, budgets, signer reference | Disabled by default; key not stored as plaintext env where signing service is available |
-| Telemetry | OTLP endpoint, sampling, release ID | No private content; environment-specific access token |
-| Operations | health/admin bind addresses, feature flags, release digest | Admin endpoints private; flags audited and versioned |
+| Public web | `NEXT_PUBLIC_APP_ORIGIN`, `NEXT_PUBLIC_SOLANA_CLUSTER`, `NEXT_PUBLIC_SOLANA_RPC_URL`, `NEXT_PUBLIC_PROGRAM_ID` | Values are public; exact origin, cluster, genesis/program consistency, HTTPS, and non-loopback production target |
+| Solana client/service | `SOLANA_COMMITMENT`, `SOLANA_RPC_URLS`, `SOLANA_WS_URLS`, `SOLANA_RPC_ENDPOINTS` | Finalized canonical projection; ordered credential-safe endpoints; method/health/lag checks; independent-provider failover |
+| Indexer | `INDEXER_SOLANA_RPC_URLS`, deployment/activation slot, batch, polling, retry, stale, and content-root settings | Immutable deployment metadata, bounded polling/hydration, exact replay, finalized readiness |
+| Android | `EXPO_PUBLIC_SOLANA_*`, exact program/deployment ID, public indexer URL | Public values only; HTTPS outside development; no RPC secret; release values fixed in artifact provenance |
+| Database | Runtime and separate migration URLs per service | Verified TLS outside local development; least-privilege runtime role; DDL only in one-shot migration job |
+| Redis | URL, rate-limit secret/deployment ID, queue namespaces | Noncanonical; authenticated; encrypted outside local development; no raw identity/IP keys |
+| Storage | Gateway lists, pinning endpoints, optional permanent-storage settings | Multiple providers; credentials server-only; retrieved bytes locally verified |
+| Relay/moderation/auth | Public endpoints, authorizer endpoints, RP origins, session/recovery settings | Exact HTTPS origins; fail closed; secrets injected separately |
+| Media | Worker listener/origins, limits, private roots, bearer secret, private ClamAV endpoint | No unrelated secrets; scanner never publicly reachable |
+| Sponsorship | Enable flag, Solana cluster, budgets, signer reference | Disabled by default; fee payer isolated; legacy payment instructions rejected |
+| Telemetry/operations | OTLP destination, sampling, release ID, admin binds, flags | No private content; private admin endpoints; audited/versioned flags |
 
-Startup MUST fail with a clear error when required configuration is missing,
-malformed, internally inconsistent, or points at the wrong genesis-bound
-WokeNet. Secrets MUST never appear in startup dumps, errors, traces, or client
-bundles.
+Retired `WOKENET_*` RPC aliases fail closed. WokeNet remains the protocol
+namespace, not an RPC transport.
 
-## Provider-neutral infrastructure contract
+Startup fails when required configuration is absent, malformed, inconsistent,
+credential-bearing where forbidden, or bound to the wrong Solana
+genesis/program pair.
 
-### Compute
+## Provider-neutral infrastructure
 
-Each long-running service MUST have:
+### Compute and ingress
 
-- An OCI image with a non-root user, read-only root filesystem where practical,
-  explicit entrypoint, resource requests/limits, and graceful termination.
-- Liveness and readiness endpoints with distinct meanings.
-- A deployment identity limited to its own resources.
-- Horizontal scaling rules only for stateless or correctly partitioned work.
-- A termination grace period long enough to checkpoint work.
+Each long-running service has a non-root OCI image, read-only root where
+practical, explicit entrypoint, resource bounds, graceful termination, distinct
+service identity, and separate liveness/readiness behavior.
 
-No service may require a provider-specific runtime API for protocol correctness.
-The five HTTP services and relay use the shared Redis limiter in deployed
-entrypoints. Two independent Redis clients with one deployment/service identity
-must consume one quota before horizontal scaling is enabled; the checked-in
-integration gate proves that behavior. Edge limits remain defense in depth, not
-a substitute for application admission. The explicit memory backend is
-loopback-development-only and MUST NOT be used for multi-replica or nonlocal
-deployments.
-
-That shared quota removes the rate-limit multiplication blocker for HTTP
-replicas. It does not make the relay horizontally safe: replay nonces,
-per-IP transport/connection leases, relay sequence, retained events,
-subscriptions, and fanout remain process-local. Run one relay replica until
-shared replay/connection coordination and cross-replica pubsub are implemented
-and independently tested.
+`TRUSTED_PROXY_CIDRS` is empty by default. Forwarded client-address headers are
+trusted only from explicitly bounded ingress addresses. Application ports stay
+private; broad `trustProxy` settings are forbidden.
 
 ### PostgreSQL
 
-- PostgreSQL stores replaceable indexer and service projections, not canonical
-  identity or social truth.
-- Use encrypted connections, private networking, service-specific roles, and a
-  separate migration role.
-- Staging and production URLs MUST contain exactly one
-  `sslmode=verify-full`. When the database uses a private CA, mount the CA
-  bundle read-only and set `NODE_EXTRA_CA_CERTS` before the Node.js process
-  starts. Use a DNS hostname whose certificate SAN matches exactly; IP-literal
-  database URLs are rejected because the current PostgreSQL driver does not
-  verify their identity. Multi-host PostgreSQL URLs are also rejected; use a
-  single DNS endpoint backed by an operator-controlled failover mechanism. The
-  URL must name its database role and database explicitly so ambient `PGHOST`,
-  `PGUSER`, or `PGDATABASE` values cannot redirect the audited configuration.
-  Never use `NODE_TLS_REJECT_UNAUTHORIZED=0`, including as a troubleshooting
-  workaround.
-- The current indexer schema has sixteen ordered, checksummed migrations.
-  Migrations are forward-tested and accompanied by a rollback or roll-forward
-  procedure.
-- Destructive migrations require a backup/restore rehearsal and a compatibility
-  window for old and new application versions.
-- A fresh database MUST be rebuildable from the deployment slot, WokeNet data,
-  signed manifests, and portable operator configuration. The rebuild MUST reuse
-  the network's recorded `INDEXER_PROFILE_V2_ACTIVATION_SLOT`; changing it
-  reinterprets immutable profile history and is not a deployment rollback.
-  Pending and terminal manifest dispositions replay without provider I/O.
-  Accepted manifest I/O may be omitted only for obsolete posts followed by a
-  tombstone or profiles followed by a later canonical pointer, when both the
-  durable accepted disposition and complete event order prove that
-  suppression; raw accepted state, sequence/reference effects, and checkpoint
-  remain intact. Every other accepted manifest must be retrieved and verified.
+- PostgreSQL stores replayable projections and purpose-specific service data,
+  not canonical identity or social truth.
+- Runtime and migration roles are separate; long-running processes do not run
+  DDL.
+- Nonlocal connections use verified TLS, a certificate-matching DNS name, and
+  explicit database/user selection.
+- Ordered migration checksums are verified before execution.
+- Destructive migrations require a restore rehearsal and compatibility window.
+- A fresh indexer database is rebuilt from the recorded Solana deployment slot,
+  finalized WokeNet history, and verified signed manifests.
 
 ### Redis
 
-- Redis is limited to cache, queues, rate limiting, and ephemeral coordination.
-- Loss of Redis MUST not corrupt protocol truth.
-- Rate-limit admission and sensitive authorization do not fail open when Redis
-  is unavailable. Protected requests receive a stable dependency `503`, while
-  liveness stays reachable and readiness becomes `503`.
-- Rate-limit keys include clear bounded deployment/service prefixes for ACL and
-  operational isolation, followed only by HMAC-SHA-256 namespace/client
-  digests. Raw IP addresses and identities are never sent to Redis.
-- Runtime clients disable the offline queue, bound command buffering, propagate
-  abort signals and command timeouts, use bounded reconnect delay, and actively
-  probe the exact Lua/GET/SET/INCR/PEXPIRE/PTTL/DEL command capability required
-  for admission. Redis ACLs must also allow the connection handshake and
-  heartbeat operations used by the pinned client (`AUTH`, `HELLO`, bounded
-  `CLIENT SETINFO`/`SETNAME`, and `PING`, as applicable).
-- Persistence may improve recovery but is not treated as the only durable queue
-  or audit record for high-impact actions.
+- Redis holds caches, queues, rate limits, and ephemeral coordination only.
+- Loss of Redis does not corrupt protocol truth.
+- Sensitive admission and authorization fail safe when Redis is unavailable.
+- Keys use bounded deployment/service prefixes and HMAC-derived identifiers,
+  not raw IP addresses or identities.
 
 ### Content storage
 
 - Local filesystem storage is for development and tests.
-- Production supports at least two independently configurable publication or
-  replication paths and multiple read gateways.
-- Public manifest references use canonical CIDv1 base32-lowercase identifiers
-  with the `raw` multicodec and a 32-byte SHA-256 multihash. Only the shared
-  IPFS, local, Arweave-transaction/CID, and credential-free HTTPS/CID locator
-  grammar is accepted; invalid locators fail before any provider request.
-- Every retrieved object is locally hash-verified.
-- Provider health records replication and deletion-request status without
-  claiming permanence or erasure that cannot be proven.
-- Permanent publication is a separately consented policy and not the ordinary
-  default.
+- Production supports independently configurable publication/replication paths
+  and read gateways.
+- Every object is hash/CID verified locally.
+- Permanent publication requires separate, item-specific consent.
+- Provider health and deletion requests are recorded without promising
+  unprovable persistence or erasure.
 
-### Native WokeNet RPC
+### Solana RPC providers
 
-- Configure multiple RPC and WebSocket endpoints with health, latency, error,
-  rate-limit, slot-lag, exact genesis, program, and native capability checks.
-- Never embed privileged RPC credentials in the client.
-- Indexer processing uses an explicit commitment/finality policy and records
-  slot/block identity for replay.
-- A provider change requires no protocol migration.
-- A process or endpoint backed by Frankendancer or Agave cannot be advertised as
-  a WokeNet RPC.
-- The downstream native `getProgramAccounts` subset scans account ownership on a
-  referenced frozen fork and has direct account-database/RPC C unit tests. It
-  supports bounded `dataSize` and byte-comparison filters and binary,
-  base58/base64/base64+zstd response encodings, but rejects
-  `tokenAccountState` and `jsonParsed`. Four filters, 1,024 results, 4,000,000
-  scan work units, 64 MiB of owner-matched data read during scanning, and 32 MiB
-  of filter-matched pre-slice data are hard ceilings. Its capability remains
-  `productionComplete: false`.
-- `getSignaturesForAddress`, `getSignatureStatuses`, `getTransaction`,
-  `sendTransaction`, and `simulateTransaction` fail closed until native
-  implementations and conformance evidence exist. Requests outside the bounded
-  program-account subset also fail closed.
-
-### Trusted ingress and client-address limits
-
-`TRUSTED_PROXY_CIDRS` is empty by default, so HTTP and relay processes ignore
-all forwarded client-address headers and key connection/rate limits to the
-transport peer. Behind a TLS ingress, set it to a bounded comma-separated list
-of that ingress's exact IP addresses or narrow CIDRs (no broader than IPv4
-`/24` or IPv6 `/64`). Symbolic ranges, duplicates, and broader ranges are
-rejected at startup. Application ports must be private to those
-proxies; the edge must discard inbound `X-Forwarded-*` values and construct a
-fresh chain. Internal proxies may append only when their own upstream is
-trusted. Never use `trustProxy=true`, hop counts, or broad private-network
-aliases.
+- Configure multiple RPC/WebSocket endpoints with method capability, health,
+  latency, error, rate-limit, slot-lag, exact genesis, program, and finalized
+  checkpoint checks.
+- Never embed privileged RPC credentials in web or Android clients.
+- Cross-check sensitive state and finalized observations across independently
+  administered providers.
+- Record slot/block identity and provider provenance for replay.
+- A provider change requires no WokeNet protocol migration.
+- Stop unsafe writes and show a degraded state when providers disagree or
+  required methods are unavailable.
 
 ## Database migration procedure
 
-The indexer, authentication service, and moderation service each ship a
-dedicated migration command. Their long-running server entrypoints neither run
-DDL nor read the corresponding migration URL. Orchestration must wait for the
-one-shot job to succeed before it starts or rolls forward the runtime.
-
-Give each service a distinct schema, DML-only runtime role, and schema-owning
-migration role. Runtime roles must not create, alter, or drop objects; read
-another service schema; or insert, update, or delete migration-ledger rows.
-Provision `pg_trgm` and `btree_gin` into the indexer schema before its
-least-privilege migration job. Applied migrations must be an exact ordered
-prefix of packaged SQL with matching lowercase SHA-256 values; never
-automatically backfill a legacy checksum or continue past an integrity
-mismatch.
-
-The planned nonlocal procedure is:
-
-1. Record release, current schema version, the network's immutable
-   `INDEXER_PROFILE_V2_ACTIVATION_SLOT`, row-count invariants, replica health,
-   and a recovery point.
-2. Back up required operator data and verify the backup is readable.
-3. Confirm application compatibility with both old and new schemas.
-4. Apply expand-only changes with the dedicated migration role.
-5. Deploy compatible application readers/writers.
-6. Backfill with bounded, observable, resumable jobs.
+1. Record the release, current schema, immutable WokeNet deployment metadata,
+   row-count invariants, replica health, and recovery point.
+2. Verify that the encrypted backup is readable.
+3. Confirm old/new application compatibility.
+4. Apply expand-only changes through the one-shot migration role.
+5. Deploy compatible readers/writers.
+6. Run bounded, observable, resumable backfills.
 7. Verify invariants, latency, error rate, and replay behavior.
-8. Remove obsolete columns or constraints only in a later release.
-9. Record migration duration, checksum, verification, and rollback decision.
+8. Remove obsolete structures only in a later release.
+9. Record the migration checksum, duration, evidence, and rollback decision.
 
-Database rollback MUST NOT be improvised. If an irreversible migration fails,
-operators use the rehearsed restore or roll-forward plan in
-[OPERATIONS.md](./OPERATIONS.md).
+An irreversible failure uses the rehearsed restore or roll-forward path; schema
+rollback is not improvised.
 
-## Native WokeNet test-network deployment
+## Solana devnet program rehearsal
 
-A separate native Firedancer test genesis is the mandatory public rehearsal
-boundary. Solana devnet is not WokeNet and cannot satisfy this gate.
+Devnet is the first public WokeNet deployment gate:
 
-The planned process is:
+1. Reproduce the reviewed SBF artifact and IDL from a clean revision.
+2. Confirm the intended Solana devnet genesis hash and protected authority.
+3. Deploy the program manually with a devnet-only funded identity.
+4. Record deployment signature/slot, program ID/data address, deployed artifact
+   hash, source/toolchain, and upgrade authority.
+5. Verify executable bytes and exact
+   `wokenet:v1:<solana-genesis-hash>:<program-id>` binding independently.
+6. Run the connected WokeSocial flow through at least two independently
+   administered Solana RPC providers.
+7. Exercise indexer rebuild, provider loss/disagreement, blockhash expiry,
+   priority-fee bounds, authority compromise, upgrade, and rollback procedures.
+8. Run the web and Android staging clients without enabling legacy payments.
+9. Publish the devnet release record and limitations.
 
-1. Confirm native Firedancer implements the required RPC capability set.
-2. Materialize and independently reproduce the pinned Firedancer downstream.
-3. Recreate and sign a valueless test genesis with no production key,
-   allocation, or authority reuse.
-4. Start at least three independently administered validators and two
-   independently administered RPC nodes with no Agave process.
-5. Reproducibly build and deploy the social program; verify generated IDL/client
-   drift and the deployed binary.
-6. Record genesis, shred version, feature set, validator identities, vote/stake
-   accounts, program ID/data address/authority, deployment slot and signature,
-   source/patch/build digests, and toolchains.
-7. Run the complete vertical slice against alternate native RPC providers.
-8. Exercise indexer rebuild, snapshot/restart/repair, partitions, byzantine
-   behavior, validator loss, RPC loss, and authority compromise.
-9. Publish a test-network release record and known limitations.
+Automation may use devnet SOL only. It never falls back to a real-fund source.
 
-Automation may fund accounts only from the valueless test-network faucet. It
-MUST NOT fall back to a production-fund source.
+## Manual mainnet-beta boundary
 
-## Manual WokeNet production boundary
+Mainnet-beta deployment remains disabled until:
 
-Production deployment is not a continuation of test-network automation. It is
-a distinct operator action and MUST remain disabled until every gate below has
-recorded evidence:
+- product, protocol, security, privacy, deployment, and operations documents
+  match the reviewed release;
+- clean builds, tests, accessibility, security, replay, failure, and restore
+  gates pass;
+- independent program/application/mobile/legal reviews have no unresolved high
+  or critical findings in scope;
+- reproducible program and application artifacts match reviewed digests;
+- the program upgrade multisig, delay, signer ceremony, emergency scope, and
+  immutability path are public and verified;
+- Solana RPC diversity, failover, indexer rebuild, key compromise, and incident
+  exercises pass;
+- DNS/TLS, abuse response, on-call coverage, budgets, monitoring, backups, and
+  rollback are operational; and
+- any future `$WOKE` mint and replacement ABI have separate explicit approval.
 
-- Production code, protocol, security, privacy, operations, and deployment
-  documentation match the release.
-- All build, test, accessibility, security, native consensus/RPC, and replay
-  gates pass from a clean revision.
-- Native Firedancer has a supported release and the machine-readable RPC
-  capability gate is satisfied.
-- Independent Firedancer/downstream, genesis, social-program, SDK/RPC-gateway,
-  economic, legal, and application reviews have no unresolved high or critical
-  findings in scope.
-- Reproducible Firedancer and program builds match the reviewed binaries.
-- Production validator, program-upgrade, treasury, and emergency authorities
-  are created and publicly documented through approved ceremonies.
-- Signers independently verify source/patch/build digests, feature set, genesis
-  hash, shred version, validators, allocations, program ID, binary hash, buffer
-  authority, upgrade authority, and expected fees.
-- Database restore, provider failover, indexer replay, validator loss,
-  key-compromise, and incident-response exercises pass.
-- DNS/TLS, privacy controls, legal notices, abuse escalation, on-call coverage,
-  budgets, monitoring, and rollback are operational.
-- WOKE supply, inflation, rewards, allocations, fees, sponsor, and payment paths
-  are separately approved with explicit loss limits; unsupported token assets
-  remain disabled.
-- A named release manager and security approver authorize a time-bounded change
-  window.
+General CI has no mainnet-beta program authority or real-fund signer. A
+production wrapper requires the exact cluster/genesis, program ID, authority,
+artifact digests, deployment limits, and interactive quorum confirmation.
 
-General CI MUST NOT possess WokeNet production authority or execute a
-program deployment against production. A production wrapper MUST require the
-exact network ID, expected genesis hash, expected authorities, expected program
-ID, reviewed artifact digests, and interactive quorum confirmation. There is no
-automatic production fallback.
+Program upgrades do not roll back like web services. Use a reviewed forward fix
+or narrowly scoped, predesigned pause; never redeploy an old binary without
+state-compatibility verification.
 
-Program upgrades cannot be rolled back like web services. The incident plan must
-prefer a reviewed forward fix or narrowly scoped, predesigned pause where one
-exists. An old binary is never redeployed without verifying state compatibility.
+## Seeker Android release pipeline
+
+The checked-in Android project is a foundation, not a published release.
+
+Before producing or distributing an APK:
+
+1. Pin and review Android/Expo/React Native/MWA/native-module inputs.
+2. Test connection, authorization, account switching, signing cancellation,
+   timeout, deep-link/callback mutation, background/resume, disconnect, and
+   wallet replacement on the approved Seeker/device matrix.
+3. Decode and summarize exact Solana transaction bytes before handoff and
+   revalidate account, cluster, program, and bytes after return.
+4. Review permissions, backup, local storage, logs, telemetry, clipboard,
+   screenshots, app links, and data-safety disclosures.
+5. Produce an installable reproducible APK from a clean environment.
+6. Sign through separated controlled custody using the intended distribution
+   certificate.
+7. Publish the APK hash, certificate digest, source revision, dependency lock,
+   build provenance, reproducibility result, and supported upgrade path.
+8. Run device accessibility, performance, offline/degraded-mode, and security
+   checks.
+9. Rehearse signing-key/update/store compromise and rollback.
+10. Obtain explicit legal, privacy, security, accessibility, and distribution
+    approval before store submission or direct publication.
+
+A device-model hint is not proof of Seeker ownership and never grants value or
+privileges.
 
 ## Service deployment sequence
 
-The planned sequence for a normal application release is:
-
-1. Confirm change approval, immutable artifact digests, configuration diff,
-   capacity, backup status, and rollback target.
+1. Confirm approval, immutable digests, configuration diff, capacity, backups,
+   and rollback target.
 2. Apply compatible expand migrations.
-3. Deploy background consumers in paused or shadow mode.
+3. Deploy background consumers paused or in shadow mode.
 4. Deploy internal services and verify health.
-5. Deploy public APIs with a canary receiving limited traffic.
-6. Verify error rate, latency, authorization failures, queue lag, database load,
-   RPC slot lag, and content verification failures.
-7. Gradually increase traffic.
-8. Deploy the web artifact and verify its configuration points to the intended
-   genesis-bound network, program, APIs, gateways, indexers, and relays.
-9. Resume consumers and validate checkpoints and invariants.
-10. Run smoke and critical-path tests from outside the hosting network.
-11. Record the release and end the change window.
+5. Canary public APIs with limited traffic.
+6. Verify error rate, latency, authorization failures, queue/database pressure,
+   RPC lag, and content-verification failures.
+7. Increase traffic gradually.
+8. Deploy web/Android configuration for the exact intended Solana
+   genesis/program and provider set.
+9. Resume consumers and verify finalized checkpoints and invariants.
+10. Run external smoke and critical-path checks and record the release.
 
-Schema, service, and client compatibility MUST allow independent clients and
-operators time to upgrade.
+Schema, service, and client compatibility allows independent clients/operators
+time to upgrade.
 
-## Health and post-deployment verification
+## Health and post-deployment checks
 
-The implemented service convention is:
-
-- `/healthz`: process liveness without dependency traversal.
-- `/readyz`: whether the instance can safely receive its implemented work.
-
-An authenticated dependency-detail surface and standard metrics endpoint remain
-required before production for services that do not yet provide them. Relay
-currently provides `/metrics`; a uniform metrics contract is not complete.
-
-Post-deployment checks MUST verify:
-
-- TLS, security headers, DNS, asset caching, and no client-bundled secrets.
-- Correct genesis-bound network ID, native Firedancer build, shred version,
-  program ID, protocol version, and release ID.
-- Database schema, migrations, pool saturation, and projection invariants.
-- RPC failover, slot lag, WebSocket recovery, and finalized checkpoint progress.
-- Manifest signature/hash validation and alternate gateway retrieval.
-- Relay reconnect/reconciliation and queue backpressure.
-- Block/mute/privacy enforcement, authentication, revocation, and rate limits.
-- Representative desktop/mobile flows and automated accessibility checks.
-- Telemetry redaction and incident paging.
+- `/healthz` proves process liveness without dependency traversal.
+- `/readyz` proves the instance can safely receive its implemented work.
+- Check TLS, headers, DNS, asset caching, and absence of client-bundled secrets.
+- Verify Solana cluster/genesis, program ID/data address/deployed hash,
+  deployment slot, authority, protocol version, and release ID.
+- Verify database schema, migrations, pool pressure, projection invariants, RPC
+  failover/lag, finalized checkpoints, and alternate content retrieval.
+- Verify authentication/revocation, privacy controls, rate limits, relay
+  reconciliation, queue backpressure, and telemetry redaction.
+- Run responsive web at desktop/mobile viewports separately from the Seeker
+  Android device matrix.
 
 ## DNS, TLS, and public routing
 
-- `woke.social` and required subdomains use documented ownership and
-  least-privilege DNS roles.
-- `sociallywoke.com` and `www.sociallywoke.com` issue a path/query-preserving
-  permanent redirect to `https://woke.social`; they do not serve an alternate
-  application, session, or WebAuthn origin.
-- Production DNS changes require review, low-risk staged TTL changes, and a
-  rollback record.
-- TLS is automated with expiry alerts and no plaintext administrative endpoint.
-- HSTS is enabled only after all included subdomains are HTTPS-ready.
-- User media is served from an isolated origin that cannot access application
-  cookies.
-- API, relay, media, and documentation endpoints have documented replacement and
-  migration paths.
-- A decentralized frontend mirror MUST publish a content hash and clear warning
-  when its configuration or version differs from the primary release.
+- `woke.social` is the sole canonical flagship origin.
+- `sociallywoke.com` and `www.sociallywoke.com` provide permanent,
+  path/query-preserving redirects only; they do not serve an application,
+  session, cookie, or WebAuthn origin.
+- DNS changes are reviewed and reversible; TLS is automated with expiry alerts.
+- HSTS is enabled only when every included subdomain is HTTPS-ready.
+- User media uses an isolated origin without application cookies.
+- APIs, relays, media, documentation, and mirrors have documented replacement
+  paths.
 
-## Backups and disaster recovery
+## Backups, rollback, and evacuation
 
-See [OPERATIONS.md](./OPERATIONS.md) for detailed procedures. Deployment must
-provide:
+Deployment provides encrypted/versioned service-data backups, point-in-time
+recovery where supported, portable configuration without plaintext secrets,
+retained source/lockfiles/artifact digests/SBOM/provenance/IDL/deployment
+records, separately controlled secret-manager recovery, and regular isolated
+restore tests. The indexer also has a full rebuild path without a database
+backup.
 
-- Encrypted, versioned PostgreSQL backups and point-in-time recovery where
-  supported.
-- Exported, versioned operator configuration excluding plaintext secrets.
-- Redundant storage-provider records and content manifests.
-- Source, lockfiles, image digests, SBOM/provenance, IDLs, program artifacts, and
-  deployment records retained independently of the primary provider.
-- Secret-manager recovery controlled by separate custodians.
-- Regular restore into an isolated environment followed by invariant checks.
-- A full indexer rebuild path that does not require a database backup.
+For web/services, retain the previous compatible immutable digest, stop on
+canary breaches, and roll traffic back without reversing incompatible schema.
+For the indexer, preserve suspect input, rebuild a fresh projection from the
+recorded deployment, and compare deterministic invariants before cutover.
 
-Backup success metrics alone are insufficient; restore evidence is the gate.
+For provider loss or compromise:
 
-## Rollback and provider evacuation
+1. Determine integrity versus availability impact.
+2. Revoke provider-specific credentials where necessary.
+3. Activate a preconfigured alternate and validate integrity.
+4. Reconcile missed observations or writes.
+5. Export required portable configuration/data.
+6. Update endpoint metadata/failover lists.
+7. Preserve evidence and document user impact.
 
-### Web and services
-
-- Retain the previous compatible immutable digest.
-- Stop rollout on breached canary thresholds.
-- Roll traffic back without reverting an incompatible database migration.
-- Disable new writers or risky feature flags if dual-schema compatibility is
-  uncertain.
-- Verify queues, idempotency, and checkpoints after rollback.
-
-### Indexer
-
-- Quarantine suspect input and preserve evidence.
-- Rebuild a fresh projection from a known deployment slot and verified sources.
-- Compare deterministic invariants before cutover.
-- Do not edit canonical history to make projections agree.
-
-### Provider evacuation
-
-For RPC, gateway, pinning, relay, compute, database, registry, or telemetry
-provider loss:
-
-1. Determine whether integrity or only availability is affected.
-2. Revoke provider-specific credentials if compromise is possible.
-3. Activate a preconfigured alternate and validate object-level integrity.
-4. Reconcile missed events or writes.
-5. Export portable configuration and required operator data.
-6. Update public endpoint metadata and client failover lists.
-7. Preserve incident evidence and document residual user impact.
+Android rollback follows the signed update/distribution plan; an unsigned or
+differently signed emergency APK is never treated as a valid update.
 
 ## Outstanding manual work
 
-Before any deployment can occur, the project must:
-
-- Finish clean-machine release attestation and reconcile every toolchain and
-  generated artifact.
-- Complete the remaining applications, native-Firedancer integration,
-  social-program/UI flows, provider infrastructure, and release scripts.
-- Complete production secret injection, artifact storage, scanning,
-  signatures/provenance, and provider adapters.
-- Select actual providers without making them protocol dependencies.
-- Establish native test-network and production validator/program/treasury
-  authorities and perform key and genesis ceremonies.
-- Define measurable SLO/RPO/RTO values and validate capacity.
-- Complete independent security, privacy, accessibility, legal, and operational
-  review.
-- Demonstrate clean bootstrap, native test-network deployment, restore, replay, failover,
-  rollback, and incident exercises.
+- Complete an independent-machine release attestation, SBOMs, signatures, and
+  provenance.
+- Finish essential WokeSocial web/mobile mutation flows and provider
+  infrastructure.
+- Deploy and verify the reviewed WokeNet program on Solana devnet.
+- Establish production program-authority, service, Android-signing, and
+  distribution custody.
+- Define and validate measurable SLO/RPO/RTO and capacity budgets.
+- Complete independent security, privacy, accessibility, safety, legal, and
+  operational review.
+- Demonstrate devnet deployment, restore, replay, provider failover, rollback,
+  incident response, Seeker-device MWA behavior, and reproducible signed-APK
+  verification.
+- Keep `$WOKE` out of deployment scope unless a real mint and replacement ABI
+  pass their separate approval gates.

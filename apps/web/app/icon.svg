@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">WokeSocial W mark</title>
+  <rect width="512" height="512" rx="144" fill="#c6ff5e"/>
+  <path
+    d="M92 135h72l35 201 37-147h40l37 147 35-201h72l-65 242h-76l-23-91-23 91h-76L92 135Z"
+    fill="#172008"
+  />
+</svg>

@@ -66,6 +66,14 @@ const INDEXER_NONLOCAL_FORBIDDEN_RUNTIME_VARIABLES = [
 
 export function readIndexerConfig(environment: NodeJS.ProcessEnv = process.env): IndexerConfig {
   assertNoMigrationCredentials(environment, { allowedRuntimeUrls: ['DATABASE_URL'] });
+  for (const [retiredName, replacementName] of [
+    ['WOKENET_COMMITMENT', 'SOLANA_COMMITMENT'],
+    ['WOKENET_RPC_URLS', 'SOLANA_RPC_URLS'],
+  ] as const) {
+    if (nonEmpty(environment[retiredName]) !== undefined) {
+      throw new Error(`${retiredName} has been retired; use ${replacementName}.`);
+    }
+  }
   for (const name of INDEXER_FORBIDDEN_RUNTIME_VARIABLES.slice(1)) {
     if (nonEmpty(environment[name]) !== undefined) {
       throw new Error(`${name} must not be injected into the long-running indexer runtime.`);
@@ -102,7 +110,7 @@ export function readIndexerConfig(environment: NodeJS.ProcessEnv = process.env):
   });
 
   const allowedOrigins = parseUrlList(parsed.ALLOWED_ORIGINS, 'ALLOWED_ORIGINS');
-  const rpcUrls = parseUrlList(parsed.WOKENET_RPC_URLS, 'WOKENET_RPC_URLS');
+  const rpcUrls = parseUrlList(parsed.SOLANA_RPC_URLS, 'SOLANA_RPC_URLS');
   if (nonlocalDeployment) {
     if (isLocalOrUnspecifiedHostname(new URL(parsed.DATABASE_URL).hostname)) {
       throw new Error('Nonlocal indexer DATABASE_URL must not target a local endpoint.');
@@ -119,7 +127,7 @@ export function readIndexerConfig(environment: NodeJS.ProcessEnv = process.env):
       const url = new URL(rpcUrl);
       if (url.protocol !== 'https:' || isLocalOrUnspecifiedHostname(url.hostname)) {
         throw new Error(
-          'Nonlocal indexer WOKENET_RPC_URLS must contain only nonlocal HTTPS endpoints.',
+          'Nonlocal indexer SOLANA_RPC_URLS must contain only nonlocal HTTPS endpoints.',
         );
       }
     }
@@ -144,7 +152,7 @@ export function readIndexerConfig(environment: NodeJS.ProcessEnv = process.env):
           rpcUrls,
           deploymentSlot: parsed.INDEXER_DEPLOYMENT_SLOT,
           batchSize: parsed.INDEXER_BATCH_SIZE,
-          commitment: parsed.WOKENET_COMMITMENT,
+          commitment: parsed.SOLANA_COMMITMENT,
           pollIntervalMilliseconds: parsed.INDEXER_POLL_INTERVAL_MS,
           retryAttempts: parsed.INDEXER_RETRY_ATTEMPTS,
           retryBaseMilliseconds: parsed.INDEXER_RETRY_BASE_MS,
@@ -201,8 +209,8 @@ const indexerEnvironmentSchema = z.object({
   NEXT_PUBLIC_PROGRAM_ID: z.string().optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   NODE_TLS_REJECT_UNAUTHORIZED: z.string().optional(),
-  WOKENET_COMMITMENT: z.literal('finalized').default('finalized'),
-  WOKENET_RPC_URLS: z.string().default('http://127.0.0.1:8899'),
+  SOLANA_COMMITMENT: z.literal('finalized').default('finalized'),
+  SOLANA_RPC_URLS: z.string().default('http://127.0.0.1:8899'),
 });
 
 const syncEnvironmentSchema = z
@@ -256,7 +264,7 @@ function nonEmpty(value: string | undefined): string | undefined {
   return trimmed === '' ? undefined : trimmed;
 }
 
-function parseUrlList(value: string, variableName: 'ALLOWED_ORIGINS' | 'WOKENET_RPC_URLS') {
+function parseUrlList(value: string, variableName: 'ALLOWED_ORIGINS' | 'SOLANA_RPC_URLS') {
   const values = value
     .split(',')
     .map((item) => item.trim())

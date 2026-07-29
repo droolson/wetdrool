@@ -300,10 +300,10 @@ function createBoundedWokeRpc(endpoint: string): ReturnType<typeof createSolanaR
     try {
       requestBody = stringifyJsonWithBigInts(payload);
     } catch (error) {
-      throw new Error('The WokeNet RPC request could not be serialized.', { cause: error });
+      throw new Error('The Solana RPC request could not be serialized.', { cause: error });
     }
     if (new TextEncoder().encode(requestBody).byteLength > MAX_RPC_REQUEST_BYTES) {
-      throw new Error('The WokeNet RPC request exceeded its byte budget.');
+      throw new Error('The Solana RPC request exceeded its byte budget.');
     }
 
     const response = await fetch(endpoint, {
@@ -321,19 +321,19 @@ function createBoundedWokeRpc(endpoint: string): ReturnType<typeof createSolanaR
     });
     if (!response.ok) {
       await cancelRpcResponseBody(response.body);
-      throw new Error(`The WokeNet RPC endpoint returned HTTP ${String(response.status)}.`);
+      throw new Error(`The Solana RPC endpoint returned HTTP ${String(response.status)}.`);
     }
     const contentType = response.headers.get('content-type') ?? '';
     if (!contentType.toLowerCase().includes('application/json')) {
       await cancelRpcResponseBody(response.body);
-      throw new Error('The WokeNet RPC endpoint did not return application/json.');
+      throw new Error('The Solana RPC endpoint did not return application/json.');
     }
     await assertBoundedRpcContentLength(response);
     const responseText = await readBoundedRpcResponseText(response);
     try {
       return parseJsonWithBigInts(responseText) as RpcResponse<TResponse>;
     } catch (error) {
-      throw new Error('The WokeNet RPC endpoint returned invalid bounded JSON.', {
+      throw new Error('The Solana RPC endpoint returned invalid bounded JSON.', {
         cause: error,
       });
     }
@@ -347,7 +347,7 @@ async function assertBoundedRpcContentLength(response: Response): Promise<void> 
   const normalizedLength = declaredLength.trim();
   if (!/^\d+$/u.test(normalizedLength)) {
     await cancelRpcResponseBody(response.body);
-    throw new Error('The WokeNet RPC endpoint returned an invalid Content-Length header.');
+    throw new Error('The Solana RPC endpoint returned an invalid Content-Length header.');
   }
   const canonicalLength = normalizedLength.replace(/^0+/u, '') || '0';
   const maximumLength = String(MAX_RPC_RESPONSE_BYTES);
@@ -356,13 +356,13 @@ async function assertBoundedRpcContentLength(response: Response): Promise<void> 
     (canonicalLength.length === maximumLength.length && canonicalLength > maximumLength)
   ) {
     await cancelRpcResponseBody(response.body);
-    throw new Error('The WokeNet RPC response exceeded its byte budget.');
+    throw new Error('The Solana RPC response exceeded its byte budget.');
   }
 }
 
 async function readBoundedRpcResponseText(response: Response): Promise<string> {
   if (response.body === null) {
-    throw new Error('The WokeNet RPC endpoint returned an empty response.');
+    throw new Error('The Solana RPC endpoint returned an empty response.');
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -374,7 +374,7 @@ async function readBoundedRpcResponseText(response: Response): Promise<string> {
       receivedBytes += chunk.value.byteLength;
       if (receivedBytes > MAX_RPC_RESPONSE_BYTES) {
         await cancelRpcResponseReader(reader);
-        throw new Error('The WokeNet RPC response exceeded its byte budget.');
+        throw new Error('The Solana RPC response exceeded its byte budget.');
       }
       chunks.push(chunk.value);
     }
@@ -391,7 +391,7 @@ async function readBoundedRpcResponseText(response: Response): Promise<string> {
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch (error) {
-    throw new Error('The WokeNet RPC endpoint returned invalid UTF-8.', { cause: error });
+    throw new Error('The Solana RPC endpoint returned invalid UTF-8.', { cause: error });
   }
 }
 
@@ -418,7 +418,7 @@ async function cancelRpcResponseReader(
  * instruction against the exact endpoint/genesis/program tuple in `context`.
  *
  * `verifySimulation` is mandatory: generic instructions do not have a safe
- * universal effects predicate. WOKE tip and subscription callers should use
+ * universal effects predicate. Legacy tip and subscription callers should use
  * {@link executeWokePaymentTransaction}, which supplies the protocol-specific
  * verifier.
  */
@@ -587,7 +587,7 @@ export async function executeWokeInstruction(
 }
 
 /**
- * Executes a built WOKE tip or weekly-subscription settlement. The SDK decodes
+ * Executes a built legacy SOL tip or weekly-subscription settlement. The SDK decodes
  * every parsed System Program transfer and the Anchor settlement event from
  * the exact simulation response, then applies
  * `assertWokePaymentSimulationMatches` before any bytes are broadcast.
@@ -618,7 +618,7 @@ export async function executeWokePaymentTransaction(
 }
 
 /**
- * Decodes the protocol effects needed by the existing WOKE payment verifier.
+ * Decodes the protocol effects needed by the existing legacy payment verifier.
  * It fails closed if a System Program inner instruction is not parsed, since
  * an opaque instruction could otherwise conceal an extra transfer.
  */
@@ -673,7 +673,7 @@ function parseExecutionContext(input: ValidatedWokeNetContext): ValidatedWokeNet
     throw executionError(
       'insecure-endpoint',
       'validating',
-      'Remote WokeNet transaction execution requires an HTTPS RPC endpoint.',
+      'Remote Solana transaction execution requires an HTTPS RPC endpoint.',
     );
   }
   return context;
@@ -985,7 +985,7 @@ async function assertProviderIdentity(
     throw executionError(
       'provider-mismatch',
       stage,
-      'The RPC provider genesis hash does not match the approved WokeNet context.',
+      'The RPC provider genesis hash does not match the approved WokeNet Solana deployment.',
     );
   }
 }
@@ -1554,7 +1554,7 @@ function decodeSystemEffects(innerInstructions: unknown): DecodedSystemEffects {
     throw executionError(
       'simulation-mismatch',
       'simulating',
-      'The WOKE simulation did not return inner instructions.',
+      'The legacy SOL settlement simulation did not return inner instructions.',
     );
   }
   const transfers: WokePaymentSimulation['transfers'][number][] = [];
@@ -1564,7 +1564,7 @@ function decodeSystemEffects(innerInstructions: unknown): DecodedSystemEffects {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE simulation returned malformed inner-instruction groups.',
+        'The legacy SOL settlement simulation returned malformed inner-instruction groups.',
       );
     }
     for (const candidate of group.instructions) {
@@ -1572,7 +1572,7 @@ function decodeSystemEffects(innerInstructions: unknown): DecodedSystemEffects {
         throw executionError(
           'simulation-mismatch',
           'simulating',
-          'The WOKE simulation returned a malformed inner instruction.',
+          'The legacy SOL settlement simulation returned a malformed inner instruction.',
         );
       }
       if (candidate.programId !== WOKENET_SYSTEM_PROGRAM_ADDRESS) continue;
@@ -1580,7 +1580,7 @@ function decodeSystemEffects(innerInstructions: unknown): DecodedSystemEffects {
         throw executionError(
           'simulation-mismatch',
           'simulating',
-          'An opaque System Program instruction could conceal an unapproved WOKE transfer.',
+          'An opaque System Program instruction could conceal an unapproved SOL transfer.',
         );
       }
       if (!isRecord(candidate.parsed.info)) {
@@ -1605,7 +1605,7 @@ function decodeSystemEffects(innerInstructions: unknown): DecodedSystemEffects {
         throw executionError(
           'simulation-mismatch',
           'simulating',
-          `Unexpected System Program instruction ${candidate.parsed.type} appeared in the WOKE simulation.`,
+          `Unexpected System Program instruction ${candidate.parsed.type} appeared in the legacy SOL settlement simulation.`,
         );
       }
       const source = parseRpcAddress(info.source, 'simulated transfer source');
@@ -1640,7 +1640,7 @@ function assertExpectedAccountCreations(
     throw executionError(
       'simulation-mismatch',
       'simulating',
-      'The built WOKE settlement is missing its rent payer.',
+      'The built legacy settlement is missing its rent payer.',
     );
   }
   const expected: {
@@ -1662,7 +1662,7 @@ function assertExpectedAccountCreations(
     throw executionError(
       'simulation-mismatch',
       'simulating',
-      'The simulated WOKE account-creation count differs from the approved settlement.',
+      'The simulated legacy account-creation count differs from the approved settlement.',
     );
   }
   for (const expectedCreation of expected) {
@@ -1681,7 +1681,7 @@ function assertExpectedAccountCreations(
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'A simulated WOKE account creation differs from the approved rent-funded account.',
+        'A simulated legacy account creation differs from the approved rent-funded account.',
       );
     }
   }
@@ -1701,7 +1701,7 @@ function assertExactPaymentLamportEffects(
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'A simulated WOKE lamport effect references an account outside the signed transaction.',
+        'A simulated legacy SOL effect references an account outside the signed transaction.',
       );
     }
     expectedDeltas.set(accountAddress, current + delta);
@@ -1722,7 +1722,7 @@ function assertExactPaymentLamportEffects(
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        `The simulated native balance change for ${balance.address} is not an approved fee, rent funding, or WOKE transfer.`,
+        `The simulated native balance change for ${balance.address} is not an approved fee, rent funding, or SOL transfer.`,
       );
     }
   }
@@ -1736,7 +1736,7 @@ function decodeSettlementEvents(
     throw executionError(
       'simulation-mismatch',
       'simulating',
-      'The successful WOKE simulation omitted program logs.',
+      'The successful legacy settlement simulation omitted program logs.',
     );
   }
   const stack: string[] = [];
@@ -1750,7 +1750,7 @@ function decodeSettlementEvents(
         throw executionError(
           'simulation-mismatch',
           'simulating',
-          'The WOKE program invocation log is malformed.',
+          'The WokeSocial program invocation log is malformed.',
         );
       }
       const depth = Number(depthText);
@@ -1758,7 +1758,7 @@ function decodeSettlementEvents(
         throw executionError(
           'simulation-mismatch',
           'simulating',
-          'The WOKE program invocation depth is invalid.',
+          'The WokeSocial program invocation depth is invalid.',
         );
       }
       stack.length = depth - 1;
@@ -1781,7 +1781,7 @@ function decodeSettlementEvents(
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event exceeds its safe encoded size limit.',
+        'The legacy settlement event exceeds its safe encoded size limit.',
       );
     }
     const bytes = decodeCanonicalBase64(encoded);
@@ -1789,7 +1789,7 @@ function decodeSettlementEvents(
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event exceeds its safe decoded size limit.',
+        'The legacy settlement event exceeds its safe decoded size limit.',
       );
     }
     if (startsWith(bytes, WOKE_TIP_SETTLED_DISCRIMINATOR)) {
@@ -1877,7 +1877,7 @@ class EventReader {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE event discriminator is invalid.',
+        'The legacy settlement event discriminator is invalid.',
       );
     }
     this.#bytes = bytes;
@@ -1889,7 +1889,7 @@ class EventReader {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event is truncated.',
+        'The legacy settlement event is truncated.',
       );
     }
     const value = Uint8Array.from(this.#bytes.subarray(this.#offset, this.#offset + length));
@@ -1938,7 +1938,7 @@ class EventReader {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event contains an invalid address.',
+        'The legacy settlement event contains an invalid address.',
         error,
       );
     }
@@ -1953,7 +1953,7 @@ class EventReader {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event payment kind is invalid.',
+        'The legacy settlement event payment kind is invalid.',
       );
     }
     return decoded as TExpected;
@@ -1965,7 +1965,7 @@ class EventReader {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event recipient count is invalid.',
+        'The legacy settlement event recipient count is invalid.',
       );
     }
     return Object.freeze(
@@ -1983,7 +1983,7 @@ class EventReader {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event amount count is invalid.',
+        'The legacy settlement event amount count is invalid.',
       );
     }
     return Object.freeze(Array.from({ length }, () => this.u64()));
@@ -1994,7 +1994,7 @@ class EventReader {
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The WOKE settlement event has trailing or malformed bytes.',
+        'The legacy settlement event has trailing or malformed bytes.',
       );
     }
   }
@@ -2009,7 +2009,7 @@ function decodeCanonicalBase64(value: string): Uint8Array {
     throw executionError(
       'simulation-mismatch',
       'simulating',
-      'The WOKE event log is not canonical base64.',
+      'The legacy settlement event log is not canonical base64.',
     );
   }
   try {
@@ -2022,7 +2022,7 @@ function decodeCanonicalBase64(value: string): Uint8Array {
     throw executionError(
       'simulation-mismatch',
       'simulating',
-      'The WOKE event log could not be decoded.',
+      'The legacy settlement event log could not be decoded.',
       error,
     );
   }
@@ -2090,7 +2090,7 @@ function snapshotBuiltSettlement(
     throw executionError(
       'invalid-instruction',
       'validating',
-      'The WOKE settlement builder result is malformed.',
+      'The legacy settlement builder result is malformed.',
     );
   }
   let context: ValidatedWokeNetContext;
@@ -2100,7 +2100,7 @@ function snapshotBuiltSettlement(
     throw executionError(
       'invalid-context',
       'validating',
-      'The built WOKE settlement context is invalid.',
+      'The built legacy settlement context is invalid.',
       error,
     );
   }
@@ -2114,7 +2114,7 @@ function snapshotBuiltSettlement(
     throw executionError(
       'invalid-context',
       'validating',
-      'The WOKE settlement plan and instruction use different network contexts.',
+      'The legacy settlement plan and instruction use different Solana deployment contexts.',
     );
   }
   const base = {
@@ -2266,7 +2266,7 @@ async function sendRpcRequest<T>(
       requestAbortListener = (): void =>
         reject(
           requestTimedOut
-            ? executionError('rpc-failure', stage, `The WokeNet ${method} request timed out.`)
+            ? executionError('rpc-failure', stage, `The Solana ${method} request timed out.`)
             : scope.error(stage),
         );
       requestController.signal.addEventListener('abort', requestAbortListener, {

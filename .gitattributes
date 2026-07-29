@@ -19,7 +19,3 @@
 *.woff2 binary
 
 pnpm-lock.yaml linguist-generated=true
-
-# Serialized downstream diffs preserve upstream whitespace exactly; source files
-# remain subject to the repository's normal whitespace checks after application.
-network/wokenet/firedancer/patches/*.patch -whitespace

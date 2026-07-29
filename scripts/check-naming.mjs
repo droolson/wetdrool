@@ -135,7 +135,7 @@ if (violations.length > 0) {
   process.exitCode = 1;
 } else {
   process.stdout.write(
-    'Naming policy is consistent: WokeSocial is the platform and WokeNet is the chain/repository.\n',
+    'Naming policy is consistent: WokeSocial is the platform; WokeNet is its Solana deployment namespace and repository.\n',
   );
 }
 

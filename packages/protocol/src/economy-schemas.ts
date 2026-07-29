@@ -16,7 +16,7 @@ import {
 } from './schema-primitives.js';
 
 export const paymentAssetSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('woke') }).strict(),
+  z.object({ kind: z.literal('sol') }).strict(),
   z
     .object({
       kind: z.literal('spl'),

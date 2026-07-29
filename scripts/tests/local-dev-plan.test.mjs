@@ -24,7 +24,8 @@ const validEnvironment = {
   AUTH_DATABASE_MIGRATION_URL: 'postgresql://auth_migration:password@localhost:5432/wokesocial',
   MODERATION_DATABASE_MIGRATION_URL:
     'postgresql://moderation_migration:password@127.0.0.1:5432/wokesocial',
-  WOKENET_RPC_URLS: 'http://127.0.0.1:8899,http://localhost:8899',
+  NEXT_PUBLIC_SOLANA_CLUSTER: 'localnet',
+  SOLANA_RPC_URLS: 'http://127.0.0.1:8899,http://localhost:8899',
 };
 
 describe('local development plan', () => {
@@ -79,9 +80,17 @@ describe('local development plan', () => {
       () =>
         assertSafeLocalDevelopmentEnvironment({
           ...validEnvironment,
-          WOKENET_RPC_URLS: 'http://127.0.0.1:8899,https://rpc.example',
+          SOLANA_RPC_URLS: 'http://127.0.0.1:8899,https://rpc.example',
         }),
-      /WOKENET_RPC_URLS must target loopback/u,
+      /SOLANA_RPC_URLS must target loopback/u,
+    );
+    assert.throws(
+      () =>
+        assertSafeLocalDevelopmentEnvironment({
+          ...validEnvironment,
+          NEXT_PUBLIC_SOLANA_CLUSTER: 'devnet',
+        }),
+      /NEXT_PUBLIC_SOLANA_CLUSTER must be localnet/u,
     );
   });
 

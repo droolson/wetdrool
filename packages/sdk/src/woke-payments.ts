@@ -94,8 +94,9 @@ export class WokePaymentError extends Error {
 }
 
 /**
- * Every WOKE operation is explicitly bound to one RPC endpoint, one genesis
- * hash, and one deployed program. There are intentionally no cluster defaults.
+ * Every legacy settlement operation is explicitly bound to one Solana RPC
+ * endpoint, one genesis hash, and one deployed program. There are
+ * intentionally no cluster defaults.
  */
 export interface WokeNetContext {
   readonly endpoint: string;
@@ -114,7 +115,7 @@ export function createWokeNetContext(input: WokeNetContext): ValidatedWokeNetCon
   try {
     endpoint = new URL(input.endpoint);
   } catch (error) {
-    throw new WokePaymentError('invalid-context', 'The WokeNet RPC endpoint is invalid.', {
+    throw new WokePaymentError('invalid-context', 'The Solana RPC endpoint is invalid.', {
       cause: error,
     });
   }
@@ -126,7 +127,7 @@ export function createWokeNetContext(input: WokeNetContext): ValidatedWokeNetCon
   ) {
     throw new WokePaymentError(
       'invalid-context',
-      'The WokeNet RPC endpoint must be an HTTP(S) URL without credentials or a fragment.',
+      'The Solana RPC endpoint must be an HTTP(S) URL without credentials or a fragment.',
     );
   }
 
@@ -181,7 +182,7 @@ export interface WokeNativeTransfer {
 }
 
 export interface WokeNativePaymentPlan {
-  readonly asset: 'WOKE';
+  readonly asset: 'SOL';
   readonly context: ValidatedWokeNetContext;
   readonly payerIdentity: string;
   readonly payerAuthority: string;
@@ -196,7 +197,7 @@ export interface WokeNativePaymentPlan {
 }
 
 /**
- * Mirrors `calculate_native_payment_allocation` in the WokeSocial protocol program.
+ * Mirrors `calculate_legacy_lamport_payment_allocation` in the WokeSocial protocol program.
  * All arithmetic is checked in the same unsigned-128 intermediate domain.
  */
 export function calculateWokeNativePaymentPlan(
@@ -206,19 +207,19 @@ export function calculateWokeNativePaymentPlan(
   const payerIdentity = parseAddress(input.payerIdentity, 'payer identity');
   const payerAuthority = parseAddress(input.payerAuthority, 'payer authority');
   const feeDestination = parseAddress(input.feeDestination, 'fee destination');
-  const grossLamports = parsePositiveU64(input.grossLamports, 'gross WOKE lamports');
+  const grossLamports = parsePositiveU64(input.grossLamports, 'gross SOL lamports');
   const feeBasisPoints = parseFeeBasisPoints(input.feeBasisPoints);
   const recipients = parseRecipientSplits(input.recipientSplits);
   assertGlobalPaymentAliases(payerIdentity, payerAuthority, feeDestination, recipients);
 
-  const gross = checkedU128(grossLamports, 'gross WOKE lamports');
+  const gross = checkedU128(grossLamports, 'gross SOL lamports');
   const feeNumerator = checkedU128Multiply(gross, BigInt(feeBasisPoints), 'protocol-fee numerator');
   const feeLamports = feeNumerator / BASIS_POINTS_DENOMINATOR;
   const distributableLamports = gross - feeLamports;
   if (distributableLamports < 1n) {
     throw new WokePaymentError(
       'rounding-underflow',
-      'The protocol fee leaves no WOKE lamports for recipients.',
+      'The protocol fee leaves no SOL lamports for recipients.',
     );
   }
 
@@ -255,7 +256,7 @@ export function calculateWokeNativePaymentPlan(
   if (residual !== 0n || allocations.some((allocation) => allocation.lamports < 1n)) {
     throw new WokePaymentError(
       'rounding-underflow',
-      'The gross amount cannot pay every WOKE recipient at least one lamport.',
+      'The gross amount cannot pay every SOL recipient at least one lamport.',
     );
   }
 
@@ -264,7 +265,7 @@ export function calculateWokeNativePaymentPlan(
       recipientIdentity,
       destination,
       basisPoints,
-      lamports: parseU64(lamports, 'recipient WOKE allocation'),
+      lamports: parseU64(lamports, 'recipient SOL allocation'),
     }),
   );
   const recipientTotal = recipientAllocations.reduce(
@@ -272,10 +273,7 @@ export function calculateWokeNativePaymentPlan(
     0n,
   );
   if (checkedU128Add(feeLamports, recipientTotal, 'payment total') !== grossLamports) {
-    throw new WokePaymentError(
-      'rounding-underflow',
-      'The WOKE allocation does not conserve value.',
-    );
+    throw new WokePaymentError('rounding-underflow', 'The SOL allocation does not conserve value.');
   }
 
   const transfers: WokeNativeTransfer[] = [];
@@ -298,7 +296,7 @@ export function calculateWokeNativePaymentPlan(
   );
 
   return {
-    asset: 'WOKE',
+    asset: 'SOL',
     context,
     payerIdentity,
     payerAuthority,
@@ -524,10 +522,7 @@ export async function buildRotateWokePaymentAuthorityInstruction(
   const currentAuthority = parseAddress(input.currentAuthority, 'current payment authority');
   const newAuthority = parseAddress(input.newAuthority, 'new payment authority');
   if (currentAuthority === newAuthority) {
-    throw new WokePaymentError(
-      'alias',
-      'The current and new WOKE payment authorities must differ.',
-    );
+    throw new WokePaymentError('alias', 'The current and new payment authorities must differ.');
   }
   const policySequence = parseIncrementableU64(
     input.expectedPolicySequence,
@@ -759,7 +754,7 @@ export async function buildSendWokeTipInstruction(
   });
   const recipient = plan.recipientAllocations[0];
   if (recipient === undefined) {
-    throw new WokePaymentError('invalid-recipient', 'A WOKE tip requires one recipient.');
+    throw new WokePaymentError('invalid-recipient', 'The legacy SOL tip requires one recipient.');
   }
   const [configAddress, paymentConfigAddress, receiptPda] = await Promise.all([
     deriveWokeProtocolConfigAddress(context),
@@ -1079,14 +1074,17 @@ export function assertWokePaymentSimulationMatches(
     );
   }
   if (simulation.error !== null) {
-    throw new WokePaymentError('simulation-mismatch', 'The WOKE transaction simulation failed.');
+    throw new WokePaymentError(
+      'simulation-mismatch',
+      'The legacy SOL settlement simulation failed.',
+    );
   }
 
   const expectedTransfers = built.plan.transfers;
   if (simulation.transfers.length !== expectedTransfers.length) {
     throw new WokePaymentError(
       'simulation-mismatch',
-      'The simulated WOKE System transfer count differs from the approved plan.',
+      'The simulated SOL System transfer count differs from the approved plan.',
     );
   }
   for (const [index, expected] of expectedTransfers.entries()) {
@@ -1100,19 +1098,19 @@ export function assertWokePaymentSimulationMatches(
     ) {
       throw new WokePaymentError(
         'simulation-mismatch',
-        `Simulated WOKE System transfer ${String(index)} differs from the approved plan.`,
+        `Simulated SOL System transfer ${String(index)} differs from the approved plan.`,
       );
     }
   }
   if (simulation.events.length !== 1) {
     throw new WokePaymentError(
       'invalid-event',
-      'The simulation must emit exactly one WOKE settlement event.',
+      'The simulation must emit exactly one legacy settlement event.',
     );
   }
   const event = simulation.events[0];
   if (event === undefined) {
-    throw new WokePaymentError('invalid-event', 'The WOKE settlement event is missing.');
+    throw new WokePaymentError('invalid-event', 'The legacy settlement event is missing.');
   }
   if (built.kind === 'woke-tip') {
     assertTipEvent(built, event);
@@ -1208,7 +1206,7 @@ export async function verifyFinalizedWokeTipReceipt(
   if (receipt === null) {
     throw new WokePaymentError(
       'account-not-found',
-      'The finalized WOKE tip receipt was not found.',
+      'The finalized legacy SOL tip receipt was not found.',
     );
   }
   assertFinalizedEnvelope(built, built.receiptAddress, receipt);
@@ -1227,7 +1225,7 @@ export async function verifyFinalizedWokeSubscriptionProof(
   if (receipt === null || entitlement === null) {
     throw new WokePaymentError(
       'account-not-found',
-      'The finalized WOKE receipt and entitlement are both required.',
+      'The finalized legacy receipt and entitlement are both required.',
     );
   }
   assertFinalizedEnvelope(built, built.receiptAddress, receipt);
@@ -1266,7 +1264,7 @@ function assertTipEvent(
   ) {
     throw new WokePaymentError(
       'invalid-event',
-      'The WokeTipSettled event differs from the approved WOKE tip.',
+      'The WokeTipSettled event differs from the approved legacy SOL tip.',
     );
   }
   parseNonnegativeI64(event.paidAtTimestamp, 'tip paid-at timestamp');
@@ -1310,7 +1308,7 @@ function assertSubscriptionEvent(
   ) {
     throw new WokePaymentError(
       'invalid-event',
-      'The SubscriptionSettled event differs from the approved WOKE settlement.',
+      'The SubscriptionSettled event differs from the approved legacy SOL settlement.',
     );
   }
   assertSubscriptionWindow(
@@ -1358,7 +1356,7 @@ function assertTipReceipt(
   ) {
     throw new WokePaymentError(
       'invalid-proof',
-      'The finalized account is not the exact approved WOKE tip receipt.',
+      'The finalized account is not the exact approved legacy SOL tip receipt.',
     );
   }
   assertPaidAt(receipt.paidAtTimestamp, receipt.paidAtSlot, observedSlot);
@@ -1398,7 +1396,7 @@ function assertSubscriptionReceipt(
   ) {
     throw new WokePaymentError(
       'invalid-proof',
-      'The finalized account is not the exact approved WOKE subscription receipt.',
+      'The finalized account is not the exact approved legacy SOL subscription receipt.',
     );
   }
   assertSubscriptionWindow(
@@ -1435,7 +1433,7 @@ function assertSubscriptionEntitlement(
   ) {
     throw new WokePaymentError(
       'invalid-proof',
-      'The finalized entitlement does not prove the approved WOKE subscription settlement.',
+      'The finalized entitlement does not prove the approved legacy SOL subscription settlement.',
     );
   }
 }
@@ -1468,7 +1466,7 @@ function assertFinalizedEnvelope<T>(
   ) {
     throw new WokePaymentError(
       'context-mismatch',
-      'The finalized account proof is not bound to the approved WokeNet context.',
+      'The finalized account proof is not bound to the approved WokeNet Solana deployment.',
     );
   }
   parseU64(account.slot, 'finalized account slot');
@@ -1484,7 +1482,7 @@ function parseRecipientSplits(input: readonly WokeRecipientSplitInput[]): Parsed
   if (input.length < 1 || input.length > 3) {
     throw new WokePaymentError(
       'invalid-recipient',
-      'Native WOKE payments require between one and three recipient splits.',
+      'The legacy SOL settlement layout requires between one and three recipient splits.',
     );
   }
   const recipients = input.map((candidate) => {
@@ -1497,7 +1495,7 @@ function parseRecipientSplits(input: readonly WokeRecipientSplitInput[]): Parsed
     ) {
       throw new WokePaymentError(
         'invalid-recipient',
-        'Each WOKE recipient basis-point value must be an integer from 1 through 10,000.',
+        'Each legacy SOL recipient basis-point value must be an integer from 1 through 10,000.',
       );
     }
     return {
@@ -1518,7 +1516,10 @@ function parseRecipientSplits(input: readonly WokeRecipientSplitInput[]): Parsed
         ) === 0,
     )
   ) {
-    throw new WokePaymentError('invalid-recipient', 'WOKE recipient identities must be unique.');
+    throw new WokePaymentError(
+      'invalid-recipient',
+      'Legacy SOL recipient identities must be unique.',
+    );
   }
   const recipientRoles = recipients.flatMap((recipient) => [
     recipient.recipientIdentity,
@@ -1527,14 +1528,14 @@ function parseRecipientSplits(input: readonly WokeRecipientSplitInput[]): Parsed
   if (new Set(recipientRoles).size !== recipientRoles.length) {
     throw new WokePaymentError(
       'alias',
-      'WOKE recipient identities and destinations must all be distinct.',
+      'Legacy SOL recipient identities and destinations must all be distinct.',
     );
   }
   const total = recipients.reduce((sum, recipient) => sum + recipient.basisPoints, 0);
   if (total !== Number(BASIS_POINTS_DENOMINATOR)) {
     throw new WokePaymentError(
       'invalid-recipient',
-      'WOKE recipient splits must total exactly 10,000 basis points.',
+      'Legacy SOL recipient splits must total exactly 10,000 basis points.',
     );
   }
   return recipients;
@@ -1545,13 +1546,13 @@ function allocateRecipientLamports(
   feeBasisPoints: number,
   recipients: readonly ParsedRecipientSplit[],
 ): readonly bigint[] {
-  const gross = checkedU128(parsePositiveU64(grossLamports, 'gross WOKE lamports'), 'gross');
+  const gross = checkedU128(parsePositiveU64(grossLamports, 'gross SOL lamports'), 'gross');
   const fee =
     checkedU128Multiply(gross, BigInt(parseFeeBasisPoints(feeBasisPoints)), 'fee') /
     BASIS_POINTS_DENOMINATOR;
   const distributable = gross - fee;
   if (distributable < 1n) {
-    throw new WokePaymentError('rounding-underflow', 'No WOKE lamports remain for recipients.');
+    throw new WokePaymentError('rounding-underflow', 'No SOL lamports remain for recipients.');
   }
   const working = recipients.map((recipient) => {
     const numerator = checkedU128Multiply(
@@ -1580,7 +1581,7 @@ function allocateRecipientLamports(
   if (residual !== 0n || working.some((allocation) => allocation.amount < 1n)) {
     throw new WokePaymentError(
       'rounding-underflow',
-      'The amount cannot pay every WOKE recipient at least one lamport.',
+      'The amount cannot pay every legacy SOL recipient at least one lamport.',
     );
   }
   return working.map((allocation) => allocation.amount);
@@ -1732,7 +1733,7 @@ function parseFeeBasisPoints(value: number): number {
   if (!Number.isInteger(value) || value < 0 || value > MAX_PROTOCOL_FEE_BPS) {
     throw new WokePaymentError(
       'invalid-fee',
-      `The WOKE protocol fee must be an integer from 0 through ${String(MAX_PROTOCOL_FEE_BPS)} basis points.`,
+      `The legacy SOL protocol fee must be an integer from 0 through ${String(MAX_PROTOCOL_FEE_BPS)} basis points.`,
     );
   }
   return value;
@@ -1850,7 +1851,7 @@ function assertSubscriptionWindow(
   ) {
     throw new WokePaymentError(
       errorCode,
-      'The WOKE subscription window is not the exact one-week extension.',
+      'The legacy SOL subscription window is not the exact one-week extension.',
     );
   }
 }
@@ -1861,7 +1862,7 @@ function assertPaidAt(paidAtTimestamp: bigint, paidAtSlot: bigint, observedSlot:
   if (observedSlot < paidAtSlot) {
     throw new WokePaymentError(
       'invalid-proof',
-      'The finalized account slot precedes its claimed WOKE settlement slot.',
+      'The finalized account slot precedes its claimed legacy SOL settlement slot.',
     );
   }
 }
@@ -1947,7 +1948,10 @@ class BorshWriter {
 
   u8(value: number): this {
     if (!Number.isInteger(value) || value < 0 || value > 0xff) {
-      throw new WokePaymentError('invalid-wire-value', 'A WOKE u8 wire value is invalid.');
+      throw new WokePaymentError(
+        'invalid-wire-value',
+        'A legacy settlement u8 wire value is invalid.',
+      );
     }
     this.#bytes.push(value);
     return this;
@@ -1955,7 +1959,10 @@ class BorshWriter {
 
   u16(value: number): this {
     if (!Number.isInteger(value) || value < 0 || value > 0xffff) {
-      throw new WokePaymentError('invalid-wire-value', 'A WOKE u16 wire value is invalid.');
+      throw new WokePaymentError(
+        'invalid-wire-value',
+        'A legacy settlement u16 wire value is invalid.',
+      );
     }
     this.#bytes.push(value & 0xff, (value >>> 8) & 0xff);
     return this;
@@ -1963,7 +1970,10 @@ class BorshWriter {
 
   u32(value: number): this {
     if (!Number.isInteger(value) || value < 0 || value > 0xffff_ffff) {
-      throw new WokePaymentError('invalid-wire-value', 'A WOKE u32 wire value is invalid.');
+      throw new WokePaymentError(
+        'invalid-wire-value',
+        'A legacy settlement u32 wire value is invalid.',
+      );
     }
     this.#bytes.push(
       value & 0xff,

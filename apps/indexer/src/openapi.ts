@@ -3,12 +3,19 @@ const networkParameter = {
   in: 'query',
   required: true,
   description:
-    'Canonical sovereign WokeNet identifier. Both base58 segments must decode to exactly 32 bytes.',
+    'Canonical WokeNet Solana deployment identifier. The segments bind the Solana genesis and WokeSocial program ID; both must decode to exactly 32 bytes.',
   schema: {
     type: 'string',
     maxLength: 96,
     pattern: '^wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$',
   },
+} as const;
+
+const optionalNetworkParameter = {
+  ...networkParameter,
+  required: false,
+  description:
+    'Optional WokeNet Solana deployment identifier. When omitted, the operator-configured default deployment is used; the request fails closed when neither is available.',
 } as const;
 
 const solanaPublicKeyParameterSchema = {
@@ -69,7 +76,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the configured network’s chronological home feed',
         description:
-          'Returns only public posts whose manifest signature, content hash, and finalized WokeNet anchor were verified during ingestion. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
+          'Returns only public posts whose manifest signature, content hash, and finalized WokeSocial program anchor on Solana were verified during ingestion. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
         parameters: [
           {
             name: 'limit',
@@ -90,15 +97,21 @@ export const openApiDocument = {
       get: {
         summary: 'Read a chronological or following projection',
         description:
-          'Low-level replaceable projection endpoint. The network is always explicit and responses are not canonical protocol state. Both modes return public posts only; following mode is a public convenience filter and does not claim viewer authorization. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
+          'Replaceable projection endpoint. The network may be explicit or resolve to the operator-configured default, and the resolved identifier is returned in every successful response. Responses are not canonical protocol state. The response names the versioned projection recipe used to compute the page; it does not assert an authenticated provider identity. Both modes return public posts only; following mode is a public convenience filter and does not claim viewer authorization. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
         parameters: [
-          networkParameter,
+          optionalNetworkParameter,
           {
             name: 'mode',
             in: 'query',
             schema: { type: 'string', enum: ['chronological', 'following'] },
           },
-          { name: 'viewer', in: 'query', schema: { type: 'string' } },
+          {
+            name: 'viewer',
+            in: 'query',
+            description:
+              'Required for following mode. Must be a canonical public WokeSocial identity on the resolved network. It selects a public graph filter and does not prove authentication or ownership.',
+            schema: { type: 'string', maxLength: 161 },
+          },
           {
             name: 'limit',
             in: 'query',
@@ -108,7 +121,7 @@ export const openApiDocument = {
             name: 'before',
             in: 'query',
             description:
-              'Opaque bounded cursor returned as nextCursor. It binds both finalized event time and the post-ID tie-break; clients must not construct or edit it.',
+              'Opaque bounded live-keyset cursor returned as nextCursor. It binds finalized event time, the post-ID tie-break, versioned projection recipe, resolved network, mode, and following viewer when present. It does not retain a historical snapshot: new finalized events, tombstones, or follow changes may affect later pages. Clients must not construct, edit, or reuse it across recipes.',
             schema: {
               type: 'string',
               minLength: 1,
@@ -120,9 +133,13 @@ export const openApiDocument = {
         responses: {
           '200': {
             description:
-              'Verified, public, non-tombstoned projected posts plus an opaque composite nextCursor',
+              'Verified, public, non-tombstoned projected posts, checkpoint metadata, resolved network and viewer scope, plus a composite nextCursor only when another page is known to exist',
           },
           '400': { description: 'Invalid query' },
+          '503': {
+            description:
+              'No explicit network was supplied and the operator has not configured a default network',
+          },
         },
       },
     },
@@ -292,7 +309,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the current projected recovery policy for an identity',
         description:
-          'This is a deterministic finalized-event projection, not authoritative account state. Clients must read and validate the WokeNet accounts before signing or executing recovery instructions.',
+          'This is a deterministic finalized-event projection, not authoritative account state. Clients must read and validate the WokeSocial program accounts on Solana before signing or executing recovery instructions.',
         parameters: [
           {
             name: 'identityId',
@@ -332,7 +349,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected recovery request lifecycle',
         description:
-          'This endpoint reports finalized events and never evaluates current on-chain execution eligibility. WokeNet account state remains authoritative.',
+          'This endpoint reports finalized Solana events and never evaluates current on-chain execution eligibility. WokeSocial program account state remains authoritative.',
         parameters: [
           {
             name: 'recoveryRequestAddress',
@@ -428,7 +445,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the projected payment configuration',
         description:
-          'Returns a rebuildable exact-network projection of the WokeNet payment-config account. The response is not canonical protocol state.',
+          'Returns a rebuildable exact-deployment projection of the disabled legacy payment-config account. The response is not canonical protocol state and does not enable settlement.',
         parameters: [networkParameter],
         responses: {
           '200': { description: 'Current projected payment policy and authority' },
@@ -441,7 +458,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected subscription offering',
         description:
-          'Returns event-derived terms for one exact-network offering. Clients must read the WokeNet account before constructing a payment.',
+          'Returns event-derived legacy terms for one exact-deployment offering. The legacy lamport-payment ABI is disabled; clients must not construct a payment from this projection.',
         parameters: [
           {
             name: 'offeringAddress',
@@ -483,7 +500,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one permanent projected payment receipt',
         description:
-          'Returns a finalized-event and WokeNet account projection for one exact network. The indexer does not infer a broader settlement or refund outcome and never reports success on its own authority.',
+          'Returns a finalized-event and WokeSocial program-account projection for one exact Solana deployment. The indexer does not infer a broader settlement or refund outcome and never reports success on its own authority.',
         parameters: [
           {
             name: 'receiptAddress',
@@ -504,7 +521,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected subscription entitlement',
         description:
-          'Returns the latest finalized projected entitlement state for one exact network. Current eligibility is not evaluated; clients must compare time and authoritative WokeNet state.',
+          'Returns the latest finalized projected entitlement state for one exact Solana deployment. Current eligibility is not evaluated; clients must compare time and authoritative WokeSocial program state.',
         parameters: [
           {
             name: 'entitlementAddress',

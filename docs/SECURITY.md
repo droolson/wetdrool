@@ -1,6 +1,6 @@
 # Security
 
-Last reviewed: 2026-07-28
+Last reviewed: 2026-07-29
 
 ## Document status
 
@@ -70,22 +70,24 @@ The following are explicitly not security assumptions:
 - TLS makes content returned by a third party authentic.
 - A database row is canonical protocol state.
 - IPFS guarantees availability or deletion.
-- A simulated WokeNet transaction is necessarily the transaction a wallet
-  signs.
-- A Solana-wire-compatible or Agave-backed test proves native Firedancer
-  execution, consensus, RPC behavior, or production readiness.
+- A simulated Solana transaction invoking WokeNet is necessarily the transaction
+  a wallet signs.
+- A disposable Solana local-validator test proves public-cluster deployment,
+  provider independence, production authority, or release readiness.
 - Decentralization eliminates moderation, privacy, fraud, or availability risks.
 
 ## Scope
 
 The security boundary includes:
 
-- Browser and future native clients.
+- Browser and the non-release Seeker Android client foundation.
 - Wallet adapters, passkey authenticators, delegated device keys, and recovery.
-- WokeNet’s Solana-compatible programs, program upgrade authority,
+- WokeNet’s Solana programs, program upgrade authority,
   transaction construction, and sponsorship.
-- Native Firedancer source, downstream patches, genesis, validator/RPC
-  configuration, consensus, snapshots, repair, release, and operator authority.
+- Solana cluster/genesis selection, external RPC providers, commitment/finality
+  handling, public deployment records, and program authority.
+- Mobile Wallet Adapter intents and callbacks, Android permissions and local
+  storage, package signing, updates, and distribution.
 - Signed protocol manifests and versioned schemas.
 - Indexer, relay, feed, moderation, media, and notification services.
 - PostgreSQL projections, Redis caches/queues, and local development services.
@@ -107,7 +109,8 @@ revocation and recovery paths.
 | Browser to public edge | Transport to the configured origin | Manifest or protocol authenticity | TLS, HSTS, CSP, signature/hash verification, strict origin policy |
 | Public edge to application services | Authenticated service requests | Canonical protocol state | Service identity, authorization, schema validation, rate limits, trace correlation |
 | Service to PostgreSQL/Redis | Projection storage and disposable coordination | Identity or social-graph authority | Least-privilege roles, parameterized queries, migrations, replayable projections |
-| Client/service to WokeNet RPC | Transport of requests and observations | Correctness, completeness, ordering before finality, transaction intent, or proof of native-Firedancer operation | Multiple RPCs, exact genesis/program binding, native capability gate, commitment policy, response validation, simulation comparison, reconciliation |
+| Client/service to Solana RPC | Transport of requests and observations | Correctness, completeness, ordering before finality, transaction intent, or proof of public deployment | Multiple RPCs, exact genesis/program binding, method capability checks, commitment policy, response validation, simulation comparison, reconciliation |
+| Android app to wallet through Mobile Wallet Adapter | User-authorized wallet connection and signing handoff | Callback authenticity without validation, requested-account stability, transaction intent, or Seeker model claims | Explicit intents, package/association checks where supported, bounded callbacks, account/network revalidation, decoded transaction summary, lifecycle/adversarial tests |
 | Client/service to content providers | Retrieval or publication of bytes | Byte integrity, availability, privacy, or deletion | Local hashing, CID/hash verification, encryption before upload, redundant providers |
 | Client to indexer/feed/relay | Discovery and low-latency convenience | Signatures, authorization, finality, or durable message truth | Signed objects, reconciliation, replaceable endpoints, bounded caches |
 | Operator control plane | Approved deployment and incident actions | User signing authority or plaintext user secrets | SSO/MFA, least privilege, audit logs, separation of duties, break-glass review |
@@ -120,7 +123,7 @@ risks.
 
 | Class | Examples | Allowed locations | Required handling |
 | --- | --- | --- | --- |
-| Public protocol data | Program IDs, public keys, public follows, signed public manifests | WokeNet, content providers, public APIs, caches | Version, sign, hash, validate, and document permanence |
+| Public protocol data | Program IDs, public keys, public follows, signed public manifests | Solana/WokeNet program state, content providers, public APIs, caches | Version, sign, hash, validate, and document permanence |
 | Public but deletable-by-policy content | Ordinary post bodies and media | Deletion-capable providers and indexer projections by default | Explicit storage policy, tombstones, provider deletion requests, no permanence claim |
 | Restricted content | Paid, private-community, or audience-limited content | Encrypted blobs and authorized client storage | Encrypt before upload; never colocate public decryption keys |
 | Private communications | Message bodies, attachments, safety numbers | End-to-end encrypted envelopes and encrypted local storage | No server plaintext; minimize metadata; explicit report disclosure |
@@ -218,17 +221,20 @@ UX, email assistance, and independent review remain launch gates.
   verification MUST have reproducible runbooks and independently retained
   evidence.
 
-## WokeNet transaction, validator, and program security
+## Solana transaction, RPC, and WokeNet program security
 
-All items in this section are **Planned**.
+The repository contains partial local implementation and tests. Public
+deployment, production signing UX, independent review, and release evidence
+remain **Planned**.
 
 Before a wallet or sponsor signs, the client or service MUST:
 
-1. Resolve the selected WokeNet environment and exact expected genesis hash.
+1. Resolve the selected Solana cluster and exact expected genesis hash.
 2. Verify every program ID against environment configuration.
 3. Decode every supported instruction and reject unknown instructions by default.
 4. Validate writable and signer accounts, PDA derivations, recipients, token
-   mints, amounts, fees, and authority relationships.
+   programs/mints/accounts where applicable, amounts, fees, and authority
+   relationships.
 5. Present a stable, human-readable action and cost summary.
 6. Simulate the exact compiled message that will be signed.
 7. Compare simulation accounts, instructions, compute use, and balance changes
@@ -245,29 +251,35 @@ substitution, duplicate initialization, unauthorized closure, overflow,
 malformed input, wrong program IDs, stale delegations, and unsupported token
 mints.
 
-Sponsored transactions MUST enforce authenticated subject limits, IP/device
+The legacy lamport-denominated payment ABI is permanently quarantined. Clients,
+sponsors, and release tooling MUST reject attempts to execute or unpause it, and
+legacy accounts/events MUST never grant entitlements. Portable signed metadata
+may truthfully describe `{ kind: "sol" }` or an exact SPL asset; it MUST reject
+`{ kind: "woke" }`. Any future `$WOKE` path requires a reviewed SPL or
+Token-2022 mint, a new mint-aware ABI, exact token-account constraints, explicit
+migration, and independent audit.
+
+Sponsored Solana transactions MUST enforce authenticated subject limits, IP/device
 signals used only under the privacy policy, per-action budgets, idempotency keys,
 transaction-shape allowlists, simulation, daily loss ceilings, and an emergency
-disable switch. Sponsorship MUST remain optional and replaceable.
+disable switch. Sponsorship MUST remain optional and replaceable, pay only the
+Solana transaction network fee, and reject the quarantined payment ABI.
 
-WokeNet runtime evidence MUST additionally:
+Public WokeNet deployment evidence MUST additionally:
 
-- build the exact pinned official Firedancer commit plus checksum-pinned patch
-  queue;
-- use only `firedancer` or `firedancer-dev`, never Frankendancer, `fdctl`,
-  `fddev`, `agave-validator`, or `solana-test-validator`;
-- publish source, patch, build, binary, genesis, feature-set, and configuration
-  provenance;
-- fail closed when native RPC does not support required submission, simulation,
-  confirmation, history, or program-account methods;
-- verify expected genesis hash, shred version, program ID, validator identities,
-  and trusted snapshot sources;
-- pass restart, repair, snapshot, replay, finality, multi-validator consensus,
-  and byzantine/failover rehearsals without an Agave process.
+- publish the exact Solana cluster, observed genesis hash, program ID,
+  deployment slot, program-data address, executable artifact hash, source
+  revision, toolchain, and upgrade authority;
+- reproduce the reviewed SBF artifact and verify it against deployed bytes;
+- fail closed when configured RPC endpoints lack required submission,
+  simulation, confirmation, history, or program-account methods;
+- cross-check sensitive reads and finalized observations across independently
+  administered Solana RPC providers; and
+- rehearse RPC failover, blockhash expiry, priority-fee policy, provider
+  disagreement, upgrade, rollback, and authority-compromise response.
 
-The current repository has reproducible source materialization and
-machine-readable fail-closed capability evidence, but not the native runtime
-evidence above.
+The current repository has local-validator program and client evidence, but no
+recorded devnet or mainnet-beta deployment evidence.
 
 ## Application and API controls
 
@@ -283,6 +295,29 @@ All items in this section are **Planned**.
   redirect revalidation, response-size/time limits, and egress restrictions.
 - Filesystem paths MUST be generated by the service, normalized, confined to a
   dedicated root, and never derived directly from a CID or upload filename.
+
+### Seeker Android and Mobile Wallet Adapter
+
+The current Expo/React Native project is a non-release foundation. Before an
+Android release:
+
+- wallet connect, authorize, sign, disconnect, cancellation, timeout, background
+  and resume flows MUST be tested on the approved Seeker/device matrix;
+- MWA intents, deep links, callbacks, selected accounts, cluster, program ID,
+  transaction bytes, and post-return state MUST be strictly revalidated;
+- the app MUST request the minimum Android permissions and keep seeds, private
+  keys, wallet auth material, message plaintext, and sensitive recovery data out
+  of logs, telemetry, backups, clipboard, and screenshots where controllable;
+- package ID, app links, signing certificate, dependencies, native modules, and
+  release artifact provenance MUST be reviewed;
+- an installable APK MUST be reproducible, signed through controlled custody,
+  independently verified, and covered by secure update and rollback procedures;
+  and
+- store submission or direct distribution requires explicit security, privacy,
+  accessibility, legal, and release approval.
+
+A model-name check or claimed Seeker device status is presentation metadata only
+and MUST NOT grant value or privileges.
 - Shell execution SHOULD be avoided. Where unavoidable, use fixed executables and
   argument arrays, never interpolation.
 - Cookie-authenticated mutations MUST use origin checks and CSRF tokens where
@@ -380,9 +415,9 @@ Digest-pinned local infrastructure and hardened optional service profiles are
 implemented; production secret injection, TLS, resource sizing, image signing,
 SBOM/provenance, backup/restore, and provider deployment remain **Planned**.
 
-- Separate compatibility-test, native localnet, WokeNet test network, staging, and
-  production credentials and data. Production-network credentials MUST never be
-  available to pull-request jobs.
+- Separate disposable localnet, Solana devnet, staging, mainnet-beta, Android
+  signing, and distribution credentials and data. Production credentials MUST
+  never be available to pull-request jobs.
 - Inject secrets at runtime from a provider-neutral secret interface. `.env`
   files are for local development only, ignored by Git, permission-restricted,
   and populated from documented placeholders.
@@ -404,9 +439,9 @@ SBOM/provenance, backup/restore, and provider deployment remain **Planned**.
 
 All items in this section are **Planned**.
 
-- Pin Node, pnpm, Rust, Anchor, Solana-compatible client/build tools, the exact
-  Firedancer source revision and patches, container bases, CI actions, and all
-  package dependencies to reviewed compatible versions.
+- Pin Node, pnpm, Rust, Anchor, Solana client/build tools, Android/Kotlin/Expo
+  tooling and native modules, container bases, CI actions, and all package
+  dependencies to reviewed compatible versions.
 - Commit lockfiles and enforce frozen installs in CI.
 - CI action references and base images MUST use immutable commit or digest pins.
 - Pull-request workflows MUST not receive production secrets or broad write
@@ -416,9 +451,12 @@ All items in this section are **Planned**.
   and code scanning before release.
 - Generate an SBOM and provenance for release artifacts. Sign immutable artifacts
   where the selected registry supports verification.
-- WokeNet releases MUST use reproducible/verifiable Firedancer and social
-  program builds and publish source revisions, patch digests, toolchains, binary
-  hashes, genesis/feature identifiers, program-data address, and authorities.
+- WokeNet releases MUST use reproducible/verifiable social-program builds and
+  publish source revisions, toolchains, SBF hashes, Solana genesis/program
+  identifiers, deployment slot, program-data address, and authorities.
+- WokeSocial Android releases MUST publish source revision, dependency lock,
+  build environment, package ID, version, APK hash, signing-certificate digest,
+  reproducibility result, and distribution channel.
 - Dependency updates MUST be reviewed for install scripts, maintainer changes,
   transitive risk, protocol compatibility, and cryptographic impact.
 
@@ -450,8 +488,9 @@ No row is satisfied until evidence is linked from a release report.
 | --- | --- | --- |
 | Source and dependency integrity | Frozen clean install, lockfile review, secret/dependency/code scans, SBOM | Partial: frozen install, exact patched overrides, a no-known-vulnerability audit result, and pinned CI/Gitleaks workflows exist; SBOM/release provenance and complete scan evidence remain |
 | Web/API security | Header test, CSP report review, authz/CSRF/SSRF/XSS/SQLi tests, rate-limit tests | Partial: read-only indexer rate limiting and basic headers exist; the full adversarial/CSP suite does not |
-| WokeNet runtime and program security | Native-Firedancer build/conformance/consensus gates, formatting, Clippy, unit and compatibility-validator tests, verifiable builds, independent audit findings resolved | Blocked: source/patch/capability policy and SBF/local compatibility evidence exist; native Firedancer lacks required RPC methods and a production release, and no native cluster, verifiable release, or independent audit exists |
-| Transaction safety | Golden instruction decodes, substitution tests, simulation comparison tests, wallet UX review | Partial: exact account/data tests, substitution/allocation/replay tests, exact-byte version-0/legacy compilation, detached-signature verification, bounded strict RPC simulation/status parsing, fee and balance reconciliation, same-byte broadcast/rebroadcast, finalized transaction confirmation, and finalized-account proof validation exist; flagship wallet/passkey signer integration, executable-artifact attestation, post-finality receipt/entitlement proof orchestration, sponsorship policy, and native Firedancer evidence remain open |
+| WokeNet program and deployment security | Formatting, Clippy, unit and Solana local-validator tests, reproducible SBF artifact, deployed-byte/authority verification, devnet rehearsal, independent audit findings resolved | Partial: SBF/local-validator evidence exists; no devnet/mainnet-beta deployment, verifiable public release, production authority, or independent audit exists |
+| Transaction safety | Golden instruction decodes, substitution tests, simulation comparison tests, wallet/MWA UX review | Partial: exact account/data tests, substitution/allocation/replay tests, exact-byte version-0/legacy compilation, detached-signature verification, bounded strict RPC simulation/status parsing, fee and balance reconciliation, same-byte broadcast/rebroadcast, finalized transaction confirmation, and finalized-account proof validation exist; flagship signer flows, MWA transaction-intent testing, executable-artifact attestation, future mint-aware receipt/entitlement orchestration, and sponsorship policy remain open |
+| Seeker Android release | Device matrix, intent/deep-link/callback tests, permission/privacy review, reproducible signed APK, signing provenance, update/rollback drill, store review | Partial foundation only: Expo/React Native source, MWA connection boundary, deployment checks, read-only feed, and unit tests exist; release evidence does not |
 | Identity and recovery | WebAuthn origin tests, nonce/replay tests, delegation/revocation/recovery abuse tests | Partial: real browser WebAuthn, durable challenges/sessions, delegation epochs, and delayed guardian recovery adversarial paths pass; protocol onboarding, email/notification UX, full device lifecycle, and review remain |
 | Content integrity | Canonical vectors, signature/hash/CID substitution tests, gateway failover tests | Partial: TypeScript canonical/signature/hash/CID and storage corruption tests pass; shared vectors and comprehensive failover do not |
 | Messaging | Published protocol/library, interoperability vectors, device/replay/revocation tests, independent review | Partial: pinned real-WASM pairwise adapter and 13 envelope/device/replay/revocation/non-disclosure cases pass; persistent browser/relay interoperability and independent review remain |
@@ -484,27 +523,27 @@ post sensitive evidence in public issues.
 The following remain explicit blockers until implementation and evidence exist:
 
 - No clean independent-machine release attestation, SBOM, signed artifacts,
-  reproducible native-Firedancer build, or verifiable social-program release.
-- Full native Firedancer has no supported production release and lacks the
-  transaction submission, simulation, confirmation, history, and
-  program-account RPC surface required by the application. Frankendancer is
-  forbidden because it uses Agave.
+  verifiable social-program deployment, or reproducible signed Android release.
+- No WokeNet program deployment is recorded on Solana devnet or mainnet-beta;
+  public deployed-byte, authority, provider-diversity, failover, and incident
+  evidence is absent.
 - The latest available Node 22.23.1 pin is awaiting the announced HIGH-severity
   patched 22.x release; production image publication is blocked until rotation.
 - CI/security workflows exist, but complete scan artifacts and release
   provenance have not been recorded.
 - Browser service sessions, scoped delegations, rotation, revocation, and
   delayed guardian recovery subsets exist; protocol onboarding, complete
-  device/email recovery UX, wider authorization/payment instructions, and a
+  device/email recovery UX, wider authorization, replacement mint-aware payment
+  instructions, and a
   production authority model remain absent.
 - The SDK has exact-byte version-0/legacy transaction compilation, strict RPC
   simulation/status decoding, detached-signature verification, fee/balance
   reconciliation, same-byte broadcast/rebroadcast, finalized transaction
   confirmation, and injected finalized-account proof validation. A complete
   generated account client, flagship wallet/passkey signer integration,
-  executable-artifact attestation, post-finality receipt/entitlement proof
-  orchestration, sponsor policy, wallet UX, and native Firedancer evidence
-  remain absent.
+  executable-artifact attestation, future mint-aware receipt/entitlement proof
+  orchestration, sponsor policy, and wallet/MWA signing UX remain absent. The
+  legacy payment ABI remains permanently non-entitling.
 - Manifest/storage integrity and a hardened media-worker/ClamAV subset exist;
   shared cross-language vectors, production storage orchestration, and stronger
   codec sandbox evidence remain absent.
@@ -516,4 +555,7 @@ The following remain explicit blockers until implementation and evidence exist:
   focused adversarial API suite are absent.
 - No production authority multisig, key ceremony, incident drill, or restore
   drill.
+- The Android foundation has no verified Seeker-device run, reproducible signed
+  APK, signing provenance, secure update/rollback evidence, store submission, or
+  publication.
 - No independent security audit.

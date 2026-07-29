@@ -1,7 +1,7 @@
 # WokeSocial Moderation and Safety Model
 
 **Status:** Active specification with an implemented provider subset  
-**Last updated:** 2026-07-28
+**Last updated:** 2026-07-29
 
 ## 1. Implementation status
 
@@ -24,16 +24,21 @@ community product controls, specialist escalation, transparency exports, and
 independent policy-provider selection remain incomplete. Signed tombstones and
 the indexer’s deletion suppression are separately tested protocol controls.
 
-The protocol runtime in this document is the sovereign WokeNet, forked
-from Solana. Native validator and RPC operation is Firedancer only and remains
-**Experimental**; Agave/Solana tooling is an explicitly labeled compatibility
-oracle and cannot establish native or production evidence; production
-activation remains blocked. Onchain moderation references use WokeNet
-state. WOKE is the native 9-decimal asset, while `lamports` may remain only as
-its Solana-compatible wire/base-unit identifier
-(`1 WOKE = 1,000,000,000 lamports`). The canonical public origin is
-`https://woke.social`; `sociallywoke.com` is redirect-only and must not host a
-separate moderation policy, report intake, appeal flow, or identity namespace.
+WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+Solana. Onchain moderation references use the exact selected Solana
+genesis/program binding. Local-validator tests are local evidence only; no
+devnet or mainnet-beta deployment is recorded. No `$WOKE` mint exists, and the
+legacy payment ABI is quarantined and irrelevant to moderation authority. The
+canonical public origin is `https://woke.social`; `sociallywoke.com` is
+redirect-only and must not host a separate moderation policy, report intake,
+appeal flow, or identity namespace.
+
+Moderation and safety requirements apply equally to responsive web and the
+native Android product. The current Seeker/Mobile Wallet Adapter project is a
+non-release foundation and does not yet provide complete block, mute, report,
+appeal, label, evidence, or crisis-resource workflows. A mobile release requires
+feature parity for applicable safety controls plus TalkBack, lifecycle,
+deep-link, wallet-handoff, notification, and device-level abuse testing.
 
 ## 2. Goals
 
@@ -355,7 +360,7 @@ Crisis-resource hooks are supportive and optional. They do not infer a diagnosis
 
 A valid signed public object may exist in several places:
 
-- A WokeNet reference or tombstone
+- A Solana-hosted WokeNet program reference or tombstone
 - A deletion-compatible content provider
 - An intentionally permanent provider
 - Operator caches and search indexes

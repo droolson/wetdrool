@@ -4,8 +4,8 @@ export type FeedKind = 'chronological' | 'community' | 'following' | 'home';
 
 const FEEDS: readonly { href: string; id: FeedKind; label: string }[] = [
   { href: '/home', id: 'home', label: 'Home' },
-  { href: '/home?feed=following', id: 'following', label: 'Following' },
-  { href: '/home?feed=chronological', id: 'chronological', label: 'Chronological' },
+  { href: '/feed/following', id: 'following', label: 'Following' },
+  { href: '/feed/chronological', id: 'chronological', label: 'Chronological' },
   { href: '/home?feed=community', id: 'community', label: 'Community' },
 ];
 

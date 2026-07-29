@@ -47,22 +47,28 @@ function DegradedFeed({ detail, reason }: { detail: string; reason: string }) {
 function UnavailableFeed({ feed }: { feed: Exclude<FeedKind, 'home'> }) {
   const copy = {
     chronological:
-      'The connected indexer exposes the compatible home contract, but not an independently paginated chronological endpoint.',
+      'The paginated chronological contract now has a dedicated route so its cursor and provenance remain visible.',
     community:
       'A verified community directory, membership projection, and community feed endpoint are not connected.',
     following:
-      'A following feed requires an authenticated identity and relationship-aware endpoint that this web contract does not yet expose.',
+      'A public following-graph preview now has a dedicated route. It does not claim signed-in identity ownership.',
   }[feed];
+  const href =
+    feed === 'community'
+      ? '/home'
+      : feed === 'following'
+        ? '/feed/following'
+        : '/feed/chronological';
 
   return (
     <StatePanel
       action={
-        <ButtonLink href="/home" variant="secondary">
-          Return to the connected home feed
+        <ButtonLink href={href} variant="secondary">
+          {feed === 'community' ? 'Return to the connected home feed' : `Open ${feed} route`}
         </ButtonLink>
       }
-      eyebrow={`${feed} feed unavailable`}
-      title="No posts were borrowed from another feed."
+      eyebrow={feed === 'community' ? `${feed} feed unavailable` : `${feed} has a dedicated route`}
+      title="Feed recipes stay separate."
       tone="empty"
     >
       <p>{copy}</p>

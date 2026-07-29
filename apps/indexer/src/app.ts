@@ -18,7 +18,13 @@ import {
   solanaPublicKeySchema,
 } from '@wokesocial/protocol';
 
-import { decodeFeedCursor, encodeFeedCursor, MAX_FEED_CURSOR_LENGTH } from './feed-cursor.js';
+import {
+  decodeFeedCursor,
+  encodeFeedCursor,
+  MAX_FEED_CURSOR_LENGTH,
+  OPEN_INDEXER_FEED_RECIPE,
+  type FeedCursorScope,
+} from './feed-cursor.js';
 import type { FeedEntry, PostProjection, PublicSearchResult } from './models.js';
 import { ProjectionError, type ProjectionStore } from './projection.js';
 import { openApiDocument } from './openapi.js';
@@ -27,7 +33,7 @@ import type { IndexerRuntimeReadiness } from './runtime-readiness.js';
 
 const feedQuerySchema = z
   .object({
-    network: networkIdSchema,
+    network: networkIdSchema.optional(),
     mode: z.enum(['chronological', 'following']).default('chronological'),
     viewer: identityIdSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(30),
@@ -286,14 +292,14 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       return invalidQuery(parsed.error);
     }
 
-    const entries = await options.projection.getFeed({
+    const snapshot = await options.projection.getFeedSnapshot({
       networkId: defaultNetworkId,
       mode: 'chronological',
       limit: parsed.data.limit,
     });
     return {
-      meta: await responseMeta(options.projection, defaultNetworkId),
-      posts: entries.map(serializeConsumerPost),
+      meta: responseMetaForCheckpoint(snapshot.checkpoint),
+      posts: snapshot.entries.map(serializeConsumerPost),
     };
   });
 
@@ -304,9 +310,64 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       return invalidQuery(parsed.error);
     }
 
-    let before;
+    const networkId = parsed.data.network ?? defaultNetworkId;
+    if (networkId === undefined) {
+      void reply.code(503);
+      return {
+        error: {
+          code: 'network-not-configured',
+          message:
+            'This indexer has no default network. Supply an explicit network query or configure one.',
+        },
+      };
+    }
+    let cursorScope: FeedCursorScope;
+    if (parsed.data.mode === 'following') {
+      const viewerIdentityId = parsed.data.viewer;
+      if (viewerIdentityId === undefined) {
+        void reply.code(400);
+        return {
+          error: {
+            code: 'invalid-query',
+            message: 'Following mode requires a viewer identity.',
+            issues: [],
+          },
+        };
+      }
+      if (!viewerIdentityId.startsWith(`wokesocialid:v1:${networkId}:`)) {
+        void reply.code(400);
+        return {
+          error: {
+            code: 'invalid-query',
+            message: 'The following viewer must belong to the resolved WokeNet Solana deployment.',
+            issues: [
+              {
+                path: 'viewer',
+                message: 'Viewer identity network does not match the resolved feed network.',
+              },
+            ],
+          },
+        };
+      }
+      cursorScope = {
+        networkId,
+        mode: 'following',
+        viewerIdentityId,
+      };
+    } else {
+      cursorScope = {
+        networkId,
+        mode: 'chronological',
+        viewerIdentityId: null,
+      };
+    }
+
+    let continuation;
     try {
-      before = parsed.data.before === undefined ? undefined : decodeFeedCursor(parsed.data.before);
+      continuation =
+        parsed.data.before === undefined
+          ? undefined
+          : decodeFeedCursor(parsed.data.before, cursorScope);
     } catch {
       void reply.code(400);
       return {
@@ -317,19 +378,30 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       };
     }
     const feedQuery = {
-      networkId: parsed.data.network,
+      networkId,
       mode: parsed.data.mode,
-      limit: parsed.data.limit,
+      // Read one additional entry so nextCursor means that another page is
+      // known to exist, rather than merely echoing the last entry on this page.
+      limit: parsed.data.limit + 1,
       ...(parsed.data.viewer === undefined ? {} : { viewerIdentityId: parsed.data.viewer }),
-      ...(before === undefined ? {} : { before }),
+      ...(continuation === undefined ? {} : { before: continuation }),
     };
-    const entries = await options.projection.getFeed(feedQuery);
-    const lastEntry = entries.at(-1);
+    const snapshot = await options.projection.getFeedSnapshot(feedQuery);
+    const page = snapshot.entries.slice(0, parsed.data.limit);
+    const lastEntry = page.at(-1);
     return {
       canonical: false,
       projection: 'wokenet-open-indexer',
-      entries: entries.map(serializeFeedEntry),
-      nextCursor: lastEntry === undefined ? undefined : encodeFeedCursor(lastEntry.post),
+      recipe: OPEN_INDEXER_FEED_RECIPE,
+      mode: parsed.data.mode,
+      network: networkId,
+      meta: responseMetaForCheckpoint(snapshot.checkpoint),
+      entries: page.map(serializeFeedEntry),
+      viewer: cursorScope.viewerIdentityId,
+      nextCursor:
+        snapshot.entries.length > parsed.data.limit && lastEntry !== undefined
+          ? encodeFeedCursor(lastEntry.post, cursorScope)
+          : null,
     };
   });
 
@@ -960,6 +1032,7 @@ function serializeConsumerPost(entry: FeedEntry) {
     createdAt: entry.post.createdAt,
     id: entry.post.objectId,
     language: entry.post.content.language,
+    media: entry.post.content.media,
     verification: {
       anchor: {
         finality: 'finalized',

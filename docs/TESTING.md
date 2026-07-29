@@ -1,35 +1,28 @@
 # Testing strategy
 
-Status: active implementation. Unit, native Rust, Agave local-validator
-compatibility, PostgreSQL, Kubo, real WebSocket relay, browser E2E, automated
-accessibility, the compatibility validator-to-browser vertical slice, and
-direct native C unit conformance for the bounded downstream
-`getProgramAccounts` subset, standalone live signature-status cache core, and
-snapshot transaction-result parser have passing evidence. Native WokeNet
-Firedancer/RPC cluster integration, production security/resilience suites, the
-manual accessibility matrix, and full cross-language conformance remain
-incomplete.
+Status: active implementation. Unit, Rust, Solana local-validator, PostgreSQL,
+Kubo, real WebSocket relay, browser E2E, automated accessibility, and the local
+validator-to-browser vertical slice have passing evidence. Public Solana
+deployment, production security/resilience suites, the manual accessibility
+matrix, release-grade Seeker Android/Mobile Wallet Adapter/signed-APK evidence, and
+full cross-language conformance remain incomplete.
 
-WokeNet is the sovereign runtime, forked from Solana, with native WOKE at
-9 decimals. `lamports` is retained only as the Solana-compatible wire/base-unit
-identifier (`1 WOKE = 1,000,000,000 lamports`). Native validator and RPC results
-must come from Firedancer. Agave/Solana tooling is an explicitly labeled
-compatibility oracle and can never satisfy native or production evidence.
-Native Firedancer/RPC is **Experimental**, and production activation remains
-blocked until its build, RPC, genesis, connected-slice, resilience, and
-independent-operator gates pass.
+WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+Solana, not a chain or validator network. No `$WOKE` mint exists. The legacy
+lamport payment ABI is quarantined and cannot execute or be unpaused; its tests
+are regression evidence only.
 
 ## Verified evidence snapshot
 
 | Surface | Current verified evidence | Important limit |
 | --- | --- | --- |
 | Protocol objects | All 29 v1 object families, deterministic RFC 8785 bytes and IDs, exact canonical-envelope decoding, NFC rejection, Ed25519 verification, changed-payload rejection, authorization denial, and generated Draft 2020-12 schema drift | TypeScript fixtures only; no shared Rust/TypeScript golden corpus |
-| Storage and SDK | Local CAS round-trip/deletion/corruption, permanence-consent gate, multi-provider quorum, Arweave-compatible receipt/readback validation, operation-scoped signed/recoverable publication, exact payment planning, eight IDL-aligned instruction builders including one-way identity deactivation, strict settlement-effect verification, and exact-byte version-0/legacy compile/sign/simulate/broadcast/finalize execution | No funded live Arweave uploader, production provider, complete generated account client, flagship wallet/passkey signer integration, executable-artifact attestation, or native Firedancer transaction path |
-| WokeNet program compatibility | Twenty-four Rust sizing/validation/PDA/discriminator/sequence/allocation tests, a Solana-compatible SBF build, and 34 real Agave local-validator oracle cases including root-authorized identity deactivation, handles, root/delegated actions, delayed recovery, governance, native WOKE tips/subscriptions, adversarial authorization/substitution/replay, and transaction/compute/rent ceilings | Compatibility evidence only; native Firedancer, token assets, other governance models/execution, full fuzz/cross-language matrix, and public-network evidence remain open |
-| Indexer/PostgreSQL | Finalized Solana-format sync against the Agave oracle; exact decoding/projection of all 33 IDL events; canonical onchain profile-v2 commitment; exact CIDv1/base32-lower/raw/SHA-256 URI validation; accepted/pending/terminal raw disposition; checkpoint-independent bounded hydration; detached, non-gating tombstone metadata; suppression-aware exact-source replay; one-way identity deactivation; sixteen ordered migrations; exact-network APIs; and bounded indexed public search. All 185 unit cases across 20 files and 27 PostgreSQL cases across 11 files pass | Native Firedancer RPC, fork/reorg behavior, independent-provider reconciliation, viewer-aware search, and production-scale rebuild evidence remain open; the current rebuild refuses more than 50,000 events |
+| Storage and SDK | Local CAS round-trip/deletion/corruption, permanence-consent gate, multi-provider quorum, Arweave-compatible receipt/readback validation, operation-scoped signed/recoverable publication, eight IDL-aligned instruction builders including one-way identity deactivation, strict RPC parsing, and exact-byte version-0/legacy compile/sign/simulate/broadcast/finalize execution | No funded live Arweave uploader, production provider, complete generated account client, flagship wallet/Mobile Wallet Adapter signer integration, executable-artifact attestation, or public-cluster transaction path |
+| WokeNet program | Twenty-five Rust sizing/validation/PDA/discriminator/sequence/allocation tests, an SBF build, and 28 Solana local-validator cases including root-authorized identity deactivation, handles, root/delegated actions, delayed recovery, governance, fail-closed legacy-payment quarantine, adversarial authorization/substitution/replay, and transaction/compute/rent ceilings | Local evidence only; no devnet/mainnet-beta deployment, successful payment flow, `$WOKE` mint, replacement payment ABI, full fuzz/cross-language matrix, or independent audit |
+| Indexer/PostgreSQL | Finalized Solana RPC sync; exact decoding/projection of all 33 IDL events; canonical onchain profile-v2 commitment; exact CIDv1/base32-lower/raw/SHA-256 URI validation; accepted/pending/terminal raw disposition; checkpoint-independent bounded hydration; detached, non-gating tombstone metadata; suppression-aware exact-source replay; one-way identity deactivation; sixteen ordered migrations; exact-network APIs; and bounded indexed public search | Fork/reorg behavior, independent-provider reconciliation, viewer-aware search, and production-scale rebuild evidence remain open; the current rebuild refuses more than 50,000 events |
 | Feed provider | 38 cases cover all seven modes, transparent scoring, bounded trending, provider provenance/checkpoints, cursor binding, third-party reconciliation, local safety filtering, redirect-only-origin rejection, and fail-closed limiter startup ownership | Production candidate collection and a curated discovery registry are operator/client integrations |
 | Crypto/passkey wrapping | 12 vectors cover random/hash/HKDF/AES-GCM and credential-bound WebAuthn-PRF Ed25519-seed wrapping, including substitution and malformed inputs | Package-level vectors do not prove protocol onboarding, recovery, or external review |
-| Configuration | 149 unit cases plus four real-TLS integration cases cover runtime-mode consistency, origin/domain boundaries, verified database TLS and hostname/CA rejection, migration integrity, trusted proxies, secret isolation, service-specific environment parsers, shared Redis/HMAC admission configuration, and nonlocal fail-closed requirements | Configuration tests are guardrails, not production topology, certificate, secret-manager, or multi-replica evidence |
+| Configuration | Unit cases plus real-TLS integration cover runtime-mode consistency, Solana cluster/RPC naming, origin/domain boundaries, verified database TLS and hostname/CA rejection, migration integrity, trusted proxies, secret isolation, service-specific parsers, shared Redis/HMAC admission configuration, and nonlocal fail-closed requirements | Configuration tests are guardrails, not production certificate, secret-manager, public-provider, or multi-replica evidence |
 | Authentication service | 34 unit/API cases, four isolated PostgreSQL cases, one auth-service browser integration, and two real-Chromium flagship lifecycle flows cover exact-origin/RP ceremonies, one-time challenges, atomic initial credential/wrapper/activation, atomic authentication/session issuance against revocation, same-root additional passkeys, step-up revocation, whole-account session invalidation, survivor authentication, revoked-credential rejection, cross-tab CSRF recovery, bounded retention, readiness privilege/schema checks, and fail-closed custody/recovery policy | Protocol-identity creation, WokeNet delegation/device-authority integration, recovery, load evidence, and external review remain open |
 | Pairwise messaging | Thirteen real-WASM cases cover independent device keys, Olm session establishment, canonical sender-signed outer envelopes, relay-mutation rejection before state mutation, post-session loss/reordering, duplicate/corruption/wrong-device rejection, local and remote authorization/revocation, malformed Unicode, bounded dependency stalls, production volatile-storage rejection, plaintext zeroization/non-disclosure, fixed errors, private runtime construction, and absent group APIs | Volatile memory state only; persistent encrypted browser state, pre-key retransmission, attachments, safety UX, relay integration, and independent review remain open |
 | Shared admission limiting | 25 unit cases and six real-Redis integration cases cover atomic cross-client fixed windows, HMAC-derived private keys, namespace/service/deployment isolation, expiry, command/ACL readiness, bounded disconnects, no queued replay, partial-failure TTL safety, and explicit loopback-only memory mode | Relay replay nonces, connection/transport leases, sequence, retention/subscriptions, and fanout remain process-local; shared admission quotas alone do not make relay horizontally safe |
@@ -37,9 +30,11 @@ independent-operator gates pass.
 | Moderation provider | 56 unit cases and four isolated PostgreSQL cases cover signed object verification, encrypted restricted evidence, append-only history, runtime-role delete denial, readiness privileges, legal holds, due/review/expiry transitions, and retention-safe maintenance | Production object authorizer, operator SSO, specialist workflows, and a separately credentialed reviewed retention executor remain open |
 | Media worker | 70 adversarial unit cases, three real Sharp/FFmpeg/ffprobe integrations, and a real ClamAV 1.5.3 benign/EICAR container check cover resumability, hashes, MIME/container checks, filesystem races, bounds, metadata-free processing, HLS/waveforms, authorization, scanner protocol/freshness/provenance, and unsigned publication | Flagship browser upload, production multi-provider storage, codec sandbox/isolation evidence, load testing, and external review remain open |
 | Kubo | Real local container publish, returned-CID verification, gateway retrieval, health, and unpin | No production provider or multi-gateway fault exercise |
-| Connected compatibility slice | Fresh Agave validator oracle, signed local CAS, nine finalized Solana-format transactions, production sync/API, destructive projection replay with exact equivalence, production Next, desktop/mobile Chromium | Compatibility-only local core text-post/follow/tombstone journey; not native WokeNet, public-network, or full product breadth |
-| Native WokeNet runtime | The bounded downstream `getProgramAccounts` implementation has direct native `test_accdb` and `test_rpc_tile` coverage; `test_sched`/`test_execrp_tile`/`test_replay_tile` cover live result propagation; `test_sigstatuscache` covers the standalone fork-aware fail-closed cache core; `test_slot_delta_parser` covers complete typed snapshot-result decoding; and `test_snap_roundtrip` covers the unchanged legacy entry/group path | The cache has no validator caller or topology and snapin discards typed results, so no snapshot restoration or RPC method is claimed. No passing native cluster evidence exists; five required RPC methods, wider conformance, WokeNet genesis, resilience, and independent-operator proof remain required |
-| Web | Production build, 81 unit cases, and 206 passing desktop/mobile Playwright cases covering the current route surface, 90 axe A/AA scans over 45 fixtures, semantic states, connected post detail, skip-link/navigation, high contrast, canonical-host redirects, bounded public search, local composer/preferences/hide/export, and two desktop passkey lifecycle flows; the duplicate mobile flows are intentionally skipped | Wallet/protocol-identity/transaction flows, WokeNet delegation lifecycle, post-detail axe coverage, and a manual WCAG conformance result remain open |
+| Connected local slice | Fresh Solana local validator, signed local CAS, nine finalized transactions, production sync/API, destructive projection replay with exact equivalence, production Next, desktop and mobile-viewport Chromium | Local core text-post/follow/tombstone journey only; not devnet/mainnet-beta, Seeker Android, `$WOKE`, or full product breadth |
+| Public Solana deployment | None | No WokeNet program is recorded on devnet or mainnet-beta |
+| `$WOKE` replacement | Portable asset schema truthfully accepts SOL or exact SPL metadata and rejects `{ kind: "woke" }`; local program tests prove the legacy ABI fails closed without state/balance changes | No mint exists; legacy ABI cannot execute or be unpaused; mint-aware ABI/migration/audit absent |
+| Seeker Android | Non-release Expo/React Native foundation with Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed, honest failure states, focused unit tests, and Android export metadata | No verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication |
+| Web | Production build and passing unit/Playwright cases cover the current route surface, axe A/AA fixtures, semantic states, connected post detail, skip-link/navigation, high contrast, canonical-host redirects, bounded public search, local composer/preferences/hide/export, and desktop passkey lifecycle flows; duplicate mobile-viewport flows are intentionally skipped | Wallet/protocol-identity/transaction flows, WokeNet delegation lifecycle, post-detail axe coverage, a manual WCAG conformance result, and native Android remain open |
 | Local web performance | `pnpm measure:performance` records three production-mode loopback samples for each of five representative routes, including TTFB, DOM-ready, load, LCP, and CLS | Unthrottled laboratory observation only; no INP, field Core Web Vitals, production dependencies, regional latency, load, or capacity evidence |
 
 The connected-slice row is the cross-layer proof. Other rows remain
@@ -56,9 +51,9 @@ production build.
 
 - Test protocol invariants at the lowest reliable layer and critical user
   journeys end to end.
-- Keep a fast deterministic suite, but do not replace native Firedancer,
-  separately labeled Agave compatibility-oracle, PostgreSQL, browser, storage,
-  and network-failure coverage with mocks.
+- Keep a fast deterministic suite, but do not replace Solana local-validator
+  and devnet, PostgreSQL, browser, native Android, storage, and network-failure
+  coverage with mocks.
 - Treat signatures, hashes, authorization, payments, recovery, moderation, and
   encryption as adversarial surfaces.
 - A UI success state must be backed by a confirmed operation or an explicit
@@ -73,12 +68,13 @@ production build.
 | Type and schema checks | TypeScript strict mode, Zod schema tests | Forward compatibility and invalid input | Implemented subset passes |
 | TypeScript unit | Vitest | Serialization, signatures, storage, SDK, indexer, feed, relay, moderation, crypto, configuration, and web behavior | Implemented subsets pass; future product areas remain absent |
 | Rust unit | `cargo test` | State transitions, sizing, checked arithmetic, helpers | Core-program subset passes |
-| Program compatibility oracle | Anchor + real Agave local validator | Solana-format PDAs, signers, constraints, events, replay, and close behavior | Core success/selected rejection paths pass as compatibility evidence; full matrix incomplete |
-| Native WokeNet integration | Native Firedancer validator/RPC and direct native C tests | Bounded RPC method semantics plus WokeNet genesis, program execution, finality, wider RPC conformance, WOKE fees, restart/replay, and failure behavior | The bounded `getProgramAccounts` subset, replay-result transport, standalone live-cache core, and snapshot-result parser have direct C evidence. Cache/restoration integration is absent, no native cluster/connected evidence exists, and five required methods remain unimplemented |
+| Solana local-validator program | Anchor + disposable Solana local validator | PDAs, signers, constraints, events, replay, and close behavior | Core success/selected rejection paths pass locally; full matrix incomplete |
+| Solana devnet rehearsal | Anchor/SBF artifact + public Solana RPC | Exact genesis/program/deployment binding, finalized execution/indexing, authority, restart/replay, and failure behavior | Not performed |
+| Seeker Android | Android test stack + Seeker-compatible device/emulator + Mobile Wallet Adapter | Wallet intents/callbacks, permissions, signing UX, lifecycle, accessibility, reproducible signed APK, update/rollback | Non-release source, connection/deployment/feed boundary, focused unit tests, and export metadata exist; device/signing/release matrix not performed |
 | Service integration | Vitest + Docker Compose or real loopback transport | PostgreSQL migrations, replay, storage, authentication, relay, moderation, search, worker behavior | PostgreSQL 18.4, Kubo, authentication PostgreSQL/browser, relay unit/real-WebSocket suites, moderation unit/PostgreSQL suites, indexer unit/PostgreSQL suites, public-search index/timeout/snapshot/parity/API/client cases, real media processors, and live ClamAV benign/EICAR checks pass; viewer-aware and production-scale search remain open |
-| Protocol compatibility integration | Agave local validator + CAS + PostgreSQL + production services | Identity-to-feed vertical slice and projection rebuild | Connected local compatibility proof passes; native Firedancer and alternate-provider variants are absent |
-| Browser E2E | Playwright | Consumer flows, failure states, mobile, keyboard, wallet/passkey UX | All current routes, local-state flows, search validation/degradation, keyboard, mobile, and themes pass; real Chromium authenticators prove initial registration, same-root second-passkey addition, first-passkey revocation/session invalidation, survivor authentication, and revoked-credential rejection. Wallet and protocol-identity transactions remain absent |
-| Accessibility | Playwright + axe + manual matrix | WCAG 2.2 AA | Ninety automated A/AA scans pass over 45 route fixtures in desktop/mobile projects; post-detail axe coverage and the manual matrix are not executed |
+| Connected local integration | Solana local validator + CAS + PostgreSQL + production services | Identity-to-feed vertical slice and projection rebuild | Connected local proof passes; devnet and alternate-provider variants are absent |
+| Browser E2E | Playwright | Consumer flows, failure states, responsive viewports, keyboard, wallet/passkey UX | All current routes, local-state flows, search validation/degradation, keyboard, mobile viewport, and themes pass; real Chromium authenticators prove initial registration, same-root second-passkey addition, first-passkey revocation/session invalidation, survivor authentication, and revoked-credential rejection. Wallet and protocol-identity transactions remain absent |
+| Accessibility | Playwright + axe + manual matrix | WCAG 2.2 AA | Automated A/AA scans pass over route fixtures in desktop and mobile-viewport web projects; post-detail axe coverage and the manual matrix are not executed |
 | Performance | Production Next + headless Chromium | Local laboratory observation | Five representative routes have reproducible loopback TTFB/DOM/load/LCP/CLS output; field Core Web Vitals, INP, throttled/mobile-network, load, and production-service measurements are absent |
 | Security | Static analysis and focused adversarial tests | Injection, traversal, XSS, CSRF, SSRF, malicious prompts, abuse | Narrow protocol/storage/authorization checks only |
 | Resilience | Fault-injection scenarios | RPC, gateway, relay, indexer, queue, and database projection failure | Narrow corruption/recoverable-publication checks only |
@@ -92,8 +88,8 @@ production build.
 - Shared canonical-byte and content-address fixtures must be committed as golden
   vectors. Current TypeScript tests generate deterministic fixtures in-process,
   so the cross-language gate remains open.
-- Native Firedancer tests and Agave compatibility-oracle tests start from
-  separate fresh ledgers unless a test explicitly covers restart or replay.
+- Solana local-validator and future devnet rehearsals use isolated deployment
+  identities unless a test explicitly covers restart or replay.
 - The current database integration applies migrations, uses a unique synthetic
   network in the local projection database, and clears that network afterward.
   Future suites should use isolated databases or schemas.
@@ -117,18 +113,21 @@ production build.
   and log injection.
 - Spam bursts, sponsor exhaustion, Sybil follows, report brigading, moderation
   conflicts, governance capture attempts, and metadata abuse.
-- Recipient replacement, WOKE/`lamports` or decimal confusion, unsupported
-  tokens, double payment, simulation mismatch, blockhash expiry, fee change, and
-  false entitlement.
+- Recipient or token-account replacement, rejected `{ kind: "woke" }`,
+  `$WOKE`/SOL/lamport confusion,
+  unsupported mint/program/extension, duplicate payment, simulation mismatch,
+  blockhash expiry, fee change, and false entitlement. The legacy ABI must
+  reject bootstrap, execution, authority mutation, and unpause without changing
+  state or balances.
 - Message replay, removed-device delivery, key rollback, corrupted attachment,
   safety-number change, relay reordering, and reporter over-disclosure.
 
-## Compatibility vertical slice proof
+## Local Solana vertical-slice proof
 
-The current integration milestone runs against an Agave local-validator
-compatibility oracle and does the following:
+The current integration milestone runs against a disposable Solana local
+validator and does the following:
 
-1. Start a fresh Agave local validator and PostgreSQL projection.
+1. Start a fresh Solana local validator and PostgreSQL projection.
 2. Create two identities and an inclusive profile through the program.
 3. Canonicalize and sign a text manifest.
 4. Store and independently re-read the exact bytes by content address.
@@ -144,14 +143,16 @@ anchor, tombstone suppression, following projection, zero replay dead letters,
 and exact pre/post replay state. Adjacent protocol/indexer tests reject changed
 bytes, invalid signatures, wrong authors, duplicates, and invalid manifests.
 `pnpm test:vertical-slice` runs this proof and is included in `pnpm verify:all`
-and the Solana-format compatibility CI lane. It does not prove native
-Firedancer execution or WokeNet RPC behavior.
+and the program integration CI lane. It does not prove devnet/mainnet-beta,
+Seeker Android, Mobile Wallet Adapter, signed-APK, or `$WOKE`-mint behavior.
 
-The native vertical-slice gate must repeat the flow against a fresh WokeNet
-genesis using a native Firedancer validator and RPC, assert WOKE fee accounting
-at 9 decimals, exercise restart/replay and provider failure, and publish
-artifacts that identify the Firedancer build. Until then, native runtime and
-production claims remain blocked.
+The public-deployment gate must repeat the flow on Solana devnet with an exact
+genesis/program/deployment-slot record, reviewed authority, finalized indexing,
+restart/replay and provider-failure exercises, and a reproducible program
+artifact. The mobile release gate is separate and requires native
+Seeker/Mobile Wallet Adapter/device, reproducible signed-APK, signing,
+update/rollback, and distribution evidence beyond the current foundation. The
+payment gate is also separate and cannot begin by unpausing the legacy ABI.
 
 ## CI evidence
 
@@ -162,6 +163,6 @@ Flaky retries may diagnose
 infrastructure but cannot turn a failing product assertion green. Quarantined
 tests remain visible and block the completion gate when they cover launch paths.
 
-`FINAL_REPORT.md` must distinguish mocked, container-integrated, Agave
-compatibility-oracle, native Firedancer, WokeNet public network, and manual
-results.
+`FINAL_REPORT.md` must distinguish mocked, container-integrated, Solana
+local-validator, devnet/mainnet-beta, native Android/device, token-mint, and
+manual results.

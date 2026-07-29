@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 
 const PROVIDER_COPY: Readonly<Record<ProviderSummary['id'], string>> = {
   indexer: 'Builds a fast, disposable projection from public protocol events and signed manifests.',
-  rpc: 'Reads WokeNet state and submits transactions. No single RPC should be required.',
+  rpc: 'Reads WokeSocial program state on Solana and submits transactions. No single RPC should be required.',
   gateway:
     'Retrieves content-addressed public media and manifests, with hash verification before display.',
   relay: 'Carries ephemeral notifications, presence, typing, message envelopes, and live signals.',

@@ -29,8 +29,10 @@ flowchart LR
 ```
 
 The published program deployment slot is the replay origin. Confirmed
-observations may power clearly marked pending UI, but only finalized observations
-enter durable public projections or payment entitlements.
+observations may power clearly marked pending UI, but only finalized
+observations enter durable public projections. A future approved mint-aware
+entitlement may depend on finalized replacement-ABI evidence; legacy payment
+events never grant access.
 
 ### Idempotency and provenance
 
@@ -94,8 +96,9 @@ rewrite.
 
 - **Database backup as genesis:** makes the operator authoritative.
 - **Webhooks only:** cannot independently backfill or prove completeness.
-- **Projecting confirmed data as final:** permits forked state and false
-  entitlements.
+- **Projecting confirmed data as final:** permits forked state and false future
+  mint-aware entitlements; legacy payment events remain non-entitling regardless
+  of finality.
 - **Infinite retries:** hides poison data and blocks progress.
 - **Trusting gateway bytes:** enables CID substitution and manifest spoofing.
 

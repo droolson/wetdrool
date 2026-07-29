@@ -1,6 +1,6 @@
 # Threat Model
 
-Last reviewed: 2026-07-28
+Last reviewed: 2026-07-29
 
 ## Status and method
 
@@ -34,13 +34,14 @@ The model MUST be updated when:
 
 - User root authorities, wallet keys, passkeys, device keys, recovery
   configuration, and revocation state.
-- Native Firedancer source and patch queue, validator/RPC binaries,
-  `genesis.bin`, feature set, shred version, snapshots, validator/vote/stake
-  identities, and build/ceremony attestations.
-- WokeNet social-program binaries, program data accounts, upgrade
-  authority, program IDs, protocol configuration, and deployment slot.
-- Payment recipients, supported mint allowlists, entitlement state, sponsor keys,
-  and sponsor budgets.
+- WokeNet social-program source/SBF binaries, program-data accounts, upgrade
+  authority, program IDs, exact Solana genesis binding, protocol configuration,
+  deployment slot, and deployment attestations.
+- Future mint-aware payment recipients, exact token programs/mints/accounts,
+  entitlement state, sponsor keys, and sponsor budgets. Legacy payment state is
+  never an entitlement asset.
+- Android package-signing keys/certificates, wallet-association configuration,
+  release provenance, update channels, and distribution identities.
 - Private-message and restricted-content keys and plaintext.
 - Signed manifest bytes, canonical serialization rules, signatures, content
   hashes, tombstones, and moderation label feeds.
@@ -74,10 +75,10 @@ The model MUST be updated when:
 
 ## Assumptions and invariants
 
-- Solana-compatible cryptographic and wire primitives are trusted within their
-  documented limits. Native Firedancer consensus and finality are not trusted
-  for production until the activation, conformance, multi-validator, and audit
-  gates pass; individual RPC responses are never trusted.
+- Solana cryptographic, transaction, and finality primitives are external
+  dependencies trusted within their documented limits. Individual RPC responses
+  are never trusted, and local-validator evidence does not prove public-cluster
+  deployment or operations.
 - Standard, independently reviewed cryptographic libraries are trusted only at
   pinned versions and when used according to their intended protocol.
 - User devices and wallets can be compromised. Delegation scope, revocation,
@@ -98,14 +99,14 @@ The model MUST be updated when:
 ```mermaid
 flowchart LR
     U["User and authenticator"]
-    C["Flagship or third-party client"]
+    C["Web, Seeker Android, or third-party client"]
     W["Wallet / passkey / device key"]
     E["Public edge and APIs"]
     S["Replaceable services"]
     DB["PostgreSQL projection"]
     R["Redis cache / queue"]
-    RPC["One or more WokeNet RPCs"]
-    WN["WokeNet program and ledger"]
+    RPC["One or more Solana RPCs"]
+    WN["WokeNet program on Solana"]
     ST["Content-addressed storage providers"]
     REL["Replaceable relays"]
     OP["Operator control plane"]
@@ -164,7 +165,21 @@ Residual risk: a fully compromised device can act within active delegation scope
 until revocation is observed. The UI must show this honestly and make scope,
 expiry, and revocation accessible.
 
-## WokeNet validator, program, RPC, and transaction threats
+## Seeker Android and Mobile Wallet Adapter threats
+
+The current Android project is a non-release foundation. These mitigations and
+release checks remain **Planned** unless linked to evidence elsewhere.
+
+| ID | Threat and impact | Planned mitigations | Required verification |
+| --- | --- | --- | --- |
+| MOB-01 | A fake or tampered APK steals wallet authorization, content, or credentials | Controlled signing key, published certificate digest and APK hash, reproducible build, verified distribution links | Independent rebuild/install and signature verification |
+| MOB-02 | MWA intent, deep link, callback, or selected account is substituted | Explicit intents, package/association validation where supported, bounded callback state, account/cluster/program revalidation after return | Malicious-wallet, callback-mutation, cancellation, timeout, background/resume tests |
+| MOB-03 | The app asks a wallet to sign different bytes or an unknown instruction | Decode and summarize the exact compiled message, reject unknown programs/instructions, compare pre/post-handoff bytes | Golden summaries and transaction-substitution device tests |
+| MOB-04 | Excess permissions, logs, telemetry, backup, clipboard, or screenshots disclose sensitive data | Minimum permissions, structured redaction, secure storage, backup policy, privacy-safe analytics, screen/clipboard controls for sensitive views | Manifest/data-safety review and device leakage tests |
+| MOB-05 | Signing key, update channel, store account, or dependency is compromised | Separated hardware-backed custody, quorum/approval, pinned dependencies, provenance, monitoring, revocation and rollback runbook | Release compromise tabletop and rollback drill |
+| MOB-06 | A spoofable Seeker model hint grants value or privileges | Treat model metadata as presentation-only; require wallet proof and an independently verified entitlement for any future benefit | Spoofed-device and replay tests |
+
+## WokeNet program, Solana RPC, and transaction threats
 
 All mitigations below are **Planned**.
 
@@ -180,19 +195,18 @@ All mitigations below are **Planned**.
 | WN-08 | Unauthorized close or realloc steals rent or destroys state | Close authority checks, destination checks, lifecycle invariants, tombstones | Unauthorized close/realloc tests |
 | WN-09 | Program upgrade authority compromise deploys malicious code | Independent hardware-backed multisig, delay, verifiable build, public authority monitoring | Key ceremony, binary verification, emergency tabletop |
 | WN-10 | Sponsor is drained or abused as an oracle | Transaction-shape allowlist, subject/action budgets, idempotency, isolated low-balance key, kill switch | Abuse load tests, policy bypass tests, loss-limit drill |
-| WN-11 | Native WOKE recipient or future token asset is substituted | Signed offering, expected recipients/splits, native-asset distinction, future token allowlist, decimal verification, simulation | Recipient/asset/rounding/replay tests |
-| WN-12 | Fake entitlement or double payment is accepted | Finalized receipt and entitlement verification, unique payment reference, deterministic entitlement rules | Reorg, duplicate receipt, wrong-terms, expiry tests |
-| WN-13 | Frankendancer or Agave is deployed under a native-Firedancer label | Runtime binary/linkage allowlist, process inspection, `no_agave`, signed build evidence | No-Agave build/link/process conformance test |
-| WN-14 | Malicious or compromised upstream/downstream source enters a validator build | Exact official commit, checksum-pinned patch queue, reviewed dependency/bootstrap inputs, reproducible build | Independent materialization, patch, provenance, and binary-reproduction checks |
-| WN-15 | A malicious genesis, feature set, allocation, or snapshot creates hidden authority or supply | Explicit genesis inputs, public ceremony, allocation reconciliation, expected hash/shred version, trusted snapshot allowlist | Independent genesis recreation, supply/account diff, ceremony verification, snapshot drill |
-| WN-16 | Immature native RPC returns incomplete or inconsistent state | Machine-readable capability gate, fail closed for missing methods, method-level conformance and cross-RPC comparison | Submit/simulate/status/history/program-account conformance suite |
-| WN-17 | Consensus, repair, snapshot, or restart bugs split or corrupt the sovereign network | Independent validators, byzantine/failover rehearsals, finality invariants, halt-before-corruption policy | Multi-validator partition, restart, repair, snapshot, and equivocation exercises |
-| WN-18 | Economic or authority capture harms users or network availability | Public supply/inflation/fee/reward policy, diverse validators, timelocked multisig, monitoring, legal/economic review | Capture simulations, authority tabletop, concentration and liveness review |
+| WN-11 | A client or sponsor attempts the quarantined lamport ABI, relabels SOL as `$WOKE`, or tries to unpause legacy payments | Permanently fail-closed program policy, client/sponsor denylist, truthful portable asset schema, legacy events never grant access | Attempted execute/unpause, `{kind:"woke"}`, mislabeled-asset, and fake-entitlement tests |
+| WN-12 | A future SPL/Token-2022 mint, token account, recipient, decimals, or extension is substituted | Separately approved mint-aware ABI, exact token-program/mint/account constraints, signed terms, deterministic splits, simulation and finalized receipt verification | Recipient/mint/token-account/extension/rounding/replay tests |
+| WN-13 | A malicious or misconfigured Solana RPC omits transactions or returns incomplete/inconsistent state | Exact genesis/program binding, capability checks, finalized commitment, provider diversity and cross-checking | Submit/simulate/status/history/program-account fault and failover suite |
+| WN-14 | A compromised build or deployment publishes different WokeNet program bytes | Pinned toolchain/dependencies, reproducible SBF build, artifact hash, deployed-byte and program-data verification | Independent build/deployment reproduction and provenance check |
+| WN-15 | Wrong Solana cluster, program ID, deployment slot, or upgrade authority is advertised | Signed deployment manifest, exact observed genesis, executable/program-data checks, public authority monitoring | Lookalike-cluster/program and authority-substitution tests |
+| WN-16 | Priority-fee, blockhash, simulation, or commitment handling causes false success or excess spend | Bounded fee policy, fresh blockhash, same-byte signing, finalized confirmation, reconciliation and explicit pending/degraded UI | Expiry, fee-spike, simulation drift, timeout and delayed-finality tests |
+| WN-17 | Solana outage, congestion, reorganization, or provider concentration blocks or delays writes | Multiple RPC providers, cached verified reads, safe write stop, retry/reconciliation policy, transparent status | Provider evacuation, congestion, reorg and degraded-mode exercises |
+| WN-18 | Program upgrade-governance or external Solana network changes harm users | Hardware-backed multisig, timelock, deployed-byte monitoring, narrow emergency powers, version gates and migration plan | Authority compromise tabletop, upgrade rehearsal and dependency-change review |
 
-Residual risk: transaction finality and availability depend on WokeNet’s
-native Firedancer validator set. No production finality assumption is accepted
-at the current upstream maturity level. Clients must expose
-pending/finalized/degraded states and never claim success early.
+Residual risk: transaction finality and availability depend on Solana and its
+provider ecosystem, which WokeSocial does not operate or control. Clients must
+expose pending/finalized/degraded states and never claim success early.
 
 ## Manifest, storage, indexer, and feed threats
 
@@ -310,19 +324,23 @@ The following decisions cannot be silently delegated to implementation:
 
 1. The specific reviewed protocols and libraries for one-to-one and group
    messaging.
-2. Production WokeNet validator, genesis, program-upgrade, treasury, and
+2. Production Solana cluster/program binding, WokeNet program-upgrade and
    emergency-authority quorums, signer organizations, delays, and immutability
    criteria.
 3. Recovery guardian model, delay ranges, notification channels, and risk
    acceptance.
 4. Default storage deletion/permanence policy and Arweave consent boundary.
 5. Sponsor loss ceilings and abuse controls.
-6. WOKE supply, inflation, validator rewards, fee policy, allocations, and any
-   future Solana-compatible token-asset policy. Native WOKE-only settlement is
-   the narrower application launch baseline.
+6. Whether `$WOKE` remains in scope and, if so, the SPL/Token-2022 mint,
+   authorities, extensions, supply/distribution/tokenomics, replacement ABI,
+   migration, consumer/legal posture, and entitlement rules. No mint or payment
+   baseline exists today.
 7. Moderation evidence retention and legally reviewed child-safety escalation.
 8. Operator SLO, RPO, and RTO commitments.
 9. Telemetry providers, regions, retention, and analytics consent behavior.
+10. Android permissions, package signing custody, update/rollback policy, MWA
+    transaction-intent controls, device matrix, and store/direct-distribution
+    approval.
 
 Each decision needs an ADR, an accountable owner, tests or exercises, and a
 review date.

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Provider-neutral publication and WokeNet protocol client SDK for WokeSocial",
+  "description": "Provider-neutral publication and Solana program client SDK for WokeSocial",
   "license": "Apache-2.0",
   "exports": {
     ".": {

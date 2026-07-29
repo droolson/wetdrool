@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "chain": "solana",
+  "protocol": "wokenet",
+  "deployments": {
+    "localnet": {
+      "status": "development-only",
+      "cluster": "localnet",
+      "genesisHash": null,
+      "programId": "9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD",
+      "rpcUrlEnvironmentVariable": "SOLANA_LOCAL_RPC_URL"
+    },
+    "devnet": {
+      "status": "not-deployed",
+      "cluster": "devnet",
+      "genesisHash": null,
+      "programId": null,
+      "rpcUrlEnvironmentVariable": "SOLANA_DEVNET_RPC_URL"
+    },
+    "mainnetBeta": {
+      "status": "not-deployed",
+      "cluster": "mainnet-beta",
+      "genesisHash": null,
+      "programId": null,
+      "rpcUrlEnvironmentVariable": "SOLANA_MAINNET_RPC_URL"
+    }
+  },
+  "wokeToken": {
+    "status": "not-created",
+    "standard": "spl-token-2022",
+    "tokenProgramId": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "mint": null,
+    "decimals": null,
+    "mintAuthority": null,
+    "freezeAuthority": null,
+    "extensions": []
+  }
+}

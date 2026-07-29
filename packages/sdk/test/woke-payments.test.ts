@@ -169,7 +169,7 @@ function subscriptionInput(
   };
 }
 
-describe('WokeNet native allocation', () => {
+describe('legacy SOL allocation', () => {
   it('requires an explicit endpoint, genesis hash, and program address', () => {
     expect(createWokeNetContext(context)).toEqual(expectedContext);
     expect(() =>
@@ -193,7 +193,7 @@ describe('WokeNet native allocation', () => {
     const plan = calculateWokeNativePaymentPlan(validPlanInput());
 
     expect(plan).toMatchObject({
-      asset: 'WOKE',
+      asset: 'SOL',
       context: expectedContext,
       grossLamports: 101n,
       feeLamports: 2n,
@@ -355,11 +355,11 @@ describe('WokeNet native allocation', () => {
     ).toThrowError(expect.objectContaining({ code: 'alias' }));
   });
 
-  it('rejects the retired portable native SOL discriminator', () => {
+  it('rejects the retired portable native WOKE discriminator', () => {
     const legacyInput = {
-      asset: { kind: 'sol' },
+      asset: { kind: 'woke' },
       grossAmount: '1',
-      allowedAssets: [{ kind: 'sol' }],
+      allowedAssets: [{ kind: 'woke' }],
       protocolFee: { basisPoints: 0, destination: feeDestination },
       recipientSplits: [
         {
@@ -644,7 +644,7 @@ describe('WokeSocial Anchor instruction builders', () => {
     expect(built.kind).toBe('woke-tip');
     expect(built.receiptAddress).toBe(golden.receipt);
     expect(built.receiptBump).toBe(255);
-    expect(built.plan.asset).toBe('WOKE');
+    expect(built.plan.asset).toBe('SOL');
     expect(built.plan.recipientAllocations[0]?.lamports).toBe(99n);
     expect(built.instruction.accounts).toEqual([
       { address: golden.config, role: AccountRole.READONLY },

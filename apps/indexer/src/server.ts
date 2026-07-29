@@ -88,7 +88,7 @@ export async function startIndexerServer(): Promise<void> {
     let syncWorker: SolanaSyncWorker | undefined;
     if (config.sync === undefined) {
       ownedApp.log.warn(
-        'WokeNet ingestion is disabled; set both INDEXER_NETWORK_ID and NEXT_PUBLIC_PROGRAM_ID to enable the finalized replay worker',
+        'Solana ingestion is disabled; set both INDEXER_NETWORK_ID and NEXT_PUBLIC_PROGRAM_ID to enable the finalized replay worker',
       );
     } else {
       const genesisHash = config.sync.networkId.split(':').at(-2);

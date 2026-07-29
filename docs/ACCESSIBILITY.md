@@ -3,16 +3,22 @@
 Status: initial automated coverage implemented; full conformance testing is not
 complete.
 
-The implemented public/read-only route subset passes Playwright semantic,
-skip-link, mobile-navigation, theme-state, and axe A/AA checks. The axe suite
-currently runs against 45 route fixtures in both desktop and mobile Chromium,
-for 90 scans. Connected post detail has semantic browser coverage but has not
+The implemented public/read-only web subset passes Playwright semantic,
+skip-link, responsive-navigation, theme-state, and axe A/AA checks. The axe
+suite currently runs against 45 route fixtures in both desktop and
+mobile-viewport Chromium, for 90 scans. Connected post detail has semantic
+browser coverage but has not
 joined the axe matrix. No manual assistive-technology matrix has been executed,
 and these results do not establish WCAG 2.2 AA conformance for the product.
 
 WokeSocial targets WCAG 2.2 Level AA across essential public, onboarding,
-publishing, social, community, safety, messaging, payment, settings, export, and
-deletion flows. Conformance is a launch gate, not a post-launch enhancement.
+publishing, social, community, safety, messaging, future mint-aware payment,
+settings, export, and deletion flows. Conformance is a launch gate, not a
+post-launch enhancement.
+
+The Expo/React Native Seeker project is a non-release foundation. No TalkBack,
+Seeker-device, font-scaling, rotation, lifecycle, wallet-handoff, or signed-APK
+accessibility evidence has been recorded.
 
 ## Product rules
 
@@ -40,8 +46,11 @@ deletion flows. Conformance is a launch gate, not a post-launch enhancement.
 - Virtualized lists retain meaningful positions and screen-reader behavior.
 - Sensitive-content interstitials explain what is hidden without exposing it in
   accessible names or previews.
-- Wallet and payment prompts describe the action, asset, recipient, amount, fee,
-  network, and irreversibility in text.
+- Wallet prompts describe the exact Solana action, program, accounts, network
+  fee, and irreversibility in text. A future mint-aware payment prompt must also
+  describe the exact token program/mint, recipient token account, amount, and
+  decimals. The quarantined legacy payment ABI must never render a signable
+  prompt.
 - Directionality and layout are RTL-ready; identity terminology is localizable
   and never assembled from English-only fragments.
 
@@ -58,12 +67,12 @@ Current and planned checks:
 
 1. ESLint/Next rules run on JSX; broader dedicated accessibility rules remain to
    be evaluated.
-2. Playwright covers the current skip link, mobile navigation, semantic route
-   shell, and theme controls; component-level coverage must expand with the
-   product.
+2. Playwright covers the current skip link, responsive navigation, semantic
+   route shell, and theme controls; component-level coverage must expand with
+   the product.
 3. Playwright plus axe scans 45 implemented route fixtures in desktop and
-   mobile projects; dynamic post detail and every future route/state must join
-   the matrix.
+   mobile-viewport web projects; dynamic post detail and every future
+   route/state must join the matrix.
 4. Story/component contrast checks for all token combinations.
 5. HTML validation and duplicate-ID checks.
 6. Tests for reduced motion, 200% zoom, forced colors, and high contrast.
@@ -74,8 +83,9 @@ Automated scans do not establish conformance on their own.
 
 ## Manual critical-flow matrix
 
-Each flow must be completed at desktop and mobile widths with keyboard only,
-VoiceOver on macOS/iOS, and one additional screen reader/browser combination:
+Each web flow must be completed at desktop and mobile viewports with keyboard
+only, VoiceOver on macOS/iOS, and one additional screen reader/browser
+combination:
 
 - Create a passkey account and recover from validation errors.
 - Complete an inclusive profile with custom and multiple pronoun sets.
@@ -85,7 +95,8 @@ VoiceOver on macOS/iOS, and one additional screen reader/browser combination:
 - Read a thread, react, repost, quote, bookmark, block, and mute.
 - Create/join a community, review its rules, vote, report, and appeal.
 - Send, verify, receive, and selectively report an encrypted message.
-- Inspect a creator payment and reject or approve a wallet prompt.
+- Inspect a future mint-aware creator payment and reject or approve its exact
+  wallet prompt; verify that legacy payment instructions cannot produce one.
 - Configure providers, export data, revoke a device, rotate a key, and request
   deletion.
 - Use the application while the primary RPC, indexer, gateway, or relay is down.
@@ -94,6 +105,15 @@ For every run, record browser, assistive technology, viewport, commit, result,
 issue links, and tester. Keyboard traps, inaccessible authentication, missing
 names, unsafe payment ambiguity, or loss of essential content are release
 blockers.
+
+The native Android matrix is separate. On approved Seeker-compatible devices it
+must cover TalkBack, switch/keyboard access where supported, 200% font scaling,
+display scaling, contrast, touch targets, portrait/landscape, reduced motion,
+background/resume, offline/degraded state, notifications, MWA wallet selection,
+account/network changes, cancellation/timeout, exact transaction summary,
+disconnect, and return from the wallet without focus/context loss. Record the
+device, Android build, wallet, app/APK hash, signing certificate, and test
+result.
 
 ## Evidence
 

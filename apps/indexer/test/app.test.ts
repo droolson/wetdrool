@@ -25,10 +25,14 @@ import {
   ManifestVerifier,
   MemoryProjectionStore,
   OpenIndexer,
+  OPEN_INDEXER_FEED_RECIPE,
   ProjectionError,
   ProjectionRootKeyAuthorizer,
 } from '../src/index.js';
-import { seedAdversarialFeedProjection } from './projection-security-fixtures.js';
+import {
+  projectionSecurityNetworkId,
+  seedAdversarialFeedProjection,
+} from './projection-security-fixtures.js';
 
 const privateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 31);
 const publicKey = ed25519.getPublicKey(privateKey);
@@ -250,6 +254,14 @@ describe('indexer HTTP contract', () => {
       expect(response.json()).toMatchObject({
         error: { code: 'network-not-configured' },
       });
+      const genericFeedResponse = await app.inject({
+        method: 'GET',
+        url: '/v1/feed?limit=20',
+      });
+      expect(genericFeedResponse.statusCode).toBe(503);
+      expect(genericFeedResponse.json()).toMatchObject({
+        error: { code: 'network-not-configured' },
+      });
       const searchResponse = await app.inject({
         method: 'GET',
         url: '/v1/search/public?q=portable',
@@ -439,28 +451,77 @@ describe('indexer HTTP contract', () => {
     });
 
     try {
+      interface FeedPage {
+        entries: { post: { objectId: string } }[];
+        meta: { checkpointSlot: number | null };
+        mode: string;
+        network: string;
+        nextCursor: string | null;
+        recipe: string;
+      }
       const collected: string[] = [];
-      let cursor: string | undefined;
+      let cursor: string | null = null;
       for (;;) {
-        const response = await app.inject({
+        const feedPageResponse = await app.inject({
           method: 'GET',
-          url: `/v1/feed?network=${encodeURIComponent(fixture.networkId)}&limit=1${
-            cursor === undefined ? '' : `&before=${encodeURIComponent(cursor)}`
-          }`,
+          url: `/v1/feed?limit=1${cursor === null ? '' : `&before=${encodeURIComponent(cursor)}`}`,
         });
-        expect(response.statusCode, response.body).toBe(200);
-        expect(response.body).not.toContain(fixture.unlistedSentinel);
-        const body = response.json<{
-          entries: { post: { objectId: string } }[];
-          nextCursor?: string;
-        }>();
+        expect(feedPageResponse.statusCode, feedPageResponse.body).toBe(200);
+        expect(feedPageResponse.body).not.toContain(fixture.unlistedSentinel);
+        const body: FeedPage = feedPageResponse.json();
+        expect(body).toMatchObject({
+          meta: { checkpointSlot: 5 },
+          mode: 'chronological',
+          network: fixture.networkId,
+          recipe: OPEN_INDEXER_FEED_RECIPE,
+        });
         const entry = body.entries[0];
+        expect(entry).toBeDefined();
         if (entry === undefined) break;
         collected.push(entry.post.objectId);
-        expect(body.nextCursor).toMatch(/^[A-Za-z0-9_-]+$/u);
+        if (collected.length < fixture.expectedPublicPostIds.length) {
+          expect(body.nextCursor).toMatch(/^[A-Za-z0-9_-]+$/u);
+        } else {
+          expect(body.nextCursor).toBeNull();
+        }
         cursor = body.nextCursor;
+        if (cursor === null) break;
       }
       expect(collected).toEqual(fixture.expectedPublicPostIds);
+
+      const firstPage = await app.inject({
+        method: 'GET',
+        url: '/v1/feed?limit=1',
+      });
+      const firstCursor = firstPage.json<{
+        nextCursor: string | null;
+      }>().nextCursor;
+      expect(firstCursor).not.toBeNull();
+
+      const crossRecipeCursor = await app.inject({
+        method: 'GET',
+        url: `/v1/feed?mode=following&viewer=${encodeURIComponent(
+          fixture.viewerIdentityId,
+        )}&limit=1&before=${encodeURIComponent(firstCursor ?? '')}`,
+      });
+      expect(crossRecipeCursor.statusCode).toBe(400);
+      expect(crossRecipeCursor.json()).toMatchObject({
+        error: { code: 'invalid-feed-cursor' },
+      });
+      const foreignViewer = `wokesocialid:v1:${projectionSecurityNetworkId(
+        151,
+      )}:11111111111111111111111111111111`;
+      const crossNetworkViewer = await app.inject({
+        method: 'GET',
+        url: `/v1/feed?mode=following&viewer=${encodeURIComponent(foreignViewer)}&limit=1`,
+      });
+      expect(crossNetworkViewer.statusCode).toBe(400);
+      expect(crossNetworkViewer.json()).toMatchObject({
+        error: {
+          code: 'invalid-query',
+          issues: [{ path: 'viewer' }],
+        },
+      });
 
       const home = await app.inject({ method: 'GET', url: '/v1/feed/home?limit=20' });
       expect(home.statusCode).toBe(200);

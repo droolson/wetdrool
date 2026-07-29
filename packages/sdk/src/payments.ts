@@ -309,8 +309,8 @@ function parseBaseUnitAmount(value: string, label: string): bigint {
 }
 
 function assetKey(asset: PaymentAsset): string {
-  return asset.kind === 'woke'
-    ? 'woke'
+  return asset.kind === 'sol'
+    ? 'sol'
     : `spl:${asset.mint}:${String(asset.decimals)}:${asset.tokenProgram}`;
 }
 

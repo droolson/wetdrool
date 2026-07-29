@@ -118,7 +118,7 @@ only `DATABASE_URL`. The migration command also takes a PostgreSQL advisory lock
 to serialize accidental concurrent jobs.
 
 Compose passes explicit batch, deployment-slot, poll, retry, and staleness
-settings. `INDEXER_WOKENET_RPC_URLS` defaults to
+settings. `INDEXER_SOLANA_RPC_URLS` defaults to
 `http://host.docker.internal:8899`, with a `host-gateway` mapping, rather than
 the container-local and unreachable `127.0.0.1`. Override it with one or more
 comma-separated container-reachable RPC URLs whenever

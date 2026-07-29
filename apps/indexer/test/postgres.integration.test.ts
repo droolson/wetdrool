@@ -1142,12 +1142,14 @@ describe('PostgreSQL indexer integration', () => {
       expect(duplicate.applied).toBe(false);
       await expect(projection.checkpoint(networkId)).resolves.toBe(5n);
 
-      const followingFeed = await projection.getFeed({
+      const followingSnapshot = await projection.getFeedSnapshot({
         networkId,
         viewerIdentityId: viewer.identityId,
         mode: 'following',
         limit: 20,
       });
+      expect(followingSnapshot.checkpoint).toBe(5n);
+      const followingFeed = followingSnapshot.entries;
       expect(followingFeed).toHaveLength(1);
       expect(followingFeed[0]).toMatchObject({
         post: {

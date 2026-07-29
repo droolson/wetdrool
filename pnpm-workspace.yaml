@@ -47,5 +47,9 @@ allowBuilds:
 
 peerDependencyRules:
   allowedVersions:
+    # Wallet UI 4.2.1 pins @solana/react 6.1.0, whose leaf packages still
+    # declare TypeScript ^5 even though the Expo 57 toolchain requires 6.0.3.
+    # Keep the exception exact instead of disabling strict peer checks.
+    typescript: 6.0.3
     # ws 7 declares the same optional N-API validator more narrowly than ws 8.
     'ws@7.5.13>utf-8-validate': 6.0.6

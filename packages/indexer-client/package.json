@@ -1,0 +1,43 @@
+{
+  "name": "@wokesocial/indexer-client",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Runtime-neutral, strictly validated WokeSocial indexer client",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./contract": {
+      "types": "./dist/src/contract.d.ts",
+      "import": "./dist/src/contract.js"
+    },
+    "./projected-feed": {
+      "types": "./dist/src/projected-feed.d.ts",
+      "import": "./dist/src/projected-feed.js"
+    },
+    "./transport": {
+      "types": "./dist/src/transport.d.ts",
+      "import": "./dist/src/transport.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "lint": "eslint src test",
+    "test": "vitest run --exclude 'dist/**'",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@wokesocial/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}

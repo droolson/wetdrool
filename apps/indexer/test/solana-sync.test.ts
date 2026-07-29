@@ -219,7 +219,7 @@ describe('Solana sync configuration', () => {
       readIndexerConfig({
         INDEXER_NETWORK_ID: networkId,
         NEXT_PUBLIC_PROGRAM_ID: programId,
-        WOKENET_COMMITMENT: 'finalized',
+        SOLANA_COMMITMENT: 'finalized',
       }).sync,
     ).toMatchObject({
       networkId,
@@ -227,6 +227,14 @@ describe('Solana sync configuration', () => {
       deploymentSlot: 0n,
       batchSize: 100,
     });
+
+    expect(() =>
+      readIndexerConfig({
+        INDEXER_NETWORK_ID: networkId,
+        NEXT_PUBLIC_PROGRAM_ID: programId,
+        SOLANA_COMMITMENT: 'confirmed',
+      }),
+    ).toThrow(/finalized/u);
 
     expect(() =>
       readIndexerConfig({

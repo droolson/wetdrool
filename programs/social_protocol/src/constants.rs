@@ -75,9 +75,14 @@ pub const MAX_RECOVERY_GUARDIANS: usize = 5;
 pub const MIN_RECOVERY_DELAY_SLOTS: u64 = 2;
 pub const MAX_RECOVERY_DELAY_SLOTS: u64 = 1_000_000;
 
-/// Phase 9 deliberately begins with a narrow native-WOKE payment surface.
-/// Wider split sets remain available in portable manifests, but the onchain
-/// subset stays within the legacy-transaction and compute budgets.
+/// The pre-Solana-pivot payment ABI transfers System Program lamports while
+/// describing them as WOKE. It must never execute or be re-enabled: lamports
+/// are SOL, and a future WOKE asset requires an explicit SPL/Token-2022 mint
+/// plus a new instruction ABI.
+pub const LEGACY_LAMPORT_PAYMENT_ABI_ENABLED: bool = false;
+
+/// Wider split sets remain available in portable manifests, but any future
+/// onchain settlement subset must stay within transaction and compute budgets.
 pub const MAX_ONCHAIN_PAYMENT_SPLITS: usize = 3;
 pub const MAX_PROTOCOL_FEE_BPS: u16 = 1_000;
 pub const WEEK_SECONDS: i64 = 604_800;

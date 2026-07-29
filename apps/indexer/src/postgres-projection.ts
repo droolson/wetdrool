@@ -30,6 +30,7 @@ import type {
   DelegationProjection,
   FeedEntry,
   FeedQuery,
+  FeedSnapshot,
   GovernanceProposalProjection,
   GovernanceVoteProjection,
   HandleProjection,
@@ -2772,7 +2773,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
           event.distributableLamports !== allocation.distributableLamports ||
           event.recipientLamports !== allocation.recipientAmounts[0]
         ) {
-          throw stale('WOKE tip receipt does not match indexed identities or payment policy.');
+          throw stale('Legacy tip receipt does not match indexed identities or payment policy.');
         }
         await insertPaymentReceipt(sql, event, {
           termsReference: recipient.identity_address,
@@ -3628,81 +3629,96 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
   }
 
   async getFeed(query: FeedQuery): Promise<readonly FeedEntry[]> {
-    const beforeCreatedAt = query.before?.createdAt ?? null;
-    const beforeObjectId = query.before?.objectId ?? null;
-    let rows: FeedRow[];
-    if (query.mode === 'following') {
-      if (query.viewerIdentityId === undefined) {
-        throw new ProjectionError('Following feeds require a viewer identity.', 'database-error');
-      }
-      rows = await this.#sql<FeedRow[]>`
-            SELECT
-              p.*,
-              i.identity_address, i.root_authority, i.root_rotation_count,
-              i.active AS identity_active, i.identity_sequence,
-              i.deactivated_slot, i.deactivated_at, i.created_slot,
-              i.created_at AS identity_created_at,
-              i.updated_slot AS identity_updated_slot,
-              i.updated_at AS identity_updated_at,
-              pr.object_id AS profile_object_id, pr.cid AS profile_cid,
-              pr.payload_hash AS profile_payload_hash,
-              pr.display_name, pr.bio, pr.content AS profile_content,
-              pr.updated_slot, pr.updated_at
-            FROM posts p
-            JOIN follows f
-              ON f.followed_identity_id = p.author_identity_id
-              AND f.follower_identity_id = ${query.viewerIdentityId}
-              AND f.active
-            JOIN identities i ON i.identity_id = p.author_identity_id
-            LEFT JOIN profiles pr ON pr.identity_id = p.author_identity_id
-            WHERE p.network_id = ${query.networkId}
-              AND p.tombstoned_at IS NULL
-              AND p.content -> 'visibility' ->> 'kind' = 'public'
-              AND (
-                ${beforeCreatedAt}::timestamptz IS NULL
-                OR p.created_at < ${beforeCreatedAt}::timestamptz
-                OR (
-                  p.created_at = ${beforeCreatedAt}::timestamptz
-                  AND p.object_id COLLATE "C" < ${beforeObjectId}::text COLLATE "C"
-                )
-              )
-            ORDER BY p.created_at DESC, p.object_id COLLATE "C" DESC
-            LIMIT ${query.limit}
-          `;
-    } else {
-      rows = await this.#sql<FeedRow[]>`
-            SELECT
-              p.*,
-              i.identity_address, i.root_authority, i.root_rotation_count,
-              i.active AS identity_active, i.identity_sequence,
-              i.deactivated_slot, i.deactivated_at, i.created_slot,
-              i.created_at AS identity_created_at,
-              i.updated_slot AS identity_updated_slot,
-              i.updated_at AS identity_updated_at,
-              pr.object_id AS profile_object_id, pr.cid AS profile_cid,
-              pr.payload_hash AS profile_payload_hash,
-              pr.display_name, pr.bio, pr.content AS profile_content,
-              pr.updated_slot, pr.updated_at
-            FROM posts p
-            JOIN identities i ON i.identity_id = p.author_identity_id
-            LEFT JOIN profiles pr ON pr.identity_id = p.author_identity_id
-            WHERE p.network_id = ${query.networkId}
-              AND p.tombstoned_at IS NULL
-              AND p.content -> 'visibility' ->> 'kind' = 'public'
-              AND (
-                ${beforeCreatedAt}::timestamptz IS NULL
-                OR p.created_at < ${beforeCreatedAt}::timestamptz
-                OR (
-                  p.created_at = ${beforeCreatedAt}::timestamptz
-                  AND p.object_id COLLATE "C" < ${beforeObjectId}::text COLLATE "C"
-                )
-              )
-            ORDER BY p.created_at DESC, p.object_id COLLATE "C" DESC
-            LIMIT ${query.limit}
-          `;
-    }
+    return (await this.getFeedSnapshot(query)).entries;
+  }
 
-    return rows.map((row) => feedEntryFromRow(row, query.mode));
+  async getFeedSnapshot(query: FeedQuery): Promise<FeedSnapshot> {
+    return this.#sql.begin('isolation level repeatable read read only', async (sql) => {
+      const beforeCreatedAt = query.before?.createdAt ?? null;
+      const beforeObjectId = query.before?.objectId ?? null;
+      const checkpointRows = await sql<{ finalized_slot: string }[]>`
+        SELECT finalized_slot
+        FROM indexer_checkpoints
+        WHERE network_id = ${query.networkId}
+      `;
+      let rows: FeedRow[];
+      if (query.mode === 'following') {
+        if (query.viewerIdentityId === undefined) {
+          throw new ProjectionError('Following feeds require a viewer identity.', 'database-error');
+        }
+        rows = await sql<FeedRow[]>`
+          SELECT
+            p.*,
+            i.identity_address, i.root_authority, i.root_rotation_count,
+            i.active AS identity_active, i.identity_sequence,
+            i.deactivated_slot, i.deactivated_at, i.created_slot,
+            i.created_at AS identity_created_at,
+            i.updated_slot AS identity_updated_slot,
+            i.updated_at AS identity_updated_at,
+            pr.object_id AS profile_object_id, pr.cid AS profile_cid,
+            pr.payload_hash AS profile_payload_hash,
+            pr.display_name, pr.bio, pr.content AS profile_content,
+            pr.updated_slot, pr.updated_at
+          FROM posts p
+          JOIN follows f
+            ON f.followed_identity_id = p.author_identity_id
+            AND f.follower_identity_id = ${query.viewerIdentityId}
+            AND f.active
+          JOIN identities i ON i.identity_id = p.author_identity_id
+          LEFT JOIN profiles pr ON pr.identity_id = p.author_identity_id
+          WHERE p.network_id = ${query.networkId}
+            AND p.tombstoned_at IS NULL
+            AND p.content -> 'visibility' ->> 'kind' = 'public'
+            AND (
+              ${beforeCreatedAt}::timestamptz IS NULL
+              OR p.created_at < ${beforeCreatedAt}::timestamptz
+              OR (
+                p.created_at = ${beforeCreatedAt}::timestamptz
+                AND p.object_id COLLATE "C" < ${beforeObjectId}::text COLLATE "C"
+              )
+            )
+          ORDER BY p.created_at DESC, p.object_id COLLATE "C" DESC
+          LIMIT ${query.limit}
+        `;
+      } else {
+        rows = await sql<FeedRow[]>`
+          SELECT
+            p.*,
+            i.identity_address, i.root_authority, i.root_rotation_count,
+            i.active AS identity_active, i.identity_sequence,
+            i.deactivated_slot, i.deactivated_at, i.created_slot,
+            i.created_at AS identity_created_at,
+            i.updated_slot AS identity_updated_slot,
+            i.updated_at AS identity_updated_at,
+            pr.object_id AS profile_object_id, pr.cid AS profile_cid,
+            pr.payload_hash AS profile_payload_hash,
+            pr.display_name, pr.bio, pr.content AS profile_content,
+            pr.updated_slot, pr.updated_at
+          FROM posts p
+          JOIN identities i ON i.identity_id = p.author_identity_id
+          LEFT JOIN profiles pr ON pr.identity_id = p.author_identity_id
+          WHERE p.network_id = ${query.networkId}
+            AND p.tombstoned_at IS NULL
+            AND p.content -> 'visibility' ->> 'kind' = 'public'
+            AND (
+              ${beforeCreatedAt}::timestamptz IS NULL
+              OR p.created_at < ${beforeCreatedAt}::timestamptz
+              OR (
+                p.created_at = ${beforeCreatedAt}::timestamptz
+                AND p.object_id COLLATE "C" < ${beforeObjectId}::text COLLATE "C"
+              )
+            )
+          ORDER BY p.created_at DESC, p.object_id COLLATE "C" DESC
+          LIMIT ${query.limit}
+        `;
+      }
+
+      const checkpointRow = checkpointRows[0];
+      return {
+        checkpoint: checkpointRow === undefined ? undefined : BigInt(checkpointRow.finalized_slot),
+        entries: rows.map((row) => feedEntryFromRow(row, query.mode)),
+      };
+    });
   }
 
   async clearProjection(networkId: string): Promise<void> {

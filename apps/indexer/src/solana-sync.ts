@@ -112,7 +112,7 @@ export class SolanaSyncWorker {
       }
     }
     if (options.batchSize > 1_000) {
-      throw new SolanaSyncConfigurationError('WokeNet RPC batches cannot exceed 1,000 signatures.');
+      throw new SolanaSyncConfigurationError('Solana RPC batches cannot exceed 1,000 signatures.');
     }
     this.#now = options.now ?? Date.now;
     this.#sleep = options.sleep ?? abortableSleep;

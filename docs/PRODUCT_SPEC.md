@@ -1,7 +1,7 @@
 # WokeSocial Product Specification
 
 **Status:** Product requirements baseline; implementation subsets tracked separately  
-**Last updated:** 2026-07-28  
+**Last updated:** 2026-07-29
 **Primary domain:** `woke.social` (`sociallywoke.com` is redirect-only)
 
 ## 1. Status and evidence policy
@@ -11,8 +11,9 @@ This document defines intended product behavior. It is not evidence that the beh
 At the time this baseline was written, the repository contained no application
 implementation, protocol implementation, tests, or deployment configuration.
 The repository now has verified local foundation and experimental
-protocol/storage/indexer/web subsets. None of those narrow subsets satisfies a
-complete product requirement here unless its full acceptance criteria pass.
+protocol/storage/indexer/web subsets plus a non-release Seeker Android
+foundation. None of those narrow subsets satisfies a complete product
+requirement here unless its full acceptance criteria pass.
 [`../TASKS.md`](../TASKS.md) is the current evidence record.
 
 The following status terms are normative:
@@ -28,21 +29,22 @@ Documentation, screenshots, mock data, disabled controls, and successful API-sha
 ## 2. Product vision
 
 WokeSocial is a polished, inclusive, LGBTQ+ affirming, trans-owned social
-network powered by WokeNet, a sovereign Solana-protocol-compatible
-network. People should be able to own and move their identity, social graph,
+platform powered by WokeNet, its protocol and smart-contract deployment layer
+on Solana. WokeNet is not a blockchain or validator network. People should be
+able to own and move their identity, social graph,
 public content relationships, communities, and choice of algorithm without
 needing to understand cryptocurrency.
 
 The flagship client must feel like a trustworthy consumer application rather
-than a wallet or blockchain explorer. A person may browse before owning WOKE,
+than a wallet or blockchain explorer. A person may browse without a token,
 create a recoverable passkey-first account, use a familiar handle, and
 understand every transaction before approving it.
 
-WokeNet has its own native currency, WOKE (`$WOKE`), with nine decimals.
-It is not an SPL token and has no mint address. The product remains
-noncustodial: ordinary reading never requires WOKE, and no production network,
-public sale, bridge, exchange, lending, yield, or token-gated identity feature
-is authorized by this specification.
+No `$WOKE` mint exists. The name is reserved for a possible future SPL or
+Token-2022 asset; SOL and lamports are not `$WOKE`. The product remains
+noncustodial: ordinary reading never requires a token, and no token sale,
+bridge, exchange, lending, yield, or token-gated identity feature is authorized
+by this specification.
 
 The product is open to anyone who follows its community and safety standards. It must not require disclosure of gender, sexuality, legal name, or a wallet address in the visible interface.
 
@@ -56,17 +58,18 @@ The product is open to anyone who follows its community and safety standards. It
 6. **Safety with due process:** Personal controls are immediate; community and service enforcement is scoped, logged, reviewable, and appealable.
 7. **Honest permanence:** The product never promises erasure from a public blockchain, permanent store, recipient device, or independently operated indexer.
 8. **Accessible by construction:** WCAG 2.2 AA, keyboard operation, reduced motion, contrast, captions, and localization are launch requirements.
-9. **No token gating or speculative product:** WOKE is the network’s native fee
-   and settlement currency; ordinary profiles and posts are neither NFTs nor
-   conditioned on owning it, and the flagship is not an exchange, lending, or
-   yield product.
+9. **No token gating or speculative product:** Ordinary profiles and posts are
+   neither NFTs nor conditioned on owning a token, and the flagship is not an
+   exchange, lending, or yield product.
 10. **Evidence over claims:** Production-readiness language follows verified build, test, security, accessibility, and operational evidence.
 
 ## 4. Product roles
 
-- **Visitor:** Browses public content, profiles, communities, protocol documentation, safety information, and service status without signing in or holding WOKE.
+- **Visitor:** Browses public content, profiles, communities, protocol documentation, safety information, and service status without signing in, connecting a wallet, or holding a token.
 - **Member:** Maintains an identity, profile, follows, posts, feeds, messages, settings, and safety controls.
-- **Creator:** Optionally publishes offerings, paid content, subscriptions, events, and noncustodial payment destinations.
+- **Creator:** May publish ordinary content now and, only under a separately
+  approved future mint-aware product, offerings, paid content, subscriptions,
+  events, and noncustodial payment destinations.
 - **Community moderator:** Acts only within granted permission scopes and a published community policy.
 - **Community administrator:** Configures membership, roles, governance, moderation providers, and portable community settings.
 - **Client or indexer operator:** Runs compatible software from public specifications and can select lawful service policies.
@@ -80,13 +83,14 @@ One person may hold several roles. Roles must not reveal protected identity attr
 
 **PS-EXP-001 — Partially implemented and tested.** A visitor can load the
 static marketing, explainer, onboarding, settings, and product-state surfaces
-without a wallet or network provider. Connected home/post routes expose bounded
-error and unavailable states; complete offline cached network reading remains
-open.
+without a wallet or network provider. The connected home route accepts only the
+configured indexer's consumer-safe response and substitutes no sample content;
+home/post routes expose bounded error and unavailable states. Complete offline
+cached network reading remains open.
 
 **Acceptance criteria**
 
-- No wallet connection, email, passkey, or WOKE balance is required to view public cached content.
+- No wallet connection, email, passkey, or token balance is required to view public cached content.
 - A degraded-network state explains what is unavailable without showing a blank screen.
 - Wallet addresses are not used as the primary visible identity label.
 
@@ -96,14 +100,14 @@ open.
 layer supports exact-origin/RP, user-verifying passkey registration and
 discoverable sign-in, client-only Ed25519 seed generation, and ciphertext-only
 PRF wrapper synchronization. It deliberately does not yet claim to create the
-protocol identity. Existing WokeNet-compatible wallet onboarding, confirmed
-WokeNet identity creation, email-assisted recovery, and the complete
+protocol identity. Existing Solana-wallet onboarding, finalized WokeNet program
+identity creation, email-assisted recovery, and the complete
 device/recovery product remain open.
 
 **Acceptance criteria**
 
 - Each path states who can recover the account, what is stored, and what can be revoked.
-- A new passkey user can explore and complete a profile without first acquiring WOKE.
+- A new passkey user can explore and complete a profile without first acquiring a token.
 - Email is never written to a public manifest or onchain account.
 - Device-bound delegated session keys expire and can be individually revoked.
 - Linking or unlinking one wallet does not silently replace the identity root.
@@ -122,7 +126,8 @@ remains disabled until its authentication and transaction adapters land.
 **Acceptance criteria**
 
 - The client signs the canonical manifest and verifies the signature and content hash before display.
-- Publication progress distinguishes local signing, storage publication, WokeNet confirmation, and indexing.
+- Publication progress distinguishes local signing, storage publication,
+  finalized Solana confirmation, and indexing.
 - A recoverable error can retry without producing a duplicate post.
 - The post remains independently verifiable without the flagship database.
 - A local-validator end-to-end test proves the complete flow without mocked blockchain success.
@@ -255,9 +260,17 @@ deliberately disabled without the required receipts.
 **PS-FEED-001 — Partially integrated; provider engine implemented and tested.**
 The replaceable feed service implements chronological, following, community,
 media, bounded-window trending, explainable recommendation, and third-party
-order reconciliation with local safety enforcement. The flagship has every
-required feed surface and a connected home slice, but live source/provider
-integration for every surface remains open.
+order reconciliation with local safety enforcement. The open indexer's separate
+`/v1/feed` projection now resolves an explicit network or its configured default
+and reports noncanonical provenance, checkpoint metadata, the resolved network,
+viewer scope, and terminal opaque cursors bound to the network, recipe, and exact
+following viewer. The flagship preserves its consumer-safe home feed, adds strict
+bounded chronological pagination, and exposes following only as an explicitly
+public, unauthenticated graph preview. Exact-identity hiding is re-applied on the
+current device. Media-only posts retain verified media references, but gateway
+fetch/playback is not connected. Authenticated following, recommendation-provider
+integration, cross-device safety, independent-provider conformance, and complete
+offline caching remain open.
 
 Every recommendation feed must provide:
 
@@ -393,26 +406,35 @@ Product surfaces must include:
 
 ## 12. Creator economy and payments
 
-**PS-PAY-001 — Experimental local compatibility subset; native-network
-activation blocked.** The program implements noncustodial native WOKE tips and
-weekly subscription settlement with deterministic recipient splits, fee
-snapshots, permanent replay receipts, and entitlement state. Production use is
-disabled because native Firedancer cannot yet submit, simulate, confirm, and
-serve the indexed RPC history required by the application. Allowlisted
-non-native token tips, paid memberships, and paid tickets remain planned.
+**PS-PAY-001 — Legacy ABI quarantined; replacement planned.** No `$WOKE` mint
+exists. The program contains a paused lamport-denominated tip/subscription ABI
+with deterministic recipient splits, fee snapshots, replay receipts, and
+entitlement state. That ABI is historical regression surface only: it must
+remain paused, cannot execute or be unpaused, and must never label SOL or
+lamports as `$WOKE`.
+
+Portable signed payment metadata is distinct from the onchain execution ABI:
+`{ kind: "sol" }` truthfully represents SOL and SPL assets carry exact token
+metadata; `{ kind: "woke" }` is rejected. This schema neither creates a mint nor
+authorizes the legacy ABI.
+
+A future creator-payment product requires a real SPL or Token-2022 mint,
+reviewed authorities/tokenomics/legal posture, a new mint-aware ABI and
+migration boundary, updated SDK/indexer/UI semantics, devnet rehearsal,
+adversarial tests, independent audit, and explicit release approval.
 
 **Acceptance criteria**
 
 - The application never takes custody through an application-controlled hot wallet.
 - Recipient, exact genesis-bound network, asset, base-unit amount, fees, splits,
   and recurrence are shown before signature.
-- Native WOKE has no mint address. Any future token asset requires an exact
-  mint, token-program, and decimals allowlist; recipient or asset substitution
-  is rejected.
+- The exact mint, token program, decimals, authorities, extensions, asset,
+  recipient, fees, splits, and recurrence are shown and verified before
+  signature.
 - Duplicate submission, replay, rounding, fake entitlement, and simulation mismatch tests pass.
-- WokeNet production execution remains disabled until the native
-  Firedancer, genesis, security, legal/economic, authority, and funded
-  configuration gates are documented and pass.
+- The quarantined ABI cannot be re-enabled as a shortcut; the replacement
+  mint-aware program, product, security, legal/economic, authority, and funded
+  configuration gates must pass.
 
 The product does not include an exchange, lending, yield, investment,
 token-sale, or speculative-promotion feature.
@@ -453,14 +475,24 @@ All surfaces below are **Planned**. A route existing by itself does not satisfy 
 | Identity | User profile; edit profile |
 | Settings and safety | Settings; privacy; safety center; blocks/mutes; reports/appeals; connected devices; delegated keys |
 | Portability and infrastructure | Wallet/funding; storage preferences; data export; account migration; account deletion |
+| Native mobile | Solana Seeker Android onboarding; Mobile Wallet Adapter connection and transaction approval; device/session management; update and recovery states |
+
+The Seeker app has an implemented non-release Expo/React Native foundation with
+a Mobile Wallet Adapter connection boundary, exact Solana deployment checks, a
+read-only chronological feed, honest failure states, and focused tests.
+Responsive-web coverage and an Android export are not Seeker-device or
+signed-APK evidence. Release still requires the transaction-signing flow,
+reproducible build, controlled signing, verifiable signed-APK provenance,
+wallet-intent/deep-link and permission review, device testing, accessibility,
+secure updates/rollback, and explicit distribution approval.
 
 Every surface must provide relevant loading, empty, permission-denied, validation-error, service-error, offline, and retry states. Destructive actions require clear scope and recovery information.
 
 ## 15. Accessibility, localization, and responsive behavior
 
-**PS-A11Y-001 — Automated route coverage implemented; conformance review
-pending.** Two hundred six desktop/mobile browser cases pass, with two
-intentional duplicate mobile passkey lifecycle cases skipped. The passing set
+**PS-A11Y-001 — Automated web-route coverage implemented; conformance review
+pending.** Two hundred six desktop and mobile-viewport browser cases pass, with
+two intentional duplicate mobile-viewport passkey lifecycle cases skipped. The passing set
 includes 90 axe A/AA scans over 45 route fixtures, keyboard navigation, high
 contrast, and local state flows. The connected post-detail route has semantic
 browser coverage but is not yet in the axe matrix. The documented manual
@@ -487,7 +519,9 @@ Required behavior includes semantic HTML, complete keyboard operation, visible f
 - Cached public reading remains available offline with a clear freshness timestamp.
 - A stale indexer cannot present unverified data as current.
 - Publication retry is idempotent across blockhash expiration and transient provider failure.
-- Representative Core Web Vitals and mobile performance measurements are recorded in the final verification report.
+- Representative Core Web Vitals are recorded for responsive web at desktop and
+  mobile viewports. Native Android/Seeker startup, navigation, MWA handoff,
+  memory, battery, and network measurements are recorded separately.
 
 ## 17. Privacy and legal experience
 
@@ -499,7 +533,7 @@ No product copy may claim GDPR, CCPA, COPPA, or other legal compliance solely be
 
 ## 18. Out of scope
 
-- A public token sale, speculative WOKE promotion, or token-gated ordinary identity/content
+- A public token sale, speculative `$WOKE` promotion, or token-gated ordinary identity/content
 - NFTs for ordinary profiles or posts
 - Custodial wallets or application-controlled custody of creator funds
 - Exchange, lending, yield, or investment products
@@ -507,16 +541,19 @@ No product copy may claim GDPR, CCPA, COPPA, or other legal compliance solely be
 - Appearance-based identity verification
 - A proprietary service required to interpret public protocol objects
 - Automatic publication to permanent storage without item-specific consent
-- WokeNet production deployment or spending real funds as part of ordinary development
+- Automatic WokeNet program deployment, token creation, APK publication, or
+  spending real funds as part of ordinary development
 
 ## 19. Product verification gates
 
 The product cannot be described as production-ready until:
 
 1. Essential flows work without manual database editing.
-2. Required mobile and desktop surfaces are polished.
+2. Required responsive-web surfaces are polished at desktop and mobile
+   viewports, and the separately gated Seeker Android surface passes its native
+   release matrix.
 3. Loading, empty, offline, error, and degraded-provider states are present.
-4. Onboarding requires neither prior crypto knowledge nor an initial WOKE balance.
+4. Onboarding requires neither prior crypto knowledge nor an initial token balance.
 5. The 20 required end-to-end journeys pass, including local-validator and keyboard-only coverage.
 6. Alternate RPC, gateway, indexer, and relay settings work in integration tests.
 7. Moderation, privacy, accessibility, security, protocol, build, and operational gates pass.
@@ -527,17 +564,18 @@ The product cannot be described as production-ready until:
 
 | Capability group | Status | Evidence |
 |---|---|---|
-| Public experience and onboarding | Partial | Complete route surface, 206 passing desktop/mobile browser cases, bounded provider-backed public search, and real passkey service-account lifecycle coverage; wallet and protocol-identity onboarding remain fail-closed |
-| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass the compatibility oracle; durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and sessions pass, while protocol onboarding, WokeNet delegation lifecycle, recovery product UX, sponsorship, and native Firedancer execution remain open |
+| Public experience and onboarding | Partial | Complete route surface, 208 passing desktop and mobile-viewport browser cases, bounded provider-backed public search, and real passkey service-account lifecycle coverage; wallet and protocol-identity onboarding remain fail-closed |
+| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass Solana local-validator tests; durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, and sessions pass, while protocol onboarding, WokeNet delegation lifecycle, recovery product UX, sponsorship, and public-cluster execution remain open |
 | Signed publishing and social graph | Verified text-post vertical slice; broader interactions partial | Nine finalized transactions, signed CAS manifest, exact PostgreSQL replay, root/delegated social program tests |
-| Feeds, search, and discovery | Partial | Seven-mode replaceable feed contract with 29 tests plus indexed, bounded profile/post search with memory/PostgreSQL parity; viewer-aware filtering, independent-provider conformance, and production-scale evidence remain |
+| Feeds, search, and discovery | Partial | Seven-mode replaceable feed engine plus a separate consumer-safe home feed, strict bounded indexer-backed chronological pagination, an unauthenticated public following-graph preview, device-local exact-identity hiding, and indexed bounded profile/post search. Authenticated following, recommendation-provider integration, cross-device safety, independent-provider conformance, complete offline caching, and production-scale evidence remain |
 | Communities and governance | Partial | Community/membership plus immutable one-member-one-vote proposal, vote, and finalization accounts pass 16 validator flows; other models, execution, and enabled web mutations remain open |
 | Moderation and appeals | Partial | Strict signed provider intake/active labels/restricted reads plus an encrypted runtime-delete-protected PostgreSQL case/appeal ledger, legal holds, due/expiry transitions, and transparency aggregation pass; production object authorization/SSO, a separately credentialed retention executor, and complete specialist product workflows remain blocked |
 | One-to-one encrypted messaging | Experimental subset | Pairwise real-WASM Olm adapter passes 13 envelope/device/revocation/lifecycle adversarial cases; volatile storage and absent browser/relay/product integration keep it non-production |
 | Group encrypted messaging | Experimental design only | UI is disabled; no group cryptography is claimed |
-| Media, stories, events, and livestream architecture | Partial | Hardened resumable media worker, real processing, ClamAV scanning, unsigned manifests, routes, and encrypted signaling exist; browser publication, stories/events/live product flows remain gated |
-| Creator payments and entitlements | Experimental compatibility subset | Native WOKE tips and weekly subscriptions, permanent receipts/entitlements, IDL-aligned SDK instruction/proof helpers, and indexer projections are implemented against the compatibility oracle; flagship UX, broader economy features, and native Firedancer execution remain blocked |
+| Media, stories, events, and livestream architecture | Partial | Hardened resumable media worker, real processing, ClamAV scanning, unsigned manifests, routes, encrypted signaling, and verified media-reference retention for media-only feed posts exist; feed gateway playback, browser publication, and stories/events/live product flows remain gated |
+| Creator payments and entitlements | Quarantined legacy subset | Historical lamport-denominated tip/subscription, receipt, entitlement, SDK, and indexer paths have local regression tests but cannot execute or be unpaused. No `$WOKE` mint exists; a real mint and new mint-aware ABI are required |
+| Solana Seeker Android | Implemented non-release foundation | Expo/React Native source, Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only feed, honest failure states, and focused tests exist. No verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication exists |
 | Portability and provider replacement | Partial | Alternate endpoint validation, open indexer/storage/feed/relay/moderation contracts, replay, and relay failover pass |
-| Accessibility, performance, and resilience | Partial | Production build, automated desktop/mobile/axe matrix, and reproducible unthrottled loopback TTFB/DOM/load/LCP/CLS observations pass; manual WCAG, field Core Web Vitals, INP, load/capacity, and resilience gates remain |
+| Accessibility, performance, and resilience | Partial | Production web build, automated desktop/mobile-viewport/axe matrix, and reproducible unthrottled loopback TTFB/DOM/load/LCP/CLS observations pass; manual WCAG, native Android accessibility/performance, field Core Web Vitals, INP, load/capacity, and resilience gates remain |
 
 This table must be updated only when links to passing evidence are available.

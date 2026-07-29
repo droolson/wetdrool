@@ -6,8 +6,10 @@ remains in progress.
 The current web/UI packages implement an original CSS mark and wordmark, shared
 tokens, light/dark/high-contrast themes, reduced-motion rules, buttons, status
 badges, provider cards, headings, and state panels. Playwright verifies the
-high-contrast control on implemented routes. Full product-state coverage,
-originality/legal review, and production asset packaging remain open.
+high-contrast control on implemented web routes. An Expo/React Native Seeker
+foundation exists but is not a release app and has no verified signed-APK/store
+artifact. Full product-state coverage, mobile parity, originality/legal review,
+and production asset packaging remain open.
 
 WokeSocial should feel bold, joyful, intelligent, defiant, welcoming, human,
 contemporary, and trustworthy. The experience is explicitly LGBTQ+ affirming
@@ -46,6 +48,11 @@ predictable.
 - Warm without forced cheerfulness.
 - Firm about consent and abuse prevention.
 - Never imply that blockchain makes a risky action safe or reversible.
+- Never label SOL or lamports as `$WOKE`, imply a `$WOKE` mint exists, or present
+  the quarantined legacy payment ABI as usable. Portable SOL/SPL metadata must
+  name the real asset.
+- Never imply that a Seeker build, signed APK, signing provenance, device
+  certification, or store publication exists beyond recorded evidence.
 - Never expose protocol jargon when an ordinary product phrase is sufficient.
 - Do not infer or narrate identity attributes a person has not shared.
 

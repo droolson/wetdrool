@@ -55,7 +55,7 @@ describe('provider configuration', () => {
       WOKESOCIAL_CONTENT_GATEWAYS: 'https://one.example/ipfs,not a url,https://two.example',
       WOKESOCIAL_INDEXER_URL: 'https://indexer.example/private/path',
       WOKESOCIAL_RELAY_ENDPOINTS: 'wss://relay-one.example/v1/relay,https://not-a-relay.example',
-      WOKENET_RPC_ENDPOINTS: 'javascript:alert(1)',
+      SOLANA_RPC_ENDPOINTS: 'javascript:alert(1)',
     });
 
     expect(summaries.find(({ id }) => id === 'indexer')).toMatchObject({

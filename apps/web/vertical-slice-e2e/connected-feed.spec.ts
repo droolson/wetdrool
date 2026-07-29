@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { OPEN_INDEXER_FEED_RECIPE } from '@wokesocial/indexer-client';
 
 const expectedAuthor = required('VERTICAL_SLICE_EXPECTED_AUTHOR');
 const expectedPost = required('VERTICAL_SLICE_EXPECTED_POST');
@@ -22,6 +23,14 @@ test('renders the finalized validator post through the production indexer', asyn
   await page.getByText('Verification details', { exact: true }).click();
   await expect(page.getByText(/finalized/u)).toBeVisible();
   await expect(page.getByText('Valid', { exact: true })).toHaveCount(2);
+
+  const chronologicalResponse = await page.goto('/feed/chronological');
+  expect(chronologicalResponse?.ok()).toBe(true);
+  await expect(page.getByRole('heading', { name: 'Latest in strict time order' })).toBeVisible();
+  await expect(page.getByText(expectedAuthor, { exact: true })).toBeVisible();
+  await expect(page.getByText(expectedPost, { exact: true })).toBeVisible();
+  await expect(page.getByText(suppressedPost, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(OPEN_INDEXER_FEED_RECIPE, { exact: true })).toBeVisible();
 
   const detailResponse = await page.goto(`/post/${encodeURIComponent(expectedPostId)}`);
   expect(detailResponse?.ok()).toBe(true);
