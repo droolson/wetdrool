@@ -119,7 +119,14 @@ test('publishes, recovers an ambiguous response, and reuses one passkey identity
           }
           const rpc = parseRpcRequest(request.postData());
           if (rpc?.method !== 'sendTransaction') {
-            await route.continue();
+            const upstream = await route.fetch({ timeout: SECURITY_CAPTURE_TIMEOUT_MS });
+            const body = await withDeadline(
+              upstream.body(),
+              SECURITY_CAPTURE_TIMEOUT_MS,
+              'rpc-response-body',
+            );
+            securityAudit.recordHttpResponse(upstream.headers(), body);
+            await route.fulfill({ response: upstream, body });
             return;
           }
           const wire = rpcWire(rpc);
@@ -132,6 +139,7 @@ test('publishes, recovers an ambiguous response, and reuses one passkey identity
 
           const upstream = await route.fetch();
           const responseText = await upstream.text();
+          securityAudit.recordHttpResponse(upstream.headers(), responseText);
           const signature = parseSendTransactionResponse(upstream.status(), responseText);
           sends.push({ phase, signature, wire });
 
@@ -141,7 +149,6 @@ test('publishes, recovers an ambiguous response, and reuses one passkey identity
             if (wire !== ambiguousWire || signature !== ambiguousSignature) {
               throw new Error('The failed first publication substituted its transaction wire.');
             }
-            securityAudit.recordHttpResponse(upstream.headers(), responseText);
             forwardedResponseLossCount += 1;
             await route.abort('connectionreset');
             return;
@@ -750,14 +757,6 @@ async function installResponseAuditRoute(
   });
 }
 
-function isDeterministicallyAuditedResponse(url: URL): boolean {
-  return (
-    url.origin === INDEXER_URL ||
-    (url.origin === AUTH_URL && url.pathname === '/v1/session') ||
-    (url.origin === WEB_URL && url.pathname === '/api/localnet/cas')
-  );
-}
-
 function observeSecuritySurfaces(page: Page): SecuritySurfaceAudit {
   const surfaces: SecuritySurface[] = [];
   const pending = new Set<Promise<void>>();
@@ -853,19 +852,11 @@ function observeSecuritySurfaces(page: Page): SecuritySurfaceAudit {
     const url = new URL(response.url());
     if (!/^https?:$/u.test(url.protocol)) return;
     responseCount += 1;
-    queue(`response-${String(response.status())}`, async () => {
-      retain(
-        'http-response',
-        JSON.stringify(Object.entries(response.headers()).sort()),
-        'response-headers',
-      );
-      if (
-        !isDeterministicallyAuditedResponse(url) &&
-        responseHasInspectableBody(response.request().method(), response.status())
-      ) {
-        retainResponseBody(await response.body());
-      }
-    });
+    retain(
+      'http-response',
+      JSON.stringify(Object.entries(response.headers()).sort()),
+      'response-headers',
+    );
   });
   page.on('console', (message) => {
     retain('browser-console', message.text(), 'browser-console');
@@ -919,16 +910,6 @@ function observeSecuritySurfaces(page: Page): SecuritySurfaceAudit {
       responseBodyDigests.clear();
     },
   };
-}
-
-function responseHasInspectableBody(method: string, status: number): boolean {
-  return (
-    method !== 'HEAD' &&
-    status >= 200 &&
-    status !== 204 &&
-    status !== 205 &&
-    (status < 300 || status >= 400)
-  );
 }
 
 async function readRunServiceLogSurfaces(evidencePath: string): Promise<{
