@@ -20,10 +20,10 @@ const STEPS = [
     tone: 'plum' as const,
   },
   {
-    copy: 'Add a display name, handle, languages, and optional profile details with visibility controls for each field.',
+    copy: 'Receive a collision-resistant anonymous .woke candidate from the public passkey root, then add optional profile details with field-level visibility.',
     eyebrow: 'Step 02',
-    footer: 'Signed profile storage required',
-    title: 'Introduce yourself',
+    footer: 'Onchain claim still required',
+    title: 'Start pseudonymously',
     tone: 'coral' as const,
   },
   {
@@ -50,8 +50,9 @@ export default function OnboardingPage() {
       >
         <p>
           Passkey approval can now atomically create an authentication-service account and its
-          credential-bound encrypted key wrapper. Profile publication, recovery, and protocol
-          identity creation are still unavailable.
+          credential-bound encrypted key wrapper. A random anonymous .woke candidate is derived
+          locally from the public root without email or legal identity. Profile publication,
+          recovery, protocol identity creation, and the onchain name claim are still unavailable.
         </p>
       </AppPageHeader>
 
@@ -72,6 +73,10 @@ export default function OnboardingPage() {
           <div>
             <dt>Protocol write</dt>
             <dd>Not attempted</dd>
+          </div>
+          <div>
+            <dt>Anonymous name</dt>
+            <dd>Derived locally; not an onchain claim</dd>
           </div>
         </dl>
       </section>
@@ -97,8 +102,9 @@ export default function OnboardingPage() {
           <p>
             The browser requires a discoverable, user-verifying credential with the PRF extension. A
             new Ed25519 seed is encrypted locally, then the credential and ciphertext-only wrapper
-            are committed together. If either part fails, no service account is activated. No
-            protocol identity is created.
+            are committed together. If either part fails, no service account is activated. The
+            resulting public root deterministically yields an anonymous .woke candidate, but no
+            protocol identity or name claim is created.
           </p>
           <div className="product-cta__actions">
             <ButtonLink href="/signin" variant="secondary">

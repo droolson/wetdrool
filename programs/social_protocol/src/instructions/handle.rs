@@ -8,7 +8,7 @@ use crate::{
     errors::SocialProtocolError,
     events::{HandleClaimed, HandleReleased},
     state::{HandleClaim, Identity, ProtocolConfig},
-    validation::{checked_next_sequence, validate_handle_hash},
+    validation::{checked_next_sequence, validate_handle_claim, validate_handle_hash},
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -63,7 +63,11 @@ pub struct ClaimHandle<'info> {
 }
 
 pub fn handle_claim_handle(ctx: Context<ClaimHandle>, args: ClaimHandleArgs) -> Result<()> {
-    validate_handle_hash(&args.handle, &args.handle_hash)?;
+    validate_handle_claim(
+        &args.handle,
+        &args.handle_hash,
+        &ctx.accounts.identity.origin_authority,
+    )?;
 
     let claim = &ctx.accounts.handle_claim;
     if claim.version != 0 {

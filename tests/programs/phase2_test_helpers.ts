@@ -25,6 +25,11 @@ export const SCOPE_POST = 1 << 1;
 export const SCOPE_SOCIAL = 1 << 2;
 export const TEST_MANIFEST_CID =
   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
+const RANDOM_HANDLE_DOMAIN = Buffer.from(
+  "wokesocial:woke-name:random:v1\0",
+  "utf8",
+);
+const CROCKFORD_BASE32 = "0123456789abcdefghjkmnpqrstvwxyz";
 
 export interface Phase2Context {
   config: web3.PublicKey;
@@ -118,6 +123,30 @@ export function deriveHandleClaim(
     [PDA_PREFIX, PDA_VERSION, HANDLE_SEED, Buffer.from(handleHash)],
     programId,
   )[0];
+}
+
+export function deriveRandomHandle(originAuthority: web3.PublicKey): string {
+  const digest = createHash("sha256")
+    .update(RANDOM_HANDLE_DOMAIN)
+    .update(originAuthority.toBuffer())
+    .digest()
+    .subarray(0, 10);
+  let accumulator = 0;
+  let availableBits = 0;
+  let output = "anon_";
+  for (const byte of digest) {
+    accumulator = (accumulator << 8) | byte;
+    availableBits += 8;
+    while (availableBits >= 5) {
+      availableBits -= 5;
+      output += CROCKFORD_BASE32[(accumulator >>> availableBits) & 31];
+      accumulator &= (1 << availableBits) - 1;
+    }
+  }
+  if (availableBits !== 0) {
+    output += CROCKFORD_BASE32[(accumulator << (5 - availableBits)) & 31];
+  }
+  return output;
 }
 
 export function derivePost(

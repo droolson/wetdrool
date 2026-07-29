@@ -364,6 +364,21 @@ enforcement.
 Unicode is fully supported in display names. Unicode handles may be introduced
 only with a separately versioned normalization and confusable-defense design.
 
+The version-1 `.woke` presentation namespace builds on these handle accounts.
+An anonymous registration candidate is derived as
+`anon_ || crockford-base32(SHA-256("wokesocial:woke-name:random:v1\0" ||
+identity.origin_authority)[0..10])`, followed by the presentation-only `.woke`
+suffix. The program independently re-derives any `anon_` claim from the
+identity's immutable origin authority; an observer therefore cannot claim a
+different identity's deterministic anonymous name. Rotation and guardian
+recovery update the current root without renaming the identity.
+
+This implemented primitive does not make `.woke` a DNS suffix or a native
+Solana address. The onboarding client currently displays an unclaimed
+candidate, while atomic identity creation plus claim, independently verifiable
+current-destination resolution, and custom-name settlement remain incomplete.
+See [ADR-0012](DECISIONS/0012-woke-name-namespace.md).
+
 ### Implemented and planned instructions
 
 | Instruction group | Current instructions | Status and invariants |
@@ -373,7 +388,7 @@ only with a separately versioned normalization and confusable-defense design.
 | Social graph | `follow`, `unfollow`, `follow_delegated`, `unfollow_delegated` | Implemented: root variants remain stable; delegated variants require the exact follower identity/delegate account, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; all variants reject self-follow, validate relationships, and use checked actor/edge sequences |
 | Content | `publish_post`, `tombstone_post`, `publish_post_delegated`, `tombstone_post_delegated` | Implemented: root variants remain stable; delegated variants require the exact author identity/delegate account, current root-rotation epoch, `post` scope, inclusive slot expiry, and non-revoked state; all variants preserve immutable post PDAs, hash/URI bounds, checked author sequences, and one tombstone PDA |
 | Delegation | `create_delegation`, `revoke_delegation` | Implemented: closed scopes, expiry, explicit revocation, checked state/identity sequence, and invalidation on any root-rotation epoch change |
-| Handles | `claim_handle`, `release_handle` | Implemented: current-root authority, exact normalized string plus full SHA-256 PDA seed, checked identity sequence on both transitions, collision detection, release to the current root authority, and bounded 3–30-byte state |
+| Handles / `.woke` names | `claim_handle`, `release_handle` | Implemented predeployment primitive: current-root authority, exact normalized string plus full SHA-256 PDA seed, checked identity sequence on both transitions, collision detection, release to the current root authority, and bounded 3–30-byte state. Reserved `anon_` claims must match the deterministic v1 derivation from immutable origin authority. Atomic registration/claim, product resolution, and custom-name policy remain incomplete |
 | Recovery | `configure_recovery_policy`, `disable_recovery_policy`, `request_recovery`, `approve_recovery`, `cancel_recovery`, `execute_recovery` | Implemented onchain primitive: root-only policy administration, guardian-created requests and distinct approvals, current-root cancellation, checked delay/threshold, arbitrary executor, required target-root signature, and rotation-epoch delegation invalidation |
 | Public blocks | `set_block`, `set_block_delegated` | Implemented: root variant remains stable; delegated variant requires exact identity, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; both reject self-block and reuse a checked actor/edge state |
 | Communities | `create_community`, `update_community_governance`, `join_community`, `leave_community`, `moderate_community_membership` | Implemented predeployment subset: member identity root or current `community` delegate authorizes join/leave for public or unlisted open communities; creator identity root or current `community` delegate may remove/ban an existing member; bans are terminal; every transition commits a signed membership-v2 manifest and exact optimistic sequences |

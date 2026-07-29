@@ -198,10 +198,17 @@ right-to-left presentation, and does not assume English grammar.
 **PS-ID-002 — Partially implemented and local-validator tested.** Human-readable
 ASCII v1 handles are globally collision-safe onchain, distinct from wallet
 addresses, exactly released/reclaimed through events, and projected by memory
-and PostgreSQL indexers. Client claim UX remains disabled pending authenticated
-transactions.
+and PostgreSQL indexers. Versioned anonymous `.woke` candidates are now
+deterministically derived from the immutable identity origin, rendered after
+passkey registration/sign-in, and protected onchain so another identity cannot
+claim the reserved `anon_` value. The candidate remains explicitly unclaimed:
+atomic identity creation plus claim, authenticated claim UX, exact
+current-destination resolution, and custom-name policy are incomplete.
 
 - Collision and impersonation behavior must be explained before handle claim.
+- A payment or signature flow must reveal the current Solana destination,
+  network, deployed WokeNet program, fees, and rent; `.woke` is never rendered
+  as a native wallet address or external DNS name.
 - Wallet details are available only in an intentional account or transaction detail view.
 - Copy-address actions include network and recipient context.
 - The interface must never imply that a handle alone proves legal identity.

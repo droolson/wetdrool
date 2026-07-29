@@ -1,6 +1,8 @@
 'use client';
 
+import { deriveRandomWokeName } from '@wokesocial/protocol';
 import { ButtonLink } from '@wokesocial/ui';
+import bs58 from 'bs58';
 import { useEffect, useState } from 'react';
 
 import {
@@ -9,6 +11,7 @@ import {
   type EmbeddedKeyFallbackReason,
 } from '@/lib/auth/browser-auth-client';
 import type { AuthSessionView } from '@/lib/auth/auth-api';
+import { decodeBase64Url } from '@/lib/auth/passkey-codec';
 import { BrowserAuthError } from '@/lib/auth/errors';
 
 interface PasskeyAuthPanelProps {
@@ -217,6 +220,7 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
 
 function KeyOutcome({ result }: { readonly result: BrowserAuthFlowResult }) {
   if (result.key.status === 'ready') {
+    const anonymousIdentity = deriveAnonymousIdentity(result.key.publicKey);
     return (
       <section className="passkey-auth__outcome passkey-auth__outcome--ready">
         <p className="section-kicker">Local key ready</p>
@@ -235,7 +239,30 @@ function KeyOutcome({ result }: { readonly result: BrowserAuthFlowResult }) {
             <dt>Protocol identity</dt>
             <dd>Not created</dd>
           </div>
+          {anonymousIdentity === undefined ? null : (
+            <>
+              <div>
+                <dt>Anonymous .woke candidate</dt>
+                <dd className="inline-identifier">{anonymousIdentity.name}</dd>
+              </div>
+              <div>
+                <dt>Solana destination</dt>
+                <dd className="inline-identifier">{abbreviate(anonymousIdentity.rootAuthority)}</dd>
+              </div>
+              <div>
+                <dt>Name status</dt>
+                <dd>Deterministically derived; not claimed onchain yet</dd>
+              </div>
+            </>
+          )}
         </dl>
+        {anonymousIdentity === undefined ? null : (
+          <p>
+            This collision-resistant candidate contains no email or legal identity. It becomes a
+            portable WokeNet name only after the matching identity and handle claim finalize on
+            Solana; it is never a native Solana address.
+          </p>
+        )}
       </section>
     );
   }
@@ -304,4 +331,22 @@ function formatDate(value: string): string {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function deriveAnonymousIdentity(
+  publicKey: string,
+): { readonly name: string; readonly rootAuthority: string } | undefined {
+  let publicKeyBytes: Uint8Array | undefined;
+  try {
+    publicKeyBytes = decodeBase64Url(publicKey, 32);
+    const rootAuthority = bs58.encode(publicKeyBytes);
+    return {
+      name: deriveRandomWokeName(rootAuthority).name,
+      rootAuthority,
+    };
+  } catch {
+    return undefined;
+  } finally {
+    publicKeyBytes?.fill(0);
+  }
 }

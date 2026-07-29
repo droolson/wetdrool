@@ -47,6 +47,12 @@ test('registers ciphertext atomically, logs out, and signs in discoverably', asy
   ).toBeVisible();
   await expect(page.getByText('Not created', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Fail-closed fallback')).toHaveCount(0);
+  const anonymousName = page.getByText(/^anon_[0-9a-hjkmnp-tv-z]{16}\.woke$/u);
+  await expect(anonymousName).toBeVisible();
+  const registeredAnonymousName = await anonymousName.innerText();
+  await expect(
+    page.getByText('Deterministically derived; not claimed onchain yet', { exact: true }),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out of service session' }).click();
   await expect(
@@ -66,6 +72,7 @@ test('registers ciphertext atomically, logs out, and signs in discoverably', asy
   ).toBeVisible();
   await expect(page.getByText('Not created', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Fail-closed fallback')).toHaveCount(0);
+  await expect(page.getByText(registeredAnonymousName, { exact: true })).toBeVisible();
 
   const registrationVerification = requestBody(observed, '/v1/registration/verify');
   const authenticationVerification = requestBody(observed, '/v1/authentication/verify');

@@ -28,7 +28,7 @@ Before changing anything:
 4. Read closed [GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10)
    for the passkey-publication evidence, then use
    [issue #12](https://github.com/AlexBTC420/wokesocial/issues/12) for the
-   expanded product program. The next social-product slices are
+   expanded product program. The active social-product slices are
    [issue #14](https://github.com/AlexBTC420/wokesocial/issues/14) for
    pseudonymous `.woke` names and
    [issue #15](https://github.com/AlexBTC420/wokesocial/issues/15) for the
@@ -104,8 +104,11 @@ Preserve these invariants across code, tests, documentation, and GitHub issues:
   unpause. It must never be relabeled as `$WOKE`.
 - No `$WOKE` mint, balance, redemption, exchange rate, or investment claim
   exists.
-- `.woke` names are planned WokeNet mappings to real Solana public keys. They
-  are not native Solana addresses or an external DNS top-level domain.
+- `.woke` names are versioned WokeNet mappings to real Solana public keys.
+  Deterministic anonymous derivation and program-enforced `anon_`
+  anti-front-running are implemented locally; atomic registration/claim,
+  resolution UX, and custom settlement remain incomplete. They are not native
+  Solana addresses or an external DNS top-level domain.
 - “No transaction fee” can only mean no hidden WokeSocial platform fee.
   Solana fees and rent must be disclosed or sponsored under published limits.
 - “Middle-out” is a benchmark program, not a completed proprietary codec.
@@ -589,15 +592,21 @@ complete.
 
 Continue in this order:
 
-- [ ] Implement issue #14’s random pseudonymous `.woke` allocation before
-      custom-name purchase or transfer.
-- [ ] Specify one canonical normalized-name representation, collision rules,
-      recovery behavior, reservation expiry, anti-squatting limits, and
-      identity/wallet mapping.
-- [ ] Add protocol schemas, deterministic SDK builders, indexer projections,
-      migration/replay coverage, and adversarial local-validator tests.
-- [ ] Connect anonymous passkey registration to the random name and render it
-      consistently in profile, composer, feed, search, and share surfaces.
+- [x] Specify ADR-0012’s canonical anonymous `.woke` derivation, ASCII
+      normalization boundary, identity mapping, and rotation/recovery stability.
+- [x] Add protocol derivation/property vectors, an exact SDK claim builder,
+      program-enforced `anon_` anti-front-running, adversarial local-validator
+      coverage, and stable passkey onboarding/sign-in candidate rendering.
+- [ ] Make identity creation plus anonymous-name claim one atomic, durable,
+      simulated and finalized registration transaction; never label a derived
+      candidate as claimed before that evidence exists.
+- [ ] Add independently verifiable name-to-identity-to-current-root resolution,
+      checkpoint/cache invalidation, and exact Solana destination disclosure.
+- [ ] Specify and implement custom-name reserved policy, eligibility,
+      commit/reveal, expiry, grace/cooldown, recovery, transfer, disputes,
+      economics, refunds, and appeals before purchase or transfer.
+- [ ] Render finalized names consistently in profile, composer, feed, search,
+      share, and Seeker surfaces.
 - [ ] Implement issue #15’s non-transferable reputation ledger and separately
       accounted spendable points only after abuse simulations and audit rules.
 - [ ] Keep points, AI credits, future redemption claims, and any future `$WOKE`

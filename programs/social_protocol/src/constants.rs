@@ -41,6 +41,12 @@ pub const MAX_MANIFEST_URI_BYTES: usize = 200;
 /// Handles are compact, normalized ASCII identifiers rather than display names.
 pub const MIN_HANDLE_BYTES: usize = 3;
 pub const MAX_HANDLE_BYTES: usize = 30;
+/// Registration names occupy a dedicated prefix that custom claims must not use.
+pub const RANDOM_HANDLE_PREFIX: &str = "anon_";
+/// Cross-client domain separator for anonymous registration-name derivation.
+pub const RANDOM_HANDLE_DERIVATION_DOMAIN: &[u8] = b"wokesocial:woke-name:random:v1\0";
+/// Ten digest bytes produce the frozen 80-bit anonymous suffix.
+pub const RANDOM_HANDLE_DIGEST_BYTES: usize = 10;
 
 /// Delegation scopes are deliberately small and closed for v1.
 pub const SCOPE_PROFILE: u16 = 1 << 0;

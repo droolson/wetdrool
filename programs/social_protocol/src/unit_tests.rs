@@ -30,16 +30,16 @@ use crate::{
         authorize_identity_action, authorize_identity_action_any_scope, calculate_governance_tally,
         calculate_legacy_lamport_payment_allocation, calculate_subscription_window,
         checked_decrement, checked_increment, checked_next_sequence,
-        checked_recovery_execute_after, handle_hash, record_recovery_approval,
-        recovery_guardian_index, validate_community_roles, validate_delegation_scopes,
-        validate_governance_commitment, validate_handle, validate_handle_hash,
-        validate_legacy_lamport_payment_execution, validate_legacy_lamport_payment_policy,
-        validate_manifest, validate_manifest_uri, validate_membership_snapshot,
-        validate_payment_aliases, validate_payment_config_snapshot, validate_payment_nonce,
-        validate_payment_split_shape, validate_profile_schema_version, validate_proposal_window,
-        validate_protocol_fee, validate_reaction_kind, validate_recovery_approval_invariant,
-        validate_recovery_policy, validate_recovery_request_current, validate_recovery_target,
-        validate_subscription_splits,
+        checked_recovery_execute_after, derive_random_handle, handle_hash,
+        record_recovery_approval, recovery_guardian_index, validate_community_roles,
+        validate_delegation_scopes, validate_governance_commitment, validate_handle,
+        validate_handle_claim, validate_handle_hash, validate_legacy_lamport_payment_execution,
+        validate_legacy_lamport_payment_policy, validate_manifest, validate_manifest_uri,
+        validate_membership_snapshot, validate_payment_aliases, validate_payment_config_snapshot,
+        validate_payment_nonce, validate_payment_split_shape, validate_profile_schema_version,
+        validate_proposal_window, validate_protocol_fee, validate_reaction_kind,
+        validate_recovery_approval_invariant, validate_recovery_policy,
+        validate_recovery_request_current, validate_recovery_target, validate_subscription_splits,
     },
 };
 
@@ -469,6 +469,26 @@ fn handle_validation_is_normalized_bounded_and_hash_bound() {
             .expect_err("mismatched handle digest must fail"),
         error!(SocialProtocolError::HandleHashMismatch)
     );
+
+    let system_program = Pubkey::default();
+    let anonymous = derive_random_handle(&system_program);
+    assert_eq!(anonymous, "anon_a8rvm9ryz0phc719");
+    assert!(validate_handle_claim(&anonymous, &handle_hash(&anonymous), &system_program).is_ok());
+    assert_eq!(
+        validate_handle_claim(
+            "anon_0000000000000000",
+            &handle_hash("anon_0000000000000000"),
+            &system_program,
+        )
+        .expect_err("another identity's anonymous name must fail"),
+        error!(SocialProtocolError::RandomHandleMismatch)
+    );
+    assert!(validate_handle_claim(
+        "independent_artist",
+        &handle_hash("independent_artist"),
+        &system_program,
+    )
+    .is_ok());
 }
 
 #[test]

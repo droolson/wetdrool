@@ -9,9 +9,10 @@ use crate::{
         MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS, MAX_RECOVERY_DELAY_SLOTS,
         MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS, MIN_GOVERNANCE_VOTING_SLOTS,
         MIN_HANDLE_BYTES, MIN_RECOVERY_DELAY_SLOTS, MIN_RECOVERY_GUARDIANS,
-        ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PDA_PREFIX, PDA_VERSION, REACTION_CELEBRATE,
-        REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT, VALID_DELEGATION_SCOPES,
-        WEEK_SECONDS,
+        ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PDA_PREFIX, PDA_VERSION,
+        RANDOM_HANDLE_DERIVATION_DOMAIN, RANDOM_HANDLE_DIGEST_BYTES, RANDOM_HANDLE_PREFIX,
+        REACTION_CELEBRATE, REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT,
+        VALID_DELEGATION_SCOPES, WEEK_SECONDS,
     },
     errors::SocialProtocolError,
     state::{
@@ -51,6 +52,53 @@ pub fn validate_handle_hash(handle: &str, expected_hash: &[u8; MANIFEST_HASH_BYT
         handle_hash(handle) == *expected_hash,
         SocialProtocolError::HandleHashMismatch
     );
+    Ok(())
+}
+
+/// Returns the frozen anonymous-registration handle for an identity's immutable
+/// origin authority. Root rotation and guardian recovery therefore do not
+/// rename the identity.
+pub fn derive_random_handle(origin_authority: &Pubkey) -> String {
+    const CROCKFORD_BASE32: &[u8; 32] = b"0123456789abcdefghjkmnpqrstvwxyz";
+
+    let mut input =
+        Vec::with_capacity(RANDOM_HANDLE_DERIVATION_DOMAIN.len() + origin_authority.as_ref().len());
+    input.extend_from_slice(RANDOM_HANDLE_DERIVATION_DOMAIN);
+    input.extend_from_slice(origin_authority.as_ref());
+    let digest = solana_sha256_hasher::hash(&input).to_bytes();
+
+    let mut output = String::with_capacity(RANDOM_HANDLE_PREFIX.len() + 16);
+    output.push_str(RANDOM_HANDLE_PREFIX);
+    let mut accumulator = 0_u32;
+    let mut available_bits = 0_u32;
+    for byte in digest.iter().take(RANDOM_HANDLE_DIGEST_BYTES) {
+        accumulator = (accumulator << 8) | u32::from(*byte);
+        available_bits += 8;
+        while available_bits >= 5 {
+            available_bits -= 5;
+            output.push(CROCKFORD_BASE32[((accumulator >> available_bits) & 31) as usize] as char);
+            accumulator &= (1_u32 << available_bits) - 1;
+        }
+    }
+    if available_bits != 0 {
+        output
+            .push(CROCKFORD_BASE32[((accumulator << (5 - available_bits)) & 31) as usize] as char);
+    }
+    output
+}
+
+pub fn validate_handle_claim(
+    handle: &str,
+    expected_hash: &[u8; MANIFEST_HASH_BYTES],
+    origin_authority: &Pubkey,
+) -> Result<()> {
+    validate_handle_hash(handle, expected_hash)?;
+    if handle.starts_with(RANDOM_HANDLE_PREFIX) {
+        require!(
+            handle == derive_random_handle(origin_authority),
+            SocialProtocolError::RandomHandleMismatch
+        );
+    }
     Ok(())
 }
 

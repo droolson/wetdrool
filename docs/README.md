@@ -66,6 +66,7 @@ security audit, `$WOKE` mint, or Solana Seeker release.
 | [0009](DECISIONS/0009-wokenet-on-solana.md)                   | WokeNet as a Solana program and protocol layer |
 | [0010](DECISIONS/0010-verified-community-discovery.md)        | Verified community discovery                   |
 | [0011](DECISIONS/0011-member-signed-community-membership.md)  | Member-signed community membership             |
+| [0012](DECISIONS/0012-woke-name-namespace.md)                 | Versioned `.woke` identity names                |
 
 ## Security, privacy, and safety
 

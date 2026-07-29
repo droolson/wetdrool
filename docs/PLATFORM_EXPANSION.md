@@ -141,19 +141,24 @@ Solana destination.
 
 ### 4.2 Registration
 
-A new passkey account receives a random pseudonymous name without requiring a
-legal name, email, or public wallet label. The allocation procedure must:
+A new passkey account derives a pseudonymous name without requiring a legal
+name, email, or public wallet label. ADR-0012 fixes the version-1 allocation as
+`anon_` plus a 16-character Crockford-base32 encoding of an 80-bit
+domain-separated SHA-256 prefix over the identity's immutable origin authority.
+This deterministic procedure:
 
-- Use cryptographically secure randomness
-- Normalize the candidate before collision checking
-- Avoid offensive, reserved, visually confusable, and impersonating values
-- Bind the allocation to the deterministic WokeNet identity
-- Persist retry coordinates so registration cannot allocate multiple names
-- Produce a stable signed resolution record
+- produces the same candidate after retry, sign-out, root rotation, or recovery;
+- reserves the generated namespace from custom allocation;
+- lets the Solana program independently reject another identity's claim;
+- uses conservative ASCII and rejects Unicode/confusable input for v1 handles;
+  and
+- avoids server-held allocation randomness or retry coordinates.
 
-The exact word-list format is a product decision to be tested for readability,
-localization, collision probability, and moderation burden. The random name is
-usable immediately as the public username.
+The candidate is not usable as a claimed public username until identity
+creation and handle claim finalize. Current passkey onboarding renders the
+candidate with that warning. Registration still needs one atomic
+identity-plus-claim transaction and a stable, independently verifiable
+name-to-identity-to-current-root resolution path.
 
 ### 4.3 Custom-name eligibility
 
@@ -512,10 +517,10 @@ The workstreams have a strict dependency order:
 
 | Capability | Current status | Next evidence |
 |---|---|---|
-| Core social foundation | Passkey localnet publication proven; pre-release | Extend registration with issue #14 pseudonymous `.woke` names |
+| Core social foundation | Passkey localnet publication proven; pre-release | Atomically finalize the derived `.woke` claim during registration |
 | Long/short video | Worker subset only | Versioned manifest and real browser upload/playback |
 | Middle-out optimization | Research label | Public benchmark and standards fallback |
-| Random `.woke` names | Planned | Namespace ADR, schemas, collision and recovery tests |
+| Random `.woke` names | Deterministic derivation, SDK claim ABI, onchain anti-front-running, Rust/TypeScript vectors, local-validator proof, and passkey candidate rendering implemented | Atomic registration/claim, resolver proof/current-destination UX, cross-surface rendering, public-cluster evidence |
 | Custom names | Planned | Anti-squatting policy and transaction design |
 | Reputation and points | Planned | Ledger specification and abuse simulation |
 | Avatar studio | Planned | Portable format and deterministic renderer |

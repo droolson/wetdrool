@@ -114,6 +114,8 @@ pub enum SocialProtocolError {
     HandleHashCollision,
     #[msg("The handle claim account was substituted")]
     HandleClaimSubstitution,
+    #[msg("An anonymous handle does not match the identity origin authority")]
+    RandomHandleMismatch,
     #[msg("The community does not commit to the supported one-active-member-one-vote strategy")]
     UnsupportedGovernanceStrategy,
     #[msg("The proposal thresholds do not match the committed governance strategy")]

@@ -743,9 +743,16 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
 - [ ] Treat “middle-out” as a measured media R&D program; retain
   standards-based fallbacks and ship no codec or efficiency claim without a
   public corpus and reproducible result.
-- [ ] Define the `.woke` namespace, random pseudonymous registration,
-  resolution to real Solana authorities, recovery, normalization,
-  impersonation policy, and anti-squatting custom-name allocation.
+- [x] Define and cross-language test the version-1 `.woke` namespace,
+  deterministic pseudonymous derivation from immutable identity origin,
+  conservative ASCII normalization, rotation/recovery stability, and
+  program-enforced `anon_` anti-front-running.
+- [ ] Atomically claim the derived anonymous name during durable passkey
+  registration, implement independently verifiable resolution to the current
+  Solana authority, and connect finalized names across product surfaces.
+- [ ] Specify and implement custom-name eligibility, reservation,
+  commit/reveal, expiry/grace/cooldown, recovery, transfer, reserved-name,
+  impersonation/trademark, appeal, refund, and anti-squatting policy.
 - [ ] Implement separate auditable reputation, points, promotional-grant, AI
   credit, and redemption-entitlement ledgers with public formulas, caps,
   anti-abuse controls, reconciliation, statements, and appeals.

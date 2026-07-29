@@ -18,6 +18,7 @@ import {
   deriveHandleClaim,
   derivePost,
   deriveReaction,
+  deriveRandomHandle,
   deriveTombstone,
   digest,
   manifestUri,
@@ -166,6 +167,41 @@ export function registerPhase2Tests(context: Phase2Context): void {
       await waitForAccountClosure(provider, handleClaim);
       const ownerState = await program.account.identity.fetch(owner.address);
       assert.equal(ownerState.sequence.toNumber(), 2);
+    });
+
+    it("binds the anonymous namespace to the immutable identity origin", async () => {
+      const owner = await createIdentity(context, 47);
+      const contender = await createIdentity(context, 48);
+      const handle = deriveRandomHandle(owner.authority.publicKey);
+      const handleHash = digest(handle);
+      const handleClaim = deriveHandleClaim(program.programId, handleHash);
+
+      const claim = (identity: IdentityFixture): Promise<string> =>
+        program.methods
+          .claimHandle({
+            expectedIdentitySequence: new BN(0),
+            handleHash,
+            handle,
+          })
+          .accountsStrict({
+            config,
+            identity: identity.address,
+            handleClaim,
+            rootAuthority: identity.authority.publicKey,
+            payer: provider.wallet.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([identity.authority])
+          .rpc();
+
+      await assertAnchorError(claim(contender), "RandomHandleMismatch");
+      await claim(owner);
+
+      const state = await program.account.handleClaim.fetch(handleClaim);
+      assert.equal(state.identity.toBase58(), owner.address.toBase58());
+      assert.equal(state.handle, handle);
+      assert.deepEqual(state.handleHash, handleHash);
+      assert.equal(state.identitySequence.toNumber(), 1);
     });
 
     it("executes all six delegated variants, including reversible social states, with fresh identities", async () => {
