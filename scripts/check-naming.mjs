@@ -95,10 +95,17 @@ const forbiddenContent = [
 ];
 
 const violations = [];
-if (basename(repositoryRoot) !== 'wokenet') {
+const repositoryDirectory = basename(repositoryRoot);
+const canonicalLocalDirectory = repositoryDirectory === 'wokenet';
+const canonicalGithubCheckout =
+  repositoryDirectory === 'wokesocial' &&
+  process.env['GITHUB_ACTIONS'] === 'true' &&
+  process.env['GITHUB_REPOSITORY'] === 'AlexBTC420/wokesocial' &&
+  resolve(process.env['GITHUB_WORKSPACE'] ?? '') === repositoryRoot;
+if (!canonicalLocalDirectory && !canonicalGithubCheckout) {
   violations.push({
     path: '.',
-    label: `repository directory must be named wokenet, found ${basename(repositoryRoot)}`,
+    label: `local repository directory must be named wokenet, found ${repositoryDirectory}`,
   });
 }
 
