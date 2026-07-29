@@ -14,6 +14,7 @@ import {
   type AuthApiClientOptions,
   type AuthSessionView,
   type PasskeyCredentialView,
+  type SynchronizedBundle,
 } from './auth-api';
 import { BrowserAuthError, passkeyPromptError } from './errors';
 import {
@@ -102,6 +103,15 @@ export class BrowserAuthClient {
 
   listPasskeys(): Promise<readonly PasskeyCredentialView[]> {
     return this.api.credentials();
+  }
+
+  /**
+   * Reads the account's ciphertext-only synchronized key wrappers. The
+   * response never contains plaintext key material; callers use it to disclose
+   * the exact public destination a future signature would target.
+   */
+  synchronizedKeyBundles(): Promise<readonly SynchronizedBundle[]> {
+    return this.api.bundles();
   }
 
   async register(): Promise<BrowserAuthFlowResult> {

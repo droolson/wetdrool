@@ -246,8 +246,8 @@ function KeyOutcome({ result }: { readonly result: BrowserAuthFlowResult }) {
                 <dd className="inline-identifier">{anonymousIdentity.name}</dd>
               </div>
               <div>
-                <dt>Solana destination</dt>
-                <dd className="inline-identifier">{abbreviate(anonymousIdentity.rootAuthority)}</dd>
+                <dt>Exact Solana destination</dt>
+                <dd className="inline-identifier">{anonymousIdentity.rootAuthority}</dd>
               </div>
               <div>
                 <dt>Name status</dt>

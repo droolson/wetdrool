@@ -376,6 +376,7 @@ describe('passkey-first localnet publication orchestration', () => {
       authClient: authClient({ onSign: () => (signCalls += 1) }),
       storage,
       draft: draft(),
+      expectedRootAuthority: ROOT,
       onProgress: ({ stage }) => stages.push(stage),
       dependencies: state.dependencies,
     });
@@ -709,6 +710,38 @@ describe('passkey-first localnet publication orchestration', () => {
         authClient: { withFreshPasskeySigner: passkey },
         storage: new MemoryStorage(),
         draft: ipfsDraft,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid-input', stage: 'authenticating' });
+    expect(passkey).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the fresh passkey key mismatches the disclosed destination', async () => {
+    const readAccount = vi.fn();
+    const storage = new MemoryStorage();
+    const staleDestination = bs58.encode(new Uint8Array(32).fill(41));
+    let signCalls = 0;
+    await expect(
+      publishLocalnetTextPost({
+        runtime: RUNTIME,
+        authClient: authClient({ onSign: () => (signCalls += 1) }),
+        storage,
+        draft: draft(),
+        expectedRootAuthority: staleDestination,
+        dependencies: { accountReader: { readAccount } },
+      }),
+    ).rejects.toMatchObject({ code: 'destination-mismatch', stage: 'deriving-identity' });
+    expect(signCalls).toBe(0);
+    expect(readAccount).not.toHaveBeenCalled();
+    expect(storage.values.size).toBe(0);
+
+    const passkey = vi.fn();
+    await expect(
+      publishLocalnetTextPost({
+        runtime: RUNTIME,
+        authClient: { withFreshPasskeySigner: passkey },
+        storage: new MemoryStorage(),
+        draft: draft(),
+        expectedRootAuthority: 'not-a-canonical-destination',
       }),
     ).rejects.toMatchObject({ code: 'invalid-input', stage: 'authenticating' });
     expect(passkey).not.toHaveBeenCalled();

@@ -616,8 +616,18 @@ Continue in this order:
 - [x] Add independently verifiable
       name-to-identity-to-current-root resolution with exact network,
       commitment, sequence, and checkpoint validation.
-- [ ] Add cache invalidation and exact Solana destination disclosure to every
+- [x] Add cache invalidation and exact Solana destination disclosure to every
       payment/signature confirmation surface.
+  - Completed for every signature surface that currently exists: the localnet
+    composer disclosure (`apps/web/lib/solana-destination.ts`,
+    `apps/web/components/composer.tsx`) is derived from the synchronized
+    ciphertext-only key wrappers, bound to the exact account, key, and
+    deployment, discarded on any binding change, and enforced fail-closed by
+    `publishLocalnetTextPost`'s `expectedRootAuthority`/`destination-mismatch`
+    check before any account read or transaction; passkey onboarding shows the
+    exact untruncated destination. No payment surface exists yet—when one is
+    added it must adopt the same disclosure-and-binding contract before
+    accepting a signature.
 - [ ] Specify and implement custom-name reserved policy, eligibility,
       commit/reveal, expiry, grace/cooldown, recovery, transfer, disputes,
       economics, refunds, and appeals before purchase or transfer.

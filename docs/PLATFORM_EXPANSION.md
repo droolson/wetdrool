@@ -156,12 +156,19 @@ This deterministic procedure:
 
 The candidate is not usable as a claimed public username until identity
 creation and handle claim finalize. Current passkey onboarding renders the
-candidate with that warning. The development-localnet registration path now
-sends identity creation plus claim atomically, migrates legacy identity-only
-accounts at their current sequence, and exposes a strict independently
-verifiable name-to-identity-to-current-root resolver. Public-cluster execution,
-cache invalidation, payment/signature destination confirmation, and consistent
-cross-surface rendering remain required.
+candidate with that warning and the exact underlying Solana root authority.
+The development-localnet registration path now sends identity creation plus
+claim atomically, migrates legacy identity-only accounts at their current
+sequence, and exposes a strict independently verifiable
+name-to-identity-to-current-root resolver. The localnet composer—the only
+current signature surface—discloses the exact deployment, program, root
+authority, derived identity account, and anonymous candidate before enabling a
+signature; the disclosure is cached only against the exact account, key, and
+deployment binding, is discarded on any change, and signing fails closed if
+the fresh passkey key does not match the disclosed destination. No payment
+surface exists yet, so payment-destination confirmation remains a design
+requirement rather than an implemented control. Public-cluster execution and
+consistent cross-surface name rendering remain required.
 
 ### 4.3 Custom-name eligibility
 
@@ -523,7 +530,7 @@ The workstreams have a strict dependency order:
 | Core social foundation | Passkey localnet publication and atomic anonymous-name registration proven; pre-release | Connect names across product surfaces and prove a public-cluster rehearsal |
 | Long/short video | Worker subset only | Versioned manifest and real browser upload/playback |
 | Middle-out optimization | Research label | Public benchmark and standards fallback |
-| Random `.woke` names | Deterministic derivation, SDK claim ABI, onchain anti-front-running, atomic fresh registration, legacy migration, strict resolver/current-root proof, Rust/TypeScript vectors, local-validator browser proof, and replay implemented | Payment/signature destination UX, cache invalidation, cross-surface rendering, and public-cluster evidence |
+| Random `.woke` names | Deterministic derivation, SDK claim ABI, onchain anti-front-running, atomic fresh registration, legacy migration, strict resolver/current-root proof, Rust/TypeScript vectors, local-validator browser proof, replay, and fail-closed signature-destination disclosure with binding-scoped cache invalidation on the localnet composer implemented | Future payment-surface destination UX, cross-surface rendering, and public-cluster evidence |
 | Custom names | Planned | Anti-squatting policy and transaction design |
 | Reputation and points | Planned | Ledger specification and abuse simulation |
 | Avatar studio | Planned | Portable format and deterministic renderer |

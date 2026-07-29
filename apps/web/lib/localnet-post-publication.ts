@@ -104,6 +104,7 @@ export interface LocalnetTextPostPublicationProgress {
 export type LocalnetTextPostPublicationErrorCode =
   | 'aborted'
   | 'dependency-failure'
+  | 'destination-mismatch'
   | 'finality-conflict'
   | 'identity-conflict'
   | 'invalid-input'
@@ -202,6 +203,13 @@ export interface LocalnetTextPostPublicationInput {
   readonly authClient: Pick<BrowserAuthClient, 'withFreshPasskeySigner'>;
   readonly storage: PostPublicationIntentStorage;
   readonly draft: ComposerDraft;
+  /**
+   * The exact Solana root authority the caller disclosed to the person before
+   * requesting a signature. When present, the fresh passkey ceremony must
+   * produce this exact key; any other key means the disclosure was stale, and
+   * publication fails closed before any account read or transaction.
+   */
+  readonly expectedRootAuthority?: string;
   readonly abortSignal?: AbortSignal;
   readonly onProgress?: (progress: LocalnetTextPostPublicationProgress) => void;
   readonly dependencies?: LocalnetTextPostPublicationDependencies;
@@ -285,6 +293,16 @@ export async function publishLocalnetTextPost(
             'invalid-signer',
             stage,
             'The verified passkey root is not a canonical Solana authority.',
+          );
+        }
+        if (
+          input.expectedRootAuthority !== undefined &&
+          input.expectedRootAuthority !== rootAuthority
+        ) {
+          throw publicationError(
+            'destination-mismatch',
+            stage,
+            'The fresh passkey key does not match the disclosed Solana destination. The stale disclosure must be discarded and re-derived before any account read or transaction.',
           );
         }
 
@@ -1031,12 +1049,14 @@ function assertInputAdapters(input: LocalnetTextPostPublicationInput): void {
     typeof input.storage.removeItem !== 'function' ||
     !isRecord(input.draft) ||
     input.draft.storagePolicy !== 'provider-default' ||
-    (input.onProgress !== undefined && typeof input.onProgress !== 'function')
+    (input.onProgress !== undefined && typeof input.onProgress !== 'function') ||
+    (input.expectedRootAuthority !== undefined &&
+      !solanaPublicKeySchema.safeParse(input.expectedRootAuthority).success)
   ) {
     throw publicationError(
       'invalid-input',
       'authenticating',
-      'Publication requires exact authentication, durable browser storage, and the verified provider-default local CAS policy.',
+      'Publication requires exact authentication, durable browser storage, the verified provider-default local CAS policy, and a canonical disclosed destination when one is supplied.',
     );
   }
 }

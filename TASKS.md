@@ -765,6 +765,21 @@ tracked by [GitHub epic #12](https://github.com/wokesocial/wokesocial/issues/12)
 - [ ] Connect finalized `.woke` names across profile, feed, search,
   payment/signature confirmation, cache invalidation, and public-cluster
   product surfaces.
+  - Partial evidence (signature confirmation and cache invalidation only):
+    the localnet composer—the only current signature surface—derives the
+    disclosure from the account's synchronized ciphertext-only key wrappers,
+    requires every wrapper to agree on one exact 32-byte key, shows the exact
+    deployment, program, root authority, derived identity account, and
+    anonymous `.woke` candidate before enabling a signature, caches the
+    disclosure only against the exact account/key/deployment binding,
+    discards it on any change, and `publishLocalnetTextPost` rejects with
+    `destination-mismatch` before any account read or transaction when the
+    fresh passkey key differs from the disclosed destination. Passkey
+    onboarding renders the exact (untruncated) Solana destination for the
+    derived candidate. Verified by `pnpm --filter @wokesocial/web test`
+    (20 files / 260 cases) and `pnpm verify` on 2026-07-29. No payment
+    surface exists yet; profile/feed/search rendering and public-cluster
+    surfaces remain open.
 - [ ] Specify and implement custom-name eligibility, reservation,
   commit/reveal, expiry/grace/cooldown, recovery, transfer, reserved-name,
   impersonation/trademark, appeal, refund, and anti-squatting policy.

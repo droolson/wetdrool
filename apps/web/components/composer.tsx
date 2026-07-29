@@ -42,6 +42,12 @@ import {
   type LocalnetTextPostPublicationStage,
 } from '@/lib/localnet-post-publication';
 import type { LocalnetPublicationConfig } from '@/lib/localnet-publication-config';
+import {
+  createSolanaDestinationCache,
+  readSynchronizedRootPublicKey,
+  SolanaDestinationError,
+  type SolanaDestinationDisclosure,
+} from '@/lib/solana-destination';
 
 type SaveState = 'idle' | 'saved' | 'storage-error';
 
@@ -50,6 +56,12 @@ interface ComposerProps {
 }
 
 type AuthReadiness = 'authenticated' | 'checking' | 'error' | 'unauthenticated';
+
+type DestinationView =
+  | { readonly kind: 'checking' }
+  | { readonly kind: 'unavailable' }
+  | { readonly detail: string; readonly kind: 'error' }
+  | { readonly disclosure: SolanaDestinationDisclosure; readonly kind: 'ready' };
 
 type DurableIntentView =
   | { readonly kind: 'checking' }
@@ -161,6 +173,9 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
   const [durableIntent, setDurableIntent] = useState<DurableIntentView>({
     kind: 'checking',
   });
+  const [destination, setDestination] = useState<DestinationView>({ kind: 'unavailable' });
+  const [destinationAttempt, setDestinationAttempt] = useState(0);
+  const [destinationCache] = useState(() => createSolanaDestinationCache());
   const validation = useMemo(() => validateComposerDraft(draft), [draft]);
   const publicationEligibility = useMemo(
     () => getPublicationEligibility(draft, validation.valid),
@@ -259,6 +274,53 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
       }
     }
   }, [authClient]);
+
+  useEffect(() => {
+    if (publicationConfig.kind !== 'available' || authClient === undefined) {
+      destinationCache.invalidate();
+      setDestination({ kind: 'unavailable' });
+      return;
+    }
+    if (authReadiness !== 'authenticated') {
+      destinationCache.invalidate();
+      setDestination({ kind: 'unavailable' });
+      return;
+    }
+    const client = authClient;
+    const runtime = publicationConfig.runtime;
+    let current = true;
+    void resolveDestination();
+    return () => {
+      current = false;
+    };
+
+    async function resolveDestination() {
+      setDestination({ kind: 'checking' });
+      try {
+        const session = await client.session();
+        if (!current) return;
+        if (session === undefined) {
+          destinationCache.invalidate();
+          setDestination({ kind: 'unavailable' });
+          setAuthReadiness('unauthenticated');
+          return;
+        }
+        const publicKey = readSynchronizedRootPublicKey(await client.synchronizedKeyBundles());
+        if (!current) return;
+        const disclosure = await destinationCache.resolve({
+          accountId: session.accountId,
+          publicKey,
+          runtime,
+        });
+        if (current) setDestination({ disclosure, kind: 'ready' });
+      } catch (error) {
+        destinationCache.invalidate();
+        if (current) {
+          setDestination({ detail: safeDestinationError(error), kind: 'error' });
+        }
+      }
+    }
+  }, [authClient, authReadiness, destinationAttempt, destinationCache, publicationConfig]);
 
   useEffect(
     () => () => {
@@ -375,6 +437,16 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
       });
       return;
     }
+    if (destination.kind !== 'ready') {
+      setPublication({
+        detail:
+          'The exact Solana signature destination has not been disclosed for this session, so no signature is requested.',
+        kind: 'error',
+        requiresAuthentication: false,
+      });
+      return;
+    }
+    const disclosedDestination = destination.disclosure;
     const controller = new AbortController();
     let lastStage: LocalnetTextPostPublicationStage = 'authenticating';
     publicationAbortRef.current = controller;
@@ -396,6 +468,7 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
             abortSignal: controller.signal,
             authClient,
             draft: selected.draft,
+            expectedRootAuthority: disclosedDestination.rootAuthority,
             onProgress: ({ stage }) => {
               lastStage = stage;
               setPublication((current) =>
@@ -482,6 +555,13 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
             error.code === 'service-rejected' ||
             error.code === 'key-wrapper-invalid');
         if (requiresAuthentication) setAuthReadiness('unauthenticated');
+        if (
+          error instanceof LocalnetTextPostPublicationError &&
+          error.code === 'destination-mismatch'
+        ) {
+          destinationCache.invalidate();
+          setDestinationAttempt((attempt) => attempt + 1);
+        }
         setPublication({
           detail: safePublicationError(error),
           kind: 'error',
@@ -1066,6 +1146,80 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
                 </div>
               )}
 
+              <section
+                aria-labelledby="signature-destination-title"
+                className="publication-panel__note"
+                data-destination-state={destination.kind}
+                data-testid="signature-destination"
+              >
+                <strong id="signature-destination-title">Exact Solana signature destination</strong>
+                {destination.kind === 'ready' ? (
+                  <>
+                    <dl
+                      aria-label="Disclosed Solana signature destination"
+                      className="publication-evidence"
+                    >
+                      <div className="publication-evidence__wide">
+                        <dt>WokeNet deployment</dt>
+                        <dd>
+                          <code>{destination.disclosure.networkId}</code>
+                        </dd>
+                      </div>
+                      <div className="publication-evidence__wide">
+                        <dt>Program</dt>
+                        <dd>
+                          <code>{destination.disclosure.programAddress}</code>
+                        </dd>
+                      </div>
+                      <div className="publication-evidence__wide">
+                        <dt>Root authority</dt>
+                        <dd>
+                          <code>{destination.disclosure.rootAuthority}</code>
+                        </dd>
+                      </div>
+                      <div className="publication-evidence__wide">
+                        <dt>Derived identity account</dt>
+                        <dd>
+                          <code>{destination.disclosure.identityAddress}</code>
+                        </dd>
+                      </div>
+                      <div className="publication-evidence__wide">
+                        <dt>Anonymous .woke candidate</dt>
+                        <dd>
+                          <code>{destination.disclosure.wokeNameCandidate}</code>
+                        </dd>
+                      </div>
+                    </dl>
+                    <p>
+                      A .woke name is WokeNet metadata, never a native Solana address. This
+                      disclosure is bound to the synchronized passkey key and is discarded whenever
+                      the session, key, or deployment changes. Signing re-verifies the fresh passkey
+                      key against this exact destination and fails closed on any mismatch.
+                    </p>
+                  </>
+                ) : destination.kind === 'checking' ? (
+                  <p role="status">Deriving the exact destination for the synchronized key…</p>
+                ) : destination.kind === 'error' ? (
+                  <>
+                    <p className="publication-error" role="alert">
+                      {destination.detail}
+                    </p>
+                    <button
+                      className="text-action"
+                      onClick={() => setDestinationAttempt((attempt) => attempt + 1)}
+                      type="button"
+                    >
+                      Re-derive the destination
+                    </button>
+                  </>
+                ) : (
+                  <p>
+                    No destination is disclosed without an authenticated session. Publication stays
+                    disabled until the exact destination is shown here.
+                  </p>
+                )}
+              </section>
+
               <ol className="publication-progress" aria-label="Localnet proof stages">
                 {PUBLICATION_STEPS.map((step, index) => (
                   <li data-state={publicationStepState(publication, index)} key={step.label}>
@@ -1136,6 +1290,7 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
                     disabled={
                       !publicationStartEligible ||
                       authReadiness !== 'authenticated' ||
+                      destination.kind !== 'ready' ||
                       publicationBusy ||
                       durableIntent.kind === 'checking' ||
                       durableIntent.kind === 'invalid'
@@ -1151,7 +1306,11 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
                           ? 'Checking passkey session…'
                           : authReadiness !== 'authenticated'
                             ? 'Sign in before publishing'
-                            : 'Publish proof to local validator'}
+                            : destination.kind === 'checking'
+                              ? 'Deriving signature destination…'
+                              : destination.kind !== 'ready'
+                                ? 'Destination not disclosed'
+                                : 'Publish proof to local validator'}
                   </button>
                 )}
               </div>
@@ -1531,6 +1690,16 @@ function authReadinessCopy(readiness: AuthReadiness): string {
     case 'error':
       return 'The local authentication service could not confirm a session. No signer has been requested.';
   }
+}
+
+function safeDestinationError(error: unknown): string {
+  if (error instanceof SolanaDestinationError) {
+    return `${error.message} Publication stays disabled until an exact destination is disclosed.`;
+  }
+  if (error instanceof BrowserAuthError) {
+    return `${error.message} No destination is disclosed and no signature is requested.`;
+  }
+  return 'The synchronized key state could not be read, so no Solana destination is disclosed and no signature is requested.';
 }
 
 function safePublicationError(error: unknown): string {
