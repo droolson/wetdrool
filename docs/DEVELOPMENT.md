@@ -149,6 +149,13 @@ These commands are intentionally separate. A passing unit suite does not imply
 that containers, browsers, the Solana local validator, or the connected
 protocol-to-web slice passed.
 
+The vertical-slice harness gives its public deterministic passkey canary a
+disposable genesis-only balance. This avoids Agave 2.3 exposing its macOS test
+faucet to RPC through the listener address `0.0.0.0`, which is not a valid
+connect destination. The browser still enforces the 0.1-SOL local refill bound;
+ordinary local accounts and every nonlocal environment use the normal
+fail-closed funding adapter. No production key or real funds are involved.
+
 ## Development workflows
 
 ### TypeScript application or package

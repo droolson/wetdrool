@@ -11,6 +11,7 @@ import {
   type RateLimiter,
 } from '@wokesocial/rate-limit';
 import {
+  canonicalizeWokeName,
   handleSchema,
   identityIdSchema,
   networkIdSchema,
@@ -109,6 +110,7 @@ const handleParamsSchema = z
     handle: handleSchema.refine((handle) => !handle.includes('__')),
   })
   .strict();
+const wokeNameParamsSchema = z.object({ name: z.string().min(1).max(64) }).strict();
 const handleQuerySchema = z.object({ network: networkIdSchema }).strict();
 const communityParamsSchema = z.object({ communityAddress: solanaPublicKeySchema }).strict();
 const communityMembershipParamsSchema = z
@@ -531,6 +533,93 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     return {
       canonical: false,
       handle: serializeBigInts(handle),
+    };
+  });
+
+  app.get<{ Params: { name: string } }>('/v1/woke-names/:name', async (request, reply) => {
+    const parsedParams = wokeNameParamsSchema.safeParse(request.params);
+    const parsedQuery = handleQuerySchema.safeParse(request.query);
+    if (!parsedParams.success || !parsedQuery.success) {
+      void reply.code(400);
+      return {
+        error: {
+          code: 'invalid-woke-name-query',
+          message: 'A canonical .woke name and explicit WokeNet identifier are required.',
+        },
+      };
+    }
+
+    let wokeName;
+    try {
+      wokeName = canonicalizeWokeName(parsedParams.data.name);
+    } catch {
+      void reply.code(400);
+      return {
+        error: {
+          code: 'invalid-woke-name-query',
+          message: 'The .woke name is invalid or confusable.',
+        },
+      };
+    }
+
+    const handle = await options.projection.getHandle(parsedQuery.data.network, wokeName.handle);
+    if (handle === undefined) {
+      void reply.code(404);
+      return { error: { code: 'not-found', message: 'Active .woke claim was not found.' } };
+    }
+    const identity = await options.projection.getIdentity(handle.identityId);
+    const checkpoint = await options.projection.checkpoint(parsedQuery.data.network);
+    if (
+      identity === undefined ||
+      identity.networkId !== parsedQuery.data.network ||
+      checkpoint === undefined ||
+      checkpoint < handle.claimedSlot ||
+      checkpoint < identity.updatedSlot
+    ) {
+      void reply.code(503);
+      return {
+        error: {
+          code: 'projection-incomplete',
+          message: 'The indexer has not finalized the complete .woke resolution proof.',
+        },
+      };
+    }
+    if (!identity.active) {
+      void reply.code(404);
+      return { error: { code: 'not-found', message: 'Active .woke claim was not found.' } };
+    }
+
+    return {
+      canonical: false,
+      projection: 'wokenet-open-indexer',
+      network: parsedQuery.data.network,
+      namespace: wokeName.namespace,
+      namespaceVersion: wokeName.version,
+      name: wokeName.name,
+      handle: wokeName.handle,
+      destination: {
+        chain: 'solana',
+        address: identity.rootAuthority,
+        nativeAddress: false,
+        semantics: 'current-identity-root-authority',
+      },
+      identity: {
+        identityId: identity.identityId,
+        identityAddress: identity.identityAddress,
+        rootAuthority: identity.rootAuthority,
+        rootRotationCount: identity.rootRotationCount.toString(),
+        active: identity.active,
+        identitySequence: identity.identitySequence.toString(),
+        updatedSlot: identity.updatedSlot.toString(),
+      },
+      claim: {
+        handleClaimAddress: handle.handleClaimAddress,
+        handleHash: handle.handleHash,
+        identitySequence: handle.identitySequence.toString(),
+        claimedSlot: handle.claimedSlot.toString(),
+        claimedAt: handle.claimedAt,
+      },
+      meta: responseMetaForCheckpoint(checkpoint),
     };
   });
 

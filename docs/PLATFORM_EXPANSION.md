@@ -156,9 +156,12 @@ This deterministic procedure:
 
 The candidate is not usable as a claimed public username until identity
 creation and handle claim finalize. Current passkey onboarding renders the
-candidate with that warning. Registration still needs one atomic
-identity-plus-claim transaction and a stable, independently verifiable
-name-to-identity-to-current-root resolution path.
+candidate with that warning. The development-localnet registration path now
+sends identity creation plus claim atomically, migrates legacy identity-only
+accounts at their current sequence, and exposes a strict independently
+verifiable name-to-identity-to-current-root resolver. Public-cluster execution,
+cache invalidation, payment/signature destination confirmation, and consistent
+cross-surface rendering remain required.
 
 ### 4.3 Custom-name eligibility
 
@@ -517,10 +520,10 @@ The workstreams have a strict dependency order:
 
 | Capability | Current status | Next evidence |
 |---|---|---|
-| Core social foundation | Passkey localnet publication proven; pre-release | Atomically finalize the derived `.woke` claim during registration |
+| Core social foundation | Passkey localnet publication and atomic anonymous-name registration proven; pre-release | Connect names across product surfaces and prove a public-cluster rehearsal |
 | Long/short video | Worker subset only | Versioned manifest and real browser upload/playback |
 | Middle-out optimization | Research label | Public benchmark and standards fallback |
-| Random `.woke` names | Deterministic derivation, SDK claim ABI, onchain anti-front-running, Rust/TypeScript vectors, local-validator proof, and passkey candidate rendering implemented | Atomic registration/claim, resolver proof/current-destination UX, cross-surface rendering, public-cluster evidence |
+| Random `.woke` names | Deterministic derivation, SDK claim ABI, onchain anti-front-running, atomic fresh registration, legacy migration, strict resolver/current-root proof, Rust/TypeScript vectors, local-validator browser proof, and replay implemented | Payment/signature destination UX, cache invalidation, cross-surface rendering, and public-cluster evidence |
 | Custom names | Planned | Anti-squatting policy and transaction design |
 | Reputation and points | Planned | Ledger specification and abuse simulation |
 | Avatar studio | Planned | Portable format and deterministic renderer |

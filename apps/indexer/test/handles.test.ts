@@ -312,6 +312,46 @@ describe('handle HTTP contract', () => {
         },
       });
 
+      const wokeName = await app.inject({
+        method: 'GET',
+        url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(wokeName.statusCode).toBe(200);
+      expect(wokeName.json()).toMatchObject({
+        canonical: false,
+        projection: 'wokenet-open-indexer',
+        network: networkId,
+        namespace: 'woke',
+        namespaceVersion: 1,
+        name: `${handle}.woke`,
+        handle,
+        destination: {
+          chain: 'solana',
+          address: rootAuthority,
+          nativeAddress: false,
+          semantics: 'current-identity-root-authority',
+        },
+        identity: {
+          identityId,
+          identityAddress,
+          rootAuthority,
+          rootRotationCount: '0',
+          active: true,
+          identitySequence: '1',
+          updatedSlot: '2',
+        },
+        claim: {
+          handleClaimAddress,
+          handleHash,
+          identitySequence: '1',
+          claimedSlot: '2',
+        },
+        meta: {
+          checkpointSlot: 2,
+          source: 'WokeNet open indexer',
+        },
+      });
+
       const byIdentity = await app.inject({
         method: 'GET',
         url: `/v1/identities/${encodeURIComponent(identityId)}/handles`,
@@ -326,6 +366,7 @@ describe('handle HTTP contract', () => {
       expect(openApi.json()).toMatchObject({
         paths: {
           '/v1/handles/{handle}': { get: { summary: expect.any(String) } },
+          '/v1/woke-names/{name}': { get: { summary: expect.any(String) } },
           '/v1/identities/{identityId}/handles': {
             get: { summary: expect.any(String) },
           },
@@ -345,6 +386,22 @@ describe('handle HTTP contract', () => {
           await app.inject({
             method: 'GET',
             url: `/v1/handles/River?network=${encodeURIComponent(networkId)}`,
+          })
+        ).statusCode,
+      ).toBe(400);
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: `/v1/woke-names/${handle}.woke`,
+          })
+        ).statusCode,
+      ).toBe(400);
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: `/v1/woke-names/${encodeURIComponent('rіver_chen.woke')}?network=${encodeURIComponent(networkId)}`,
           })
         ).statusCode,
       ).toBe(400);
@@ -371,10 +428,101 @@ describe('handle HTTP contract', () => {
         (
           await app.inject({
             method: 'GET',
+            url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
             url: `/v1/identities/${encodeURIComponent(identityId)}/handles`,
           })
         ).json(),
       ).toMatchObject({ handles: [] });
+    } finally {
+      await app.close();
+      await projection.close();
+    }
+  });
+
+  it('follows finalized identity root rotations without changing the stable .woke claim', async () => {
+    const projection = new MemoryProjectionStore();
+    const indexer = createIndexer(projection);
+    await indexer.ingest(identityEvent(identityId, identityAddress, rootAuthority, 1n, 50));
+    await indexer.ingest(claimEvent(2n, 51));
+    await indexer.ingest({
+      ...base(3n, 52),
+      type: 'root-authority-rotated',
+      identityId,
+      previousRootAuthority: rootAuthority,
+      newRootAuthority: secondRootAuthority,
+      identitySequence: 2n,
+      rotationCount: 1n,
+    });
+    const app = await buildIndexerApp({ projection, logger: false });
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        name: `${handle}.woke`,
+        destination: { address: secondRootAuthority },
+        identity: {
+          identityId,
+          identityAddress,
+          rootAuthority: secondRootAuthority,
+          rootRotationCount: '1',
+          identitySequence: '2',
+          updatedSlot: '3',
+        },
+        claim: {
+          handleClaimAddress,
+          identitySequence: '1',
+          claimedSlot: '2',
+        },
+        meta: { checkpointSlot: 3 },
+      });
+    } finally {
+      await app.close();
+      await projection.close();
+    }
+  });
+
+  it('fails closed after finalized identity deactivation even when the claim remains projected', async () => {
+    const projection = new MemoryProjectionStore();
+    const indexer = createIndexer(projection);
+    await indexer.ingest({
+      ...base(1n, 60),
+      type: 'protocol-initialized',
+      configAddress,
+    });
+    await indexer.ingest(identityEvent(identityId, identityAddress, rootAuthority, 2n, 61));
+    await indexer.ingest(claimEvent(3n, 62));
+    await indexer.ingest({
+      ...base(4n, 63),
+      type: 'identity-deactivated',
+      configAddress,
+      identityId,
+      identityAddress,
+      rootAuthority,
+      identitySequence: 2n,
+    });
+    const app = await buildIndexerApp({ projection, logger: false });
+
+    try {
+      await expect(projection.getHandle(networkId, handle)).resolves.toBeDefined();
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toEqual({
+        error: { code: 'not-found', message: 'Active .woke claim was not found.' },
+      });
     } finally {
       await app.close();
       await projection.close();

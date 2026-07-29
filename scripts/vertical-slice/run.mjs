@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { closeSync, openSync, readFileSync } from 'node:fs';
-import { access, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +26,11 @@ const FIRST_BROWSER_POST =
   'A passkey-signed WokeSocial post survived an ambiguous local-validator response.';
 const SECOND_BROWSER_POST =
   'The same discoverable passkey reused one WokeNet identity for this second post.';
+// The browser E2E deliberately replaces its one-time account seed with a
+// public canary. Genesis-funding that canary's public key keeps the proof
+// deterministic on macOS, where Agave 2.3's RPC attempts to connect to its
+// faucet through 0.0.0.0 and requestAirdrop fails before submission.
+const PUBLICATION_E2E_ROOT_AUTHORITY = '5gL1MY7TBMNuH1hhYWwdj1fSQASX3jpTQB34qu5mECNT';
 const currentFile = fileURLToPath(import.meta.url);
 const argumentsAfterScript = process.argv.slice(2);
 const preflightOnly =
@@ -128,6 +133,7 @@ async function main() {
   const contentDirectory = join(state.runDirectory, 'content');
   const metadataPath = join(state.runDirectory, 'fixture.json');
   const publicationEvidencePath = join(state.runDirectory, 'publication-evidence.json');
+  const publicationRootAccountPath = join(state.runDirectory, 'publication-root-account.json');
   const ledgerDirectory = join(state.runDirectory, 'ledger');
   const deployerKeypair = join(repositoryRoot, '.local', 'solana', 'deployer.json');
   const programBinary = join(repositoryRoot, 'target', 'deploy', 'social_protocol.so');
@@ -196,6 +202,25 @@ async function main() {
     'scripts/install-playwright.mjs',
   ]);
   await requireFile(programBinary, 'Anchor SBF program');
+  await writeFile(
+    publicationRootAccountPath,
+    `${JSON.stringify({
+      pubkey: PUBLICATION_E2E_ROOT_AUTHORITY,
+      account: {
+        // The public, deterministic E2E canary starts above the browser's
+        // 0.1-SOL refill target so registration plus both post transactions
+        // never depend on Agave 2.3's non-connectable 0.0.0.0 faucet address
+        // on macOS. This account exists only in the disposable local genesis.
+        lamports: 1_000_000_000,
+        data: ['', 'base64'],
+        owner: '11111111111111111111111111111111',
+        executable: false,
+        rentEpoch: 0,
+        space: 0,
+      },
+    })}\n`,
+    { encoding: 'utf8', mode: 0o600 },
+  );
   await requireFile(programIdl, 'Anchor IDL');
   await requireFile(
     join(repositoryRoot, 'apps', 'indexer', 'dist', 'src', 'server.js'),
@@ -265,12 +290,21 @@ async function main() {
       String(ports.rpc),
       '--faucet-port',
       String(ports.faucet),
+      '--faucet-sol',
+      '1000000',
+      '--faucet-per-request-sol-cap',
+      '1',
+      '--faucet-per-time-sol-cap',
+      '10',
       '--gossip-port',
       String(ports.gossip),
       '--dynamic-port-range',
       `${ports.dynamicStart}-${ports.dynamicEnd}`,
       '--mint',
       deployerAddress,
+      '--account',
+      PUBLICATION_E2E_ROOT_AUTHORITY,
+      publicationRootAccountPath,
       '--bpf-program',
       PROGRAM_ID,
       programBinary,

@@ -27,7 +27,7 @@ assert.equal(fixture.programId, programId);
 
 const projection = new PostgresProjectionStore(databaseUrl);
 try {
-  await assertBrowserPublication(projection, evidence, fixture, 'before replay');
+  await assertBrowserPublication(projection, evidence, fixture, 'before replay', true);
 
   await projection.clearProjection(networkId);
   assert.equal(await projection.getIdentity(fixture.authorIdentityId), undefined);
@@ -49,10 +49,10 @@ try {
   assert.equal(
     replay.eventCount,
     BASELINE_DURABLE_EVENT_COUNT + additiveEventCount,
-    'the second rebuild must add exactly one identity event and one event per evidenced post',
+    'the second rebuild must add two atomic registration events and one event per evidenced post',
   );
 
-  await assertBrowserPublication(projection, evidence, fixture, 'after replay');
+  await assertBrowserPublication(projection, evidence, fixture, 'after replay', false);
   process.stdout.write(
     `Rebuilt ${String(replay.eventCount)} durable events (${String(BASELINE_DURABLE_EVENT_COUNT)} baseline + ${String(additiveEventCount)} browser writes) with ledger digest ${replay.ledgerSha256}.\n`,
   );
@@ -60,17 +60,34 @@ try {
   await projection.close();
 }
 
-async function assertBrowserPublication(projection, publication, baseline, phase) {
+async function assertBrowserPublication(
+  projection,
+  publication,
+  baseline,
+  phase,
+  requireObservedCheckpoint,
+) {
   const identity = await projection.getIdentity(publication.identity.identityId);
   assert.ok(identity, `${phase}: browser identity must exist`);
   assert.equal(identity.networkId, publication.networkId);
   assert.equal(identity.identityAddress, publication.identity.identityAddress);
   assert.equal(identity.rootAuthority, publication.identity.rootAuthority);
   assert.equal(identity.active, true);
+  assert.equal(identity.identitySequence, 3n);
   assert.ok(
     identity.updatedSlot >= BigInt(publication.posts.at(-1).finalizedSlot),
     `${phase}: reused identity sequence must cover both posts`,
   );
+
+  const wokeName = await projection.getHandle(publication.networkId, publication.wokeName.handle);
+  assert.ok(wokeName, `${phase}: anonymous .woke claim must exist`);
+  assert.equal(wokeName.handle, publication.wokeName.handle);
+  assert.equal(wokeName.handleClaimAddress, publication.wokeName.handleClaimAddress);
+  assert.equal(wokeName.handleHash, publication.wokeName.handleHash);
+  assert.equal(wokeName.identityId, publication.identity.identityId);
+  assert.equal(wokeName.authority, publication.identity.rootAuthority);
+  assert.equal(wokeName.identitySequence, 1n);
+  assert.equal(wokeName.claimedSlot, BigInt(publication.wokeName.claimedSlot));
 
   const baselinePost = await projection.getPost(baseline.postObjectId);
   assert.equal(baselinePost?.content.body, baseline.postBody, `${phase}: baseline post restored`);
@@ -107,9 +124,15 @@ async function assertBrowserPublication(projection, publication, baseline, phase
   );
   const checkpoint = await projection.checkpoint(publication.networkId);
   assert.ok(checkpoint !== undefined, `${phase}: projection checkpoint must exist`);
+  const lastPost = publication.posts.at(-1);
+  const requiredCheckpoint = BigInt(
+    requireObservedCheckpoint ? lastPost.indexedCheckpointSlot : lastPost.finalizedSlot,
+  );
   assert.ok(
-    checkpoint >= BigInt(publication.posts.at(-1).indexedCheckpointSlot),
-    `${phase}: checkpoint must cover the last browser post`,
+    checkpoint >= requiredCheckpoint,
+    requireObservedCheckpoint
+      ? `${phase}: live checkpoint must preserve the evidenced indexing observation`
+      : `${phase}: rebuilt event checkpoint must cover the last browser post event`,
   );
 }
 

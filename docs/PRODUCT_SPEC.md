@@ -201,9 +201,12 @@ addresses, exactly released/reclaimed through events, and projected by memory
 and PostgreSQL indexers. Versioned anonymous `.woke` candidates are now
 deterministically derived from the immutable identity origin, rendered after
 passkey registration/sign-in, and protected onchain so another identity cannot
-claim the reserved `anon_` value. The candidate remains explicitly unclaimed:
-atomic identity creation plus claim, authenticated claim UX, exact
-current-destination resolution, and custom-name policy are incomplete.
+claim the reserved `anon_` value. Fresh development-localnet registration
+atomically creates identity plus claim, legacy identity-only accounts use a
+current-sequence migration, and a strict checkpoint-covered resolver maps the
+stable name through the identity to its current root. Cross-surface rendering,
+payment/signature destination confirmation, public-cluster execution, and
+custom-name policy remain incomplete.
 
 - Collision and impersonation behavior must be explained before handle claim.
 - A payment or signature flow must reveal the current Solana destination,
@@ -629,8 +632,8 @@ The product cannot be described as production-ready until:
 | Capability group | Status | Evidence |
 |---|---|---|
 | Public experience and onboarding | Partial | Complete route surface, established desktop/mobile browser matrix, bounded provider-backed public search, real passkey service-account lifecycle coverage, and a verified development-localnet passkey identity/text-publication journey; wallet onboarding and public-cluster protocol onboarding remain fail-closed |
-| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass Solana local-validator tests. Durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, sessions, and one passkey-derived development-localnet identity creation/reconciliation path pass; delegation lifecycle, recovery product UX, sponsorship, and public-cluster execution remain open |
-| Signed publishing and social graph | Verified local post/community/membership and browser text-publication vertical slices; broader interactions partial | The current connected proof preserves the canonical 10-event fixture, creates one passkey-derived identity, publishes two distinct browser posts, recovers one lost response without a duplicate send, replays the expanded 13 events to exact state, renders both anchor signatures, and records zero secret matches. It is not public-cluster or general product-mutation evidence |
+| Identity, profile, and recovery | Partial | Identity/profile/handle/rotation/delegation plus delayed guardian-threshold recovery pass Solana local-validator tests. Durable passkey ceremonies, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, sessions, atomic identity+anonymous-name registration, legacy identity-only migration, and strict current-root name resolution pass in development localnet; delegation lifecycle, recovery product UX, sponsorship, cross-surface destination UX, and public-cluster execution remain open |
+| Signed publishing and social graph | Verified local post/community/membership and browser text-publication vertical slices; broader interactions partial | The current connected proof preserves the canonical 10-event fixture, atomically creates one passkey-derived identity plus name claim, publishes two distinct browser posts, recovers one lost response without a duplicate send, strictly resolves the finalized name, replays the expanded 14 events to exact state, renders both post anchor signatures, and records zero secret matches. It is not public-cluster or general product-mutation evidence |
 | Feeds, search, and discovery | Partial | Seven-mode replaceable feed engine plus a separate consumer-safe home feed, strict bounded indexer-backed chronological pagination, an unauthenticated public following-graph preview, device-local exact-identity hiding, and indexed bounded profile/post search. Authenticated following, recommendation-provider integration, cross-device safety, independent-provider conformance, complete offline caching, and production-scale evidence remain |
 | Communities and governance | Partial predeployment implementation | Member-signed join/leave, creator-or-scoped-delegate remove/ban, terminal bans, exact sequence snapshots, privacy-safe exact-address membership status, and immutable one-member-one-vote account logic are present. Flagship wallet mutations, protected/approval flows, richer roles, other governance models, execution, and public deployment remain open |
 | Moderation and appeals | Partial | Strict signed provider intake/active labels/restricted reads plus an encrypted runtime-delete-protected PostgreSQL case/appeal ledger, legal holds, due/expiry transitions, and transparency aggregation pass; production object authorization/SSO, a separately credentialed retention executor, and complete specialist product workflows remain blocked |

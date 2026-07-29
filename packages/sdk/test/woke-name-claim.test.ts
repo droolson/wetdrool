@@ -6,6 +6,8 @@ import {
   WOKENET_SYSTEM_PROGRAM_ADDRESS,
   WOKE_HANDLE_CLAIM_ACCOUNT_SPACE,
   buildClaimRandomWokeNameInstruction,
+  decodeWokeNameClaimAccount,
+  verifyRandomWokeNameClaimAccount,
   type WokeNetContext,
 } from '../src/index.js';
 
@@ -78,6 +80,39 @@ describe('random .woke claim instruction', () => {
     expect(retry.handleClaimAddress).toBe(first.handleClaimAddress);
   });
 
+  it('decodes and verifies the exact finalized HandleClaim account', async () => {
+    const built = await buildClaimRandomWokeNameInstruction(context, {
+      originAuthority,
+      rootAuthority,
+      payer,
+      identityAddress,
+      expectedIdentitySequence: 9n,
+    });
+    const data = handleClaimAccountBytes(built);
+    expect(decodeWokeNameClaimAccount(data)).toMatchObject({
+      version: 1,
+      config: built.configAddress,
+      identity: identityAddress,
+      handle: built.randomName.handle,
+      identitySequence: 10n,
+      claimedAtSlot: 44n,
+      bump: built.handleClaimBump,
+    });
+    expect(
+      verifyRandomWokeNameClaimAccount(built, {
+        address: built.handleClaimAddress,
+        owner: context.programAddress,
+        commitment: 'finalized',
+        slot: 44n,
+        data,
+      }),
+    ).toMatchObject({ handle: built.randomName.handle, identitySequence: 10n });
+
+    const substituted = data.slice();
+    substituted[150] = 1;
+    expect(() => decodeWokeNameClaimAccount(substituted)).toThrow();
+  });
+
   it.each([-1n, 18_446_744_073_709_551_615n])(
     'rejects non-incrementable sequence %s',
     async (expectedIdentitySequence) => {
@@ -121,4 +156,33 @@ function readU32(bytes: Uint8Array, offset: number): number {
 
 function readU64(bytes: Uint8Array, offset: number): bigint {
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getBigUint64(offset, true);
+}
+
+function handleClaimAccountBytes(
+  built: Awaited<ReturnType<typeof buildClaimRandomWokeNameInstruction>>,
+): Uint8Array {
+  const output = new Uint8Array(WOKE_HANDLE_CLAIM_ACCOUNT_SPACE);
+  let offset = 0;
+  const write = (bytes: Uint8Array): void => {
+    output.set(bytes, offset);
+    offset += bytes.byteLength;
+  };
+  write(Uint8Array.of(148, 215, 248, 53, 11, 234, 115, 190));
+  write(Uint8Array.of(1));
+  write(bs58.decode(built.configAddress));
+  write(bs58.decode(built.identityAddress));
+  write(built.handleHash);
+  const handle = new TextEncoder().encode(built.randomName.handle);
+  const length = new Uint8Array(4);
+  new DataView(length.buffer).setUint32(0, handle.byteLength, true);
+  write(length);
+  write(handle);
+  const sequence = new Uint8Array(8);
+  new DataView(sequence.buffer).setBigUint64(0, 10n, true);
+  write(sequence);
+  const slot = new Uint8Array(8);
+  new DataView(slot.buffer).setBigUint64(0, 44n, true);
+  write(slot);
+  write(Uint8Array.of(built.handleClaimBump));
+  return output;
 }

@@ -1,7 +1,7 @@
 import {
   AccountRole,
   address,
-  appendTransactionMessageInstruction,
+  appendTransactionMessageInstructions,
   assertIsSendableTransaction,
   blockhash,
   compileTransaction,
@@ -57,7 +57,8 @@ const U64_MAX = 18_446_744_073_709_551_615n;
 const MAX_SIMULATION_ACCOUNT_BALANCES = 256;
 const MAX_SIMULATION_ACCOUNT_QUERY_ADDRESSES = 100;
 const MAX_SIMULATION_EVIDENCE_ATTEMPTS = 5;
-const MAX_SIMULATION_INNER_GROUPS = 1;
+const MAX_WOKENET_OUTER_INSTRUCTIONS = 16;
+const MAX_SIMULATION_INNER_GROUPS = MAX_WOKENET_OUTER_INSTRUCTIONS;
 const MAX_SIMULATION_INSTRUCTIONS = 64;
 const MAX_SIMULATION_INSTRUCTION_ACCOUNTS = 256;
 const MAX_SIMULATION_LOG_LINES = 1_024;
@@ -202,7 +203,6 @@ export type WokeTransactionSimulationVerifier = (
 
 interface ExecuteWokeInstructionBase {
   readonly context: ValidatedWokeNetContext;
-  readonly instruction: WokeInstruction;
   readonly feePayer: string;
   readonly signer: WokeTransactionSigner;
   readonly verifySimulation: WokeTransactionSimulationVerifier;
@@ -212,7 +212,13 @@ interface ExecuteWokeInstructionBase {
   readonly abortSignal?: AbortSignal;
 }
 
-export type ExecuteWokeInstructionInput = ExecuteWokeInstructionBase;
+export interface ExecuteWokeInstructionInput extends ExecuteWokeInstructionBase {
+  readonly instruction: WokeInstruction;
+}
+
+export interface ExecuteWokeInstructionsInput extends ExecuteWokeInstructionBase {
+  readonly instructions: readonly WokeInstruction[];
+}
 
 export interface ExecuteWokePaymentTransactionInput {
   readonly built: BuiltWokeSettlementInstruction;
@@ -432,12 +438,24 @@ async function cancelRpcResponseReader(
 export async function executeWokeInstruction(
   input: ExecuteWokeInstructionInput,
 ): Promise<WokeTransactionExecutionResult> {
+  const { instruction, ...shared } = input;
+  return executeWokeInstructions({ ...shared, instructions: [instruction] });
+}
+
+/**
+ * Executes one atomic transaction containing a bounded ordered list of
+ * instructions for the same context-bound WokeSocial program. Solana commits
+ * all of them or none of them.
+ */
+export async function executeWokeInstructions(
+  input: ExecuteWokeInstructionsInput,
+): Promise<WokeTransactionExecutionResult> {
   const limits = parseLimits(input.limits);
   const scope = createOperationScope(input.abortSignal, limits);
   try {
     scope.assertActive('validating');
     const context = parseExecutionContext(input.context);
-    const instruction = snapshotInstruction(context, input.instruction);
+    const instructions = snapshotInstructions(context, input.instructions);
     const feePayer = parseExecutionAddress(input.feePayer, 'transaction fee payer');
     const version = parseTransactionVersion(input.version);
     const rentExemptionSpaces = parseRentExemptionSpaces(input.rentExemptionSpaces);
@@ -466,7 +484,7 @@ export async function executeWokeInstruction(
     );
 
     scope.assertActive('compiling');
-    const transaction = compileWokeTransaction(instruction, feePayer, version, latestBlockhash);
+    const transaction = compileWokeTransaction(instructions, feePayer, version, latestBlockhash);
     const writableTransactionAccountAddresses =
       decodeWritableTransactionAccountAddresses(transaction);
     const signedTransaction = await collectAndVerifySignatures(
@@ -779,15 +797,33 @@ function snapshotInstruction(
   });
 }
 
+function snapshotInstructions(
+  context: ValidatedWokeNetContext,
+  candidates: readonly WokeInstruction[],
+): readonly WokeInstruction[] {
+  if (
+    !Array.isArray(candidates) ||
+    candidates.length === 0 ||
+    candidates.length > MAX_WOKENET_OUTER_INSTRUCTIONS
+  ) {
+    throw executionError(
+      'invalid-instruction',
+      'validating',
+      `A WokeNet transaction must contain 1–${String(MAX_WOKENET_OUTER_INSTRUCTIONS)} instructions.`,
+    );
+  }
+  return Object.freeze(candidates.map((candidate) => snapshotInstruction(context, candidate)));
+}
+
 function compileWokeTransaction(
-  instruction: WokeInstruction,
+  instructions: readonly WokeInstruction[],
   feePayer: Address,
   version: WokeTransactionVersion,
   latestBlockhash: LatestBlockhash,
 ): Readonly<Transaction> {
   try {
-    const message = appendTransactionMessageInstruction(
-      instruction,
+    const message = appendTransactionMessageInstructions(
+      instructions,
       setTransactionMessageLifetimeUsingBlockhash(
         {
           blockhash: latestBlockhash.blockhash,
@@ -801,7 +837,7 @@ function compileWokeTransaction(
     throw executionError(
       'invalid-instruction',
       'compiling',
-      'The WokeSocial instruction could not be compiled into a Solana transaction.',
+      'The WokeSocial instructions could not be compiled into a Solana transaction.',
       error,
     );
   }

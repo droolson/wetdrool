@@ -106,9 +106,11 @@ Preserve these invariants across code, tests, documentation, and GitHub issues:
   exists.
 - `.woke` names are versioned WokeNet mappings to real Solana public keys.
   Deterministic anonymous derivation and program-enforced `anon_`
-  anti-front-running are implemented locally; atomic registration/claim,
-  resolution UX, and custom settlement remain incomplete. They are not native
-  Solana addresses or an external DNS top-level domain.
+  anti-front-running, atomic fresh registration, legacy identity-only
+  migration, and strict checkpoint-covered current-root resolution are
+  implemented locally. Cross-surface destination UX, public-cluster execution,
+  and custom settlement remain incomplete. Names are not native Solana
+  addresses or an external DNS top-level domain.
 - “No transaction fee” can only mean no hidden WokeSocial platform fee.
   Solana fees and rent must be disclosed or sponsored under published limits.
 - “Middle-out” is a benchmark program, not a completed proprietary codec.
@@ -315,39 +317,45 @@ It must reject:
 
 ### 6.5 Evidence status at this handoff
 
-Issue #10's development-localnet acceptance gate passed on 2026-07-29 from a
+The expanded development-localnet acceptance gate passed on 2026-07-29 from a
 fresh validator, isolated PostgreSQL, rebuilt SBF program/indexer/web source,
 and real Chromium virtual authenticator:
 
 ```text
-tested commit: c8c04944648696fbaf19342077ffa99d64c8d967
-retained run: .local/vertical-slice/run-ZM7nNM
-evidence: .local/vertical-slice/run-ZM7nNM/publication-evidence.json
-evidence mode/size: 0600 / 3418 bytes
-evidence SHA-256: 972f049d6afd2343d3b70d9266ef79ca8d60728b23a8e051af8d629739469d46
-baseline replay: 10 events / 627c538cd2b03fc5c6c52a601a454870cf95602ac3cd19996285472e8c2d407a
-expanded replay: 13 events / 01d69a29076b48fd54fbeaeda6fef9e60227a4bb5a6ec5bb6727b59e5ff6934d
-web tests: 19 files / 252 tests
-secret matches: 0
-forbidden HTTP field names: 0
+command: pnpm test:vertical-slice
+baseline replay: 10 events / 937c73d35dea06b706c1ac8e3a91395494e44e857a4d08f85b83e8719da9407e
+expanded replay: 14 events / 348f69b93e3f895a3cab2d82d2e7bfdd7d13ec5c78177fda75c5db9e8c394c6f
+browser registration: one transaction / IdentityCreated + HandleClaimed
+browser posts: two distinct transactions
+web unit tests before the acceptance run: 19 files / 253 tests
+SDK unit tests before the acceptance run: 9 files / 142 tests
+secret-boundary assertion: zero matches
+forbidden HTTP field assertion: zero matches
 ```
 
 The browser created identity
-`J8eUkB7sS8nbH1JDDM3DLF8WkNGo9JF9ZfJF4ACQqM2b` once at finalized slot 142,
-published two distinct posts at slots 176 and 288, and restored both exact
-transaction signatures after replay. The first publication intentionally lost
-one forwarded response after finality and held the indexer unavailable for 60
-bounded reads. After one reload, the browser recovered the same finalized
-intent with the draft locked and with the send count unchanged at two. Across
-the identity plus two posts there were exactly three unique transaction wires.
+`J8eUkB7sS8nbH1JDDM3DLF8WkNGo9JF9ZfJF4ACQqM2b` and its deterministic
+`anon_7n044tsjxrfm5e23.woke` claim in one transaction. The strict resolver
+proved claim sequence `1`, current identity sequence `3`, stable identity
+address, current root, and a covering checkpoint after two posts. The first
+publication intentionally lost one forwarded response after finality. After
+one reload, the browser recovered the same finalized intent with the draft
+locked and without a duplicate send. Across atomic registration plus two posts
+there were exactly three unique transaction wires and four durable events.
 
-The secret audit scanned 542 HTTP requests, 621 HTTP responses, 22,621,368
-HTTP/browser bytes, 26,164 service-log bytes, and 3,273 Docker-log bytes. It
-captured five PRF-output canaries and one seed canary in its test-only
-observation channel; request, response, browser, service, Docker, and
-forbidden-field match counts were all zero. This is development-localnet
-evidence only. It is not a devnet/mainnet deployment, production custody,
-recovery, or independent external audit.
+Checkpoint semantics matter in this proof. The live sync preserves the exact
+observed indexer checkpoint, which may be an empty slot after the last event.
+Destructive durable-ledger replay reconstructs event state and therefore proves
+coverage through the last durable event slot; it does not invent later empty
+observation slots.
+
+The run also captured PRF-output and seed canaries only in its test observation
+channel and asserted zero matches across HTTP requests/responses, browser
+diagnostics, service logs, and PostgreSQL container logs. Passing run artifacts
+are removed by the runner; failed runs are retained under
+`.local/vertical-slice/` for diagnosis and remain ignored by Git. This is
+development-localnet evidence only. It is not a devnet/mainnet deployment,
+production custody, recovery, or independent external audit.
 
 ## 7. Expanded product program
 
@@ -370,7 +378,8 @@ Do not implement these in issue-number order. Their dependency order is:
 
 1. Preserve the verified passkey identity, text publication, finality,
    indexer, and replay gate.
-2. Implement `.woke` names and separate reputation/points/credits ledgers.
+2. Complete `.woke` cross-surface destination UX and specify separate
+   reputation/points/credits ledgers.
 3. Ship standards-based video before experimental delivery optimization.
 4. Build a portable avatar renderer and off-chain catalog before NFT items.
 5. Establish replaceable model evaluation/inference before AI-credit economics.
@@ -597,11 +606,14 @@ Continue in this order:
 - [x] Add protocol derivation/property vectors, an exact SDK claim builder,
       program-enforced `anon_` anti-front-running, adversarial local-validator
       coverage, and stable passkey onboarding/sign-in candidate rendering.
-- [ ] Make identity creation plus anonymous-name claim one atomic, durable,
-      simulated and finalized registration transaction; never label a derived
-      candidate as claimed before that evidence exists.
-- [ ] Add independently verifiable name-to-identity-to-current-root resolution,
-      checkpoint/cache invalidation, and exact Solana destination disclosure.
+- [x] Make fresh identity creation plus anonymous-name claim one atomic,
+      durable, simulated and finalized registration transaction, with a
+      current-sequence migration for legacy identity-only accounts.
+- [x] Add independently verifiable
+      name-to-identity-to-current-root resolution with exact network,
+      commitment, sequence, and checkpoint validation.
+- [ ] Add cache invalidation and exact Solana destination disclosure to every
+      payment/signature confirmation surface.
 - [ ] Specify and implement custom-name reserved policy, eligibility,
       commit/reveal, expiry, grace/cooldown, recovery, transfer, disputes,
       economics, refunds, and appeals before purchase or transfer.

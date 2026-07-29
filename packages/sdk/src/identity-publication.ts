@@ -557,13 +557,15 @@ export function createWokeIdentitySimulationVerifier(
   built: BuiltCreateWokeIdentityInstruction,
 ): WokeTransactionSimulationVerifier {
   return (simulation) => {
-    assertSimulationBinding(built.context, simulation);
-    assertExactCreationLamportEffects(
-      simulation,
-      built.identityAddress,
-      built.payer,
-      built.rentExemptionSpace,
-    );
+    assertWokeOperationSimulationBinding(built.context, simulation);
+    assertExactWokeAccountCreations(simulation, [
+      {
+        address: built.identityAddress,
+        rentPayer: built.payer,
+        space: built.rentExemptionSpace,
+        outerInstructionIndex: 0,
+      },
+    ]);
     const event = decodeSingleOperationEvent(
       simulation.logs,
       built.context.programAddress,
@@ -598,13 +600,15 @@ export function createWokePostSimulationVerifier(
   built: BuiltPublishWokePostInstruction,
 ): WokeTransactionSimulationVerifier {
   return (simulation) => {
-    assertSimulationBinding(built.context, simulation);
-    assertExactCreationLamportEffects(
-      simulation,
-      built.postReferenceAddress,
-      built.payer,
-      built.rentExemptionSpace,
-    );
+    assertWokeOperationSimulationBinding(built.context, simulation);
+    assertExactWokeAccountCreations(simulation, [
+      {
+        address: built.postReferenceAddress,
+        rentPayer: built.payer,
+        space: built.rentExemptionSpace,
+        outerInstructionIndex: 0,
+      },
+    ]);
     const event = decodeSingleOperationEvent(
       simulation.logs,
       built.context.programAddress,
@@ -938,7 +942,7 @@ function assertSameContext(left: ValidatedWokeNetContext, right: ValidatedWokeNe
   }
 }
 
-function assertSimulationBinding(
+export function assertWokeOperationSimulationBinding(
   context: ValidatedWokeNetContext,
   simulation: WokeTransactionSimulationSnapshot,
 ): void {
@@ -961,17 +965,25 @@ function assertSimulationBinding(
   }
 }
 
-function assertExactCreationLamportEffects(
+export interface WokeExpectedAccountCreation {
+  readonly address: string;
+  readonly rentPayer: string;
+  readonly space: number;
+  readonly outerInstructionIndex: number;
+}
+
+export function assertExactWokeAccountCreations(
   simulation: WokeTransactionSimulationSnapshot,
-  createdAccount: string,
-  rentPayer: string,
-  accountSpace: number,
+  creations: readonly WokeExpectedAccountCreation[],
 ): void {
-  const rent = simulation.minimumRentExemptBalances[String(accountSpace)];
-  if (typeof rent !== 'bigint' || rent <= 0n || rent > U64_MAX) {
+  if (
+    !Array.isArray(creations) ||
+    creations.length === 0 ||
+    new Set(creations.map((creation) => creation.address)).size !== creations.length
+  ) {
     throw operationError(
       'simulation-mismatch',
-      'The simulation omitted the exact rent-exempt balance for the created account.',
+      'The approved account-creation set is empty, malformed, or duplicated.',
     );
   }
   if (
@@ -983,6 +995,7 @@ function assertExactCreationLamportEffects(
   }
   const expected = new Map<string, bigint>();
   const observed = new Set<string>();
+  const rents = new Map<string, bigint>();
   const add = (accountAddress: string, delta: bigint): void => {
     expected.set(accountAddress, (expected.get(accountAddress) ?? 0n) + delta);
   };
@@ -996,11 +1009,29 @@ function assertExactCreationLamportEffects(
     observed.add(balance.address);
     expected.set(balance.address, 0n);
   }
-  add(createdAccount, rent);
-  add(rentPayer, -rent);
+  for (const creation of creations) {
+    const rent = simulation.minimumRentExemptBalances[String(creation.space)];
+    if (
+      typeof rent !== 'bigint' ||
+      rent <= 0n ||
+      rent > U64_MAX ||
+      !Number.isSafeInteger(creation.space) ||
+      creation.space <= 0 ||
+      !Number.isSafeInteger(creation.outerInstructionIndex) ||
+      creation.outerInstructionIndex < 0
+    ) {
+      throw operationError(
+        'simulation-mismatch',
+        'The simulation omitted an exact approved rent-exempt balance.',
+      );
+    }
+    rents.set(creation.address, rent);
+    add(creation.address, rent);
+    add(creation.rentPayer, -rent);
+  }
   add(simulation.feePayer, -simulation.feeLamports);
 
-  let observedCreated = false;
+  const observedCreated = new Set<string>();
   for (const balance of simulation.accountBalances) {
     if (
       typeof balance.preLamports !== 'bigint' ||
@@ -1014,9 +1045,10 @@ function assertExactCreationLamportEffects(
         'The simulation contains an unapproved native-lamport effect.',
       );
     }
-    if (balance.address === createdAccount) {
-      observedCreated = true;
-      if (balance.preLamports !== 0n || balance.postLamports !== rent) {
+    const createdRent = rents.get(balance.address);
+    if (createdRent !== undefined) {
+      observedCreated.add(balance.address);
+      if (balance.preLamports !== 0n || balance.postLamports !== createdRent) {
         throw operationError(
           'simulation-mismatch',
           'The simulated program account creation does not match exact rent funding.',
@@ -1024,68 +1056,74 @@ function assertExactCreationLamportEffects(
       }
     }
   }
-  if (!observedCreated || !observed.has(rentPayer) || !observed.has(simulation.feePayer)) {
+  if (
+    observedCreated.size !== creations.length ||
+    creations.some((creation) => !observed.has(creation.rentPayer)) ||
+    !observed.has(simulation.feePayer)
+  ) {
     throw operationError(
       'simulation-mismatch',
       'The simulation omitted the created account, rent payer, or fee payer.',
     );
   }
-  assertExactSystemAccountCreation(
+  assertExactSystemAccountCreations(
     simulation.innerInstructions,
-    rentPayer,
-    createdAccount,
+    creations,
+    rents,
     simulation.programAddress,
-    rent,
-    BigInt(accountSpace),
   );
 }
 
-function assertExactSystemAccountCreation(
+function assertExactSystemAccountCreations(
   innerInstructions: unknown,
-  rentPayer: string,
-  createdAccount: string,
+  creations: readonly WokeExpectedAccountCreation[],
+  rents: ReadonlyMap<string, bigint>,
   owner: string,
-  rent: bigint,
-  space: bigint,
 ): void {
-  if (
-    !Array.isArray(innerInstructions) ||
-    innerInstructions.length !== 1 ||
-    !isRecord(innerInstructions[0]) ||
-    innerInstructions[0].index !== 0 ||
-    !Array.isArray(innerInstructions[0].instructions) ||
-    innerInstructions[0].instructions.length !== 1
-  ) {
+  if (!Array.isArray(innerInstructions) || innerInstructions.length !== creations.length) {
     throw operationError(
       'simulation-mismatch',
-      'The simulation must contain one exact System Program account creation.',
+      'The simulation must contain the exact approved System Program account creations.',
     );
   }
-  const candidate = innerInstructions[0].instructions[0];
-  if (
-    !isRecord(candidate) ||
-    candidate.programId !== WOKENET_SYSTEM_PROGRAM_ADDRESS ||
-    !isRecord(candidate.parsed) ||
-    candidate.parsed.type !== 'createAccount' ||
-    !isRecord(candidate.parsed.info)
-  ) {
-    throw operationError(
-      'simulation-mismatch',
-      'The simulated inner instruction is not the approved account creation.',
+  for (const creation of creations) {
+    const group = innerInstructions.find(
+      (candidate) => isRecord(candidate) && candidate.index === creation.outerInstructionIndex,
     );
-  }
-  const info = candidate.parsed.info;
-  if (
-    info.source !== rentPayer ||
-    info.newAccount !== createdAccount ||
-    info.owner !== owner ||
-    info.lamports !== rent ||
-    info.space !== space
-  ) {
-    throw operationError(
-      'simulation-mismatch',
-      'The simulated System Program account creation differs from the approved operation.',
-    );
+    if (!isRecord(group) || !Array.isArray(group.instructions) || group.instructions.length !== 1) {
+      throw operationError(
+        'simulation-mismatch',
+        'A simulated outer instruction does not contain one approved account creation.',
+      );
+    }
+    const candidate = group.instructions[0];
+    const rent = rents.get(creation.address);
+    if (
+      !isRecord(candidate) ||
+      candidate.programId !== WOKENET_SYSTEM_PROGRAM_ADDRESS ||
+      !isRecord(candidate.parsed) ||
+      candidate.parsed.type !== 'createAccount' ||
+      !isRecord(candidate.parsed.info) ||
+      rent === undefined
+    ) {
+      throw operationError(
+        'simulation-mismatch',
+        'A simulated inner instruction is not the approved account creation.',
+      );
+    }
+    const info = candidate.parsed.info;
+    if (
+      info.source !== creation.rentPayer ||
+      info.newAccount !== creation.address ||
+      info.owner !== owner ||
+      info.lamports !== rent ||
+      info.space !== BigInt(creation.space)
+    ) {
+      throw operationError(
+        'simulation-mismatch',
+        'A simulated System Program account creation differs from the approved operation.',
+      );
+    }
   }
 }
 
@@ -1095,6 +1133,32 @@ function decodeSingleOperationEvent(
   expectedDiscriminator: Uint8Array,
   label: string,
 ): Uint8Array {
+  const event = decodeExactWokeOperationEvents(logs, programAddress, [
+    { discriminator: expectedDiscriminator, label },
+  ])[0];
+  if (event === undefined) {
+    throw operationError('invalid-event', `The ${label} event is missing.`);
+  }
+  return event;
+}
+
+export interface WokeExpectedProgramEvent {
+  readonly discriminator: Uint8Array;
+  readonly label: string;
+}
+
+export function decodeExactWokeOperationEvents(
+  logs: readonly string[] | null,
+  programAddress: string,
+  expected: readonly WokeExpectedProgramEvent[],
+): readonly Uint8Array[] {
+  const label = expected.map((event) => event.label).join(' + ');
+  if (
+    expected.length === 0 ||
+    new Set(expected.map((event) => [...event.discriminator].join(','))).size !== expected.length
+  ) {
+    throw operationError('invalid-event', 'The expected WokeNet event set is invalid.');
+  }
   if (logs === null || !Array.isArray(logs) || logs.length > MAX_LOG_LINES) {
     throw operationError(
       'invalid-event',
@@ -1102,7 +1166,7 @@ function decodeSingleOperationEvent(
     );
   }
   const stack: string[] = [];
-  const events: Uint8Array[] = [];
+  const events = new Map<number, Uint8Array>();
   for (const line of logs) {
     if (typeof line !== 'string' || line.length > MAX_LOG_LINE_CHARACTERS) {
       throw operationError('invalid-event', `The ${label} simulation log is malformed.`);
@@ -1146,25 +1210,30 @@ function decodeSingleOperationEvent(
       throw operationError('invalid-event', `The ${label} event exceeds its safe size limit.`);
     }
     const bytes = decodeCanonicalBase64(encoded, label);
-    if (bytes.byteLength > MAX_EVENT_BYTES || !startsWith(bytes, expectedDiscriminator)) {
+    const expectedIndex = expected.findIndex((event) => startsWith(bytes, event.discriminator));
+    if (bytes.byteLength > MAX_EVENT_BYTES || expectedIndex < 0 || events.has(expectedIndex)) {
       throw operationError(
         'invalid-event',
         `The ${label} event discriminator or decoded size is invalid.`,
       );
     }
-    events.push(bytes);
+    events.set(expectedIndex, bytes);
   }
-  if (stack.length !== 0 || events.length !== 1) {
+  if (stack.length !== 0 || events.size !== expected.length) {
     throw operationError(
       'invalid-event',
-      `The simulation must contain one complete ${label} program event.`,
+      `The simulation must contain exactly the complete ${label} program events.`,
     );
   }
-  const event = events[0];
-  if (event === undefined) {
-    throw operationError('invalid-event', `The ${label} event is missing.`);
-  }
-  return event;
+  return Object.freeze(
+    expected.map((_event, index) => {
+      const bytes = events.get(index);
+      if (bytes === undefined) {
+        throw operationError('invalid-event', `The ${label} event set is incomplete.`);
+      }
+      return bytes;
+    }),
+  );
 }
 
 function decodeCanonicalBase64(value: string, label: string): Uint8Array {

@@ -11,23 +11,35 @@ import {
 } from '@wokesocial/protocol';
 import {
   buildCreatePrimaryWokeIdentityInstruction,
+  buildClaimRandomWokeNameInstruction,
+  buildPrimaryWokeIdentityRegistration,
   buildPublishWokePostInstruction,
   createWokeIdentitySimulationVerifier,
+  createPrimaryWokeIdentityRegistrationSimulationVerifier,
+  createRandomWokeNameClaimSimulationVerifier,
   createWokePostSimulationVerifier,
   derivePrimaryWokeIdentityCoordinates,
   deriveWokePostReferenceAddress,
   executeWokeInstruction,
+  executeWokeInstructions,
   reconcileWokeIdentityCreation,
+  reconcilePrimaryWokeIdentityRegistration,
   reconcileWokePostPublication,
   verifyFreshWokeIdentityAccount,
+  verifyFinalizedPrimaryWokeIdentityRegistration,
+  verifyFinalizedPrimaryWokeIdentityNameBinding,
+  verifyRandomWokeNameClaimAccount,
   verifyWokeIdentityAccount,
   verifyWokePostReferenceAccount,
   WOKE_IDENTITY_ACCOUNT_SPACE,
   WOKE_POST_REFERENCE_ACCOUNT_SPACE,
   type BuiltCreateWokeIdentityInstruction,
+  type BuiltClaimRandomWokeNameInstruction,
+  type BuiltPrimaryWokeIdentityRegistration,
   type BuiltPublishWokePostInstruction,
   type WokeIdentityAccountRecord,
   type WokeIdentityCoordinates,
+  type WokeNameClaimAccountRecord,
   type WokeProgramAccountReader,
   type WokeProgramAccountSnapshot,
   type WokePostReferenceAccountRecord,
@@ -217,12 +229,20 @@ export interface LocalnetTextPostPublicationDependencies {
   readonly verifyIdentity?: typeof verifyWokeIdentityAccount;
   readonly verifyFreshIdentity?: typeof verifyFreshWokeIdentityAccount;
   readonly createIdentitySimulationVerifier?: typeof createWokeIdentitySimulationVerifier;
+  readonly buildRegistration?: typeof buildPrimaryWokeIdentityRegistration;
+  readonly reconcileRegistration?: typeof reconcilePrimaryWokeIdentityRegistration;
+  readonly verifyRegistration?: typeof verifyFinalizedPrimaryWokeIdentityRegistration;
+  readonly createRegistrationSimulationVerifier?: typeof createPrimaryWokeIdentityRegistrationSimulationVerifier;
+  readonly buildNameClaim?: typeof buildClaimRandomWokeNameInstruction;
+  readonly verifyNameClaim?: typeof verifyRandomWokeNameClaimAccount;
+  readonly createNameClaimSimulationVerifier?: typeof createRandomWokeNameClaimSimulationVerifier;
   readonly derivePostAddress?: typeof deriveWokePostReferenceAddress;
   readonly buildPost?: typeof buildPublishWokePostInstruction;
   readonly reconcilePost?: typeof reconcileWokePostPublication;
   readonly verifyPost?: typeof verifyWokePostReferenceAccount;
   readonly createPostSimulationVerifier?: typeof createWokePostSimulationVerifier;
   readonly executeInstruction?: typeof executeWokeInstruction;
+  readonly executeInstructions?: typeof executeWokeInstructions;
   readonly recoverFinalizedPostTransaction?: (
     input: RecoverFinalizedPostTransactionInput,
   ) => Promise<RecoveredFinalizedPostTransaction>;
@@ -293,70 +313,218 @@ export async function publishLocalnetTextPost(
         const reader =
           dependencies.accountReader ??
           new LocalnetProgramAccountReader({ abortSignal: input.abortSignal });
-        const reconcileIdentity = dependencies.reconcileIdentity ?? reconcileWokeIdentityCreation;
-        progress('reconciling-identity');
-        const identityReconciliation = await reconcileIdentity(builtIdentity, reader);
 
-        progress('funding');
-        const ensureBalance = dependencies.ensureSignerBalance ?? ensureLocalnetSignerBalance;
-        const funding = await ensureBalance(
-          {
-            endpoint: runtime.context.endpoint,
-            expectedGenesisHash: runtime.context.genesisHash,
-          },
-          rootAuthority,
-          runtime.targetBalanceLamports,
-          input.abortSignal,
-        );
-
+        let funding: LocalnetFundingResult;
         let identityTransaction: WokeTransactionExecutionResult | null = null;
-        if (identityReconciliation.status === 'absent') {
-          progress('creating-identity');
-          identityTransaction = await (dependencies.executeInstruction ?? executeWokeInstruction)({
-            context: builtIdentity.context,
-            instruction: builtIdentity.instruction,
-            feePayer: rootAuthority,
-            signer: transactionSignerFor(
-              passkeySigner,
-              builtIdentity.context,
-              rootAuthority,
-              stage,
-            ),
-            verifySimulation: (
-              dependencies.createIdentitySimulationVerifier ?? createWokeIdentitySimulationVerifier
-            )(builtIdentity),
-            rentExemptionSpaces: [builtIdentity.rentExemptionSpace],
-            ...(input.abortSignal === undefined ? {} : { abortSignal: input.abortSignal }),
+        let identity: WokeIdentityAccountRecord;
+        let finalizedIdentitySlot: bigint;
+        let identityDisposition: 'created' | 'existing';
+        const useAtomicRegistration =
+          hasAtomicRegistrationOverride(dependencies) || !hasLegacyIdentityOverride(dependencies);
+        if (useAtomicRegistration) {
+          const builtRegistration = await (
+            dependencies.buildRegistration ?? buildPrimaryWokeIdentityRegistration
+          )(runtime.context, {
+            payer: rootAuthority,
+            rootAuthority,
           });
-        }
-
-        progress('reconciling-identity');
-        const finalizedIdentityAccount = await requireFinalizedAccount(
-          reader,
-          builtIdentity.context,
-          builtIdentity.identityAddress,
-          'identity',
-        );
-        const identity =
-          identityReconciliation.status === 'absent'
-            ? (dependencies.verifyFreshIdentity ?? verifyFreshWokeIdentityAccount)(
-                builtIdentity,
-                finalizedIdentityAccount,
-                'finalized',
-              )
-            : (dependencies.verifyIdentity ?? verifyWokeIdentityAccount)(
-                identityCoordinates,
-                finalizedIdentityAccount,
-                'finalized',
-              );
-        assertUsableIdentity(identity, rootAuthority, stage);
-        if (identityTransaction !== null && identity.createdAtSlot !== identityTransaction.slot) {
-          throw publicationError(
-            'identity-conflict',
-            stage,
-            'The finalized Identity creation slot does not match its transaction.',
+          assertRegistrationMatchesIdentity(builtRegistration, builtIdentity, stage);
+          progress('reconciling-identity');
+          const registration = await (
+            dependencies.reconcileRegistration ?? reconcilePrimaryWokeIdentityRegistration
+          )(builtRegistration, reader);
+          progress('funding');
+          funding = await (dependencies.ensureSignerBalance ?? ensureLocalnetSignerBalance)(
+            {
+              endpoint: runtime.context.endpoint,
+              expectedGenesisHash: runtime.context.genesisHash,
+            },
+            rootAuthority,
+            runtime.targetBalanceLamports,
+            input.abortSignal,
           );
+          let migratedNameClaim: BuiltClaimRandomWokeNameInstruction | null = null;
+          if (registration.status === 'absent') {
+            progress('creating-identity');
+            identityTransaction = await (
+              dependencies.executeInstructions ?? executeWokeInstructions
+            )({
+              context: builtRegistration.context,
+              instructions: builtRegistration.instructions,
+              feePayer: rootAuthority,
+              signer: transactionSignerFor(
+                passkeySigner,
+                builtRegistration.context,
+                rootAuthority,
+                stage,
+              ),
+              verifySimulation: (
+                dependencies.createRegistrationSimulationVerifier ??
+                createPrimaryWokeIdentityRegistrationSimulationVerifier
+              )(builtRegistration),
+              rentExemptionSpaces: builtRegistration.rentExemptionSpaces,
+              ...(input.abortSignal === undefined ? {} : { abortSignal: input.abortSignal }),
+            });
+          } else if (registration.status === 'identity-only') {
+            migratedNameClaim = await (
+              dependencies.buildNameClaim ?? buildClaimRandomWokeNameInstruction
+            )(builtRegistration.context, {
+              originAuthority: registration.identity.originAuthority,
+              rootAuthority: registration.identity.rootAuthority,
+              identityAddress: builtRegistration.identity.identityAddress,
+              payer: rootAuthority,
+              expectedIdentitySequence: registration.identity.sequence,
+            });
+            if (
+              migratedNameClaim.handleClaimAddress !==
+                builtRegistration.nameClaim.handleClaimAddress ||
+              migratedNameClaim.randomName.name !== builtRegistration.nameClaim.randomName.name
+            ) {
+              throw publicationError(
+                'identity-conflict',
+                stage,
+                'The existing identity did not derive the protected primary anonymous name.',
+              );
+            }
+            progress('creating-identity');
+            identityTransaction = await (dependencies.executeInstruction ?? executeWokeInstruction)(
+              {
+                context: migratedNameClaim.context,
+                instruction: migratedNameClaim.instruction,
+                feePayer: rootAuthority,
+                signer: transactionSignerFor(
+                  passkeySigner,
+                  migratedNameClaim.context,
+                  rootAuthority,
+                  stage,
+                ),
+                verifySimulation: (
+                  dependencies.createNameClaimSimulationVerifier ??
+                  createRandomWokeNameClaimSimulationVerifier
+                )(migratedNameClaim),
+                rentExemptionSpaces: [migratedNameClaim.rentExemptionSpace],
+                ...(input.abortSignal === undefined ? {} : { abortSignal: input.abortSignal }),
+              },
+            );
+          }
+          progress('reconciling-identity');
+          const [finalizedIdentityAccount, finalizedNameClaimAccount] = await Promise.all([
+            requireFinalizedAccount(
+              reader,
+              builtRegistration.context,
+              builtRegistration.identity.identityAddress,
+              'identity',
+            ),
+            requireFinalizedAccount(
+              reader,
+              builtRegistration.context,
+              builtRegistration.nameClaim.handleClaimAddress,
+              'anonymous name claim',
+            ),
+          ]);
+          const verified =
+            registration.status === 'absent'
+              ? (dependencies.verifyRegistration ?? verifyFinalizedPrimaryWokeIdentityRegistration)(
+                  builtRegistration,
+                  finalizedIdentityAccount,
+                  finalizedNameClaimAccount,
+                )
+              : registration.status === 'complete'
+                ? verifyFinalizedPrimaryWokeIdentityNameBinding(
+                    builtRegistration,
+                    finalizedIdentityAccount,
+                    finalizedNameClaimAccount,
+                  )
+                : verifyMigratedNameBinding(
+                    builtIdentity,
+                    registration.identity,
+                    requireMigratedNameClaim(migratedNameClaim, stage),
+                    finalizedIdentityAccount,
+                    finalizedNameClaimAccount,
+                    dependencies.verifyNameClaim ?? verifyRandomWokeNameClaimAccount,
+                    stage,
+                  );
+          identity = verified.identity;
+          finalizedIdentitySlot = finalizedIdentityAccount.slot;
+          identityDisposition = registration.status === 'absent' ? 'created' : 'existing';
+          if (
+            identityTransaction !== null &&
+            ((registration.status === 'absent' &&
+              verified.identity.createdAtSlot !== identityTransaction.slot) ||
+              verified.nameClaim.claimedAtSlot !== identityTransaction.slot)
+          ) {
+            throw publicationError(
+              'identity-conflict',
+              stage,
+              'The finalized identity and anonymous-name claim do not match their atomic transaction.',
+            );
+          }
+        } else {
+          const reconcileIdentity = dependencies.reconcileIdentity ?? reconcileWokeIdentityCreation;
+          progress('reconciling-identity');
+          const identityReconciliation = await reconcileIdentity(builtIdentity, reader);
+          progress('funding');
+          funding = await (dependencies.ensureSignerBalance ?? ensureLocalnetSignerBalance)(
+            {
+              endpoint: runtime.context.endpoint,
+              expectedGenesisHash: runtime.context.genesisHash,
+            },
+            rootAuthority,
+            runtime.targetBalanceLamports,
+            input.abortSignal,
+          );
+          if (identityReconciliation.status === 'absent') {
+            progress('creating-identity');
+            identityTransaction = await (dependencies.executeInstruction ?? executeWokeInstruction)(
+              {
+                context: builtIdentity.context,
+                instruction: builtIdentity.instruction,
+                feePayer: rootAuthority,
+                signer: transactionSignerFor(
+                  passkeySigner,
+                  builtIdentity.context,
+                  rootAuthority,
+                  stage,
+                ),
+                verifySimulation: (
+                  dependencies.createIdentitySimulationVerifier ??
+                  createWokeIdentitySimulationVerifier
+                )(builtIdentity),
+                rentExemptionSpaces: [builtIdentity.rentExemptionSpace],
+                ...(input.abortSignal === undefined ? {} : { abortSignal: input.abortSignal }),
+              },
+            );
+          }
+          progress('reconciling-identity');
+          const finalizedIdentityAccount = await requireFinalizedAccount(
+            reader,
+            builtIdentity.context,
+            builtIdentity.identityAddress,
+            'identity',
+          );
+          identity =
+            identityReconciliation.status === 'absent'
+              ? (dependencies.verifyFreshIdentity ?? verifyFreshWokeIdentityAccount)(
+                  builtIdentity,
+                  finalizedIdentityAccount,
+                  'finalized',
+                )
+              : (dependencies.verifyIdentity ?? verifyWokeIdentityAccount)(
+                  identityCoordinates,
+                  finalizedIdentityAccount,
+                  'finalized',
+                );
+          finalizedIdentitySlot = finalizedIdentityAccount.slot;
+          identityDisposition = identityReconciliation.status === 'absent' ? 'created' : 'existing';
+          if (identityTransaction !== null && identity.createdAtSlot !== identityTransaction.slot) {
+            throw publicationError(
+              'identity-conflict',
+              stage,
+              'The finalized Identity creation slot does not match its transaction.',
+            );
+          }
         }
+        assertUsableIdentity(identity, rootAuthority, stage);
 
         progress('indexing-identity');
         const indexedIdentity = await (dependencies.waitForIdentity ?? waitForIndexedIdentity)(
@@ -664,8 +832,8 @@ export async function publishLocalnetTextPost(
             address: identityCoordinates.identityAddress,
             id: identityId,
             sequence: identity.sequence,
-            finalizedSlot: finalizedIdentityAccount.slot,
-            disposition: identityReconciliation.status === 'absent' ? 'created' : 'existing',
+            finalizedSlot: finalizedIdentitySlot,
+            disposition: identityDisposition,
             transaction: identityTransaction,
             rentExemptLamports: rentExemptLamports(
               identityTransaction,
@@ -921,6 +1089,106 @@ function assertIdentityBuildersAgree(
   }
 }
 
+function hasAtomicRegistrationOverride(
+  dependencies: LocalnetTextPostPublicationDependencies,
+): boolean {
+  return (
+    dependencies.buildRegistration !== undefined ||
+    dependencies.reconcileRegistration !== undefined ||
+    dependencies.verifyRegistration !== undefined ||
+    dependencies.createRegistrationSimulationVerifier !== undefined ||
+    dependencies.executeInstructions !== undefined
+  );
+}
+
+function hasLegacyIdentityOverride(dependencies: LocalnetTextPostPublicationDependencies): boolean {
+  return (
+    dependencies.buildIdentity !== undefined ||
+    dependencies.reconcileIdentity !== undefined ||
+    dependencies.verifyIdentity !== undefined ||
+    dependencies.verifyFreshIdentity !== undefined ||
+    dependencies.createIdentitySimulationVerifier !== undefined
+  );
+}
+
+function assertRegistrationMatchesIdentity(
+  registration: BuiltPrimaryWokeIdentityRegistration,
+  identity: BuiltCreateWokeIdentityInstruction,
+  stage: LocalnetTextPostPublicationStage,
+): void {
+  if (
+    registration.identity.identityAddress !== identity.identityAddress ||
+    registration.identity.configAddress !== identity.configAddress ||
+    registration.identity.originAuthority !== identity.originAuthority ||
+    registration.identity.rootAuthority !== identity.rootAuthority ||
+    registration.identity.payer !== identity.payer ||
+    registration.context.endpoint !== identity.context.endpoint ||
+    registration.context.genesisHash !== identity.context.genesisHash ||
+    registration.context.programAddress !== identity.context.programAddress
+  ) {
+    throw publicationError(
+      'identity-conflict',
+      stage,
+      'The atomic identity/name registration does not match the deterministic identity.',
+    );
+  }
+}
+
+function requireMigratedNameClaim(
+  value: BuiltClaimRandomWokeNameInstruction | null,
+  stage: LocalnetTextPostPublicationStage,
+): BuiltClaimRandomWokeNameInstruction {
+  if (value === null) {
+    throw publicationError(
+      'identity-conflict',
+      stage,
+      'The pre-namespace identity migration did not preserve its approved name claim.',
+    );
+  }
+  return value;
+}
+
+function verifyMigratedNameBinding(
+  builtIdentity: BuiltCreateWokeIdentityInstruction,
+  before: WokeIdentityAccountRecord,
+  builtClaim: BuiltClaimRandomWokeNameInstruction,
+  identityAccount: WokeProgramAccountSnapshot,
+  claimAccount: WokeProgramAccountSnapshot,
+  verifyClaim: typeof verifyRandomWokeNameClaimAccount,
+  stage: LocalnetTextPostPublicationStage,
+): {
+  readonly identity: WokeIdentityAccountRecord;
+  readonly nameClaim: WokeNameClaimAccountRecord;
+} {
+  const identity = verifyWokeIdentityAccount(builtIdentity, identityAccount, 'finalized');
+  const nameClaim = verifyClaim(builtClaim, claimAccount, 'finalized');
+  if (
+    identity.sequence !== before.sequence + 1n ||
+    identity.rootAuthority !== before.rootAuthority ||
+    identity.rootRotationCount !== before.rootRotationCount ||
+    identity.delegationSequence !== before.delegationSequence ||
+    identity.profileSequence !== before.profileSequence ||
+    identity.profileManifestUri !== before.profileManifestUri ||
+    identity.profileUpdatedAtSlot !== before.profileUpdatedAtSlot ||
+    identity.createdAtSlot !== before.createdAtSlot ||
+    identity.active !== before.active ||
+    !sameBytes(identity.profileManifestHash, before.profileManifestHash) ||
+    nameClaim.identity !== builtIdentity.identityAddress ||
+    nameClaim.identitySequence !== identity.sequence
+  ) {
+    throw publicationError(
+      'identity-conflict',
+      stage,
+      'The anonymous-name migration changed identity state beyond its exact sequence advance.',
+    );
+  }
+  return Object.freeze({ identity, nameClaim });
+}
+
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
+}
+
 function assertUsableIdentity(
   identity: WokeIdentityAccountRecord,
   rootAuthority: string,
@@ -944,7 +1212,7 @@ async function requireFinalizedAccount(
   reader: WokeProgramAccountReader,
   context: BuiltCreateWokeIdentityInstruction['context'],
   address: string,
-  label: 'identity' | 'post',
+  label: 'anonymous name claim' | 'identity' | 'post',
 ): Promise<WokeProgramAccountSnapshot> {
   const account = await reader.readAccount({
     endpoint: context.endpoint,

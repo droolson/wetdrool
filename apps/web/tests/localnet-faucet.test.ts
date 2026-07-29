@@ -13,6 +13,7 @@ interface RpcCall {
 
 function rpcFixture(
   options: {
+    readonly airdropFailures?: number;
     readonly balances?: readonly number[];
     readonly finalizeAfter?: number;
     readonly genesis?: string | readonly string[];
@@ -26,9 +27,20 @@ function rpcFixture(
     ? [...options.genesis]
     : [options.genesis ?? GENESIS];
   let statusCalls = 0;
+  let airdropCalls = 0;
   const fetch = vi.fn(async (_input: URL | RequestInfo, init?: RequestInit) => {
     const request = JSON.parse(String(init?.body)) as RpcCall & { readonly id: string };
     calls.push(request);
+    if (request.method === 'requestAirdrop' && airdropCalls++ < (options.airdropFailures ?? 0)) {
+      return new Response(
+        JSON.stringify({
+          id: request.id,
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Internal error' },
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      );
+    }
     const result = (() => {
       switch (request.method) {
         case 'getGenesisHash':
@@ -98,6 +110,33 @@ describe('hard-localnet faucet', () => {
       { commitment: 'finalized' },
     ]);
     expect(fixture.calls.filter(({ method }) => method === 'getGenesisHash')).toHaveLength(2);
+  });
+
+  it('rechecks network and balance before retrying a temporarily unready local faucet', async () => {
+    const fixture = rpcFixture({
+      airdropFailures: 2,
+      balances: [0, 0, 0, 100_000_000],
+    });
+
+    await expect(
+      ensureLocalnetSignerBalance(
+        {
+          endpoint: 'http://127.0.0.1:8899',
+          expectedGenesisHash: GENESIS,
+          fetch: fixture.fetch,
+          pollDelayMilliseconds: 0,
+          sleep: async () => undefined,
+        },
+        ADDRESS,
+        100_000_000,
+      ),
+    ).resolves.toMatchObject({
+      airdropSignature: SIGNATURE,
+      balanceLamports: 100_000_000,
+      fundedLamports: 100_000_000,
+    });
+    expect(fixture.calls.filter(({ method }) => method === 'requestAirdrop')).toHaveLength(3);
+    expect(fixture.calls.filter(({ method }) => method === 'getGenesisHash')).toHaveLength(4);
   });
 
   it('does not request an airdrop when the finalized balance already covers the target', async () => {

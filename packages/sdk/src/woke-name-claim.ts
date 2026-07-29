@@ -1,11 +1,19 @@
-import { AccountRole, address, getProgramDerivedAddress, type AccountMeta } from '@solana/kit';
+import {
+  AccountRole,
+  address,
+  getAddressDecoder,
+  getProgramDerivedAddress,
+  type AccountMeta,
+} from '@solana/kit';
 import {
   deriveRandomWokeName,
   digestSha256,
   utf8,
+  wokeHandleSchema,
   type RandomWokeName,
 } from '@wokesocial/protocol';
 
+import type { WokeAccountCommitment, WokeProgramAccountSnapshot } from './identity-publication.js';
 import {
   createWokeNetContext,
   deriveWokeProtocolConfigAddress,
@@ -21,10 +29,13 @@ const PDA_PREFIX = utf8('wokesocial');
 const PDA_VERSION = Uint8Array.of(ACCOUNT_VERSION);
 const HANDLE_SEED = utf8('handle');
 const CLAIM_HANDLE_DISCRIMINATOR = Uint8Array.of(93, 142, 47, 111, 164, 134, 99, 181);
+const HANDLE_CLAIM_ACCOUNT_DISCRIMINATOR = Uint8Array.of(148, 215, 248, 53, 11, 234, 115, 190);
+const ADDRESS_DECODER = getAddressDecoder();
 
 export const WOKE_HANDLE_CLAIM_ACCOUNT_SPACE = 156;
 
-export type WokeNameClaimErrorCode = 'alias' | 'invalid-address' | 'invalid-sequence';
+export type WokeNameClaimErrorCode =
+  'alias' | 'invalid-account' | 'invalid-address' | 'invalid-sequence';
 
 export class WokeNameClaimError extends Error {
   override readonly name = 'WokeNameClaimError';
@@ -63,6 +74,17 @@ export interface BuiltClaimRandomWokeNameInstruction {
   readonly handleClaimBump: number;
   readonly rentExemptionSpace: typeof WOKE_HANDLE_CLAIM_ACCOUNT_SPACE;
   readonly instruction: WokeInstruction;
+}
+
+export interface WokeNameClaimAccountRecord {
+  readonly version: number;
+  readonly config: string;
+  readonly identity: string;
+  readonly handleHash: Uint8Array;
+  readonly handle: string;
+  readonly identitySequence: bigint;
+  readonly claimedAtSlot: bigint;
+  readonly bump: number;
 }
 
 /**
@@ -143,6 +165,80 @@ export async function buildClaimRandomWokeNameInstruction(
   });
 }
 
+export function decodeWokeNameClaimAccount(dataInput: Uint8Array): WokeNameClaimAccountRecord {
+  if (
+    !(dataInput instanceof Uint8Array) ||
+    dataInput.byteLength !== WOKE_HANDLE_CLAIM_ACCOUNT_SPACE
+  ) {
+    throw claimError(
+      'invalid-account',
+      `A HandleClaim account must contain exactly ${String(WOKE_HANDLE_CLAIM_ACCOUNT_SPACE)} bytes.`,
+    );
+  }
+  const reader = new ClaimAccountReader(Uint8Array.from(dataInput));
+  reader.discriminator(HANDLE_CLAIM_ACCOUNT_DISCRIMINATOR);
+  const record: WokeNameClaimAccountRecord = {
+    version: reader.u8(),
+    config: reader.address(),
+    identity: reader.address(),
+    handleHash: reader.fixed(32),
+    handle: reader.string(30),
+    identitySequence: reader.u64(),
+    claimedAtSlot: reader.u64(),
+    bump: reader.u8(),
+  };
+  reader.finishZeroPadding();
+  if (
+    record.version !== ACCOUNT_VERSION ||
+    record.config === WOKENET_SYSTEM_PROGRAM_ADDRESS ||
+    record.identity === WOKENET_SYSTEM_PROGRAM_ADDRESS ||
+    record.identitySequence === 0n ||
+    !wokeHandleSchema.safeParse(record.handle).success ||
+    !equalBytes(record.handleHash, digestSha256(utf8(record.handle)))
+  ) {
+    throw claimError('invalid-account', 'The HandleClaim account contains invalid protocol state.');
+  }
+  return record;
+}
+
+export function verifyRandomWokeNameClaimAccount(
+  built: BuiltClaimRandomWokeNameInstruction,
+  account: WokeProgramAccountSnapshot,
+  minimumCommitment: WokeAccountCommitment = 'finalized',
+): WokeNameClaimAccountRecord {
+  if (
+    account === null ||
+    typeof account !== 'object' ||
+    parseAccountAddress(account.address) !== built.handleClaimAddress ||
+    parseAccountAddress(account.owner) !== built.context.programAddress ||
+    commitmentRank(account.commitment) < commitmentRank(minimumCommitment) ||
+    typeof account.slot !== 'bigint' ||
+    account.slot < 0n ||
+    account.slot > U64_MAX
+  ) {
+    throw claimError(
+      'invalid-account',
+      'The HandleClaim envelope has the wrong address, owner, commitment, or slot.',
+    );
+  }
+  const claim = decodeWokeNameClaimAccount(account.data);
+  if (
+    claim.config !== built.configAddress ||
+    claim.identity !== built.identityAddress ||
+    claim.handle !== built.randomName.handle ||
+    !equalBytes(claim.handleHash, built.handleHash) ||
+    claim.identitySequence !== built.expectedIdentitySequence + 1n ||
+    claim.claimedAtSlot > account.slot ||
+    claim.bump !== built.handleClaimBump
+  ) {
+    throw claimError(
+      'invalid-account',
+      'The HandleClaim account does not match the approved anonymous-name operation.',
+    );
+  }
+  return claim;
+}
+
 function parseAddress(value: string, label: string): string {
   try {
     const parsed = address(value);
@@ -191,6 +287,89 @@ function concat(...parts: readonly Uint8Array[]): Uint8Array {
     offset += part.byteLength;
   }
   return output;
+}
+
+function parseAccountAddress(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw claimError('invalid-account', 'A HandleClaim account address is malformed.');
+  }
+  try {
+    return address(value);
+  } catch (error) {
+    throw claimError('invalid-account', 'A HandleClaim account address is malformed.', error);
+  }
+}
+
+function commitmentRank(value: unknown): number {
+  if (value === 'processed') return 0;
+  if (value === 'confirmed') return 1;
+  if (value === 'finalized') return 2;
+  throw claimError('invalid-account', 'The HandleClaim commitment is invalid.');
+}
+
+function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
+  return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
+}
+
+class ClaimAccountReader {
+  #offset = 0;
+
+  constructor(private readonly bytes: Uint8Array) {}
+
+  discriminator(expected: Uint8Array): void {
+    if (!equalBytes(this.fixed(expected.byteLength), expected)) {
+      throw claimError('invalid-account', 'The HandleClaim discriminator is invalid.');
+    }
+  }
+
+  u8(): number {
+    return this.fixed(1)[0] ?? 0;
+  }
+
+  u32(): number {
+    const bytes = this.fixed(4);
+    return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0, true);
+  }
+
+  u64(): bigint {
+    const bytes = this.fixed(8);
+    return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getBigUint64(0, true);
+  }
+
+  address(): string {
+    return ADDRESS_DECODER.decode(this.fixed(32));
+  }
+
+  fixed(length: number): Uint8Array {
+    if (
+      !Number.isSafeInteger(length) ||
+      length < 0 ||
+      this.#offset + length > this.bytes.byteLength
+    ) {
+      throw claimError('invalid-account', 'The HandleClaim account is truncated.');
+    }
+    const value = this.bytes.slice(this.#offset, this.#offset + length);
+    this.#offset += length;
+    return value;
+  }
+
+  string(maxBytes: number): string {
+    const length = this.u32();
+    if (length > maxBytes) {
+      throw claimError('invalid-account', 'The HandleClaim string exceeds its v1 bound.');
+    }
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(this.fixed(length));
+    } catch (error) {
+      throw claimError('invalid-account', 'The HandleClaim string is not valid UTF-8.', error);
+    }
+  }
+
+  finishZeroPadding(): void {
+    if (this.fixed(this.bytes.byteLength - this.#offset).some((byte) => byte !== 0)) {
+      throw claimError('invalid-account', 'The HandleClaim account has nonzero trailing bytes.');
+    }
+  }
 }
 
 function claimError(

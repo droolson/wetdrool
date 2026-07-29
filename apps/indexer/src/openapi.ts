@@ -246,6 +246,34 @@ export const openApiDocument = {
         },
       },
     },
+    '/v1/woke-names/{name}': {
+      get: {
+        summary: 'Resolve a .woke name to its current Solana root authority',
+        description:
+          'Resolves a finalized WokeNet handle claim on an active stable identity to the identity’s current root authority. The destination follows finalized root rotations, and deactivated identities fail closed as not found. A .woke name is an application namespace, not a native Solana address, and this rebuildable response is not canonical protocol state.',
+        parameters: [
+          {
+            name: 'name',
+            in: 'path',
+            required: true,
+            schema: {
+              type: 'string',
+              pattern: '^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?\\.woke$',
+            },
+          },
+          networkParameter,
+        ],
+        responses: {
+          '200': {
+            description:
+              'Finalized claim, stable identity, current Solana root authority, and indexer checkpoint',
+          },
+          '400': { description: 'Invalid or confusable .woke name or network' },
+          '404': { description: 'No active claim on an active identity exists' },
+          '503': { description: 'The projected resolution proof is incomplete' },
+        },
+      },
+    },
     '/v1/identities/{identityId}/handles': {
       get: {
         summary: 'List active global handles projected for an identity',

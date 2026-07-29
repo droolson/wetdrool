@@ -36,6 +36,7 @@ import {
   type PostPublicationIntentStage,
 } from '@/lib/post-publication-intent';
 import {
+  LocalnetTextPostPublicationError,
   publishLocalnetTextPost,
   type LocalnetTextPostPublicationResult,
   type LocalnetTextPostPublicationStage,
@@ -1539,7 +1540,25 @@ function safePublicationError(error: unknown): string {
   if (error instanceof BrowserAuthError) {
     return `${error.message} No verified local publication result was returned.`;
   }
-  return 'A local dependency or verification boundary failed. No verified publication result was returned; inspect the local validator, content store, authentication service, and indexer before retrying.';
+  const generic =
+    'A local dependency or verification boundary failed. No verified publication result was returned; inspect the local validator, content store, authentication service, and indexer before retrying.';
+  if (process.env.NODE_ENV === 'development' && error instanceof LocalnetTextPostPublicationError) {
+    return `${generic} Development diagnostic: ${boundedErrorChain(error)}`;
+  }
+  return generic;
+}
+
+function boundedErrorChain(error: Error): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current instanceof Error; depth += 1) {
+    const code = 'code' in current && typeof current.code === 'string' ? `:${current.code}` : '';
+    const stage =
+      'stage' in current && typeof current.stage === 'string' ? `@${current.stage}` : '';
+    parts.push(`${current.name}${code}${stage} — ${current.message}`.slice(0, 320));
+    current = current.cause;
+  }
+  return parts.join(' ← ');
 }
 
 function isPublicationCancellation(error: unknown, signal: AbortSignal): boolean {

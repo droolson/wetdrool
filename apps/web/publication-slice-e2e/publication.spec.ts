@@ -5,6 +5,8 @@ import { basename, dirname, isAbsolute, join } from 'node:path';
 
 import { expect, test, type BrowserContext, type Page, type Route } from '@playwright/test';
 import { ed25519 } from '@noble/curves/ed25519.js';
+import { resolveWokeName } from '@wokesocial/indexer-client';
+import { deriveRandomWokeName } from '@wokesocial/protocol';
 import bs58 from 'bs58';
 
 const AUTH_URL = localHttpOrigin('PUBLICATION_SLICE_AUTH_URL');
@@ -15,7 +17,7 @@ const EVIDENCE_PATH = runScopedEvidencePath('PUBLICATION_SLICE_EVIDENCE_PATH');
 const FIRST_POST = required('PUBLICATION_SLICE_FIRST_POST');
 const SECOND_POST = required('PUBLICATION_SLICE_SECOND_POST');
 const INTENT_KEY = 'wokesocial:post-publication-intent:v1';
-const EVIDENCE_SCHEMA = 'wokesocial.vertical-slice.publication-evidence.v1';
+const EVIDENCE_SCHEMA = 'wokesocial.vertical-slice.publication-evidence.v2';
 const MAX_EVIDENCE_BYTES = 32 * 1_024;
 const MAX_SECURITY_SURFACE_BYTES = 4 * 1_024 * 1_024;
 const MAX_SECURITY_AUDIT_BYTES = 64 * 1_024 * 1_024;
@@ -359,7 +361,35 @@ test('publishes, recovers an ambiguous response, and reuses one passkey identity
     expect(security.identity.identityId).toBe(secondEvidence.identityId);
     expect(security.identity.rootAuthority).toBe(secondEvidence.rootAuthority);
     expect(security.identity.active).toBe(true);
-    expect(BigInt(security.identity.identitySequence)).toBeGreaterThanOrEqual(2n);
+    expect(security.identity.identitySequence).toBe('3');
+    const randomWokeName = deriveRandomWokeName(firstEvidence.rootAuthority);
+    const wokeNameResolution = await resolveWokeName(
+      {
+        baseUrl: INDEXER_URL,
+        deadlineMs: 5_000,
+        fetch,
+      },
+      {
+        name: randomWokeName.name,
+        network: firstEvidence.networkId,
+      },
+    );
+    expect(wokeNameResolution.kind).toBe('ready');
+    if (wokeNameResolution.kind !== 'ready') {
+      throw new Error('The atomic registration did not produce a resolvable .woke name.');
+    }
+    expect(wokeNameResolution.value.name).toBe(randomWokeName.name);
+    expect(wokeNameResolution.value.handle).toBe(randomWokeName.handle);
+    expect(wokeNameResolution.value.destination.address).toBe(firstEvidence.rootAuthority);
+    expect(wokeNameResolution.value.destination.nativeAddress).toBe(false);
+    expect(wokeNameResolution.value.identity.identityId).toBe(firstEvidence.identityId);
+    expect(wokeNameResolution.value.identity.identityAddress).toBe(firstEvidence.identityAddress);
+    expect(wokeNameResolution.value.identity.identitySequence).toBe('3');
+    expect(wokeNameResolution.value.claim.identitySequence).toBe('1');
+    expect(BigInt(wokeNameResolution.value.claim.claimedSlot)).toBe(BigInt(identityStatus.slot));
+    expect(BigInt(wokeNameResolution.value.meta.checkpointSlot ?? -1)).toBeGreaterThanOrEqual(
+      BigInt(secondEvidence.indexedCheckpointSlot),
+    );
     expect(authenticator.assertedCredentialCount).toBeGreaterThanOrEqual(3);
     expect(secretVault.accountSeeds).toHaveLength(1);
     expect(secretVault.prfOutputs.length).toBeGreaterThanOrEqual(5);
@@ -396,6 +426,15 @@ test('publishes, recovers an ambiguous response, and reuses one passkey identity
         creationTransactionSignature: identitySend?.signature,
         creationFinalizedSlot: String(identityStatus.slot),
         identityCreationSendTransactionCount: 1,
+      },
+      wokeName: {
+        name: wokeNameResolution.value.name,
+        handle: wokeNameResolution.value.handle,
+        handleClaimAddress: wokeNameResolution.value.claim.handleClaimAddress,
+        handleHash: wokeNameResolution.value.claim.handleHash,
+        identitySequence: wokeNameResolution.value.claim.identitySequence,
+        claimedSlot: wokeNameResolution.value.claim.claimedSlot,
+        resolutionCheckpointSlot: String(wokeNameResolution.value.meta.checkpointSlot),
       },
       posts: [
         syntheticPostEvidence(firstEvidence, FIRST_POST),

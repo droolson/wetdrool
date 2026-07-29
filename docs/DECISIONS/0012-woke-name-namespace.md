@@ -1,7 +1,8 @@
 # ADR-0012: Versioned `.woke` identity names
 
-- Status: Accepted for deterministic anonymous allocation; custom-name
-  settlement and production registration remain incomplete
+- Status: Accepted and implemented for localnet anonymous registration and
+  resolution; custom-name settlement and public-cluster registration remain
+  incomplete
 - Date: 2026-07-29
 - Owners: Protocol, program, SDK, indexer, application, trust and safety,
   economics, privacy, and security
@@ -85,11 +86,20 @@ aliased authority/state accounts, and non-incrementable identity sequences.
 The program checks the expected identity sequence, current root signature,
 identity/PDA relationships, exact handle bytes, and collision state.
 
-Registration should eventually submit identity creation and its first
-anonymous-name claim atomically in one Solana transaction. The current
-passkey-first onboarding screen only derives and displays a stable candidate;
-it explicitly labels that candidate as unclaimed. No public cluster deployment
-or production registration exists.
+Fresh registration submits identity creation followed by the first
+anonymous-name claim in one Solana transaction. Both instructions share one
+approved message and Solana commits both or neither. The SDK verifies the exact
+two account creations, rent and fee deltas, `IdentityCreated` and
+`HandleClaimed` events, finalized accounts, and sequence `1` binding before the
+application treats registration as complete.
+
+The development-localnet passkey publication path uses this atomic operation.
+An identity created by an older build is migrated with one separately simulated
+current-sequence claim; it never attempts to recreate the identity. Repeated
+registration reconciles both deterministic accounts. The onboarding screen may
+derive the candidate before a transaction, but it must continue to distinguish
+that preview from a finalized claim. No public-cluster deployment or production
+registration exists.
 
 ### Resolution and recovery
 
@@ -103,13 +113,19 @@ canonical name
 ```
 
 The stable identity account preserves rotation and recovery history through
-program events. An indexer may offer a convenient lookup, but clients must
-bind the answer to one exact Solana genesis hash and WokeNet program, require a
-checkpoint covering the finalized update slot, and be able to verify the
-accounts/events independently. Cache keys include namespace version, network,
-program, and canonical handle; rotation/recovery invalidates current-destination
-entries. A stale or optimistic indexer answer is never sufficient for value
-transfer.
+program events. The open indexer exposes
+`GET /v1/woke-names/{name}?network={networkId}` as a noncanonical convenience
+projection. The strict indexer client rejects unknown scope fields, network or
+stable-identity substitution, a mismatched handle commitment, claims newer than
+the identity, and checkpoints that do not cover both the claim and current
+identity update. Resolution deliberately follows the current root after a
+finalized rotation.
+
+Clients still bind the answer to one exact Solana genesis hash and WokeNet
+program and must be able to verify accounts/events independently. Cache keys
+include namespace version, network, program, and canonical handle;
+rotation/recovery invalidates current-destination entries. A stale or optimistic
+indexer answer is never sufficient for value transfer.
 
 The underlying destination shown to a user is the current root authority unless
 a future instruction explicitly defines a different payment destination.
@@ -151,14 +167,21 @@ The implemented slice has:
 - Rust vectors matching TypeScript byte-for-byte;
 - program checks that reject a contender's claim and accept only the identity
   whose immutable origin derives the anonymous name; and
-- a real Chromium passkey registration/sign-in test proving the same candidate
-  reappears without server-side name allocation.
+- exact resolver/indexer-client tests covering invalid, missing, released, and
+  root-rotated names; and
+- a real Chromium/local-validator test proving passkey registration creates
+  identity plus claim in one transaction, two subsequent posts advance the
+  same identity to sequence `3`, strict `.woke` resolution returns the current
+  root, and replay reconstructs all four browser-written events.
 
-The 2026-07-29 local-validator measurement for the general claim instruction is
-481 transaction bytes, 20,696 compute units, and 1,976,640 lamports of
-rent-exempt balance at that validator's rent settings. These measurements are
-development-localnet evidence, not a quote, public-cluster deployment,
-security audit, scale result, or production guarantee.
+The 2026-07-29 Agave 2.3 local-validator atomic registration simulation consumed
+29,865 compute units and created a 407-byte identity account plus a 156-byte
+handle account with 3,723,600 and 1,976,640 lamports of rent-exempt balance at
+that validator's settings. The complete vertical slice rebuilt 14 durable
+events: 10 baseline events, `IdentityCreated`, `HandleClaimed`, and two browser
+posts. These measurements are development-localnet evidence, not a quote,
+public-cluster deployment, security audit, scale result, or production
+guarantee.
 
 ## Consequences
 
@@ -179,11 +202,10 @@ security audit, scale result, or production guarantee.
 - Deterministic allocation leaks that a particular public origin key maps to a
   particular anonymous name; it is pseudonymous, not unlinkable.
 - A derived candidate is not owned until a claim is finalized.
-- The current onboarding path does not yet atomically create identity and
-  claim the name.
-- Existing handle projection supplies the foundation, but versioned
-  name-resolution proofs, current-destination UX, and cache invalidation need
-  full product integration.
+- Atomic registration and strict resolver proofs are development-localnet
+  paths; public-cluster execution, payment/signature destination confirmation,
+  cache operation, and cross-surface name rendering still need product
+  integration.
 - Custom names, purchases, expiry, transfer, appeals, and economic policy
   remain unimplemented.
 - No devnet or mainnet-beta WokeNet deployment exists.

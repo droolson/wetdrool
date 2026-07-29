@@ -8,6 +8,7 @@ export interface LocalnetFaucetOptions {
   readonly endpoint: string;
   readonly expectedGenesisHash: string;
   readonly fetch?: typeof globalThis.fetch;
+  readonly maximumAirdropAttempts?: number;
   readonly maximumPollAttempts?: number;
   readonly pollDelayMilliseconds?: number;
   readonly sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
@@ -66,8 +67,12 @@ export async function ensureLocalnetSignerBalance(
     );
   }
   const maximumPollAttempts = options.maximumPollAttempts ?? 120;
+  const maximumAirdropAttempts = options.maximumAirdropAttempts ?? 5;
   const pollDelayMilliseconds = options.pollDelayMilliseconds ?? 250;
   if (
+    !Number.isSafeInteger(maximumAirdropAttempts) ||
+    maximumAirdropAttempts < 1 ||
+    maximumAirdropAttempts > 10 ||
     !Number.isSafeInteger(maximumPollAttempts) ||
     maximumPollAttempts < 1 ||
     maximumPollAttempts > 240 ||
@@ -97,13 +102,50 @@ export async function ensureLocalnetSignerBalance(
   }
 
   const fundedLamports = targetBalanceLamports - before;
-  const signature = await rpc<string>(
-    request,
-    endpoint,
-    'requestAirdrop',
-    [signerAddress, fundedLamports, { commitment: 'finalized' }],
-    abortSignal,
-  );
+  let signature: string | undefined;
+  let lastAirdropError: unknown;
+  for (let attempt = 0; attempt < maximumAirdropAttempts; attempt += 1) {
+    try {
+      const current =
+        attempt === 0 ? before : await readBalance(request, endpoint, signerAddress, abortSignal);
+      if (current >= targetBalanceLamports) {
+        await assertGenesis(request, endpoint, expectedGenesisHash, abortSignal);
+        return {
+          airdropSignature: null,
+          balanceLamports: current,
+          fundedLamports: current - before,
+          genesisHash: expectedGenesisHash,
+        };
+      }
+      signature = await rpc<string>(
+        request,
+        endpoint,
+        'requestAirdrop',
+        [signerAddress, targetBalanceLamports - current, { commitment: 'finalized' }],
+        abortSignal,
+      );
+      break;
+    } catch (error) {
+      if (!(error instanceof LocalnetFaucetError) || error.code !== 'rpc-failure') {
+        throw error;
+      }
+      lastAirdropError = error;
+      if (attempt + 1 >= maximumAirdropAttempts) break;
+      // A local faucet may answer before its fee calculator stabilizes, or a
+      // response may be lost after submission. Recheck genesis and balance
+      // before any bounded retry so an ambiguous success is not blindly
+      // duplicated.
+      await sleep(pollDelayMilliseconds, abortSignal);
+      await assertGenesis(request, endpoint, expectedGenesisHash, abortSignal);
+    }
+  }
+  if (signature === undefined) {
+    throw new LocalnetFaucetError(
+      'The local-validator faucet did not accept a bounded funding request.',
+      'rpc-failure',
+      lastAirdropError === undefined ? undefined : { cause: lastAirdropError },
+    );
+  }
   const parsedSignature = transactionSignatureSchema.safeParse(signature);
   if (!parsedSignature.success) {
     throw new LocalnetFaucetError(
@@ -311,12 +353,17 @@ async function rpc<T>(
   if (
     envelope.jsonrpc !== '2.0' ||
     envelope.id !== requestId ||
-    envelope.error !== undefined ||
-    !('result' in envelope)
+    (!('result' in envelope) && envelope.error === undefined)
   ) {
     throw new LocalnetFaucetError(
       'The local validator returned a mismatched faucet RPC envelope.',
       'invalid-response',
+    );
+  }
+  if (envelope.error !== undefined) {
+    throw new LocalnetFaucetError(
+      'The local-validator faucet RPC is temporarily unavailable.',
+      'rpc-failure',
     );
   }
   return envelope.result as T;

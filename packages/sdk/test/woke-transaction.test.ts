@@ -2,6 +2,7 @@ import { ed25519 } from '@noble/curves/ed25519.js';
 import {
   getBase64Decoder,
   getBase64Encoder,
+  getCompiledTransactionMessageDecoder,
   getSignatureFromTransaction,
   getTransactionDecoder,
 } from '@solana/kit';
@@ -14,6 +15,7 @@ import {
   buildSendWokeTipInstruction,
   buildSettleWokeSubscriptionInstruction,
   executeWokeInstruction,
+  executeWokeInstructions,
   executeWokePaymentTransaction,
   type BuiltWokeSettlementInstruction,
   type BuiltWokeSubscriptionSettlementInstruction,
@@ -383,6 +385,63 @@ function executionLimits() {
 }
 
 describe('WokeNet transaction execution', () => {
+  it('compiles an ordered instruction set into one atomic signed transaction', async () => {
+    const built = await builtTip();
+    installMockRpc(built, {
+      mutateInnerInstructions: (groups) => [...groups, { index: 1, instructions: [] }],
+      statusSequence: [
+        {
+          slot: 121,
+          confirmations: null,
+          err: null,
+          confirmationStatus: 'finalized',
+          status: { Ok: null },
+        },
+      ],
+    });
+
+    const result = await executeWokeInstructions({
+      context: built.context,
+      instructions: [built.instruction, built.instruction],
+      feePayer: signerAddress,
+      signer: signer(),
+      verifySimulation: () => undefined,
+      limits: executionLimits(),
+    });
+
+    const transaction = getTransactionDecoder().decode(
+      getBase64Encoder().encode(result.wireTransactionBase64),
+    );
+    const message = getCompiledTransactionMessageDecoder().decode(transaction.messageBytes);
+    expect(message.version).toBe(0);
+    if (message.version !== 0) throw new Error('Expected a version-0 transaction message.');
+    expect(message.instructions).toHaveLength(2);
+    expect(message.instructions[0]?.data).toEqual(message.instructions[1]?.data);
+  });
+
+  it('rejects empty and over-bounded atomic instruction sets before RPC access', async () => {
+    const built = await builtTip();
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const execute = (instructions: readonly (typeof built.instruction)[]) =>
+      executeWokeInstructions({
+        context: built.context,
+        instructions,
+        feePayer: signerAddress,
+        signer: signer(),
+        verifySimulation: () => undefined,
+        limits: executionLimits(),
+      });
+
+    await expect(execute([])).rejects.toMatchObject({ code: 'invalid-instruction' });
+    await expect(
+      execute(Array.from({ length: 17 }, () => built.instruction)),
+    ).rejects.toMatchObject({
+      code: 'invalid-instruction',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('uses Agave-standard slot-bound fee/account evidence for the exact bytes before broadcast', async () => {
     const built = await builtTip();
     const rpc = installMockRpc(built);

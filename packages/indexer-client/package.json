@@ -25,6 +25,10 @@
     "./transport": {
       "types": "./dist/src/transport.d.ts",
       "import": "./dist/src/transport.js"
+    },
+    "./woke-name": {
+      "types": "./dist/src/woke-name.d.ts",
+      "import": "./dist/src/woke-name.js"
     }
   },
   "files": [

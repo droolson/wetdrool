@@ -568,14 +568,16 @@ threat-model mitigations.
     additional passkey unwraps and rewraps the same root, and revocation requires
     fresh step-up, deletes that wrapper, and revokes service sessions.
     The development-localnet composer now requires a fresh passkey assertion,
-    creates or reconciles one deterministic WokeNet identity, signs canonical
-    post bytes, verifies local CAS storage, simulates and finalizes the exact
-    Solana transaction, waits for the indexer, and exposes the complete proof.
-    Its retained real-Chromium acceptance publishes two posts, restores one
-    ambiguous finalized intent without rebroadcast, replays 13 events, and
-    reports zero secret matches. Thirty-four auth unit, four isolated
-    PostgreSQL, one auth-service browser integration, 252 web tests across 19
-    files, and the vertical publication/replay browser checks pass.
+    atomically creates one deterministic WokeNet identity plus anonymous name
+    claim (or migrates a legacy identity-only account), signs canonical post
+    bytes, verifies local CAS storage, simulates and finalizes exact Solana
+    transactions, waits for the indexer, strictly resolves the name, and
+    exposes the complete proof. Its real-Chromium acceptance publishes two
+    posts, restores one ambiguous finalized intent without rebroadcast,
+    replays 14 events, and reports zero secret matches. Thirty-four auth unit,
+    four isolated PostgreSQL, one auth-service browser integration, 253 web
+    tests across 19 files, and the vertical publication/replay browser checks
+    pass.
   - Remaining scope: connect service-passkey revocation to the separate WokeNet
     delegation/device-authority lifecycle, complete recovery UX and independent
     security review, provide a reviewed fallback for authenticators without PRF
@@ -747,9 +749,19 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
   deterministic pseudonymous derivation from immutable identity origin,
   conservative ASCII normalization, rotation/recovery stability, and
   program-enforced `anon_` anti-front-running.
-- [ ] Atomically claim the derived anonymous name during durable passkey
-  registration, implement independently verifiable resolution to the current
-  Solana authority, and connect finalized names across product surfaces.
+- [x] Atomically claim the derived anonymous name during fresh durable passkey
+  identity registration, migrate legacy identity-only accounts at their
+  current sequence, and implement independently verifiable checkpoint-covered
+  resolution to the current Solana authority.
+  - Evidence: the bounded multi-instruction executor accepts Agave's exact
+    two-inner-group response; simulation verifies both rent-funded account
+    creations and both events; finalized reconciliation binds sequence-1 claim
+    to the stable identity; the strict resolver follows finalized root
+    rotation; and `pnpm test:vertical-slice` reconstructs 14 events after one
+    atomic registration plus two browser posts.
+- [ ] Connect finalized `.woke` names across profile, feed, search,
+  payment/signature confirmation, cache invalidation, and public-cluster
+  product surfaces.
 - [ ] Specify and implement custom-name eligibility, reservation,
   commit/reveal, expiry/grace/cooldown, recovery, transfer, reserved-name,
   impersonation/trademark, appeal, refund, and anti-squatting policy.

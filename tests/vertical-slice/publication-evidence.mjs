@@ -1,6 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 
-export const PUBLICATION_EVIDENCE_SCHEMA = 'wokesocial.vertical-slice.publication-evidence.v1';
+export const PUBLICATION_EVIDENCE_SCHEMA = 'wokesocial.vertical-slice.publication-evidence.v2';
 export const BASELINE_DURABLE_EVENT_COUNT = 10;
 export const MAX_PUBLICATION_EVIDENCE_BYTES = 32 * 1_024;
 
@@ -31,6 +31,7 @@ export function assertPublicationEvidence(value, expected = {}) {
     'programId',
     'schema',
     'security',
+    'wokeName',
   ]);
   if (
     value.schema !== PUBLICATION_EVIDENCE_SCHEMA ||
@@ -62,6 +63,29 @@ export function assertPublicationEvidence(value, expected = {}) {
     value.identity.identityCreationSendTransactionCount !== 1
   ) {
     throw new Error('Publication evidence identity proof is invalid.');
+  }
+
+  exactRecord(value.wokeName, [
+    'claimedSlot',
+    'handle',
+    'handleClaimAddress',
+    'handleHash',
+    'identitySequence',
+    'name',
+    'resolutionCheckpointSlot',
+  ]);
+  if (
+    !/^anon_[0-9a-hjkmnp-tv-z]{16}$/u.test(value.wokeName.handle) ||
+    value.wokeName.name !== `${value.wokeName.handle}.woke` ||
+    !publicKey(value.wokeName.handleClaimAddress) ||
+    !/^u[A-Za-z0-9_-]{43}$/u.test(value.wokeName.handleHash) ||
+    value.wokeName.identitySequence !== '1' ||
+    !decimal(value.wokeName.claimedSlot) ||
+    value.wokeName.claimedSlot !== value.identity.creationFinalizedSlot ||
+    !decimal(value.wokeName.resolutionCheckpointSlot) ||
+    BigInt(value.wokeName.resolutionCheckpointSlot) < BigInt(value.wokeName.claimedSlot)
+  ) {
+    throw new Error('Publication evidence .woke name proof is invalid.');
   }
 
   if (!Array.isArray(value.posts) || value.posts.length !== 2) {
@@ -191,9 +215,9 @@ export function publicationAdditiveEventCount(evidence) {
     ...evidence.posts.map((post) => post.transactionSignature),
   ]);
   if (transactionSignatures.size !== evidence.posts.length + 1) {
-    throw new Error('Each browser-created durable event must have one distinct transaction.');
+    throw new Error('Atomic registration and each browser post must use distinct transactions.');
   }
-  return transactionSignatures.size;
+  return transactionSignatures.size + 1;
 }
 
 function exactRecord(value, keys) {
