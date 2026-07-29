@@ -48,7 +48,7 @@ cluster. Signed content, media, private messages, search, recommendations, and
 other high-volume concerns remain in independently operable offchain layers.
 
 The configured source remote is the private GitHub repository
-`AlexBTC420/wokesocial`; the local workspace remains named `wokenet`. Source
+`wokesocial/wokesocial`; the local workspace remains named `wokenet`. Source
 hosting is not a public deployment, audit, or release record.
 
 ## Explore the project
@@ -75,7 +75,7 @@ published product governance.
 Those capabilities are planned, not shipped. Their dependency order, privacy
 and economic boundaries, verification requirements, and GitHub workstreams are
 defined in [Platform Expansion](docs/PLATFORM_EXPANSION.md) and
-[epic #12](https://github.com/AlexBTC420/wokesocial/issues/12).
+[epic #12](https://github.com/wokesocial/wokesocial/issues/12).
 
 The planned Woke AI product family—Athena for highest reasoning, Kairos for
 balanced default use, and Hermes for fast agentic work—is specified in

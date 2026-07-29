@@ -5,7 +5,7 @@
 - **Owner-provided company:** Woke AI, Inc.
 - **Planned public origin:** `pinkman.ai`
 - **Last updated:** 2026-07-29
-- **Tracking:** [GitHub issue #18](https://github.com/AlexBTC420/wokesocial/issues/18)
+- **Tracking:** [GitHub issue #18](https://github.com/wokesocial/wokesocial/issues/18)
 
 ## 1. Purpose
 

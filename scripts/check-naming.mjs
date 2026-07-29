@@ -100,7 +100,7 @@ const canonicalLocalDirectory = repositoryDirectory === 'wokenet';
 const canonicalGithubCheckout =
   repositoryDirectory === 'wokesocial' &&
   process.env['GITHUB_ACTIONS'] === 'true' &&
-  process.env['GITHUB_REPOSITORY'] === 'AlexBTC420/wokesocial' &&
+  process.env['GITHUB_REPOSITORY'] === 'wokesocial/wokesocial' &&
   resolve(process.env['GITHUB_WORKSPACE'] ?? '') === repositoryRoot;
 if (!canonicalLocalDirectory && !canonicalGithubCheckout) {
   violations.push({

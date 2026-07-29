@@ -7,10 +7,10 @@
   "homepage": "https://woke.social",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AlexBTC420/wokesocial.git"
+    "url": "git+https://github.com/wokesocial/wokesocial.git"
   },
   "bugs": {
-    "url": "https://github.com/AlexBTC420/wokesocial/issues"
+    "url": "https://github.com/wokesocial/wokesocial/issues"
   },
   "packageManager": "pnpm@11.2.2",
   "engines": {

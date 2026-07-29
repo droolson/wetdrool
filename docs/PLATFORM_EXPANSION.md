@@ -2,7 +2,7 @@
 
 - **Status:** Approved product direction; implementation planned
 - **Last updated:** 2026-07-29
-- **Tracking epic:** [GitHub issue #12](https://github.com/AlexBTC420/wokesocial/issues/12)
+- **Tracking epic:** [GitHub issue #12](https://github.com/wokesocial/wokesocial/issues/12)
 
 ## 1. Purpose
 
@@ -117,7 +117,7 @@ Required measurements include:
 The product must retain a standards-based fallback and an independently
 implementable decoder or delivery path.
 
-See [GitHub issue #13](https://github.com/AlexBTC420/wokesocial/issues/13).
+See [GitHub issue #13](https://github.com/wokesocial/wokesocial/issues/13).
 
 ## 4. Pseudonymous `.woke` names
 
@@ -185,7 +185,7 @@ The protocol and product rules must define:
 Name purchases do not buy reputation, verification, moderation preference, or
 governance power.
 
-See [GitHub issue #14](https://github.com/AlexBTC420/wokesocial/issues/14).
+See [GitHub issue #14](https://github.com/wokesocial/wokesocial/issues/14).
 
 ## 5. Fair points and reputation
 
@@ -246,7 +246,7 @@ noncustodial settlement, security review, and explicit release approval.
 fee. Solana network fees and rent still exist. The product must either disclose
 them before approval or sponsor them under published limits.
 
-See [GitHub issue #15](https://github.com/AlexBTC420/wokesocial/issues/15).
+See [GitHub issue #15](https://github.com/wokesocial/wokesocial/issues/15).
 
 ## 6. Avatar studio and creator marketplace
 
@@ -296,7 +296,7 @@ not mean a one-time USD 9.99 purchase. Final pricing, renewal, cancellation,
 refund, tax, regional availability, and continuity terms require qualified
 review before sale.
 
-See [GitHub issue #16](https://github.com/AlexBTC420/wokesocial/issues/16).
+See [GitHub issue #16](https://github.com/wokesocial/wokesocial/issues/16).
 
 ## 7. Minimal-disclosure verification
 
@@ -339,7 +339,7 @@ address, document number, or reusable biometric embedding.
 Computer vision may assist an age-threshold decision, but it cannot be the sole
 irreversible decision-maker.
 
-See [GitHub issue #17](https://github.com/AlexBTC420/wokesocial/issues/17).
+See [GitHub issue #17](https://github.com/wokesocial/wokesocial/issues/17).
 
 ## 8. Open-model AI platform
 
@@ -418,7 +418,7 @@ evidence.
 AI credits are metered separately from reputation and points. The interface
 shows an estimated credit cost before a generation begins.
 
-See [GitHub issue #18](https://github.com/AlexBTC420/wokesocial/issues/18).
+See [GitHub issue #18](https://github.com/wokesocial/wokesocial/issues/18).
 
 ## 9. Social-sentiment market intelligence
 
@@ -466,7 +466,7 @@ user-protection gates pass. If later enabled:
 The system never promises profit or presents model output as guaranteed
 financial advice.
 
-See [GitHub issue #19](https://github.com/AlexBTC420/wokesocial/issues/19).
+See [GitHub issue #19](https://github.com/wokesocial/wokesocial/issues/19).
 
 ## 10. Governance
 
@@ -492,7 +492,7 @@ Material changes require:
 Emergency authority is narrow, logged, time-limited, and subject to mandatory
 retrospective review.
 
-See [GitHub issue #20](https://github.com/AlexBTC420/wokesocial/issues/20).
+See [GitHub issue #20](https://github.com/wokesocial/wokesocial/issues/20).
 
 ## 11. Delivery order
 

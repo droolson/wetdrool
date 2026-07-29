@@ -2,7 +2,7 @@
 
 - **Audience:** Claude Fable or any engineer continuing the repository without
   access to prior task transcripts
-- **Repository:** `AlexBTC420/wokesocial`
+- **Repository:** `wokesocial/wokesocial`
 - **Default branch:** `main`
 - **Status:** Active pre-release development
 - **Last updated:** 2026-07-29
@@ -25,13 +25,13 @@ Before changing anything:
    [Platform Expansion](PLATFORM_EXPANSION.md). AI work also requires
    [Woke AI Platform](AI_PLATFORM.md) and
    [Organization and Product Ownership](ORGANIZATION.md).
-4. Read closed [GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10)
+4. Read closed [GitHub issue #10](https://github.com/wokesocial/wokesocial/issues/10)
    for the passkey-publication evidence, then use
-   [issue #12](https://github.com/AlexBTC420/wokesocial/issues/12) for the
+   [issue #12](https://github.com/wokesocial/wokesocial/issues/12) for the
    expanded product program. The active social-product slices are
-   [issue #14](https://github.com/AlexBTC420/wokesocial/issues/14) for
+   [issue #14](https://github.com/wokesocial/wokesocial/issues/14) for
    pseudonymous `.woke` names and
-   [issue #15](https://github.com/AlexBTC420/wokesocial/issues/15) for the
+   [issue #15](https://github.com/wokesocial/wokesocial/issues/15) for the
    points/reputation foundation.
 5. Confirm the repository-local Git identity:
 
@@ -205,7 +205,7 @@ limitations.
 
 ## 6. Completed milestone: passkey-first localnet publication
 
-[GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10) completed
+[GitHub issue #10](https://github.com/wokesocial/wokesocial/issues/10) completed
 the first real browser-to-WokeNet publication slice:
 
 ```mermaid
@@ -350,9 +350,13 @@ coverage through the last durable event slot; it does not invent later empty
 observation slots.
 
 The run also captured PRF-output and seed canaries only in its test observation
-channel and asserted zero matches across HTTP requests/responses, browser
-diagnostics, service logs, and PostgreSQL container logs. Passing run artifacts
-are removed by the runner; failed runs are retained under
+channel and asserted zero matches across all outbound HTTP request material,
+all response headers, exact indexer/session/storage/RPC response bodies, browser
+diagnostics, service logs, and PostgreSQL container logs. Response bodies that
+Playwright cannot deterministically retain across navigation—such as generic
+application assets—are not claimed; any attempted browser exfiltration remains
+covered by the outbound request audit. Passing run artifacts are removed by the
+runner; failed runs are retained under
 `.local/vertical-slice/` for diagnosis and remain ignored by Git. This is
 development-localnet evidence only. It is not a devnet/mainnet deployment,
 production custody, recovery, or independent external audit.
@@ -364,15 +368,15 @@ The approved long-horizon design is specified in
 
 | Issue | Workstream |
 | --- | --- |
-| [#12](https://github.com/AlexBTC420/wokesocial/issues/12) | Umbrella product expansion |
-| [#13](https://github.com/AlexBTC420/wokesocial/issues/13) | Long- and short-form video plus benchmarked delivery |
-| [#14](https://github.com/AlexBTC420/wokesocial/issues/14) | Random and custom `.woke` names |
-| [#15](https://github.com/AlexBTC420/wokesocial/issues/15) | Reputation, points, AI credits, and gated redemption |
-| [#16](https://github.com/AlexBTC420/wokesocial/issues/16) | Avatar studio, creator items, marketplace, and subscription |
-| [#17](https://github.com/AlexBTC420/wokesocial/issues/17) | Minimal-disclosure verification and age assurance |
-| [#18](https://github.com/AlexBTC420/wokesocial/issues/18) | Open-model assistant and content-creation suite |
-| [#19](https://github.com/AlexBTC420/wokesocial/issues/19) | Sourced market intelligence and bounded automation |
-| [#20](https://github.com/AlexBTC420/wokesocial/issues/20) | Open protocol and product-rule governance |
+| [#12](https://github.com/wokesocial/wokesocial/issues/12) | Umbrella product expansion |
+| [#13](https://github.com/wokesocial/wokesocial/issues/13) | Long- and short-form video plus benchmarked delivery |
+| [#14](https://github.com/wokesocial/wokesocial/issues/14) | Random and custom `.woke` names |
+| [#15](https://github.com/wokesocial/wokesocial/issues/15) | Reputation, points, AI credits, and gated redemption |
+| [#16](https://github.com/wokesocial/wokesocial/issues/16) | Avatar studio, creator items, marketplace, and subscription |
+| [#17](https://github.com/wokesocial/wokesocial/issues/17) | Minimal-disclosure verification and age assurance |
+| [#18](https://github.com/wokesocial/wokesocial/issues/18) | Open-model assistant and content-creation suite |
+| [#19](https://github.com/wokesocial/wokesocial/issues/19) | Sourced market intelligence and bounded automation |
+| [#20](https://github.com/wokesocial/wokesocial/issues/20) | Open protocol and product-rule governance |
 
 Do not implement these in issue-number order. Their dependency order is:
 
@@ -526,7 +530,7 @@ is missing. Update every affected source and keep status language conservative.
 The remote is a private repository:
 
 ```text
-https://github.com/AlexBTC420/wokesocial
+https://github.com/wokesocial/wokesocial
 ```
 
 Use `gh` for issue and repository operations. Keep implementation progress in
