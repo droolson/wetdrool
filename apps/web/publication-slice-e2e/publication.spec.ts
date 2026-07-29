@@ -853,16 +853,15 @@ function observeSecuritySurfaces(page: Page): SecuritySurfaceAudit {
     const url = new URL(response.url());
     if (!/^https?:$/u.test(url.protocol)) return;
     responseCount += 1;
-    queue('response', async () => {
+    queue(`response-${String(response.status())}`, async () => {
       retain(
         'http-response',
-        JSON.stringify(Object.entries(await response.allHeaders()).sort()),
+        JSON.stringify(Object.entries(response.headers()).sort()),
         'response-headers',
       );
       if (
         !isDeterministicallyAuditedResponse(url) &&
-        response.request().method() !== 'HEAD' &&
-        ![101, 204, 205, 304].includes(response.status())
+        responseHasInspectableBody(response.request().method(), response.status())
       ) {
         retainResponseBody(await response.body());
       }
@@ -920,6 +919,16 @@ function observeSecuritySurfaces(page: Page): SecuritySurfaceAudit {
       responseBodyDigests.clear();
     },
   };
+}
+
+function responseHasInspectableBody(method: string, status: number): boolean {
+  return (
+    method !== 'HEAD' &&
+    status >= 200 &&
+    status !== 204 &&
+    status !== 205 &&
+    (status < 300 || status >= 400)
+  );
 }
 
 async function readRunServiceLogSurfaces(evidencePath: string): Promise<{
