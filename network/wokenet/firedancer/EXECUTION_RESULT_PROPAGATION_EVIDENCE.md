@@ -92,14 +92,15 @@ non-instruction transaction error.
 
 This is not the full completion-order cross-product. The focused tests do not
 cover signature-success-before-execution, a live `Custom(0)` result, or a fatal
-identity-mismatch death test. They also do not cover a signature-status cache,
-snapshot restore, dead-fork eviction, commitment counts, RPC JSON, a full
-validator, or a connected cluster.
+identity-mismatch death test. They also do not cover runtime cache integration,
+snapshot restore, dead-fork event wiring, commitment counts, RPC JSON, a full
+validator, or a connected cluster. Later patches add separately tested
+standalone cache and parser substrates without connecting those paths.
 
 ## Complete repository binary/topology gate
 
 On 2026-07-29, the repository's complete `check-binaries` gate passed from a
-fresh disposable checkout at the pinned upstream commit with all six exact
+fresh disposable checkout at the pinned upstream commit with all eight exact
 WokeNet patches applied. The gate ran as the unprivileged `node` user under
 Linux/x86-64 Docker emulation and a synthetic 128-CPU/one-NUMA-node sysfs
 fixture while retaining `layout.affinity=auto`.
@@ -109,9 +110,10 @@ The gate:
 - rebuilt OpenSSL 3.6.2 from the source commit pinned by Firedancer;
 - built both branded ELF64 x86-64 binaries, `firedancer` and
   `firedancer-dev`, at the exact pinned upstream commit;
-- ran `test_genesis_create`, `test_accdb`, `test_rpc_tile`,
-  `test_config_parse`, `test_tower_tile`, `test_sched`, `test_execrp_tile`,
-  and `test_replay_tile`, all with exit status zero;
+- ran `test_genesis_create`, `test_accdb`, `test_sigstatuscache`,
+  `test_slot_delta_parser`, `test_rpc_tile`, `test_config_parse`,
+  `test_tower_tile`, `test_sched`, `test_execrp_tile`, and `test_replay_tile`,
+  all with exit status zero;
 - verified the exact ELF symbol types for tile descriptors and binary-specific
   entry points;
 - verified the emitted memory-layout JSON and native replay, execrp, and RPC
@@ -122,8 +124,8 @@ The gate:
 This pass resolves the repository binary/topology gate only. The synthetic
 fixture is not native validator hardware, and the manifest is not signed
 release provenance. No full validator process, connected or multi-validator
-cluster, benchmark, performance claim, cache, commitment pipeline, or RPC
-endpoint was exercised.
+cluster, benchmark, performance claim, connected cache/restoration path,
+commitment pipeline, or RPC endpoint was exercised.
 
 ## Layout and resident-memory impact
 

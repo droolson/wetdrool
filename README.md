@@ -30,7 +30,7 @@ requirement may contain a tested subset without being complete.
 | --- | --- |
 | Architecture and specifications | Initial baseline implemented; v1 conformance work remains |
 | Monorepo and local infrastructure | Implemented and verified locally with PostgreSQL, Redis, Kubo, and hardened service-container profiles |
-| WokeNet | Sovereign network identity, native WOKE policy, a pinned six-patch native-Firedancer downstream, deterministic genesis patch, a bounded native `getProgramAccounts` subset, and execution-result propagation through replay have direct C tests; five required RPC methods and native-cluster evidence remain missing, so production activation is blocked |
+| WokeNet | Sovereign network identity, native WOKE policy, a pinned eight-patch native-Firedancer downstream, deterministic genesis, a bounded native `getProgramAccounts` subset, replay-result propagation, a standalone fork-aware live-cache core, and complete snapshot-result parsing have direct C tests; the cache/parser are not connected and five required RPC methods plus native-cluster evidence remain missing, so production activation is blocked |
 | Social protocol | The Solana-wire compatibility oracle verifies 41 instructions, 19 account layouts, and 33 events covering identity/profile references, root-authorized one-way identity deactivation, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, native WOKE tips, subscriptions, receipts, and entitlements; this is not native WokeNet evidence |
 | Signed content and storage | A strict 29-family portable object registry, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
 | Open indexer | Finalized Solana-format RPC synchronization tested against the Agave compatibility oracle, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical onchain profile-v2 commitments plus an immutable legacy cutoff, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, sixteen PostgreSQL migrations, failover, DLQ, provenance, and REST APIs are implemented; native Firedancer RPC, fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
@@ -53,16 +53,18 @@ not evidence of a native WokeNet deployment.
 - `pnpm wokenet:check` structurally verifies the pinned Firedancer source
   and patch checksums, native-only build declarations, fail-closed RPC
   capability record, the bounded `getProgramAccounts` filters, configurations,
-  and resource ceilings, the five still-missing required RPC methods, WOKE unit
-  policy, TOML safety settings, and local genesis allocations.
+  and resource ceilings, the dormant live signature-status cache core, the
+  snapshot-result parser boundary, the five still-missing required RPC methods,
+  WOKE unit policy, TOML safety settings, and local genesis allocations.
   `pnpm wokenet:materialize -- /absolute/path` produces the exact downstream
-  source tree. The supported-Linux binary gate builds and runs eight focused
-  native executables: `test_genesis_create`, `test_accdb`, `test_rpc_tile`,
+  source tree. The supported-Linux binary gate builds and runs ten focused
+  native executables: `test_genesis_create`, `test_accdb`,
+  `test_sigstatuscache`, `test_slot_delta_parser`, `test_rpc_tile`,
   `test_config_parse`, `test_tower_tile`, `test_sched`, `test_execrp_tile`, and
-  `test_replay_tile`. The last three prove only execution-result propagation
-  through replay; cache, snapshot, dead-fork, commitment, RPC JSON, and
-  connected-cluster work remain open. The complete gate passed from a fresh
-  exact six-patch checkout under Linux/x86-64 Docker emulation as an
+  `test_replay_tile`. These prove the bounded standalone substrates, not cache
+  topology/replay wiring, snapshot-to-cache restoration, commitment counts, RPC
+  JSON, or a connected cluster. The complete gate passed from a fresh exact
+  eight-patch checkout under Linux/x86-64 Docker emulation as an
   unprivileged user with a synthetic 128-CPU/one-NUMA-node sysfs fixture,
   retaining `layout.affinity=auto`, rebuilding pinned OpenSSL and both branded
   ELF binaries, and verifying native replay/execrp/RPC topology. This is not

@@ -44,6 +44,14 @@
       {
         "path": "patches/0006-wokenet-preserve-replay-execution-result-metadata.patch",
         "sha256": "674166cbe90ff0b6982cbdf8de19856cb776efea82a26bea76ad2520116de0d0"
+      },
+      {
+        "path": "patches/0007-wokenet-live-signature-status-cache-core.patch",
+        "sha256": "b329e8ebd33b45934487a03f4fb0bcf361bcc1f04ac53b5d41381b30a347f32c"
+      },
+      {
+        "path": "patches/0008-wokenet-preserve-snapshot-transaction-result-metadata.patch",
+        "sha256": "19c56956dfedd0471f131a9c0e4ea07ff462bea0c70fbb77eb217612b2694641"
       }
     ]
   }

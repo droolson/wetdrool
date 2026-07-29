@@ -1,6 +1,7 @@
 # Native `getSignatureStatuses` design for WokeNet
 
-Status: **blocked at cache, commitment, and RPC; live propagation substrate
+Status: **blocked at integration, snapshot restoration, commitment, and RPC;
+live propagation, a standalone live-cache core, and parser substrate are
 implemented**
 
 Audited upstream:
@@ -11,13 +12,18 @@ Audited upstream:
 - forbidden substitutes: Agave, Frankendancer, `agave-validator`, `fdctl`,
   `fddev`, and `solana-test-validator`
 
-This document is an implementation and test plan with one implemented
-substrate, not passing RPC conformance evidence. Downstream patch
-`0006-wokenet-preserve-replay-execution-result-metadata.patch`, SHA-256
-`674166cbe90ff0b6982cbdf8de19856cb776efea82a26bea76ad2520116de0d0`,
-preserves the live execution result through replay. It does not implement a
-signature-status cache, snapshot restoration, dead-fork removal, native
-block-commitment counts, or RPC JSON.
+This document is an implementation and test plan with three implemented but
+unconnected substrates, not passing RPC conformance evidence:
+
+- patch 0006 preserves the live execution result through replay;
+- patch 0007 adds a caller-sized, fork-aware live signature-status cache core;
+  and
+- patch 0008 exposes complete snapshot transaction-result metadata from the
+  streaming slot-delta parser.
+
+The cache has no topology allocation or caller. Snapin deliberately discards
+the parser's typed result and borrowed Borsh chunks. No patch implements native
+block-commitment counts or RPC JSON.
 
 `NATIVE_RPC_CAPABILITIES.json` must continue to list
 `getSignatureStatuses` as missing, and production traffic must remain disabled,
@@ -79,6 +85,48 @@ These are internal tile ABI/layout changes, not a wire or RPC ABI. Integrating
 the patch requires a full validator rebuild and restart; mixed tile versions
 must not be operated.
 
+## Implemented standalone live-cache core
+
+Patch 0007 adds `fd_sigstatuscache` to `libfd_flamenco.a`. The caller-sized
+shared object implements:
+
+- exact `(bank_idx, bank_seq)` ancestry and sibling-fork isolation;
+- coexisting reused bank indices;
+- the lossless patch-0006 live result tuple;
+- 20-byte compact keys with offsets 0 through 11;
+- ambiguous results instead of false positives on compact-key collisions;
+- dead-bank descendant removal and non-resurrectable tombstones;
+- deterministic canonical-root pruning with 300-root retention;
+- sticky fail-closed incompleteness on capacity or invariant failure; and
+- one writer with bounded, read-only atomic readers.
+
+The object is library-only. No topology allocates it, no replay/root/dead-bank
+event calls it, and no RPC tile queries it. Consequently, neither validator
+binary links its symbols yet. This is a deliberate integration boundary, not
+evidence of a working cache service.
+
+Patch 0007 does not accept snapshot roots. Snapshot slot deltas lack the exact
+live bank identity expected by its V1 ABI and can carry richer Borsh payloads.
+Rooted snapshot visibility requires a separately versioned ABI.
+
+## Implemented snapshot-result parser substrate
+
+Patch 0008 keeps the 64-byte duplicate-detection entry unchanged and returns a
+separate parser-owned typed result with each `ENTRY`. It preserves every
+supported transaction and instruction error discriminant, instruction index,
+all three transaction-error `u8` payloads, `Custom(u32)`, and streamed
+`BorshIoError(String)` metadata.
+
+Borsh string bytes are borrowed from the input with offset and total length and
+strict incremental UTF-8 validation. There is no arbitrary parser-local string
+cap. A retaining consumer must provide configured bounded storage and fail
+closed on overflow.
+
+Snapin processes the new parser events but still stages only the compact
+identity for `fd_txncache`. It explicitly discards the typed result and Borsh
+chunks because no snapshot-result store is connected. Thus immediate
+post-snapshot RPC lookup remains blocked.
+
 ## Pinned-source findings
 
 ### The live replay stream is necessary but insufficient
@@ -105,8 +153,9 @@ The richer execution result exists earlier in the native path:
 On the pinned upstream,
 `fd_execrp_txn_exec_done_msg_t` carries `slot` and `bank_seq`, but flattens the
 error before replay publishes the transaction event. Patch 0006 closes this
-specific live-transport gap without claiming to close the cache, snapshot,
-dead-fork, commitment, or RPC gaps below.
+specific live-transport gap. Patch 0007 provides a standalone cache core, but
+the live event is not inserted into it and dead-bank/root events are not wired.
+Snapshot restoration, commitment, and RPC gaps remain.
 
 ### Snapshot restore is a hard correctness blocker
 
@@ -117,7 +166,7 @@ Firedancer parses them in:
 - `src/discof/restore/utils/fd_slot_delta_parser.c`
 - `src/discof/restore/fd_snapin_tile.c`
 
-The current snapshot entry type is:
+The compact snapshot entry remains:
 
 ```c
 struct fd_sstxncache_entry {
@@ -128,15 +177,19 @@ struct fd_sstxncache_entry {
 };
 ```
 
-The parser consumes transaction and instruction error variants, but reduces the
-result to one byte. It does not preserve the instruction index, custom error
-value, or Borsh error payload needed for the JSON `TransactionError`.
+Before patch 0008, the parser reduced the result to one byte. Patch 0008 now
+returns a separate 32-byte typed result that preserves the complete supported
+enum and scalar payloads. `BorshIoError` bytes are validated and streamed as
+borrowed chunks. The compact entry stays 64 bytes, and the parser footprint
+stays 14,208 bytes.
 
 `fd_snapin_tile.c::populate_txncache` then loads only the recent blockhash
 duplicate-prevention data into `fd_txncache`. That structure is intentionally a
 message-hash set for consensus/runtime duplicate detection. It is not an RPC
 signature-status store, excludes live nonce transactions from normal insertion,
-and has no complete result payload.
+and has no complete result payload. Snapin explicitly discards patch 0008's
+typed result and Borsh chunks, so the restoration blocker moves from decoding
+to bounded storage, snapshot-root identity, and cache population.
 
 Consequently, an RPC-local cache populated only from new replay events would
 return false `null` values for valid recent signatures after every
@@ -179,52 +232,55 @@ the status has been rooted on the canonical fork.
 
 ## Required native implementation
 
-### 1. Add a shared signature-status cache
+### 1. Connect and extend the shared signature-status cache
 
-Add a dedicated native cache object rather than putting the authoritative data
-in the HTTP tile. Suggested source boundary:
+Patch 0007 establishes the dedicated native cache boundary:
 
-- `src/flamenco/runtime/fd_sigstatuscache_shmem.h`
 - `src/flamenco/runtime/fd_sigstatuscache.h`
 - `src/flamenco/runtime/fd_sigstatuscache.c`
 - focused tests beside those files
 
-The shared object must support:
+Complete in the V1 live core:
 
-- the 300 rooted status-cache slot deltas required at snapshot restore;
 - live unrooted forks up to the configured bank/fork bounds;
 - lookup by transaction signature;
 - fork-aware lookup against processed-bank ancestry;
-- the exact transaction-error payload required by JSON;
+- the exact patch-0006 live result tuple;
 - `(bank_idx, bank_seq)` identities and parent identities;
 - equivocation at the same slot;
 - root advancement and deterministic pruning;
-- nonce transactions;
 - bounded sizing derived from explicit configuration;
 - no silent eviction inside the promised recent-status window; and
 - a fail-closed completeness state if capacity or input invariants are ever
   violated.
 
-The cache must document whether it uses full 64-byte signatures or the
-snapshot's compatible 20-byte key slices. If truncated snapshot keys are used,
-the hash offset and collision behavior must match the snapshot format and be
-covered by differential fixtures.
+Still required:
 
-### 2. Preserve complete snapshot status results
+- topology/workspace allocation and a connected writer/reader;
+- replay insertion, dead-bank events, and root events;
+- snapshot-root visibility for the 300 restored deltas;
+- richer snapshot/Borsh result storage in a separately versioned ABI;
+- nonce-transaction coverage at the connected insertion boundary; and
+- Agave-generated compact-key differential fixtures.
 
-Extend `fd_sstxncache_entry_t` and the state machine in
-`fd_slot_delta_parser.c` so it preserves the complete serializable result:
+The V1 core uses a 20-byte compact key and returns `AMBIGUOUS` on collisions.
+Its deterministic seed-plus-blockhash offset selects within the Agave-compatible
+0-through-11 range but differs from Agave v3.1.8's runtime RNG selection.
+
+### 2. Retain and restore complete snapshot status results
+
+Complete in patch 0008's parser-owned typed view:
 
 - transaction error discriminant;
 - instruction index for `InstructionError`;
 - instruction error discriminant;
 - `Custom(u32)` value; and
-- bounded Borsh I/O error data when that variant carries a string.
+- streamed, strictly validated Borsh I/O error data.
 
-`fd_snapin_tile.c` must load all supported rooted slot deltas into the shared
-signature-status cache before RPC becomes available. Snapshot validation must
-reject malformed lengths, unknown unsupported variants, duplicate groups,
-invalid key offsets, and capacity overflow; it must not truncate and continue.
+Still required: provide configured bounded storage for retained Borsh bytes and
+make `fd_snapin_tile.c` load all supported rooted slot deltas into a
+snapshot-capable shared cache before RPC becomes available. Capacity overflow
+must fail closed; it must not truncate and continue.
 
 The existing `fd_txncache` duplicate-prevention behavior must remain
 consensus-equivalent and separate from RPC status retention.
@@ -311,17 +367,23 @@ No capability promotion is allowed from source inspection alone.
 
 ### Snapshot parser and bootstrap
 
-Add direct C fixtures covering:
+Patch 0008's direct parser fixtures cover:
 
 - success and every supported transaction-error variant;
 - `InstructionError` with a nonzero instruction index;
 - `InstructionError::Custom(0)` and `Custom(UINT_MAX)`;
-- bounded Borsh I/O error data;
-- all chunk boundaries in the streaming parser;
+- streamed Borsh I/O error data and varied chunk boundaries;
 - malformed discriminants and lengths;
 - invalid 20-byte key offsets;
-- duplicate slot/blockhash groups;
-- exactly 300 rooted slot deltas and 301 rejection; and
+- multiple slots/groups, empty groups, duplicate slots, and non-root slots; and
+- exactly 300 rooted slot deltas and 301 rejection.
+
+Still add:
+
+- an Agave-generated golden or differential fixture;
+- explicit duplicate blockhash-group policy coverage;
+- configured Borsh retention-capacity rejection;
+- snapin-to-cache restoration; and
 - snapshot load followed by an immediate successful signature lookup before
   any new replayed transaction.
 
@@ -340,23 +402,27 @@ cross-product.
 
 ### Cache and forks
 
-Direct cache tests must cover:
+Patch 0007's direct core tests cover:
 
 - success and failure lookup;
-- duplicate request signatures;
 - parent/child ancestry;
 - two equivocations at the same slot;
 - reusable `bank_idx` with different `bank_seq`;
-- dead-bank removal before and after execution events;
-- processed fork switch;
-- optimistic confirmation on only one equivocation;
+- dead-bank removal, descendant removal, and non-resurrectable tombstones;
 - root advancement and canonicalization;
 - retention of exactly 300 rooted entries and deterministic pruning of the
   301st;
-- nonce transactions;
-- snapshot entries plus live entries in one cache;
 - configured capacity boundary; and
 - an explicit incomplete/error state instead of a false miss on overflow.
+
+Still add connected tests for:
+
+- replay insertion before and after dead-bank notifications;
+- processed fork switches driven by real replay events;
+- optimistic confirmation on only one equivocation;
+- nonce transactions;
+- snapshot entries plus live entries in one cache; and
+- duplicate RPC request signatures.
 
 ### Commitment counts
 
@@ -396,7 +462,7 @@ The RPC fuzzer must seed a valid shared cache and exercise the new handler.
 
 Keep `getSignatureStatuses` in `missingRequiredMethods` until all are true:
 
-1. The exact pinned patch applies cleanly and the source-policy checker
+1. The exact pinned patch queue applies cleanly and the source-policy checker
    recognizes the method as implemented rather than silently changing its
    classification.
 2. Direct native C parser, cache, replay, tower, and RPC tests pass on the

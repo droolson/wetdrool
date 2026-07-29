@@ -162,12 +162,16 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
     genesis-file hash verifier, and machine-readable RPC capabilities. The
     downstream implements a bounded native `getProgramAccounts` owner scan with
     direct account-database/RPC C tests, explicit supported and unsupported
-    filters/configuration, and hard scan/result/data ceilings. A sixth pinned
-    patch preserves slot/bank identity and the complete execution-error tuple
-    from execrp through scheduler into the replay event. The labeled Linux
-    native-build gate covers eight focused executables: the existing five plus
-    `test_sched`, `test_execrp_tile`, and `test_replay_tile`. The complete
-    repository binary/topology gate passed from a fresh exact six-patch
+    filters/configuration, and hard scan/result/data ceilings. Patch 0006
+    preserves slot/bank identity and the complete execution-error tuple from
+    execrp through scheduler into the replay event. Patch 0007 adds a
+    caller-sized fork-aware live signature-status cache core, and patch 0008
+    exposes complete snapshot transaction-result metadata from the streaming
+    parser without changing its footprint. Both are deliberately unconnected
+    substrates. The labeled Linux native-build gate covers ten focused
+    executables, adding `test_sigstatuscache` and `test_slot_delta_parser` to
+    the prior eight. The complete repository binary/topology gate passed from
+    a fresh exact eight-patch
     checkout under Linux/x86-64 Docker emulation as an unprivileged user with a
     synthetic 128-CPU/one-NUMA-node sysfs fixture, rebuilding pinned OpenSSL
     and both branded ELF binaries and confirming native replay/execrp/RPC
@@ -175,8 +179,9 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
   - Blocker: full native Firedancer has no production release and lacks required
     submission, simulation, status, transaction-history, and address-history
     RPC methods; the bounded program-account subset is not production-complete,
-    the execution-result substrate does not implement cache, snapshot,
-    dead-fork, commitment, or RPC JSON handling, and the capability record also
+    the standalone cache has no topology/replay/root/dead-bank wiring, snapin
+    discards the parser's typed results instead of restoring them, and
+    commitment/RPC JSON handling remains absent. The capability record also
     does not yet attest the SDK's rent-exemption query. No full-validator,
     native-hardware, connected-cluster, performance, or signed-release result
     has been verified, and no Agave fallback is permitted.

@@ -48,13 +48,14 @@ conformance remains mandatory before activation.
 
 The WokeNet
 [`getSignatureStatuses` native design and test plan](firedancer/GET_SIGNATURE_STATUSES_DESIGN.md)
-records why a replay-only RPC cache is not safe to promote: snapshot restore
-currently loses the complete transaction result needed by RPC and native tower
-does not publish the cluster block-commitment confirmation count. Downstream
-patch 0006 now preserves complete live execution-result metadata from execrp
-through scheduler and replay, completing only the design's four transport
-steps. The cache, snapshot, dead-fork, commitment, and RPC JSON work remains
-open, so the capability stays false and production remains fail-closed.
+records why a replay-only RPC cache is not safe to promote. Patch 0006
+preserves complete live execution-result metadata through replay, patch 0007
+adds a standalone fork-aware live-cache core, and patch 0008 exposes complete
+snapshot results from the streaming parser. The cache has no topology or
+caller, snapin discards the typed result and Borsh chunks, and native tower
+does not publish the cluster block-commitment confirmation count. Integration,
+snapshot restoration, commitment, and RPC JSON remain open, so the method stays
+missing and production remains fail-closed.
 
 ## Reproducible downstream fork
 
@@ -89,7 +90,30 @@ add a signature-status cache or implement any RPC method. The retained
 records its exact provenance, focused native test matrix, layout measurements,
 resident-memory impact, and explicit evidence gaps.
 
-The sixth patch changes internal tile layouts: the execrp completion message
+The seventh patch,
+`0007-wokenet-live-signature-status-cache-core.patch` (SHA-256
+`b329e8ebd33b45934487a03f4fb0bcf361bcc1f04ac53b5d41381b30a347f32c`),
+adds an overflow-checked caller-sized cache core with exact fork ancestry,
+compact-key ambiguity handling, dead-bank tombstones, deterministic 300-root
+retention, sticky incompleteness, and bounded atomic readers. It is archived in
+`libfd_flamenco.a` but deliberately has no validator caller or topology
+allocation. The
+[cache-core evidence](firedancer/SIGNATURE_STATUS_CACHE_CORE_EVIDENCE.md)
+records the exact semantics, concurrency model, sizing, tests, and integration
+limits.
+
+The eighth patch,
+`0008-wokenet-preserve-snapshot-transaction-result-metadata.patch` (SHA-256
+`19c56956dfedd0471f131a9c0e4ea07ff462bea0c70fbb77eb217612b2694641`),
+adds a parser-owned typed transaction-result view and streamed strict-UTF-8
+`BorshIoError` chunks while keeping the 64-byte snapshot entry and 14,208-byte
+parser footprint unchanged. Snapin explicitly discards this new metadata; it
+is not snapshot-to-cache restoration. The
+[parser evidence](firedancer/SNAPSHOT_RESULT_PARSER_EVIDENCE.md) records the
+complete enum matrix, regression coverage, memory measurements, and remaining
+storage/integration work.
+
+Patch 0006 changes internal tile layouts: the execrp completion message
 grows by 16 bytes and crosses its dcache slot from 384 to 512 bytes, scheduler
 transaction metadata grows by 40 bytes, and the replay event grows by 64 bytes
 to 2,304 bytes. Default resident memory grows by 22.5 MiB. A full validator
@@ -113,7 +137,7 @@ pnpm wokenet:binary-check -- /absolute/path/to/wokenet-firedancer
 
 The materializer refuses to overwrite an existing destination, checks out the
 exact commit in detached mode, verifies every patch checksum, applies the patch
-queue, requires the tracked diff to exactly equal that queue, checks both native
+queue, requires the complete working-tree diff to exactly equal that queue, checks both native
 binary build declarations, and verifies that the recorded missing RPC methods
 still match source. The downstream patch brands both executables with a
 source-locked version marker. On Linux x64, the binary check requires the patch
@@ -122,7 +146,7 @@ temporary checkout, reapplies only the pinned patch queue, clones the separately
 pinned dependency source at its exact commit, rebuilds the required static
 OpenSSL artifacts inside that checkout, and creates the object directory there.
 It never builds from pre-existing ignored source, dependency artifacts, or
-`build/` files. It builds the two native binaries and eight pinned unit-test
+`build/` files. It builds the two native binaries and ten pinned unit-test
 targets, executes the tests, parses the WokeNet localnet configuration through
 the freshly linked `firedancer-dev mem --json` path, verifies the ELF target and
 native symbols,
@@ -145,9 +169,11 @@ pnpm wokenet:materialize -- /opt/wokenet-firedancer
 cd /opt/wokenet-firedancer
 ./deps.sh
 source activate
-make -j"$(nproc)" firedancer firedancer-dev test_genesis_create test_accdb test_rpc_tile test_config_parse test_tower_tile test_sched test_execrp_tile test_replay_tile
+make -j"$(nproc)" firedancer firedancer-dev test_genesis_create test_accdb test_sigstatuscache test_slot_delta_parser test_rpc_tile test_config_parse test_tower_tile test_sched test_execrp_tile test_replay_tile
 test_genesis_create
 test_accdb
+test_sigstatuscache
+test_slot_delta_parser
 test_rpc_tile
 test_config_parse
 ulimit -n 1048576
@@ -168,7 +194,7 @@ dedicated machine and review the upstream initialization instructions first.
 The repository’s manual `WokeNet native Firedancer` workflow repeats the
 policy and materialization checks, installs upstream dependencies, then lets
 the attestation command own the disposable tracked checkout, pinned OpenSSL
-source rebuild, isolated object directory, eight direct test executables, native
+source rebuild, isolated object directory, ten direct test executables, native
 TOML topology parse, ELF/symbol/hash, forbidden-process, and exact-source checks
 on a labeled Linux x64 runner. A green workflow is build evidence, not a
 production-readiness claim or a substitute for the connected and
@@ -236,13 +262,14 @@ execution-before-signature-success, execution-before-signature-failure, and
 signature-failure-before-execution in `test_sched`, `test_execrp_tile`, and
 `test_replay_tile`. It does not cover
 signature-success-before-execution, live `Custom(0)`, or a fatal
-identity-mismatch death test. No cache, snapshot, dead-fork, commitment, RPC
-JSON, full-validator, connected-cluster, or RPC-endpoint result is inferred
-from those focused tests.
+identity-mismatch death test. Separate tests cover the standalone cache core and
+snapshot-result parser, but no cache topology/replay wiring,
+snapshot-to-cache restoration, commitment, RPC JSON, full-validator,
+connected-cluster, or RPC-endpoint result is inferred from those focused tests.
 
 The complete repository binary/topology gate also passed from a fresh exact
-six-patch checkout under Linux/x86-64 Docker emulation. It rebuilt pinned
-OpenSSL, built both branded ELF binaries, ran all eight declared native tests,
+eight-patch checkout under Linux/x86-64 Docker emulation. It rebuilt pinned
+OpenSSL, built both branded ELF binaries, ran all ten declared native tests,
 verified exact symbol types and memory JSON, and confirmed native
 replay/execrp/RPC topology with an empty Agave affinity. It ran as an
 unprivileged user against a synthetic 128-CPU/one-NUMA-node sysfs fixture while

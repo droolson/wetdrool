@@ -1,0 +1,2266 @@
+From f7759cf6765b6a0d1e64b731ffa277fd45d0e217 Mon Sep 17 00:00:00 2001
+From: WokeNet Downstream <wokenet@local.invalid>
+Date: Wed, 29 Jul 2026 03:24:46 -0400
+Subject: [PATCH] wokenet: add live signature status cache core
+
+---
+ src/flamenco/runtime/Local.mk              |    6 +
+ src/flamenco/runtime/fd_sigstatuscache.c   | 1367 ++++++++++++++++++++
+ src/flamenco/runtime/fd_sigstatuscache.h   |  230 ++++
+ src/flamenco/runtime/test_sigstatuscache.c |  616 +++++++++
+ 4 files changed, 2219 insertions(+)
+ create mode 100644 src/flamenco/runtime/fd_sigstatuscache.c
+ create mode 100644 src/flamenco/runtime/fd_sigstatuscache.h
+ create mode 100644 src/flamenco/runtime/test_sigstatuscache.c
+
+diff --git a/src/flamenco/runtime/Local.mk b/src/flamenco/runtime/Local.mk
+index da11a8f12..74c200dc3 100644
+--- a/src/flamenco/runtime/Local.mk
++++ b/src/flamenco/runtime/Local.mk
+@@ -31,6 +31,12 @@ endif
+ ifdef FD_HAS_ATOMIC
+ $(call add-hdrs,fd_txncache_shmem.h fd_txncache.h)
+ $(call add-objs,fd_txncache_shmem fd_txncache,fd_flamenco)
++$(call add-hdrs,fd_sigstatuscache.h)
++$(call add-objs,fd_sigstatuscache,fd_flamenco)
++ifdef FD_HAS_HOSTED
++$(call make-unit-test,test_sigstatuscache,test_sigstatuscache,fd_flamenco fd_util)
++$(call run-unit-test,test_sigstatuscache)
++endif
+ $(call add-hdrs,fd_cost_tracker.h)
+ $(call add-objs,fd_cost_tracker,fd_flamenco)
+ $(call make-unit-test,test_cost_tracker,test_cost_tracker,fd_flamenco fd_ballet fd_util)
+diff --git a/src/flamenco/runtime/fd_sigstatuscache.c b/src/flamenco/runtime/fd_sigstatuscache.c
+new file mode 100644
+index 000000000..48fa3fc89
+--- /dev/null
++++ b/src/flamenco/runtime/fd_sigstatuscache.c
+@@ -0,0 +1,1367 @@
++#include "fd_sigstatuscache.h"
++#include "../../util/fd_util.h"
++
++#include <stdatomic.h>
++#include <string.h>
++
++#define FD_SIGSTATUSCACHE_IDX_NULL (ULONG_MAX)
++#define FD_SIGSTATUSCACHE_READ_RETRY_MAX (8UL)
++
++#define FD_SIGSTATUSCACHE_BANK_FREE   (0U)
++#define FD_SIGSTATUSCACHE_BANK_LIVE   (1U)
++#define FD_SIGSTATUSCACHE_BANK_ROOTED (2U)
++#define FD_SIGSTATUSCACHE_BANK_DEAD   (3U)
++
++struct fd_sigstatuscache_atomic_bank_id {
++  atomic_ulong bank_idx;
++  atomic_ulong bank_seq;
++};
++typedef struct fd_sigstatuscache_atomic_bank_id fd_sigstatuscache_atomic_bank_id_t;
++
++struct fd_sigstatuscache_bank {
++  fd_sigstatuscache_atomic_bank_id_t id;
++  fd_sigstatuscache_atomic_bank_id_t parent;
++  atomic_ulong                       slot;
++  atomic_ulong                       hash_next;
++  atomic_ulong                       entry_head;
++  ulong                              aux;  /* writer-private scratch */
++  atomic_uint                        state;
++  uint                               mark; /* writer-private scratch */
++};
++typedef struct fd_sigstatuscache_bank fd_sigstatuscache_bank_t;
++
++struct fd_sigstatuscache_group {
++  atomic_uchar blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  atomic_ulong hash_next;
++  atomic_ulong entry_cnt;
++  atomic_uint  key_offset;
++  atomic_uint  in_use;
++};
++typedef struct fd_sigstatuscache_group fd_sigstatuscache_group_t;
++
++struct fd_sigstatuscache_entry {
++  atomic_uchar key[ FD_SIGSTATUSCACHE_KEY_SZ ];
++  atomic_int   txn_err;
++  atomic_int   exec_err;
++  atomic_int   exec_err_kind;
++  atomic_uint  exec_err_idx;
++  atomic_uint  custom_err;
++  atomic_ulong hash_next;
++  atomic_ulong bank_next;
++  atomic_ulong bank_slot;
++  atomic_ulong group_slot;
++  atomic_uint  in_use;
++  atomic_uint  ambiguous;
++};
++typedef struct fd_sigstatuscache_entry fd_sigstatuscache_entry_t;
++
++FD_STATIC_ASSERT( sizeof(atomic_uchar)==sizeof(uchar), sigstatuscache_atomic_uchar_sz );
++FD_STATIC_ASSERT( sizeof(atomic_int  )==sizeof(int),   sigstatuscache_atomic_int_sz   );
++FD_STATIC_ASSERT( sizeof(atomic_uint )==sizeof(uint),  sigstatuscache_atomic_uint_sz  );
++FD_STATIC_ASSERT( sizeof(atomic_ulong)==sizeof(ulong), sigstatuscache_atomic_ulong_sz );
++FD_STATIC_ASSERT( alignof(atomic_uchar)==alignof(uchar), sigstatuscache_atomic_uchar_align );
++FD_STATIC_ASSERT( alignof(atomic_int  )==alignof(int),   sigstatuscache_atomic_int_align   );
++FD_STATIC_ASSERT( alignof(atomic_uint )==alignof(uint),  sigstatuscache_atomic_uint_align  );
++FD_STATIC_ASSERT( alignof(atomic_ulong)==alignof(ulong), sigstatuscache_atomic_ulong_align );
++FD_STATIC_ASSERT( ATOMIC_CHAR_LOCK_FREE==2, sigstatuscache_atomic_uchar_lock_free );
++FD_STATIC_ASSERT( ATOMIC_INT_LOCK_FREE ==2, sigstatuscache_atomic_uint_lock_free  );
++FD_STATIC_ASSERT( ATOMIC_LONG_LOCK_FREE==2, sigstatuscache_atomic_ulong_lock_free );
++
++struct fd_sigstatuscache_private {
++  ulong       magic;
++  ulong       footprint;
++  ulong       seed;
++
++  ulong       bank_max;
++  ulong       group_max;
++  ulong       entry_max;
++  ulong       bank_chain_cnt;
++  ulong       group_chain_cnt;
++  ulong       entry_chain_cnt;
++
++  ulong       bank_heads_off;
++  ulong       group_heads_off;
++  ulong       entry_heads_off;
++  ulong       banks_off;
++  ulong       groups_off;
++  ulong       entries_off;
++
++  atomic_ulong bank_cnt;
++  atomic_ulong group_cnt;
++  atomic_ulong entry_cnt;
++  ulong       bank_cursor;
++  ulong       group_cursor;
++  ulong       entry_cursor;
++
++  ulong       root_head;
++  atomic_ulong root_cnt;
++  ulong       roots[ FD_SIGSTATUSCACHE_ROOT_MAX ];
++
++  atomic_ulong state_seq;
++  atomic_ulong publish_seq;
++  atomic_int   incomplete;
++};
++
++FD_STATIC_ASSERT( sizeof(fd_sigstatuscache_bank_t )==72UL,   sigstatuscache_bank_sz   );
++FD_STATIC_ASSERT( sizeof(fd_sigstatuscache_group_t)==56UL,   sigstatuscache_group_sz  );
++FD_STATIC_ASSERT( sizeof(fd_sigstatuscache_entry_t)==80UL,   sigstatuscache_entry_sz  );
++FD_STATIC_ASSERT( sizeof(fd_sigstatuscache_t)      ==2608UL, sigstatuscache_header_sz );
++
++struct fd_sigstatuscache_layout {
++  ulong footprint;
++  ulong bank_chain_cnt;
++  ulong group_chain_cnt;
++  ulong entry_chain_cnt;
++  ulong bank_heads_off;
++  ulong group_heads_off;
++  ulong entry_heads_off;
++  ulong banks_off;
++  ulong groups_off;
++  ulong entries_off;
++};
++typedef struct fd_sigstatuscache_layout fd_sigstatuscache_layout_t;
++
++static int
++fd_sigstatuscache_align_up_checked( ulong   value,
++                                    ulong   align,
++                                    ulong * out ) {
++  if( FD_UNLIKELY( !align || !fd_ulong_is_pow2( align ) ) ) return 0;
++  if( FD_UNLIKELY( value>ULONG_MAX-(align-1UL) ) ) return 0;
++  *out = fd_ulong_align_up( value, align );
++  return 1;
++}
++
++static int
++fd_sigstatuscache_append_checked( ulong * offset,
++                                  ulong   align,
++                                  ulong   count,
++                                  ulong   ele_sz,
++                                  ulong * region_off ) {
++  ulong off;
++  if( FD_UNLIKELY( !fd_sigstatuscache_align_up_checked( *offset, align, &off ) ) ) return 0;
++  ulong sz;
++  if( FD_UNLIKELY( __builtin_mul_overflow( count, ele_sz, &sz ) ) ) return 0;
++  ulong next;
++  if( FD_UNLIKELY( __builtin_add_overflow( off, sz, &next ) ) ) return 0;
++  *region_off = off;
++  *offset     = next;
++  return 1;
++}
++
++static int
++fd_sigstatuscache_chain_cnt( ulong   ele_max,
++                             ulong * chain_cnt ) {
++  if( FD_UNLIKELY( !ele_max || ele_max>(1UL<<62) ) ) return 0;
++  ulong requested = ele_max<<1;
++  ulong cnt       = fd_ulong_pow2_up( requested );
++  if( FD_UNLIKELY( !cnt || cnt<requested ) ) return 0;
++  *chain_cnt = cnt;
++  return 1;
++}
++
++static int
++fd_sigstatuscache_layout( ulong                        bank_max,
++                          ulong                        group_max,
++                          ulong                        entry_max,
++                          fd_sigstatuscache_layout_t * layout ) {
++  if( FD_UNLIKELY( !layout ) ) return 0;
++  fd_memset( layout, 0, sizeof(*layout) );
++
++  if( FD_UNLIKELY( !fd_sigstatuscache_chain_cnt( bank_max,  &layout->bank_chain_cnt  ) ||
++                   !fd_sigstatuscache_chain_cnt( group_max, &layout->group_chain_cnt ) ||
++                   !fd_sigstatuscache_chain_cnt( entry_max, &layout->entry_chain_cnt ) ) ) return 0;
++
++  ulong off = 0UL;
++  ulong ignored;
++  if( FD_UNLIKELY( !fd_sigstatuscache_append_checked( &off, FD_SIGSTATUSCACHE_ALIGN, 1UL, sizeof(fd_sigstatuscache_t), &ignored                  ) ||
++                   !fd_sigstatuscache_append_checked( &off, alignof(ulong), layout->bank_chain_cnt,  sizeof(ulong), &layout->bank_heads_off  ) ||
++                   !fd_sigstatuscache_append_checked( &off, alignof(ulong), layout->group_chain_cnt, sizeof(ulong), &layout->group_heads_off ) ||
++                   !fd_sigstatuscache_append_checked( &off, alignof(ulong), layout->entry_chain_cnt, sizeof(ulong), &layout->entry_heads_off ) ||
++                   !fd_sigstatuscache_append_checked( &off, alignof(fd_sigstatuscache_bank_t),  bank_max,  sizeof(fd_sigstatuscache_bank_t),  &layout->banks_off   ) ||
++                   !fd_sigstatuscache_append_checked( &off, alignof(fd_sigstatuscache_group_t), group_max, sizeof(fd_sigstatuscache_group_t), &layout->groups_off  ) ||
++                   !fd_sigstatuscache_append_checked( &off, alignof(fd_sigstatuscache_entry_t), entry_max, sizeof(fd_sigstatuscache_entry_t), &layout->entries_off ) ) ) return 0;
++
++  if( FD_UNLIKELY( !fd_sigstatuscache_align_up_checked( off, FD_SIGSTATUSCACHE_ALIGN, &layout->footprint ) ) ) return 0;
++  return !!layout->footprint;
++}
++
++FD_FN_CONST ulong
++fd_sigstatuscache_align( void ) {
++  return FD_SIGSTATUSCACHE_ALIGN;
++}
++
++FD_FN_CONST ulong
++fd_sigstatuscache_footprint( ulong bank_max,
++                             ulong group_max,
++                             ulong entry_max ) {
++  fd_sigstatuscache_layout_t layout[1];
++  return fd_sigstatuscache_layout( bank_max, group_max, entry_max, layout ) ? layout->footprint : 0UL;
++}
++
++static inline atomic_ulong *
++fd_sigstatuscache_bank_heads( fd_sigstatuscache_t * cache ) {
++  return (atomic_ulong *)( (uchar *)cache + cache->bank_heads_off );
++}
++
++static inline atomic_ulong const *
++fd_sigstatuscache_bank_heads_const( fd_sigstatuscache_t const * cache ) {
++  return (atomic_ulong const *)( (uchar const *)cache + cache->bank_heads_off );
++}
++
++static inline atomic_ulong *
++fd_sigstatuscache_group_heads( fd_sigstatuscache_t * cache ) {
++  return (atomic_ulong *)( (uchar *)cache + cache->group_heads_off );
++}
++
++static inline atomic_ulong const *
++fd_sigstatuscache_group_heads_const( fd_sigstatuscache_t const * cache ) {
++  return (atomic_ulong const *)( (uchar const *)cache + cache->group_heads_off );
++}
++
++static inline atomic_ulong *
++fd_sigstatuscache_entry_heads( fd_sigstatuscache_t * cache ) {
++  return (atomic_ulong *)( (uchar *)cache + cache->entry_heads_off );
++}
++
++static inline atomic_ulong const *
++fd_sigstatuscache_entry_heads_const( fd_sigstatuscache_t const * cache ) {
++  return (atomic_ulong const *)( (uchar const *)cache + cache->entry_heads_off );
++}
++
++static inline fd_sigstatuscache_bank_t *
++fd_sigstatuscache_banks( fd_sigstatuscache_t * cache ) {
++  return (fd_sigstatuscache_bank_t *)( (uchar *)cache + cache->banks_off );
++}
++
++static inline fd_sigstatuscache_bank_t const *
++fd_sigstatuscache_banks_const( fd_sigstatuscache_t const * cache ) {
++  return (fd_sigstatuscache_bank_t const *)( (uchar const *)cache + cache->banks_off );
++}
++
++static inline fd_sigstatuscache_group_t *
++fd_sigstatuscache_groups( fd_sigstatuscache_t * cache ) {
++  return (fd_sigstatuscache_group_t *)( (uchar *)cache + cache->groups_off );
++}
++
++static inline fd_sigstatuscache_group_t const *
++fd_sigstatuscache_groups_const( fd_sigstatuscache_t const * cache ) {
++  return (fd_sigstatuscache_group_t const *)( (uchar const *)cache + cache->groups_off );
++}
++
++static inline fd_sigstatuscache_entry_t *
++fd_sigstatuscache_entries( fd_sigstatuscache_t * cache ) {
++  return (fd_sigstatuscache_entry_t *)( (uchar *)cache + cache->entries_off );
++}
++
++static inline fd_sigstatuscache_entry_t const *
++fd_sigstatuscache_entries_const( fd_sigstatuscache_t const * cache ) {
++  return (fd_sigstatuscache_entry_t const *)( (uchar const *)cache + cache->entries_off );
++}
++
++static inline fd_sigstatuscache_bank_id_t
++fd_sigstatuscache_atomic_bank_id_load( fd_sigstatuscache_atomic_bank_id_t const * id ) {
++  return (fd_sigstatuscache_bank_id_t){
++    .bank_idx = atomic_load_explicit( &id->bank_idx, memory_order_relaxed ),
++    .bank_seq = atomic_load_explicit( &id->bank_seq, memory_order_relaxed )
++  };
++}
++
++static inline void
++fd_sigstatuscache_atomic_bank_id_store( fd_sigstatuscache_atomic_bank_id_t * id,
++                                        fd_sigstatuscache_bank_id_t          value ) {
++  atomic_store_explicit( &id->bank_idx, value.bank_idx, memory_order_relaxed );
++  atomic_store_explicit( &id->bank_seq, value.bank_seq, memory_order_relaxed );
++}
++
++static inline void
++fd_sigstatuscache_atomic_bytes_load( atomic_uchar const * src,
++                                     uchar *              dst,
++                                     ulong                sz ) {
++  for( ulong i=0UL; i<sz; i++ ) dst[ i ] = atomic_load_explicit( &src[ i ], memory_order_relaxed );
++}
++
++static inline void
++fd_sigstatuscache_atomic_bytes_store( atomic_uchar * src,
++                                      uchar const *  value,
++                                      ulong          sz ) {
++  for( ulong i=0UL; i<sz; i++ ) atomic_store_explicit( &src[ i ], value[ i ], memory_order_relaxed );
++}
++
++static inline int
++fd_sigstatuscache_atomic_bytes_eq( atomic_uchar const * a,
++                                   uchar const *        b,
++                                   ulong                sz ) {
++  for( ulong i=0UL; i<sz; i++ )
++    if( FD_UNLIKELY( atomic_load_explicit( &a[ i ], memory_order_relaxed )!=b[ i ] ) ) return 0;
++  return 1;
++}
++
++static inline fd_sigstatuscache_result_t
++fd_sigstatuscache_entry_result_load( fd_sigstatuscache_entry_t const * entry ) {
++  return (fd_sigstatuscache_result_t){
++    .txn_err       = atomic_load_explicit( &entry->txn_err,       memory_order_relaxed ),
++    .exec_err      = atomic_load_explicit( &entry->exec_err,      memory_order_relaxed ),
++    .exec_err_kind = atomic_load_explicit( &entry->exec_err_kind, memory_order_relaxed ),
++    .exec_err_idx  = atomic_load_explicit( &entry->exec_err_idx,  memory_order_relaxed ),
++    .custom_err    = atomic_load_explicit( &entry->custom_err,    memory_order_relaxed )
++  };
++}
++
++static inline void
++fd_sigstatuscache_entry_result_store( fd_sigstatuscache_entry_t *        entry,
++                                      fd_sigstatuscache_result_t const * result ) {
++  atomic_store_explicit( &entry->txn_err,       result->txn_err,       memory_order_relaxed );
++  atomic_store_explicit( &entry->exec_err,      result->exec_err,      memory_order_relaxed );
++  atomic_store_explicit( &entry->exec_err_kind, result->exec_err_kind, memory_order_relaxed );
++  atomic_store_explicit( &entry->exec_err_idx,  result->exec_err_idx,  memory_order_relaxed );
++  atomic_store_explicit( &entry->custom_err,    result->custom_err,    memory_order_relaxed );
++}
++
++static inline int
++fd_sigstatuscache_valid( fd_sigstatuscache_t const * cache ) {
++  return cache && FD_VOLATILE_CONST( cache->magic )==FD_SIGSTATUSCACHE_MAGIC;
++}
++
++static void
++fd_sigstatuscache_bank_init( fd_sigstatuscache_bank_t * bank ) {
++  atomic_init( &bank->id.bank_idx,     0UL );
++  atomic_init( &bank->id.bank_seq,     0UL );
++  atomic_init( &bank->parent.bank_idx, 0UL );
++  atomic_init( &bank->parent.bank_seq, 0UL );
++  atomic_init( &bank->slot,             0UL );
++  atomic_init( &bank->hash_next,        FD_SIGSTATUSCACHE_IDX_NULL );
++  atomic_init( &bank->entry_head,       FD_SIGSTATUSCACHE_IDX_NULL );
++  atomic_init( &bank->state,            FD_SIGSTATUSCACHE_BANK_FREE );
++  bank->aux  = 0UL;
++  bank->mark = 0U;
++}
++
++static void
++fd_sigstatuscache_bank_reset( fd_sigstatuscache_bank_t * bank ) {
++  fd_sigstatuscache_atomic_bank_id_store( &bank->id,     (fd_sigstatuscache_bank_id_t){0UL,0UL} );
++  fd_sigstatuscache_atomic_bank_id_store( &bank->parent, (fd_sigstatuscache_bank_id_t){0UL,0UL} );
++  atomic_store_explicit( &bank->slot,       0UL,                        memory_order_relaxed );
++  atomic_store_explicit( &bank->hash_next,  FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  atomic_store_explicit( &bank->entry_head, FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  atomic_store_explicit( &bank->state,      FD_SIGSTATUSCACHE_BANK_FREE,memory_order_relaxed );
++  bank->aux  = 0UL;
++  bank->mark = 0U;
++}
++
++static void
++fd_sigstatuscache_group_init( fd_sigstatuscache_group_t * group ) {
++  for( ulong i=0UL; i<FD_SIGSTATUSCACHE_BLOCKHASH_SZ; i++ ) atomic_init( &group->blockhash[ i ], (uchar)0 );
++  atomic_init( &group->hash_next,  FD_SIGSTATUSCACHE_IDX_NULL );
++  atomic_init( &group->entry_cnt,  0UL );
++  atomic_init( &group->key_offset, 0U );
++  atomic_init( &group->in_use,     0U );
++}
++
++static void
++fd_sigstatuscache_group_reset( fd_sigstatuscache_group_t * group ) {
++  uchar zero[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ] = {0};
++  fd_sigstatuscache_atomic_bytes_store( group->blockhash, zero, FD_SIGSTATUSCACHE_BLOCKHASH_SZ );
++  atomic_store_explicit( &group->hash_next,  FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  atomic_store_explicit( &group->entry_cnt,  0UL,                        memory_order_relaxed );
++  atomic_store_explicit( &group->key_offset, 0U,                         memory_order_relaxed );
++  atomic_store_explicit( &group->in_use,     0U,                         memory_order_relaxed );
++}
++
++static void
++fd_sigstatuscache_entry_init( fd_sigstatuscache_entry_t * entry ) {
++  for( ulong i=0UL; i<FD_SIGSTATUSCACHE_KEY_SZ; i++ ) atomic_init( &entry->key[ i ], (uchar)0 );
++  atomic_init( &entry->txn_err,       0 );
++  atomic_init( &entry->exec_err,      0 );
++  atomic_init( &entry->exec_err_kind, 0 );
++  atomic_init( &entry->exec_err_idx,  0U );
++  atomic_init( &entry->custom_err,    0U );
++  atomic_init( &entry->hash_next,     FD_SIGSTATUSCACHE_IDX_NULL );
++  atomic_init( &entry->bank_next,     FD_SIGSTATUSCACHE_IDX_NULL );
++  atomic_init( &entry->bank_slot,     FD_SIGSTATUSCACHE_IDX_NULL );
++  atomic_init( &entry->group_slot,    FD_SIGSTATUSCACHE_IDX_NULL );
++  atomic_init( &entry->in_use,        0U );
++  atomic_init( &entry->ambiguous,     0U );
++}
++
++static void
++fd_sigstatuscache_entry_reset( fd_sigstatuscache_entry_t * entry ) {
++  uchar zero[ FD_SIGSTATUSCACHE_KEY_SZ ] = {0};
++  fd_sigstatuscache_atomic_bytes_store( entry->key, zero, FD_SIGSTATUSCACHE_KEY_SZ );
++  fd_sigstatuscache_result_t const result = {0};
++  fd_sigstatuscache_entry_result_store( entry, &result );
++  atomic_store_explicit( &entry->hash_next, FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  atomic_store_explicit( &entry->bank_next, FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  atomic_store_explicit( &entry->bank_slot, FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  atomic_store_explicit( &entry->group_slot,FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  atomic_store_explicit( &entry->in_use,    0U,                         memory_order_relaxed );
++  atomic_store_explicit( &entry->ambiguous, 0U,                         memory_order_relaxed );
++}
++
++void *
++fd_sigstatuscache_new( void * shmem,
++                       ulong  bank_max,
++                       ulong  group_max,
++                       ulong  entry_max,
++                       ulong  seed ) {
++  if( FD_UNLIKELY( !shmem ) ) {
++    FD_LOG_WARNING(( "NULL shmem" ));
++    return NULL;
++  }
++  if( FD_UNLIKELY( !fd_ulong_is_aligned( (ulong)shmem, FD_SIGSTATUSCACHE_ALIGN ) ) ) {
++    FD_LOG_WARNING(( "misaligned shmem" ));
++    return NULL;
++  }
++
++  fd_sigstatuscache_layout_t layout[1];
++  if( FD_UNLIKELY( !fd_sigstatuscache_layout( bank_max, group_max, entry_max, layout ) ) ) {
++    FD_LOG_WARNING(( "invalid or overflowing sigstatuscache dimensions" ));
++    return NULL;
++  }
++
++  fd_memset( shmem, 0, layout->footprint );
++  fd_sigstatuscache_t * cache = (fd_sigstatuscache_t *)shmem;
++
++  cache->footprint       = layout->footprint;
++  cache->seed            = seed;
++  cache->bank_max        = bank_max;
++  cache->group_max       = group_max;
++  cache->entry_max       = entry_max;
++  cache->bank_chain_cnt  = layout->bank_chain_cnt;
++  cache->group_chain_cnt = layout->group_chain_cnt;
++  cache->entry_chain_cnt = layout->entry_chain_cnt;
++  cache->bank_heads_off  = layout->bank_heads_off;
++  cache->group_heads_off = layout->group_heads_off;
++  cache->entry_heads_off = layout->entry_heads_off;
++  cache->banks_off       = layout->banks_off;
++  cache->groups_off      = layout->groups_off;
++  cache->entries_off     = layout->entries_off;
++
++  atomic_init( &cache->bank_cnt,  0UL );
++  atomic_init( &cache->group_cnt, 0UL );
++  atomic_init( &cache->entry_cnt, 0UL );
++  atomic_init( &cache->root_cnt,  0UL );
++  for( ulong i=0UL; i<cache->bank_chain_cnt;  i++ ) atomic_init( &fd_sigstatuscache_bank_heads( cache )[ i ],  FD_SIGSTATUSCACHE_IDX_NULL );
++  for( ulong i=0UL; i<cache->group_chain_cnt; i++ ) atomic_init( &fd_sigstatuscache_group_heads( cache )[ i ], FD_SIGSTATUSCACHE_IDX_NULL );
++  for( ulong i=0UL; i<cache->entry_chain_cnt; i++ ) atomic_init( &fd_sigstatuscache_entry_heads( cache )[ i ], FD_SIGSTATUSCACHE_IDX_NULL );
++  for( ulong i=0UL; i<cache->bank_max;  i++ ) fd_sigstatuscache_bank_init ( &fd_sigstatuscache_banks  ( cache )[ i ] );
++  for( ulong i=0UL; i<cache->group_max; i++ ) fd_sigstatuscache_group_init( &fd_sigstatuscache_groups ( cache )[ i ] );
++  for( ulong i=0UL; i<cache->entry_max; i++ ) fd_sigstatuscache_entry_init( &fd_sigstatuscache_entries( cache )[ i ] );
++  for( ulong i=0UL; i<FD_SIGSTATUSCACHE_ROOT_MAX; i++ ) cache->roots[ i ] = FD_SIGSTATUSCACHE_IDX_NULL;
++
++  atomic_init( &cache->state_seq,   0UL );
++  atomic_init( &cache->publish_seq, 0UL );
++  atomic_init( &cache->incomplete,  0 );
++
++  FD_COMPILER_MFENCE();
++  FD_VOLATILE( cache->magic ) = FD_SIGSTATUSCACHE_MAGIC;
++  FD_COMPILER_MFENCE();
++  return shmem;
++}
++
++fd_sigstatuscache_t *
++fd_sigstatuscache_join( void * shmem ) {
++  if( FD_UNLIKELY( !shmem ) ) {
++    FD_LOG_WARNING(( "NULL shmem" ));
++    return NULL;
++  }
++  if( FD_UNLIKELY( !fd_ulong_is_aligned( (ulong)shmem, FD_SIGSTATUSCACHE_ALIGN ) ) ) {
++    FD_LOG_WARNING(( "misaligned shmem" ));
++    return NULL;
++  }
++
++  fd_sigstatuscache_t * cache = (fd_sigstatuscache_t *)shmem;
++  if( FD_UNLIKELY( FD_VOLATILE_CONST( cache->magic )!=FD_SIGSTATUSCACHE_MAGIC ) ) {
++    FD_LOG_WARNING(( "bad magic" ));
++    return NULL;
++  }
++
++  fd_sigstatuscache_layout_t layout[1];
++  if( FD_UNLIKELY( !fd_sigstatuscache_layout( cache->bank_max, cache->group_max, cache->entry_max, layout ) ||
++                   cache->footprint       !=layout->footprint       ||
++                   cache->bank_chain_cnt  !=layout->bank_chain_cnt  ||
++                   cache->group_chain_cnt !=layout->group_chain_cnt ||
++                   cache->entry_chain_cnt !=layout->entry_chain_cnt ||
++                   cache->bank_heads_off  !=layout->bank_heads_off  ||
++                   cache->group_heads_off !=layout->group_heads_off ||
++                   cache->entry_heads_off !=layout->entry_heads_off ||
++                   cache->banks_off       !=layout->banks_off       ||
++                   cache->groups_off      !=layout->groups_off      ||
++                   cache->entries_off     !=layout->entries_off     ||
++                   cache->bank_cnt        >cache->bank_max          ||
++                   cache->group_cnt       >cache->group_max         ||
++                   cache->entry_cnt       >cache->entry_max         ||
++                   cache->root_head       >=FD_SIGSTATUSCACHE_ROOT_MAX ||
++                   cache->root_cnt        >FD_SIGSTATUSCACHE_ROOT_MAX ) ) {
++    FD_LOG_WARNING(( "corrupt sigstatuscache header" ));
++    return NULL;
++  }
++
++  return cache;
++}
++
++void *
++fd_sigstatuscache_leave( fd_sigstatuscache_t * cache ) {
++  if( FD_UNLIKELY( !fd_sigstatuscache_valid( cache ) ) ) return NULL;
++  return (void *)cache;
++}
++
++void *
++fd_sigstatuscache_delete( void * shmem ) {
++  fd_sigstatuscache_t * cache = fd_sigstatuscache_join( shmem );
++  if( FD_UNLIKELY( !cache ) ) return NULL;
++  FD_COMPILER_MFENCE();
++  FD_VOLATILE( cache->magic ) = 0UL;
++  FD_COMPILER_MFENCE();
++  return shmem;
++}
++
++static inline ulong
++fd_sigstatuscache_bank_bucket( fd_sigstatuscache_t const * cache,
++                               fd_sigstatuscache_bank_id_t id ) {
++  return fd_ulong_hash( id.bank_idx ^ fd_ulong_rotate_left( id.bank_seq, 31 ) ^ cache->seed ) & (cache->bank_chain_cnt-1UL);
++}
++
++static inline ulong
++fd_sigstatuscache_group_bucket( fd_sigstatuscache_t const * cache,
++                                uchar const                 blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ] ) {
++  return fd_hash( cache->seed, blockhash, FD_SIGSTATUSCACHE_BLOCKHASH_SZ ) & (cache->group_chain_cnt-1UL);
++}
++
++static inline ulong
++fd_sigstatuscache_entry_bucket( fd_sigstatuscache_t const * cache,
++                                ulong                       offset,
++                                uchar const                 key[ FD_SIGSTATUSCACHE_KEY_SZ ] ) {
++  return fd_hash( cache->seed ^ fd_ulong_hash( offset ), key, FD_SIGSTATUSCACHE_KEY_SZ ) & (cache->entry_chain_cnt-1UL);
++}
++
++static ulong
++fd_sigstatuscache_bank_find( fd_sigstatuscache_t const * cache,
++                             fd_sigstatuscache_bank_id_t id,
++                             int *                       corrupt ) {
++  if( FD_UNLIKELY( !fd_sigstatuscache_bank_id_is_valid( id ) ) ) return FD_SIGSTATUSCACHE_IDX_NULL;
++  fd_sigstatuscache_bank_t const * banks = fd_sigstatuscache_banks_const( cache );
++  ulong idx = atomic_load_explicit( &fd_sigstatuscache_bank_heads_const( cache )[ fd_sigstatuscache_bank_bucket( cache, id ) ],
++                                    memory_order_relaxed );
++  ulong guard = 0UL;
++  for( ; idx!=FD_SIGSTATUSCACHE_IDX_NULL && guard<cache->bank_max; guard++ ) {
++    if( FD_UNLIKELY( idx>=cache->bank_max ) ) {
++      if( corrupt ) *corrupt = 1;
++      return FD_SIGSTATUSCACHE_IDX_NULL;
++    }
++    fd_sigstatuscache_bank_t const * bank = &banks[ idx ];
++    if( FD_LIKELY( atomic_load_explicit( &bank->state, memory_order_relaxed )!=FD_SIGSTATUSCACHE_BANK_FREE &&
++                   fd_sigstatuscache_bank_id_eq( fd_sigstatuscache_atomic_bank_id_load( &bank->id ), id ) ) ) return idx;
++    idx = atomic_load_explicit( &bank->hash_next, memory_order_relaxed );
++  }
++  if( FD_UNLIKELY( idx!=FD_SIGSTATUSCACHE_IDX_NULL ) && corrupt ) *corrupt = 1;
++  return FD_SIGSTATUSCACHE_IDX_NULL;
++}
++
++static ulong
++fd_sigstatuscache_group_find( fd_sigstatuscache_t const * cache,
++                              uchar const                 blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ],
++                              int *                       corrupt ) {
++  fd_sigstatuscache_group_t const * groups = fd_sigstatuscache_groups_const( cache );
++  ulong idx = atomic_load_explicit( &fd_sigstatuscache_group_heads_const( cache )[ fd_sigstatuscache_group_bucket( cache, blockhash ) ],
++                                    memory_order_relaxed );
++  ulong guard = 0UL;
++  for( ; idx!=FD_SIGSTATUSCACHE_IDX_NULL && guard<cache->group_max; guard++ ) {
++    if( FD_UNLIKELY( idx>=cache->group_max ) ) {
++      if( corrupt ) *corrupt = 1;
++      return FD_SIGSTATUSCACHE_IDX_NULL;
++    }
++    fd_sigstatuscache_group_t const * group = &groups[ idx ];
++    if( FD_LIKELY( atomic_load_explicit( &group->in_use, memory_order_relaxed ) &&
++                   fd_sigstatuscache_atomic_bytes_eq( group->blockhash, blockhash, FD_SIGSTATUSCACHE_BLOCKHASH_SZ ) ) ) return idx;
++    idx = atomic_load_explicit( &group->hash_next, memory_order_relaxed );
++  }
++  if( FD_UNLIKELY( idx!=FD_SIGSTATUSCACHE_IDX_NULL ) && corrupt ) *corrupt = 1;
++  return FD_SIGSTATUSCACHE_IDX_NULL;
++}
++
++static ulong
++fd_sigstatuscache_free_find( atomic_uint const * in_use,
++                             ulong               stride,
++                             ulong               ele_max,
++                             ulong *             cursor ) {
++  if( FD_UNLIKELY( !ele_max ) ) return FD_SIGSTATUSCACHE_IDX_NULL;
++  ulong start = *cursor % ele_max;
++  for( ulong i=0UL; i<ele_max; i++ ) {
++    ulong idx = start+i;
++    if( idx>=ele_max ) idx -= ele_max;
++    atomic_uint const * used = (atomic_uint const *)( (uchar const *)in_use + idx*stride );
++    if( FD_LIKELY( !atomic_load_explicit( used, memory_order_relaxed ) ) ) {
++      *cursor = idx+1UL;
++      return idx;
++    }
++  }
++  return FD_SIGSTATUSCACHE_IDX_NULL;
++}
++
++static ulong
++fd_sigstatuscache_bank_free_find( fd_sigstatuscache_t * cache ) {
++  fd_sigstatuscache_bank_t * banks = fd_sigstatuscache_banks( cache );
++  return fd_sigstatuscache_free_find( &banks[0].state, sizeof(fd_sigstatuscache_bank_t), cache->bank_max, &cache->bank_cursor );
++}
++
++static ulong
++fd_sigstatuscache_group_free_find( fd_sigstatuscache_t * cache ) {
++  fd_sigstatuscache_group_t * groups = fd_sigstatuscache_groups( cache );
++  return fd_sigstatuscache_free_find( &groups[0].in_use, sizeof(fd_sigstatuscache_group_t), cache->group_max, &cache->group_cursor );
++}
++
++static ulong
++fd_sigstatuscache_entry_free_find( fd_sigstatuscache_t * cache ) {
++  fd_sigstatuscache_entry_t * entries = fd_sigstatuscache_entries( cache );
++  return fd_sigstatuscache_free_find( &entries[0].in_use, sizeof(fd_sigstatuscache_entry_t), cache->entry_max, &cache->entry_cursor );
++}
++
++static inline int
++fd_sigstatuscache_result_eq( fd_sigstatuscache_result_t const * a,
++                             fd_sigstatuscache_result_t const * b ) {
++  return a->txn_err      ==b->txn_err      &&
++         a->exec_err     ==b->exec_err     &&
++         a->exec_err_kind==b->exec_err_kind&&
++         a->exec_err_idx ==b->exec_err_idx &&
++         a->custom_err   ==b->custom_err;
++}
++
++static inline void
++fd_sigstatuscache_write_begin( fd_sigstatuscache_t * cache ) {
++  ulong seq = atomic_fetch_add_explicit( &cache->state_seq, 1UL, memory_order_acq_rel );
++  if( FD_UNLIKELY( seq & 1UL ) ) FD_LOG_CRIT(( "sigstatuscache concurrent writer" ));
++}
++
++static inline void
++fd_sigstatuscache_write_end( fd_sigstatuscache_t * cache ) {
++  atomic_fetch_add_explicit( &cache->publish_seq, 1UL, memory_order_relaxed );
++  atomic_fetch_add_explicit( &cache->state_seq,   1UL, memory_order_release );
++}
++
++static void
++fd_sigstatuscache_mark_incomplete( fd_sigstatuscache_t * cache ) {
++  if( FD_LIKELY( !atomic_load_explicit( &cache->incomplete, memory_order_relaxed ) ) ) {
++    fd_sigstatuscache_write_begin( cache );
++    atomic_store_explicit( &cache->incomplete, 1, memory_order_relaxed );
++    fd_sigstatuscache_write_end( cache );
++  }
++}
++
++static fd_sigstatuscache_op_t
++fd_sigstatuscache_fail_incomplete( fd_sigstatuscache_t * cache,
++                                   fd_sigstatuscache_op_t op ) {
++  fd_sigstatuscache_mark_incomplete( cache );
++  return op;
++}
++
++static int
++fd_sigstatuscache_bank_is_ancestor_idx( fd_sigstatuscache_t const * cache,
++                                        ulong                       ancestor_idx,
++                                        ulong                       descendant_idx,
++                                        int *                       corrupt ) {
++  fd_sigstatuscache_bank_t const * banks = fd_sigstatuscache_banks_const( cache );
++  if( FD_UNLIKELY( ancestor_idx>=cache->bank_max || descendant_idx>=cache->bank_max ||
++                   atomic_load_explicit( &banks[ ancestor_idx ].state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_FREE ||
++                   atomic_load_explicit( &banks[ descendant_idx ].state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_FREE ) ) {
++    if( corrupt ) *corrupt = 1;
++    return 0;
++  }
++
++  ulong idx = descendant_idx;
++  for( ulong guard=0UL; guard<cache->bank_max; guard++ ) {
++    if( idx==ancestor_idx ) return 1;
++    fd_sigstatuscache_bank_id_t parent = fd_sigstatuscache_atomic_bank_id_load( &banks[ idx ].parent );
++    if( fd_sigstatuscache_bank_id_is_null( parent ) ) return 0;
++    idx = fd_sigstatuscache_bank_find( cache, parent, corrupt );
++    if( idx==FD_SIGSTATUSCACHE_IDX_NULL ) return 0;
++  }
++  if( corrupt ) *corrupt = 1;
++  return 0;
++}
++
++static int
++fd_sigstatuscache_bank_distance( fd_sigstatuscache_t const * cache,
++                                 ulong                       ancestor_idx,
++                                 ulong                       descendant_idx,
++                                 ulong *                     distance,
++                                 int *                       corrupt ) {
++  fd_sigstatuscache_bank_t const * banks = fd_sigstatuscache_banks_const( cache );
++  ulong idx = descendant_idx;
++  for( ulong dist=0UL; dist<cache->bank_max; dist++ ) {
++    if( idx==ancestor_idx ) {
++      *distance = dist;
++      return 1;
++    }
++    fd_sigstatuscache_bank_id_t parent = fd_sigstatuscache_atomic_bank_id_load( &banks[ idx ].parent );
++    if( fd_sigstatuscache_bank_id_is_null( parent ) ) return 0;
++    idx = fd_sigstatuscache_bank_find( cache, parent, corrupt );
++    if( idx==FD_SIGSTATUSCACHE_IDX_NULL ) return 0;
++  }
++  if( corrupt ) *corrupt = 1;
++  return 0;
++}
++
++static void
++fd_sigstatuscache_group_remove( fd_sigstatuscache_t * cache,
++                                ulong                 group_idx ) {
++  fd_sigstatuscache_group_t * groups = fd_sigstatuscache_groups( cache );
++  fd_sigstatuscache_group_t * group  = &groups[ group_idx ];
++  uchar blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  fd_sigstatuscache_atomic_bytes_load( group->blockhash, blockhash, FD_SIGSTATUSCACHE_BLOCKHASH_SZ );
++  ulong bucket = fd_sigstatuscache_group_bucket( cache, blockhash );
++  atomic_ulong * link = &fd_sigstatuscache_group_heads( cache )[ bucket ];
++  for( ulong guard=0UL; atomic_load_explicit( link, memory_order_relaxed )!=FD_SIGSTATUSCACHE_IDX_NULL && guard<cache->group_max; guard++ ) {
++    ulong idx = atomic_load_explicit( link, memory_order_relaxed );
++    if( FD_UNLIKELY( idx>=cache->group_max ) ) break;
++    if( idx==group_idx ) {
++      atomic_store_explicit( link, atomic_load_explicit( &groups[ idx ].hash_next, memory_order_relaxed ), memory_order_relaxed );
++      fd_sigstatuscache_group_reset( &groups[ idx ] );
++      atomic_fetch_sub_explicit( &cache->group_cnt, 1UL, memory_order_relaxed );
++      return;
++    }
++    link = &groups[ idx ].hash_next;
++  }
++  FD_LOG_CRIT(( "sigstatuscache group chain corrupt" ));
++}
++
++static void
++fd_sigstatuscache_entry_remove_hash( fd_sigstatuscache_t * cache,
++                                     ulong                 entry_idx ) {
++  fd_sigstatuscache_entry_t * entries = fd_sigstatuscache_entries( cache );
++  fd_sigstatuscache_group_t * groups  = fd_sigstatuscache_groups( cache );
++  fd_sigstatuscache_entry_t * entry   = &entries[ entry_idx ];
++  ulong group_idx = atomic_load_explicit( &entry->group_slot, memory_order_relaxed );
++  fd_sigstatuscache_group_t * group = &groups[ group_idx ];
++  uchar key[ FD_SIGSTATUSCACHE_KEY_SZ ];
++  fd_sigstatuscache_atomic_bytes_load( entry->key, key, FD_SIGSTATUSCACHE_KEY_SZ );
++  ulong bucket = fd_sigstatuscache_entry_bucket( cache,
++                                                  (ulong)atomic_load_explicit( &group->key_offset, memory_order_relaxed ),
++                                                  key );
++  atomic_ulong * link = &fd_sigstatuscache_entry_heads( cache )[ bucket ];
++  for( ulong guard=0UL; atomic_load_explicit( link, memory_order_relaxed )!=FD_SIGSTATUSCACHE_IDX_NULL && guard<cache->entry_max; guard++ ) {
++    ulong idx = atomic_load_explicit( link, memory_order_relaxed );
++    if( FD_UNLIKELY( idx>=cache->entry_max ) ) break;
++    if( idx==entry_idx ) {
++      atomic_store_explicit( link, atomic_load_explicit( &entries[ idx ].hash_next, memory_order_relaxed ), memory_order_relaxed );
++      return;
++    }
++    link = &entries[ idx ].hash_next;
++  }
++  FD_LOG_CRIT(( "sigstatuscache entry chain corrupt" ));
++}
++
++static void
++fd_sigstatuscache_bank_remove_hash( fd_sigstatuscache_t * cache,
++                                    ulong                 bank_idx ) {
++  fd_sigstatuscache_bank_t * banks = fd_sigstatuscache_banks( cache );
++  fd_sigstatuscache_bank_t * bank  = &banks[ bank_idx ];
++  ulong bucket = fd_sigstatuscache_bank_bucket( cache, fd_sigstatuscache_atomic_bank_id_load( &bank->id ) );
++  atomic_ulong * link = &fd_sigstatuscache_bank_heads( cache )[ bucket ];
++  for( ulong guard=0UL; atomic_load_explicit( link, memory_order_relaxed )!=FD_SIGSTATUSCACHE_IDX_NULL && guard<cache->bank_max; guard++ ) {
++    ulong idx = atomic_load_explicit( link, memory_order_relaxed );
++    if( FD_UNLIKELY( idx>=cache->bank_max ) ) break;
++    if( idx==bank_idx ) {
++      atomic_store_explicit( link, atomic_load_explicit( &banks[ idx ].hash_next, memory_order_relaxed ), memory_order_relaxed );
++      return;
++    }
++    link = &banks[ idx ].hash_next;
++  }
++  FD_LOG_CRIT(( "sigstatuscache bank chain corrupt" ));
++}
++
++static void
++fd_sigstatuscache_bank_clear_entries( fd_sigstatuscache_t * cache,
++                                      ulong                 bank_idx ) {
++  fd_sigstatuscache_bank_t *  banks   = fd_sigstatuscache_banks( cache );
++  fd_sigstatuscache_group_t * groups  = fd_sigstatuscache_groups( cache );
++  fd_sigstatuscache_entry_t * entries = fd_sigstatuscache_entries( cache );
++  fd_sigstatuscache_bank_t *  bank    = &banks[ bank_idx ];
++
++  while( atomic_load_explicit( &bank->entry_head, memory_order_relaxed )!=FD_SIGSTATUSCACHE_IDX_NULL ) {
++    ulong entry_idx = atomic_load_explicit( &bank->entry_head, memory_order_relaxed );
++    if( FD_UNLIKELY( entry_idx>=cache->entry_max ||
++                     !atomic_load_explicit( &entries[ entry_idx ].in_use, memory_order_relaxed ) ) )
++      FD_LOG_CRIT(( "sigstatuscache bank entry list corrupt" ));
++    fd_sigstatuscache_entry_t * entry = &entries[ entry_idx ];
++    atomic_store_explicit( &bank->entry_head,
++                           atomic_load_explicit( &entry->bank_next, memory_order_relaxed ),
++                           memory_order_relaxed );
++
++    ulong group_idx = atomic_load_explicit( &entry->group_slot, memory_order_relaxed );
++    if( FD_UNLIKELY( group_idx>=cache->group_max ||
++                     !atomic_load_explicit( &groups[ group_idx ].in_use, memory_order_relaxed ) ||
++                     !atomic_load_explicit( &groups[ group_idx ].entry_cnt, memory_order_relaxed ) ) )
++      FD_LOG_CRIT(( "sigstatuscache entry group corrupt" ));
++
++    fd_sigstatuscache_entry_remove_hash( cache, entry_idx );
++    ulong group_entry_cnt = atomic_fetch_sub_explicit( &groups[ group_idx ].entry_cnt, 1UL, memory_order_relaxed )-1UL;
++    fd_sigstatuscache_entry_reset( entry );
++    atomic_fetch_sub_explicit( &cache->entry_cnt, 1UL, memory_order_relaxed );
++
++    if( FD_UNLIKELY( !group_entry_cnt ) ) fd_sigstatuscache_group_remove( cache, group_idx );
++  }
++}
++
++static void
++fd_sigstatuscache_bank_remove( fd_sigstatuscache_t * cache,
++                               ulong                 bank_idx ) {
++  fd_sigstatuscache_bank_t * banks = fd_sigstatuscache_banks( cache );
++  fd_sigstatuscache_bank_clear_entries( cache, bank_idx );
++  fd_sigstatuscache_bank_remove_hash( cache, bank_idx );
++  fd_sigstatuscache_bank_reset( &banks[ bank_idx ] );
++  atomic_fetch_sub_explicit( &cache->bank_cnt, 1UL, memory_order_relaxed );
++}
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_bank_attach( fd_sigstatuscache_t *       cache,
++                               fd_sigstatuscache_bank_id_t child,
++                               fd_sigstatuscache_bank_id_t parent,
++                               ulong                       slot ) {
++  if( FD_UNLIKELY( !fd_sigstatuscache_valid( cache ) ||
++                   !fd_sigstatuscache_bank_id_is_valid( child ) ||
++                   (!fd_sigstatuscache_bank_id_is_null( parent ) && !fd_sigstatuscache_bank_id_is_valid( parent )) ) )
++    return FD_SIGSTATUSCACHE_ERR_INVAL;
++
++  fd_sigstatuscache_bank_t * banks = fd_sigstatuscache_banks( cache );
++  int corrupt = 0;
++
++  ulong existing_idx = fd_sigstatuscache_bank_find( cache, child, &corrupt );
++  if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  if( FD_UNLIKELY( existing_idx!=FD_SIGSTATUSCACHE_IDX_NULL ) ) {
++    fd_sigstatuscache_bank_t const * existing = &banks[ existing_idx ];
++    if( atomic_load_explicit( &existing->state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_DEAD )
++      return FD_SIGSTATUSCACHE_ERR_STALE_BANK;
++    if( atomic_load_explicit( &existing->slot, memory_order_relaxed )==slot &&
++        fd_sigstatuscache_bank_id_eq( fd_sigstatuscache_atomic_bank_id_load( &existing->parent ), parent ) )
++      return FD_SIGSTATUSCACHE_DUPLICATE;
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_CONFLICT );
++  }
++
++  if( fd_sigstatuscache_bank_id_is_null( parent ) ) {
++    if( FD_UNLIKELY( atomic_load_explicit( &cache->bank_cnt, memory_order_relaxed ) ) )
++      return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  } else {
++    ulong parent_idx = fd_sigstatuscache_bank_find( cache, parent, &corrupt );
++    if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++    if( FD_UNLIKELY( parent_idx==FD_SIGSTATUSCACHE_IDX_NULL ||
++                     atomic_load_explicit( &banks[ parent_idx ].state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_DEAD ) )
++      return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_STALE_BANK );
++    if( FD_UNLIKELY( atomic_load_explicit( &banks[ parent_idx ].slot, memory_order_relaxed )>=slot ) )
++      return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_INVAL );
++  }
++
++  ulong idx = fd_sigstatuscache_bank_free_find( cache );
++  if( FD_UNLIKELY( idx==FD_SIGSTATUSCACHE_IDX_NULL ) ) {
++    fd_sigstatuscache_mark_incomplete( cache );
++    return FD_SIGSTATUSCACHE_ERR_NO_BANK_SPACE;
++  }
++
++  fd_sigstatuscache_write_begin( cache );
++  fd_sigstatuscache_bank_t * bank = &banks[ idx ];
++  fd_sigstatuscache_atomic_bank_id_store( &bank->id,     child  );
++  fd_sigstatuscache_atomic_bank_id_store( &bank->parent, parent );
++  atomic_store_explicit( &bank->slot,       slot,                        memory_order_relaxed );
++  atomic_store_explicit( &bank->entry_head, FD_SIGSTATUSCACHE_IDX_NULL, memory_order_relaxed );
++  bank->aux  = 0UL;
++  bank->mark = 0U;
++  ulong bucket = fd_sigstatuscache_bank_bucket( cache, child );
++  atomic_store_explicit( &bank->hash_next,
++                         atomic_load_explicit( &fd_sigstatuscache_bank_heads( cache )[ bucket ], memory_order_relaxed ),
++                         memory_order_relaxed );
++  atomic_store_explicit( &bank->state, FD_SIGSTATUSCACHE_BANK_LIVE, memory_order_relaxed );
++  atomic_store_explicit( &fd_sigstatuscache_bank_heads( cache )[ bucket ], idx, memory_order_relaxed );
++  atomic_fetch_add_explicit( &cache->bank_cnt, 1UL, memory_order_relaxed );
++  fd_sigstatuscache_write_end( cache );
++  return FD_SIGSTATUSCACHE_OK;
++}
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_insert( fd_sigstatuscache_t *       cache,
++                          fd_sigstatuscache_bank_id_t bank_id,
++                          uchar const                 blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ],
++                          uchar const                 signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ],
++                          fd_sigstatuscache_result_t const * result ) {
++  if( FD_UNLIKELY( !fd_sigstatuscache_valid( cache ) || !blockhash || !signature || !result ||
++                   !fd_sigstatuscache_bank_id_is_valid( bank_id ) ) )
++    return FD_SIGSTATUSCACHE_ERR_INVAL;
++
++  fd_sigstatuscache_bank_t *  banks   = fd_sigstatuscache_banks( cache );
++  fd_sigstatuscache_group_t * groups  = fd_sigstatuscache_groups( cache );
++  fd_sigstatuscache_entry_t * entries = fd_sigstatuscache_entries( cache );
++  int corrupt = 0;
++
++  ulong bank_idx = fd_sigstatuscache_bank_find( cache, bank_id, &corrupt );
++  if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  if( FD_UNLIKELY( bank_idx==FD_SIGSTATUSCACHE_IDX_NULL ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_STALE_BANK );
++  if( FD_UNLIKELY( atomic_load_explicit( &banks[ bank_idx ].state, memory_order_relaxed )!=FD_SIGSTATUSCACHE_BANK_LIVE ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++
++  ulong group_idx = fd_sigstatuscache_group_find( cache, blockhash, &corrupt );
++  if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  ulong key_offset;
++  if( group_idx!=FD_SIGSTATUSCACHE_IDX_NULL )
++    key_offset = (ulong)atomic_load_explicit( &groups[ group_idx ].key_offset, memory_order_relaxed );
++  else key_offset = fd_hash( cache->seed, blockhash, FD_SIGSTATUSCACHE_BLOCKHASH_SZ ) % (FD_SIGSTATUSCACHE_KEY_OFFSET_MAX+1UL);
++  if( FD_UNLIKELY( key_offset>FD_SIGSTATUSCACHE_KEY_OFFSET_MAX ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++
++  uchar const * key = signature + key_offset;
++  ulong entry_bucket = fd_sigstatuscache_entry_bucket( cache, key_offset, key );
++  ulong probe_idx = atomic_load_explicit( &fd_sigstatuscache_entry_heads( cache )[ entry_bucket ], memory_order_relaxed );
++  ulong guard = 0UL;
++  for( ;
++       probe_idx!=FD_SIGSTATUSCACHE_IDX_NULL && guard<cache->entry_max;
++       probe_idx=atomic_load_explicit( &entries[ probe_idx ].hash_next, memory_order_relaxed ), guard++ ) {
++    if( FD_UNLIKELY( probe_idx>=cache->entry_max ) ) {
++      corrupt = 1;
++      break;
++    }
++    fd_sigstatuscache_entry_t const * entry = &entries[ probe_idx ];
++    if( atomic_load_explicit( &entry->in_use, memory_order_relaxed ) &&
++        atomic_load_explicit( &entry->bank_slot, memory_order_relaxed )==bank_idx &&
++        atomic_load_explicit( &entry->group_slot, memory_order_relaxed )==group_idx &&
++        fd_sigstatuscache_atomic_bytes_eq( entry->key, key, FD_SIGSTATUSCACHE_KEY_SZ ) ) {
++      fd_sigstatuscache_result_t existing_result = fd_sigstatuscache_entry_result_load( entry );
++      if( atomic_load_explicit( &entry->ambiguous, memory_order_relaxed ) )
++        return FD_SIGSTATUSCACHE_ERR_CONFLICT;
++      if( fd_sigstatuscache_result_eq( &existing_result, result ) )
++        return FD_SIGSTATUSCACHE_DUPLICATE;
++
++      /* The compact key cannot distinguish the original signature from
++         this caller's signature.  Poison it before reporting conflict
++         so neither full signature can receive a false positive. */
++      fd_sigstatuscache_write_begin( cache );
++      atomic_store_explicit( &entries[ probe_idx ].ambiguous, 1U, memory_order_relaxed );
++      fd_sigstatuscache_write_end( cache );
++      return FD_SIGSTATUSCACHE_ERR_CONFLICT;
++    }
++  }
++  if( FD_UNLIKELY( corrupt || probe_idx!=FD_SIGSTATUSCACHE_IDX_NULL ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++
++  ulong free_group_idx = FD_SIGSTATUSCACHE_IDX_NULL;
++  if( group_idx==FD_SIGSTATUSCACHE_IDX_NULL ) {
++    free_group_idx = fd_sigstatuscache_group_free_find( cache );
++    if( FD_UNLIKELY( free_group_idx==FD_SIGSTATUSCACHE_IDX_NULL ) ) {
++      fd_sigstatuscache_mark_incomplete( cache );
++      return FD_SIGSTATUSCACHE_ERR_NO_GROUP_SPACE;
++    }
++  }
++
++  ulong entry_idx = fd_sigstatuscache_entry_free_find( cache );
++  if( FD_UNLIKELY( entry_idx==FD_SIGSTATUSCACHE_IDX_NULL ) ) {
++    fd_sigstatuscache_mark_incomplete( cache );
++    return FD_SIGSTATUSCACHE_ERR_NO_ENTRY_SPACE;
++  }
++
++  fd_sigstatuscache_write_begin( cache );
++  if( group_idx==FD_SIGSTATUSCACHE_IDX_NULL ) {
++    group_idx = free_group_idx;
++    fd_sigstatuscache_group_t * group = &groups[ group_idx ];
++    atomic_store_explicit( &group->in_use, 0U, memory_order_relaxed );
++    fd_sigstatuscache_atomic_bytes_store( group->blockhash, blockhash, FD_SIGSTATUSCACHE_BLOCKHASH_SZ );
++    atomic_store_explicit( &group->entry_cnt,  0UL,             memory_order_relaxed );
++    atomic_store_explicit( &group->key_offset, (uint)key_offset,memory_order_relaxed );
++    ulong group_bucket = fd_sigstatuscache_group_bucket( cache, blockhash );
++    atomic_store_explicit( &group->hash_next,
++                           atomic_load_explicit( &fd_sigstatuscache_group_heads( cache )[ group_bucket ], memory_order_relaxed ),
++                           memory_order_relaxed );
++    atomic_store_explicit( &group->in_use, 1U, memory_order_relaxed );
++    atomic_store_explicit( &fd_sigstatuscache_group_heads( cache )[ group_bucket ], group_idx, memory_order_relaxed );
++    atomic_fetch_add_explicit( &cache->group_cnt, 1UL, memory_order_relaxed );
++  }
++
++  fd_sigstatuscache_entry_t * new_entry = &entries[ entry_idx ];
++  atomic_store_explicit( &new_entry->in_use, 0U, memory_order_relaxed );
++  fd_sigstatuscache_atomic_bytes_store( new_entry->key, key, FD_SIGSTATUSCACHE_KEY_SZ );
++  fd_sigstatuscache_entry_result_store( new_entry, result );
++  atomic_store_explicit( &new_entry->bank_slot,  bank_idx,  memory_order_relaxed );
++  atomic_store_explicit( &new_entry->group_slot, group_idx, memory_order_relaxed );
++  atomic_store_explicit( &new_entry->hash_next,
++                         atomic_load_explicit( &fd_sigstatuscache_entry_heads( cache )[ entry_bucket ], memory_order_relaxed ),
++                         memory_order_relaxed );
++  atomic_store_explicit( &new_entry->bank_next,
++                         atomic_load_explicit( &banks[ bank_idx ].entry_head, memory_order_relaxed ),
++                         memory_order_relaxed );
++  atomic_store_explicit( &new_entry->ambiguous, 0U, memory_order_relaxed );
++  atomic_store_explicit( &new_entry->in_use,    1U, memory_order_relaxed );
++  atomic_store_explicit( &fd_sigstatuscache_entry_heads( cache )[ entry_bucket ], entry_idx, memory_order_relaxed );
++  atomic_store_explicit( &banks[ bank_idx ].entry_head, entry_idx, memory_order_relaxed );
++  atomic_fetch_add_explicit( &groups[ group_idx ].entry_cnt, 1UL, memory_order_relaxed );
++  atomic_fetch_add_explicit( &cache->entry_cnt, 1UL, memory_order_relaxed );
++
++  fd_sigstatuscache_write_end( cache );
++  return FD_SIGSTATUSCACHE_OK;
++}
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_bank_dead( fd_sigstatuscache_t *       cache,
++                             fd_sigstatuscache_bank_id_t bank_id ) {
++  if( FD_UNLIKELY( !fd_sigstatuscache_valid( cache ) || !fd_sigstatuscache_bank_id_is_valid( bank_id ) ) )
++    return FD_SIGSTATUSCACHE_ERR_INVAL;
++
++  fd_sigstatuscache_bank_t * banks = fd_sigstatuscache_banks( cache );
++  int corrupt = 0;
++  ulong bank_idx = fd_sigstatuscache_bank_find( cache, bank_id, &corrupt );
++  if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  if( FD_UNLIKELY( bank_idx==FD_SIGSTATUSCACHE_IDX_NULL ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_STALE_BANK );
++  if( atomic_load_explicit( &banks[ bank_idx ].state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_DEAD )
++    return FD_SIGSTATUSCACHE_DUPLICATE;
++
++  /* Validate first so an invalid dead transition is a true no-op. */
++  for( ulong i=0UL; i<cache->bank_max; i++ ) {
++    uint state = atomic_load_explicit( &banks[ i ].state, memory_order_relaxed );
++    int descendant = state!=FD_SIGSTATUSCACHE_BANK_FREE &&
++                     fd_sigstatuscache_bank_is_ancestor_idx( cache, bank_idx, i, &corrupt );
++    if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++    if( descendant && state==FD_SIGSTATUSCACHE_BANK_ROOTED )
++      return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  }
++
++  fd_sigstatuscache_write_begin( cache );
++  for( ulong i=0UL; i<cache->bank_max; i++ ) {
++    banks[ i ].mark = atomic_load_explicit( &banks[ i ].state, memory_order_relaxed )!=FD_SIGSTATUSCACHE_BANK_FREE &&
++                      fd_sigstatuscache_bank_is_ancestor_idx( cache, bank_idx, i, NULL );
++  }
++  for( ulong i=0UL; i<cache->bank_max; i++ ) {
++    if( banks[ i ].mark ) {
++      fd_sigstatuscache_bank_clear_entries( cache, i );
++      atomic_store_explicit( &banks[ i ].state, FD_SIGSTATUSCACHE_BANK_DEAD, memory_order_relaxed );
++      banks[ i ].mark = 0U;
++    }
++  }
++  fd_sigstatuscache_write_end( cache );
++  return FD_SIGSTATUSCACHE_OK;
++}
++
++static ulong
++fd_sigstatuscache_root_tail( fd_sigstatuscache_t * cache ) {
++  ulong root_cnt = atomic_load_explicit( &cache->root_cnt, memory_order_relaxed );
++  if( FD_UNLIKELY( !root_cnt ) ) return FD_SIGSTATUSCACHE_IDX_NULL;
++  return cache->roots[ (cache->root_head+root_cnt-1UL) % FD_SIGSTATUSCACHE_ROOT_MAX ];
++}
++
++static void
++fd_sigstatuscache_root_evict_oldest( fd_sigstatuscache_t * cache ) {
++  FD_TEST( atomic_load_explicit( &cache->root_cnt, memory_order_relaxed )==FD_SIGSTATUSCACHE_ROOT_MAX );
++  fd_sigstatuscache_bank_t * banks = fd_sigstatuscache_banks( cache );
++  ulong old_idx = cache->roots[ cache->root_head ];
++  FD_TEST( old_idx<cache->bank_max &&
++           atomic_load_explicit( &banks[ old_idx ].state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_ROOTED );
++  fd_sigstatuscache_bank_id_t old_id = fd_sigstatuscache_atomic_bank_id_load( &banks[ old_idx ].id );
++
++  cache->roots[ cache->root_head ] = FD_SIGSTATUSCACHE_IDX_NULL;
++  cache->root_head = (cache->root_head+1UL) % FD_SIGSTATUSCACHE_ROOT_MAX;
++  atomic_fetch_sub_explicit( &cache->root_cnt, 1UL, memory_order_relaxed );
++
++  for( ulong i=0UL; i<cache->bank_max; i++ ) {
++    if( atomic_load_explicit( &banks[ i ].state, memory_order_relaxed )!=FD_SIGSTATUSCACHE_BANK_FREE &&
++        fd_sigstatuscache_bank_id_eq( fd_sigstatuscache_atomic_bank_id_load( &banks[ i ].parent ), old_id ) )
++      fd_sigstatuscache_atomic_bank_id_store( &banks[ i ].parent, fd_sigstatuscache_bank_id_null() );
++  }
++  fd_sigstatuscache_bank_remove( cache, old_idx );
++}
++
++static void
++fd_sigstatuscache_root_append( fd_sigstatuscache_t * cache,
++                               ulong                 bank_idx ) {
++  if( FD_UNLIKELY( atomic_load_explicit( &cache->root_cnt, memory_order_relaxed )==FD_SIGSTATUSCACHE_ROOT_MAX ) )
++    fd_sigstatuscache_root_evict_oldest( cache );
++  ulong root_cnt = atomic_load_explicit( &cache->root_cnt, memory_order_relaxed );
++  ulong tail = (cache->root_head+root_cnt) % FD_SIGSTATUSCACHE_ROOT_MAX;
++  cache->roots[ tail ] = bank_idx;
++  atomic_fetch_add_explicit( &cache->root_cnt, 1UL, memory_order_relaxed );
++  atomic_store_explicit( &fd_sigstatuscache_banks( cache )[ bank_idx ].state,
++                         FD_SIGSTATUSCACHE_BANK_ROOTED,
++                         memory_order_relaxed );
++}
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_publish_root( fd_sigstatuscache_t *       cache,
++                                fd_sigstatuscache_bank_id_t bank_id ) {
++  if( FD_UNLIKELY( !fd_sigstatuscache_valid( cache ) || !fd_sigstatuscache_bank_id_is_valid( bank_id ) ) )
++    return FD_SIGSTATUSCACHE_ERR_INVAL;
++
++  fd_sigstatuscache_bank_t * banks = fd_sigstatuscache_banks( cache );
++  int corrupt = 0;
++  ulong bank_idx = fd_sigstatuscache_bank_find( cache, bank_id, &corrupt );
++  if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  if( FD_UNLIKELY( bank_idx==FD_SIGSTATUSCACHE_IDX_NULL ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_STALE_BANK );
++
++  ulong current_root_idx = fd_sigstatuscache_root_tail( cache );
++  uint bank_state = atomic_load_explicit( &banks[ bank_idx ].state, memory_order_relaxed );
++  if( bank_state==FD_SIGSTATUSCACHE_BANK_ROOTED ) {
++    if( bank_idx==current_root_idx ) return FD_SIGSTATUSCACHE_DUPLICATE;
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  }
++  if( FD_UNLIKELY( bank_state!=FD_SIGSTATUSCACHE_BANK_LIVE ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  if( current_root_idx!=FD_SIGSTATUSCACHE_IDX_NULL &&
++      FD_UNLIKELY( !fd_sigstatuscache_bank_is_ancestor_idx( cache, current_root_idx, bank_idx, &corrupt ) ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++
++  /* Validate branch pruning and the complete promotion path before the
++     publication becomes odd. */
++  for( ulong i=0UL; i<cache->bank_max; i++ ) {
++    uint state = atomic_load_explicit( &banks[ i ].state, memory_order_relaxed );
++    if( state==FD_SIGSTATUSCACHE_BANK_FREE ) continue;
++    int canonical = fd_sigstatuscache_bank_is_ancestor_idx( cache, i, bank_idx, &corrupt ) ||
++                    fd_sigstatuscache_bank_is_ancestor_idx( cache, bank_idx, i, &corrupt );
++    if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++    if( !canonical && state==FD_SIGSTATUSCACHE_BANK_ROOTED )
++      return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  }
++
++  ulong path_cnt = 0UL;
++  ulong idx = bank_idx;
++  int reached_root = 0;
++  for( ulong guard=0UL; guard<cache->bank_max; guard++ ) {
++    if( idx==current_root_idx ) {
++      reached_root = 1;
++      break;
++    }
++    if( FD_UNLIKELY( idx==FD_SIGSTATUSCACHE_IDX_NULL ||
++                     atomic_load_explicit( &banks[ idx ].state, memory_order_relaxed )!=FD_SIGSTATUSCACHE_BANK_LIVE ) )
++      return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++    path_cnt++;
++    fd_sigstatuscache_bank_id_t parent = fd_sigstatuscache_atomic_bank_id_load( &banks[ idx ].parent );
++    if( fd_sigstatuscache_bank_id_is_null( parent ) ) {
++      if( FD_UNLIKELY( current_root_idx!=FD_SIGSTATUSCACHE_IDX_NULL ) )
++        return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++      reached_root = 1;
++      break;
++    }
++    idx = fd_sigstatuscache_bank_find( cache, parent, &corrupt );
++    if( FD_UNLIKELY( corrupt ) ) return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  }
++  if( FD_UNLIKELY( !path_cnt || !reached_root ) )
++    return fd_sigstatuscache_fail_incomplete( cache, FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++
++  fd_sigstatuscache_write_begin( cache );
++
++  /* Mark every non-canonical branch before removing anything so recycled
++     storage slots cannot affect descendant classification. */
++  for( ulong i=0UL; i<cache->bank_max; i++ ) {
++    if( atomic_load_explicit( &banks[ i ].state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_FREE ) {
++      banks[ i ].mark = 0U;
++      continue;
++    }
++    int canonical = fd_sigstatuscache_bank_is_ancestor_idx( cache, i, bank_idx, NULL ) ||
++                    fd_sigstatuscache_bank_is_ancestor_idx( cache, bank_idx, i, NULL );
++    banks[ i ].mark = (uint)!canonical;
++  }
++  for( ulong i=0UL; i<cache->bank_max; i++ ) {
++    if( banks[ i ].mark ) fd_sigstatuscache_bank_remove( cache, i );
++  }
++
++  /* Number the not-yet-rooted path from target back to current root.
++     Highest aux is the oldest bank and is appended first. */
++  idx = bank_idx;
++  ulong order = 0UL;
++  while( idx!=current_root_idx ) {
++    banks[ idx ].aux = ++order;
++    fd_sigstatuscache_bank_id_t parent = fd_sigstatuscache_atomic_bank_id_load( &banks[ idx ].parent );
++    if( fd_sigstatuscache_bank_id_is_null( parent ) ) break;
++    idx = fd_sigstatuscache_bank_find( cache, parent, NULL );
++  }
++
++  for( ulong order=path_cnt; order; order-- ) {
++    ulong promote_idx = FD_SIGSTATUSCACHE_IDX_NULL;
++    for( ulong i=0UL; i<cache->bank_max; i++ ) {
++      if( atomic_load_explicit( &banks[ i ].state, memory_order_relaxed )!=FD_SIGSTATUSCACHE_BANK_FREE &&
++          banks[ i ].aux==order ) {
++        promote_idx = i;
++        break;
++      }
++    }
++    if( FD_UNLIKELY( promote_idx==FD_SIGSTATUSCACHE_IDX_NULL ) )
++      FD_LOG_CRIT(( "sigstatuscache root path corrupt" ));
++    banks[ promote_idx ].aux = 0UL;
++    fd_sigstatuscache_root_append( cache, promote_idx );
++  }
++
++  fd_sigstatuscache_write_end( cache );
++  return FD_SIGSTATUSCACHE_OK;
++}
++
++fd_sigstatuscache_query_t
++fd_sigstatuscache_query( fd_sigstatuscache_t const *       cache,
++                         fd_sigstatuscache_bank_id_t        view,
++                         uchar const                        signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ],
++                         fd_sigstatuscache_query_result_t * out ) {
++  if( out ) fd_memset( out, 0, sizeof(*out) );
++  if( FD_UNLIKELY( !fd_sigstatuscache_valid( cache ) || !signature || !out ||
++                   !fd_sigstatuscache_bank_id_is_valid( view ) ) )
++    return FD_SIGSTATUSCACHE_QUERY_BAD_ARGUMENT;
++
++  fd_sigstatuscache_bank_t const *  banks   = fd_sigstatuscache_banks_const( cache );
++  fd_sigstatuscache_group_t const * groups  = fd_sigstatuscache_groups_const( cache );
++  fd_sigstatuscache_entry_t const * entries = fd_sigstatuscache_entries_const( cache );
++
++  for( ulong retry=0UL; retry<FD_SIGSTATUSCACHE_READ_RETRY_MAX; retry++ ) {
++    ulong seq = atomic_load_explicit( &cache->state_seq, memory_order_acquire );
++    if( FD_UNLIKELY( seq & 1UL ) ) continue;
++
++    int corrupt = 0;
++    fd_sigstatuscache_query_t outcome;
++    fd_sigstatuscache_query_result_t found = {0};
++    ulong view_idx = FD_SIGSTATUSCACHE_IDX_NULL;
++
++    if( FD_UNLIKELY( atomic_load_explicit( &cache->incomplete, memory_order_relaxed ) ) )
++      outcome = FD_SIGSTATUSCACHE_QUERY_INCOMPLETE;
++    else {
++      view_idx = fd_sigstatuscache_bank_find( cache, view, &corrupt );
++      if( FD_UNLIKELY( corrupt ) ) outcome = FD_SIGSTATUSCACHE_QUERY_INCOMPLETE;
++      else if( FD_UNLIKELY( view_idx==FD_SIGSTATUSCACHE_IDX_NULL ||
++                            atomic_load_explicit( &banks[ view_idx ].state, memory_order_relaxed )==FD_SIGSTATUSCACHE_BANK_DEAD ) )
++        outcome = FD_SIGSTATUSCACHE_QUERY_STALE_VIEW;
++      else {
++      ulong best_idx  = FD_SIGSTATUSCACHE_IDX_NULL;
++      ulong best_dist = ULONG_MAX;
++      ulong match_cnt = 0UL;
++      int ambiguous   = 0;
++
++      for( ulong offset=0UL; offset<=FD_SIGSTATUSCACHE_KEY_OFFSET_MAX && !corrupt; offset++ ) {
++        uchar const * key = signature+offset;
++        ulong bucket = fd_sigstatuscache_entry_bucket( cache, offset, key );
++        ulong entry_idx = atomic_load_explicit( &fd_sigstatuscache_entry_heads_const( cache )[ bucket ],
++                                                memory_order_relaxed );
++        ulong guard = 0UL;
++        for( ; entry_idx!=FD_SIGSTATUSCACHE_IDX_NULL && guard<cache->entry_max; guard++ ) {
++          if( FD_UNLIKELY( entry_idx>=cache->entry_max ) ) {
++            corrupt = 1;
++            break;
++          }
++          fd_sigstatuscache_entry_t const * entry = &entries[ entry_idx ];
++          ulong next = atomic_load_explicit( &entry->hash_next, memory_order_relaxed );
++          ulong group_idx = atomic_load_explicit( &entry->group_slot, memory_order_relaxed );
++          ulong bank_idx  = atomic_load_explicit( &entry->bank_slot,  memory_order_relaxed );
++          if( FD_UNLIKELY( !atomic_load_explicit( &entry->in_use, memory_order_relaxed ) ||
++                           group_idx>=cache->group_max || bank_idx>=cache->bank_max ) ) {
++            corrupt = 1;
++            break;
++          }
++
++          fd_sigstatuscache_group_t const * group = &groups[ group_idx ];
++          fd_sigstatuscache_bank_t const *  bank  = &banks[ bank_idx ];
++          ulong group_offset = (ulong)atomic_load_explicit( &group->key_offset, memory_order_relaxed );
++          uint  bank_state   = atomic_load_explicit( &bank->state, memory_order_relaxed );
++          if( FD_UNLIKELY( !atomic_load_explicit( &group->in_use, memory_order_relaxed ) ||
++                           !atomic_load_explicit( &group->entry_cnt, memory_order_relaxed ) ||
++                           group_offset>FD_SIGSTATUSCACHE_KEY_OFFSET_MAX ||
++                           (bank_state!=FD_SIGSTATUSCACHE_BANK_LIVE &&
++                            bank_state!=FD_SIGSTATUSCACHE_BANK_ROOTED) ) ) {
++            corrupt = 1;
++            break;
++          }
++
++          if( group_offset==offset &&
++              fd_sigstatuscache_atomic_bytes_eq( entry->key, key, FD_SIGSTATUSCACHE_KEY_SZ ) ) {
++            ulong dist;
++            if( fd_sigstatuscache_bank_distance( cache, bank_idx, view_idx, &dist, &corrupt ) ) {
++              match_cnt++;
++              ambiguous |= !!atomic_load_explicit( &entry->ambiguous, memory_order_relaxed );
++              if( best_idx==FD_SIGSTATUSCACHE_IDX_NULL || dist<best_dist ) {
++                best_idx  = entry_idx;
++                best_dist = dist;
++              } else if( dist==best_dist ) {
++                ulong best_bank_idx = atomic_load_explicit( &entries[ best_idx ].bank_slot, memory_order_relaxed );
++                if( atomic_load_explicit( &bank->slot, memory_order_relaxed ) >
++                    atomic_load_explicit( &banks[ best_bank_idx ].slot, memory_order_relaxed ) )
++                  best_idx = entry_idx;
++              }
++            }
++          }
++          entry_idx = next;
++        }
++        if( FD_UNLIKELY( entry_idx!=FD_SIGSTATUSCACHE_IDX_NULL ) ) corrupt = 1;
++      }
++
++      if( FD_UNLIKELY( corrupt ) ) outcome = FD_SIGSTATUSCACHE_QUERY_INCOMPLETE;
++      else if( ambiguous || match_cnt>1UL ) outcome = FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS;
++      else if( best_idx!=FD_SIGSTATUSCACHE_IDX_NULL ) {
++        fd_sigstatuscache_entry_t const * entry = &entries[ best_idx ];
++        ulong bank_idx = atomic_load_explicit( &entry->bank_slot, memory_order_relaxed );
++        fd_sigstatuscache_bank_t const * bank = &banks[ bank_idx ];
++        found.slot   = atomic_load_explicit( &bank->slot, memory_order_relaxed );
++        found.bank   = fd_sigstatuscache_atomic_bank_id_load( &bank->id );
++        found.result = fd_sigstatuscache_entry_result_load( entry );
++        outcome = FD_SIGSTATUSCACHE_QUERY_FOUND;
++      } else {
++        outcome = FD_SIGSTATUSCACHE_QUERY_NOT_FOUND;
++      }
++      }
++    }
++
++    atomic_thread_fence( memory_order_acquire );
++    if( FD_LIKELY( atomic_load_explicit( &cache->state_seq, memory_order_acquire )==seq ) ) {
++      if( outcome==FD_SIGSTATUSCACHE_QUERY_FOUND ) *out = found;
++      return outcome;
++    }
++  }
++
++  return FD_SIGSTATUSCACHE_QUERY_AGAIN;
++}
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_group_key_offset( fd_sigstatuscache_t const * cache,
++                                    uchar const                 blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ],
++                                    ulong *                     offset ) {
++  if( FD_UNLIKELY( !fd_sigstatuscache_valid( cache ) || !blockhash || !offset ) )
++    return FD_SIGSTATUSCACHE_ERR_INVAL;
++
++  for( ulong retry=0UL; retry<FD_SIGSTATUSCACHE_READ_RETRY_MAX; retry++ ) {
++    ulong seq = atomic_load_explicit( &cache->state_seq, memory_order_acquire );
++    if( FD_UNLIKELY( seq & 1UL ) ) continue;
++    int corrupt = 0;
++    ulong group_idx = fd_sigstatuscache_group_find( cache, blockhash, &corrupt );
++    fd_sigstatuscache_op_t op = FD_SIGSTATUSCACHE_OK;
++    ulong found_offset = 0UL;
++    if( FD_UNLIKELY( corrupt ) ) op = FD_SIGSTATUSCACHE_ERR_BAD_STATE;
++    else if( group_idx==FD_SIGSTATUSCACHE_IDX_NULL ) op = FD_SIGSTATUSCACHE_ERR_NOT_FOUND;
++    else {
++      found_offset = (ulong)atomic_load_explicit( &fd_sigstatuscache_groups_const( cache )[ group_idx ].key_offset,
++                                                  memory_order_relaxed );
++      if( FD_UNLIKELY( found_offset>FD_SIGSTATUSCACHE_KEY_OFFSET_MAX ) ) op = FD_SIGSTATUSCACHE_ERR_BAD_STATE;
++    }
++    atomic_thread_fence( memory_order_acquire );
++    if( FD_LIKELY( atomic_load_explicit( &cache->state_seq, memory_order_acquire )==seq ) ) {
++      if( op==FD_SIGSTATUSCACHE_OK ) *offset = found_offset;
++      return op;
++    }
++  }
++  return FD_SIGSTATUSCACHE_ERR_AGAIN;
++}
++
++ulong fd_sigstatuscache_bank_max ( fd_sigstatuscache_t const * cache ) { return fd_sigstatuscache_valid( cache ) ? cache->bank_max  : 0UL; }
++ulong fd_sigstatuscache_group_max( fd_sigstatuscache_t const * cache ) { return fd_sigstatuscache_valid( cache ) ? cache->group_max : 0UL; }
++ulong fd_sigstatuscache_entry_max( fd_sigstatuscache_t const * cache ) { return fd_sigstatuscache_valid( cache ) ? cache->entry_max : 0UL; }
++ulong fd_sigstatuscache_bank_cnt ( fd_sigstatuscache_t const * cache ) { return fd_sigstatuscache_valid( cache ) ? atomic_load_explicit( &cache->bank_cnt,  memory_order_acquire ) : 0UL; }
++ulong fd_sigstatuscache_group_cnt( fd_sigstatuscache_t const * cache ) { return fd_sigstatuscache_valid( cache ) ? atomic_load_explicit( &cache->group_cnt, memory_order_acquire ) : 0UL; }
++ulong fd_sigstatuscache_entry_cnt( fd_sigstatuscache_t const * cache ) { return fd_sigstatuscache_valid( cache ) ? atomic_load_explicit( &cache->entry_cnt, memory_order_acquire ) : 0UL; }
++ulong fd_sigstatuscache_root_cnt ( fd_sigstatuscache_t const * cache ) { return fd_sigstatuscache_valid( cache ) ? atomic_load_explicit( &cache->root_cnt,  memory_order_acquire ) : 0UL; }
++
++ulong
++fd_sigstatuscache_publish_seq( fd_sigstatuscache_t const * cache ) {
++  return fd_sigstatuscache_valid( cache )
++    ? atomic_load_explicit( &cache->publish_seq, memory_order_acquire )
++    : 0UL;
++}
++
++int
++fd_sigstatuscache_is_complete( fd_sigstatuscache_t const * cache ) {
++  return fd_sigstatuscache_valid( cache )
++    ? !atomic_load_explicit( &cache->incomplete, memory_order_acquire )
++    : 0;
++}
++
++#undef FD_SIGSTATUSCACHE_BANK_ROOTED
++#undef FD_SIGSTATUSCACHE_BANK_LIVE
++#undef FD_SIGSTATUSCACHE_BANK_DEAD
++#undef FD_SIGSTATUSCACHE_BANK_FREE
++#undef FD_SIGSTATUSCACHE_READ_RETRY_MAX
++#undef FD_SIGSTATUSCACHE_IDX_NULL
+diff --git a/src/flamenco/runtime/fd_sigstatuscache.h b/src/flamenco/runtime/fd_sigstatuscache.h
+new file mode 100644
+index 000000000..707bde2d0
+--- /dev/null
++++ b/src/flamenco/runtime/fd_sigstatuscache.h
+@@ -0,0 +1,230 @@
++#ifndef HEADER_fd_src_flamenco_runtime_fd_sigstatuscache_h
++#define HEADER_fd_src_flamenco_runtime_fd_sigstatuscache_h
++
++/* fd_sigstatuscache is a caller-sized shared-memory cache for retaining
++   transaction results by signature on the live bank fork graph.
++
++   The cache deliberately has no topology or validator integration.  A
++   future caller must choose and budget bank_max, group_max, and entry_max
++   explicitly before placing the object in a workspace.
++
++   There is exactly one writer.  Any number of readers may query the
++   object concurrently, including through a read-only mapping.  A
++   bounded optimistic publication protocol makes each successful
++   mutation atomically visible without allowing readers to block the
++   writer or spin indefinitely.
++
++   Agave's status cache stores a 20-byte slice of each lookup key.  One
++   slice offset is shared by all keys associated with a recent blockhash.
++   Agave Bank inserts the 32-byte message hash before the 64-byte
++   signature, constraining the shared offset to [0,11].  Agave v3.1.8
++   selects within that range with a runtime RNG; this core derives a
++   reproducible selection from caller seed and blockhash.  The compact
++   representation and query range are compatible, while the selection
++   policy is intentionally deterministic.
++
++   V1 is a live replay-result cache core.  It does not restore Agave
++   snapshot status deltas: those carry rooted slots and richer Borsh
++   error payloads but not WokeNet's exact {bank_idx,bank_seq} ancestry.
++   Adding snapshot-root visibility requires a separately versioned ABI,
++   rather than fabricating live bank identities here.  The consensus
++   message-hash cache remains fd_txncache. */
++
++#include "../../util/fd_util_base.h"
++
++#define FD_SIGSTATUSCACHE_ALIGN            (128UL)
++#define FD_SIGSTATUSCACHE_MAGIC            (0xF17EDA2C51534701UL) /* FIREDANCER SIG CACHE V1 */
++#define FD_SIGSTATUSCACHE_KEY_SZ           (20UL)
++#define FD_SIGSTATUSCACHE_SIGNATURE_SZ     (64UL)
++#define FD_SIGSTATUSCACHE_BLOCKHASH_SZ     (32UL)
++#define FD_SIGSTATUSCACHE_KEY_OFFSET_MAX   (11UL)
++#define FD_SIGSTATUSCACHE_ROOT_MAX         (300UL)
++
++struct fd_sigstatuscache_private;
++typedef struct fd_sigstatuscache_private fd_sigstatuscache_t;
++
++struct fd_sigstatuscache_bank_id {
++  ulong bank_idx;
++  ulong bank_seq;
++};
++typedef struct fd_sigstatuscache_bank_id fd_sigstatuscache_bank_id_t;
++
++static inline fd_sigstatuscache_bank_id_t
++fd_sigstatuscache_bank_id_null( void ) {
++  return (fd_sigstatuscache_bank_id_t){ .bank_idx=ULONG_MAX, .bank_seq=ULONG_MAX };
++}
++
++static inline int
++fd_sigstatuscache_bank_id_is_null( fd_sigstatuscache_bank_id_t id ) {
++  return id.bank_idx==ULONG_MAX && id.bank_seq==ULONG_MAX;
++}
++
++static inline int
++fd_sigstatuscache_bank_id_is_valid( fd_sigstatuscache_bank_id_t id ) {
++  return id.bank_idx!=ULONG_MAX && id.bank_seq!=ULONG_MAX;
++}
++
++static inline int
++fd_sigstatuscache_bank_id_eq( fd_sigstatuscache_bank_id_t a,
++                              fd_sigstatuscache_bank_id_t b ) {
++  return a.bank_idx==b.bank_idx && a.bank_seq==b.bank_seq;
++}
++
++/* This is the lossless normalized live execution-result tuple
++   propagated by the WokeNet 0006 replay boundary.  custom_err==0 is
++   meaningful when exec_err denotes Custom, and exec_err_idx==UINT_MAX
++   is preserved.  It is not the snapshot Borsh error representation. */
++
++struct fd_sigstatuscache_result {
++  int  txn_err;
++  int  exec_err;
++  int  exec_err_kind;
++  uint exec_err_idx;
++  uint custom_err;
++};
++typedef struct fd_sigstatuscache_result fd_sigstatuscache_result_t;
++
++struct fd_sigstatuscache_query_result {
++  ulong                       slot;
++  fd_sigstatuscache_bank_id_t bank;
++  fd_sigstatuscache_result_t  result;
++};
++typedef struct fd_sigstatuscache_query_result fd_sigstatuscache_query_result_t;
++
++typedef enum {
++  FD_SIGSTATUSCACHE_OK                    =  0,
++  FD_SIGSTATUSCACHE_DUPLICATE             =  1,
++  FD_SIGSTATUSCACHE_ERR_INVAL             = -1,
++  FD_SIGSTATUSCACHE_ERR_STALE_BANK        = -2,
++  FD_SIGSTATUSCACHE_ERR_CONFLICT          = -3,
++  FD_SIGSTATUSCACHE_ERR_NO_BANK_SPACE     = -4,
++  FD_SIGSTATUSCACHE_ERR_NO_GROUP_SPACE    = -5,
++  FD_SIGSTATUSCACHE_ERR_NO_ENTRY_SPACE    = -6,
++  FD_SIGSTATUSCACHE_ERR_BAD_STATE         = -7,
++  FD_SIGSTATUSCACHE_ERR_NOT_FOUND         = -8,
++  FD_SIGSTATUSCACHE_ERR_AGAIN             = -9
++} fd_sigstatuscache_op_t;
++
++typedef enum {
++  FD_SIGSTATUSCACHE_QUERY_NOT_FOUND   = 0,
++  FD_SIGSTATUSCACHE_QUERY_FOUND       = 1,
++  FD_SIGSTATUSCACHE_QUERY_INCOMPLETE  = 2,
++  FD_SIGSTATUSCACHE_QUERY_STALE_VIEW  = 3,
++  FD_SIGSTATUSCACHE_QUERY_BAD_ARGUMENT= 4,
++  FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS   = 5,
++  FD_SIGSTATUSCACHE_QUERY_AGAIN       = 6
++} fd_sigstatuscache_query_t;
++
++FD_PROTOTYPES_BEGIN
++
++FD_FN_CONST ulong
++fd_sigstatuscache_align( void );
++
++/* For P(x)=the least power of two >=2*x, the V1 footprint is
++
++     align_up( 2608
++             + 8*(P(bank_max)+P(group_max)+P(entry_max))
++             + 72*bank_max + 56*group_max + 80*entry_max, 128 )
++
++   footprint returns zero when a maximum is zero, a derived hash-chain
++   count cannot be represented, or any layout operation would overflow. */
++
++FD_FN_CONST ulong
++fd_sigstatuscache_footprint( ulong bank_max,
++                             ulong group_max,
++                             ulong entry_max );
++
++void *
++fd_sigstatuscache_new( void * shmem,
++                       ulong  bank_max,
++                       ulong  group_max,
++                       ulong  entry_max,
++                       ulong  seed );
++
++fd_sigstatuscache_t *
++fd_sigstatuscache_join( void * shmem );
++
++void *
++fd_sigstatuscache_leave( fd_sigstatuscache_t * cache );
++
++void *
++fd_sigstatuscache_delete( void * shmem );
++
++/* bank_attach creates child before any signatures for child are
++   inserted.  parent may be null only for the first bank in an empty
++   cache.  Repeating an identical attach is idempotent.  Multiple
++   retained identities may share bank_idx when bank_seq differs; every
++   reference and lookup still matches the exact pair. */
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_bank_attach( fd_sigstatuscache_t *       cache,
++                               fd_sigstatuscache_bank_id_t child,
++                               fd_sigstatuscache_bank_id_t parent,
++                               ulong                       slot );
++
++/* insert retains one committable transaction result.  The caller is
++   responsible for never inserting a non-committable transaction.
++   Distinct 64-byte signatures with the same Agave-compatible 20-byte
++   slice in one blockhash group intentionally collide.  Identical result
++   tuples are idempotent.  Differing tuples report CONFLICT and poison
++   that compact key: later matching queries return QUERY_AMBIGUOUS
++   instead of returning a false positive for either full signature. */
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_insert( fd_sigstatuscache_t *        cache,
++                          fd_sigstatuscache_bank_id_t  bank,
++                          uchar const                  blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ],
++                          uchar const                  signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ],
++                          fd_sigstatuscache_result_t const * result );
++
++/* bank_dead clears results for bank and its complete descendant subtree,
++   then retains exact-ID DEAD tombstones.  Late attach/insert events
++   cannot resurrect them.  Tombstones consume bank capacity until a
++   later canonical-root prune removes their branch.  Rooted banks cannot
++   be marked dead. */
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_bank_dead( fd_sigstatuscache_t *       cache,
++                             fd_sigstatuscache_bank_id_t bank );
++
++/* publish_root promotes the canonical path through bank, removes
++   non-canonical live branches, and retains at most the latest 300 rooted
++   banks.  Eviction here is the only age-based eviction operation. */
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_publish_root( fd_sigstatuscache_t *       cache,
++                                fd_sigstatuscache_bank_id_t bank );
++
++/* query searches statuses visible from the exact view bank.  Once
++   completeness is lost, every otherwise valid query fails closed with
++   INCOMPLETE and zeroed output, including a previously known hit. */
++
++fd_sigstatuscache_query_t
++fd_sigstatuscache_query( fd_sigstatuscache_t const *        cache,
++                         fd_sigstatuscache_bank_id_t         view,
++                         uchar const                         signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ],
++                         fd_sigstatuscache_query_result_t *  out );
++
++/* group_key_offset returns the selected compact-key offset for an
++   existing recent-blockhash group. */
++
++fd_sigstatuscache_op_t
++fd_sigstatuscache_group_key_offset( fd_sigstatuscache_t const * cache,
++                                    uchar const                 blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ],
++                                    ulong *                     offset );
++
++/* Read-only diagnostics.  Each accessor returns zero for NULL. */
++
++ulong fd_sigstatuscache_bank_max   ( fd_sigstatuscache_t const * cache );
++ulong fd_sigstatuscache_group_max  ( fd_sigstatuscache_t const * cache );
++ulong fd_sigstatuscache_entry_max  ( fd_sigstatuscache_t const * cache );
++ulong fd_sigstatuscache_bank_cnt   ( fd_sigstatuscache_t const * cache );
++ulong fd_sigstatuscache_group_cnt  ( fd_sigstatuscache_t const * cache );
++ulong fd_sigstatuscache_entry_cnt  ( fd_sigstatuscache_t const * cache );
++ulong fd_sigstatuscache_root_cnt   ( fd_sigstatuscache_t const * cache );
++ulong fd_sigstatuscache_publish_seq( fd_sigstatuscache_t const * cache );
++int   fd_sigstatuscache_is_complete( fd_sigstatuscache_t const * cache );
++
++FD_PROTOTYPES_END
++
++#endif /* HEADER_fd_src_flamenco_runtime_fd_sigstatuscache_h */
+diff --git a/src/flamenco/runtime/test_sigstatuscache.c b/src/flamenco/runtime/test_sigstatuscache.c
+new file mode 100644
+index 000000000..ef0957875
+--- /dev/null
++++ b/src/flamenco/runtime/test_sigstatuscache.c
+@@ -0,0 +1,616 @@
++#include "fd_sigstatuscache.h"
++#include "../../util/fd_util.h"
++
++#include <pthread.h>
++#include <stdatomic.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <unistd.h>
++
++struct test_cache {
++  void *                mem;
++  fd_sigstatuscache_t * cache;
++};
++typedef struct test_cache test_cache_t;
++
++static fd_sigstatuscache_bank_id_t
++bank_id( ulong idx,
++         ulong seq ) {
++  return (fd_sigstatuscache_bank_id_t){ .bank_idx=idx, .bank_seq=seq };
++}
++
++static fd_sigstatuscache_result_t
++result( int  txn_err,
++        int  exec_err,
++        int  exec_err_kind,
++        uint exec_err_idx,
++        uint custom_err ) {
++  return (fd_sigstatuscache_result_t){
++    .txn_err       = txn_err,
++    .exec_err      = exec_err,
++    .exec_err_kind = exec_err_kind,
++    .exec_err_idx  = exec_err_idx,
++    .custom_err    = custom_err
++  };
++}
++
++static int
++result_eq( fd_sigstatuscache_result_t const * a,
++           fd_sigstatuscache_result_t const * b ) {
++  return a->txn_err      ==b->txn_err       &&
++         a->exec_err     ==b->exec_err      &&
++         a->exec_err_kind==b->exec_err_kind &&
++         a->exec_err_idx ==b->exec_err_idx  &&
++         a->custom_err   ==b->custom_err;
++}
++
++static test_cache_t
++test_cache_new( ulong bank_max,
++                ulong group_max,
++                ulong entry_max,
++                ulong seed ) {
++  ulong footprint = fd_sigstatuscache_footprint( bank_max, group_max, entry_max );
++  FD_TEST( footprint );
++  void * mem = aligned_alloc( fd_sigstatuscache_align(), footprint );
++  FD_TEST( mem );
++  FD_TEST( fd_sigstatuscache_new( mem, bank_max, group_max, entry_max, seed )==mem );
++  fd_sigstatuscache_t * cache = fd_sigstatuscache_join( mem );
++  FD_TEST( cache );
++  return (test_cache_t){ .mem=mem, .cache=cache };
++}
++
++static void
++test_cache_delete( test_cache_t * test ) {
++  FD_TEST( fd_sigstatuscache_leave( test->cache )==test->mem );
++  FD_TEST( fd_sigstatuscache_delete( test->mem )==test->mem );
++  free( test->mem );
++  test->mem   = NULL;
++  test->cache = NULL;
++}
++
++static void
++fill_bytes( uchar * bytes,
++            ulong   sz,
++            uint    tag ) {
++  for( ulong i=0UL; i<sz; i++ ) bytes[ i ] = (uchar)(tag + (uint)(17UL*i));
++}
++
++static void
++blockhash_for_offset( ulong   seed,
++                      ulong   wanted_offset,
++                      uchar   blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ] ) {
++  FD_TEST( wanted_offset<=FD_SIGSTATUSCACHE_KEY_OFFSET_MAX );
++  for( ulong nonce=0UL; nonce<1000000UL; nonce++ ) {
++    fd_memset( blockhash, 0, FD_SIGSTATUSCACHE_BLOCKHASH_SZ );
++    fd_memcpy( blockhash, &nonce, sizeof(nonce) );
++    if( fd_hash( seed, blockhash, FD_SIGSTATUSCACHE_BLOCKHASH_SZ ) %
++        (FD_SIGSTATUSCACHE_KEY_OFFSET_MAX+1UL)==wanted_offset ) return;
++  }
++  FD_LOG_ERR(( "could not find blockhash offset %lu", wanted_offset ));
++}
++
++static int
++query_result_is_zero( fd_sigstatuscache_query_result_t const * out ) {
++  fd_sigstatuscache_query_result_t const zero = {0};
++  return !memcmp( out, &zero, sizeof(zero) );
++}
++
++static void
++query_found( fd_sigstatuscache_t const *       cache,
++             fd_sigstatuscache_bank_id_t        view,
++             uchar const                        signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ],
++             ulong                              expected_slot,
++             fd_sigstatuscache_bank_id_t        expected_bank,
++             fd_sigstatuscache_result_t const * expected_result ) {
++  fd_sigstatuscache_query_result_t out;
++  fd_memset( &out, 0xA5, sizeof(out) );
++  FD_TEST( fd_sigstatuscache_query( cache, view, signature, &out )==FD_SIGSTATUSCACHE_QUERY_FOUND );
++  FD_TEST( out.slot==expected_slot );
++  FD_TEST( fd_sigstatuscache_bank_id_eq( out.bank, expected_bank ) );
++  FD_TEST( result_eq( &out.result, expected_result ) );
++}
++
++static void
++query_status( fd_sigstatuscache_t const * cache,
++              fd_sigstatuscache_bank_id_t  view,
++              uchar const                  signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ],
++              fd_sigstatuscache_query_t    expected ) {
++  fd_sigstatuscache_query_result_t out;
++  fd_memset( &out, 0xA5, sizeof(out) );
++  FD_TEST( fd_sigstatuscache_query( cache, view, signature, &out )==expected );
++  FD_TEST( query_result_is_zero( &out ) );
++}
++
++static void
++test_layout_and_lifecycle( void ) {
++  FD_LOG_NOTICE(( "sigstatuscache: layout and lifecycle" ));
++
++  FD_TEST( fd_sigstatuscache_align()==128UL );
++  FD_TEST( sizeof(fd_sigstatuscache_bank_id_t)==16UL );
++  FD_TEST( sizeof(fd_sigstatuscache_result_t)==20UL );
++  FD_TEST( fd_sigstatuscache_footprint( 1UL,   1UL,    1UL )==2944UL );
++  FD_TEST( fd_sigstatuscache_footprint( 64UL, 64UL, 4096UL )==406144UL );
++  FD_TEST( fd_sigstatuscache_footprint( 512UL, 1024UL, 2000000UL )==193675904UL );
++
++  FD_TEST( !fd_sigstatuscache_footprint( 0UL, 1UL, 1UL ) );
++  FD_TEST( !fd_sigstatuscache_footprint( 1UL, 0UL, 1UL ) );
++  FD_TEST( !fd_sigstatuscache_footprint( 1UL, 1UL, 0UL ) );
++  FD_TEST( !fd_sigstatuscache_footprint( ULONG_MAX, 1UL, 1UL ) );
++  FD_TEST( !fd_sigstatuscache_footprint( 1UL, ULONG_MAX, 1UL ) );
++  FD_TEST( !fd_sigstatuscache_footprint( 1UL, 1UL, ULONG_MAX ) );
++  FD_TEST( !fd_sigstatuscache_footprint( 1UL<<62, 1UL, 1UL ) );
++
++  FD_TEST( fd_sigstatuscache_bank_id_is_null( fd_sigstatuscache_bank_id_null() ) );
++  FD_TEST( !fd_sigstatuscache_bank_id_is_valid( fd_sigstatuscache_bank_id_null() ) );
++  FD_TEST( !fd_sigstatuscache_bank_id_is_valid( bank_id( ULONG_MAX, 1UL ) ) );
++  FD_TEST( !fd_sigstatuscache_bank_id_is_valid( bank_id( 1UL, ULONG_MAX ) ) );
++  FD_TEST( fd_sigstatuscache_bank_id_is_valid( bank_id( 1UL, 1UL ) ) );
++
++  ulong footprint = fd_sigstatuscache_footprint( 2UL, 2UL, 4UL );
++  uchar * raw = (uchar *)malloc( footprint+2UL*FD_SIGSTATUSCACHE_ALIGN );
++  FD_TEST( raw );
++  void * aligned = (void *)fd_ulong_align_up( (ulong)raw, FD_SIGSTATUSCACHE_ALIGN );
++  fd_memset( aligned, 0, footprint );
++
++  FD_TEST( !fd_sigstatuscache_new( NULL, 2UL, 2UL, 4UL, 1UL ) );
++  FD_TEST( !fd_sigstatuscache_new( (uchar *)aligned+1UL, 2UL, 2UL, 4UL, 1UL ) );
++  FD_TEST( !fd_sigstatuscache_new( aligned, 0UL, 2UL, 4UL, 1UL ) );
++  FD_TEST( !fd_sigstatuscache_join( aligned ) ); /* zero magic */
++
++  FD_TEST( fd_sigstatuscache_new( aligned, 2UL, 2UL, 4UL, 1UL )==aligned );
++  fd_sigstatuscache_t * cache = fd_sigstatuscache_join( aligned );
++  FD_TEST( cache );
++  FD_TEST( !fd_sigstatuscache_join( (uchar *)aligned+1UL ) );
++  FD_TEST( fd_sigstatuscache_bank_max( cache )==2UL );
++  FD_TEST( fd_sigstatuscache_group_max( cache )==2UL );
++  FD_TEST( fd_sigstatuscache_entry_max( cache )==4UL );
++  FD_TEST( !fd_sigstatuscache_bank_cnt( cache ) );
++  FD_TEST( !fd_sigstatuscache_group_cnt( cache ) );
++  FD_TEST( !fd_sigstatuscache_entry_cnt( cache ) );
++  FD_TEST( !fd_sigstatuscache_root_cnt( cache ) );
++  FD_TEST( !fd_sigstatuscache_publish_seq( cache ) );
++  FD_TEST( fd_sigstatuscache_is_complete( cache ) );
++  FD_TEST( fd_sigstatuscache_delete( aligned )==aligned );
++  FD_TEST( !fd_sigstatuscache_join( aligned ) ); /* deleted magic */
++  free( raw );
++
++  FD_LOG_NOTICE(( "sigstatuscache footprint: header=2608 bank=72 group=56 entry=80 "
++                  "F(512,1024,2000000)=193675904" ));
++}
++
++static void
++test_forks_reuse_dead_and_prune( void ) {
++  FD_LOG_NOTICE(( "sigstatuscache: exact fork views, reuse, DEAD, and prune" ));
++
++  ulong const seed = 0xC0FFEEUL;
++  test_cache_t test = test_cache_new( 16UL, 8UL, 32UL, seed );
++  fd_sigstatuscache_t * cache = test.cache;
++
++  fd_sigstatuscache_bank_id_t root  = bank_id( 7UL, 1UL );
++  fd_sigstatuscache_bank_id_t a     = bank_id( 8UL, 1UL );
++  fd_sigstatuscache_bank_id_t b     = bank_id( 9UL, 1UL );
++  fd_sigstatuscache_bank_id_t sib   = bank_id( 10UL, 1UL );
++  fd_sigstatuscache_bank_id_t reuse = bank_id( 7UL, 2UL );
++
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, root, fd_sigstatuscache_bank_id_null(), 100UL )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, a,    root, 101UL )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, b,    a,    102UL )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, sib,  root, 101UL )==FD_SIGSTATUSCACHE_OK ); /* same-slot equivocation */
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, sib,  root, 101UL )==FD_SIGSTATUSCACHE_DUPLICATE );
++
++  uchar blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  uchar sig_root[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  uchar sig_branch[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  uchar sig_b[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  uchar sig_reuse[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fill_bytes( blockhash,  sizeof(blockhash),  1U );
++  fill_bytes( sig_root,   sizeof(sig_root),   2U );
++  fill_bytes( sig_branch, sizeof(sig_branch), 3U );
++  fill_bytes( sig_b,      sizeof(sig_b),      4U );
++  fill_bytes( sig_reuse,  sizeof(sig_reuse),  5U );
++
++  fd_sigstatuscache_result_t r_root = result( 0, 0, 0, UINT_MAX, 0U );
++  fd_sigstatuscache_result_t r_a    = result( -1, -2, 3, 4U, 5U );
++  fd_sigstatuscache_result_t r_sib  = result( -6, -7, 2, 8U, 9U );
++  fd_sigstatuscache_result_t r_b    = result( -10, -11, 1, 12U, 13U );
++  fd_sigstatuscache_result_t r_reuse= result( -14, -15, 3, 16U, 17U );
++
++  FD_TEST( fd_sigstatuscache_insert( cache, root, blockhash, sig_root,   &r_root )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( cache, a,    blockhash, sig_branch, &r_a )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( cache, sib,  blockhash, sig_branch, &r_sib )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( cache, b,    blockhash, sig_b,      &r_b )==FD_SIGSTATUSCACHE_OK );
++
++  query_found( cache, a,   sig_root,   100UL, root, &r_root );
++  query_found( cache, a,   sig_branch, 101UL, a,    &r_a );
++  query_found( cache, b,   sig_branch, 101UL, a,    &r_a );
++  query_found( cache, sib, sig_branch, 101UL, sib,  &r_sib );
++  query_status( cache, root, sig_branch, FD_SIGSTATUSCACHE_QUERY_NOT_FOUND );
++
++  FD_TEST( fd_sigstatuscache_publish_root( cache, root )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_root_cnt( cache )==1UL );
++
++  /* Same bank_idx, different bank_seq coexists with the retained root. */
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, reuse, root, 102UL )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( cache, reuse, blockhash, sig_reuse, &r_reuse )==FD_SIGSTATUSCACHE_OK );
++  query_found( cache, reuse, sig_root,  100UL, root,  &r_root );
++  query_found( cache, reuse, sig_reuse, 102UL, reuse, &r_reuse );
++
++  FD_TEST( fd_sigstatuscache_bank_dead( cache, a )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_bank_dead( cache, a )==FD_SIGSTATUSCACHE_DUPLICATE );
++  query_status( cache, a, sig_branch, FD_SIGSTATUSCACHE_QUERY_STALE_VIEW );
++  query_status( cache, b, sig_b,      FD_SIGSTATUSCACHE_QUERY_STALE_VIEW );
++  query_found( cache, sib, sig_branch, 101UL, sib, &r_sib );
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, a, root, 101UL )==FD_SIGSTATUSCACHE_ERR_STALE_BANK );
++  FD_TEST( fd_sigstatuscache_is_complete( cache ) );
++
++  /* Rooting the sibling prunes both DEAD tombstones and the other live
++     sibling, while preserving the exact canonical result. */
++  FD_TEST( fd_sigstatuscache_publish_root( cache, sib )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_root_cnt( cache )==2UL );
++  FD_TEST( fd_sigstatuscache_bank_cnt( cache )==2UL );
++  query_found( cache, sib, sig_branch, 101UL, sib, &r_sib );
++  query_status( cache, reuse, sig_reuse, FD_SIGSTATUSCACHE_QUERY_STALE_VIEW );
++  FD_TEST( fd_sigstatuscache_publish_root( cache, sib )==FD_SIGSTATUSCACHE_DUPLICATE );
++  FD_TEST( fd_sigstatuscache_is_complete( cache ) );
++
++  test_cache_delete( &test );
++}
++
++static void
++test_compact_keys_and_results( void ) {
++  FD_LOG_NOTICE(( "sigstatuscache: offsets, result roundtrips, and fail-closed collisions" ));
++
++  ulong const seed = 0x123456789UL;
++  test_cache_t test = test_cache_new( 2UL, 4UL, 16UL, seed );
++  fd_sigstatuscache_t * cache = test.cache;
++  fd_sigstatuscache_bank_id_t bank = bank_id( 1UL, 44UL );
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, bank, fd_sigstatuscache_bank_id_null(), 500UL )==FD_SIGSTATUSCACHE_OK );
++
++  uchar bh0 [ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  uchar bh11[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  blockhash_for_offset( seed, 0UL,  bh0  );
++  blockhash_for_offset( seed, 11UL, bh11 );
++
++  uchar sig0 [ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  uchar sig11[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fill_bytes( sig0,  sizeof(sig0),  31U );
++  fill_bytes( sig11, sizeof(sig11), 97U );
++
++  fd_sigstatuscache_result_t custom0 = result( -8, -22, 3, UINT_MAX, 0U );
++  fd_sigstatuscache_result_t custom_max = result( INT_MIN, INT_MAX, -1, UINT_MAX, UINT_MAX );
++  fd_sigstatuscache_result_t other = result( 7, 8, 9, 10U, 11U );
++
++  FD_TEST( fd_sigstatuscache_insert( cache, bank, bh0, sig0, &custom0 )==FD_SIGSTATUSCACHE_OK );
++  ulong offset = ULONG_MAX;
++  FD_TEST( fd_sigstatuscache_group_key_offset( cache, bh0, &offset )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( offset==0UL );
++  query_found( cache, bank, sig0, 500UL, bank, &custom0 );
++  FD_TEST( fd_sigstatuscache_insert( cache, bank, bh0, sig0, &custom0 )==FD_SIGSTATUSCACHE_DUPLICATE );
++
++  uchar sig0_collision[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fd_memcpy( sig0_collision, sig0, sizeof(sig0_collision) );
++  sig0_collision[ 63 ] ^= (uchar)1; /* outside offset-0 [0,19] slice */
++  FD_TEST( memcmp( sig0_collision, sig0, sizeof(sig0_collision) ) );
++  FD_TEST( fd_sigstatuscache_insert( cache, bank, bh0, sig0_collision, &other )==FD_SIGSTATUSCACHE_ERR_CONFLICT );
++  query_status( cache, bank, sig0,           FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS );
++  query_status( cache, bank, sig0_collision, FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS );
++  FD_TEST( fd_sigstatuscache_is_complete( cache ) ); /* key-local ambiguity */
++
++  FD_TEST( fd_sigstatuscache_insert( cache, bank, bh11, sig11, &custom_max )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_group_key_offset( cache, bh11, &offset )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( offset==11UL );
++  query_found( cache, bank, sig11, 500UL, bank, &custom_max );
++
++  uchar sig11_collision[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fd_memcpy( sig11_collision, sig11, sizeof(sig11_collision) );
++  sig11_collision[ 0 ] ^= (uchar)1; /* outside offset-11 [11,30] slice */
++  FD_TEST( fd_sigstatuscache_insert( cache, bank, bh11, sig11_collision, &other )==FD_SIGSTATUSCACHE_ERR_CONFLICT );
++  query_status( cache, bank, sig11,           FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS );
++  query_status( cache, bank, sig11_collision, FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS );
++  FD_TEST( fd_sigstatuscache_is_complete( cache ) );
++
++  /* Two separately retained compact keys that both match one query are
++     also ambiguous, irrespective of insertion order or result. */
++  uchar sig_cross[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fill_bytes( sig_cross, sizeof(sig_cross), 173U );
++  FD_TEST( fd_sigstatuscache_insert( cache, bank, bh0,  sig_cross, &custom0   )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( cache, bank, bh11, sig_cross, &custom_max )==FD_SIGSTATUSCACHE_OK );
++  query_status( cache, bank, sig_cross, FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS );
++
++  uchar missing_bh[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  fill_bytes( missing_bh, sizeof(missing_bh), 211U );
++  FD_TEST( fd_sigstatuscache_group_key_offset( cache, missing_bh, &offset )==FD_SIGSTATUSCACHE_ERR_NOT_FOUND );
++
++  test_cache_delete( &test );
++}
++
++static void
++test_root_retention( void ) {
++  FD_LOG_NOTICE(( "sigstatuscache: 300-root retention" ));
++
++  test_cache_t test = test_cache_new( 302UL, 2UL, 4UL, 9UL );
++  fd_sigstatuscache_t * cache = test.cache;
++  uchar blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  uchar sig_old[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  uchar sig_keep[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fill_bytes( blockhash, sizeof(blockhash), 42U );
++  fill_bytes( sig_old,   sizeof(sig_old),   43U );
++  fill_bytes( sig_keep,  sizeof(sig_keep),  44U );
++  fd_sigstatuscache_result_t r_old  = result( 1, 2, 3, 4U, 5U );
++  fd_sigstatuscache_result_t r_keep = result( 6, 7, 8, UINT_MAX, UINT_MAX );
++
++  fd_sigstatuscache_bank_id_t current = bank_id( 0UL, 10UL );
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, current, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( cache, current, blockhash, sig_old, &r_old )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_publish_root( cache, current )==FD_SIGSTATUSCACHE_OK );
++
++  fd_sigstatuscache_bank_id_t keep = bank_id( 1UL, 10UL );
++  FD_TEST( fd_sigstatuscache_bank_attach( cache, keep, current, 2UL )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( cache, keep, blockhash, sig_keep, &r_keep )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_publish_root( cache, keep )==FD_SIGSTATUSCACHE_OK );
++  current = keep;
++
++  for( ulong i=2UL; i<=300UL; i++ ) {
++    fd_sigstatuscache_bank_id_t next = bank_id( i, 10UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( cache, next, current, i+1UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_publish_root( cache, next )==FD_SIGSTATUSCACHE_OK );
++    current = next;
++  }
++
++  FD_TEST( fd_sigstatuscache_root_cnt( cache )==FD_SIGSTATUSCACHE_ROOT_MAX );
++  FD_TEST( fd_sigstatuscache_bank_cnt( cache )==FD_SIGSTATUSCACHE_ROOT_MAX );
++  query_status( cache, current, sig_old, FD_SIGSTATUSCACHE_QUERY_NOT_FOUND );
++  query_found( cache, current, sig_keep, 2UL, keep, &r_keep );
++  query_status( cache, bank_id( 0UL, 10UL ), sig_old, FD_SIGSTATUSCACHE_QUERY_STALE_VIEW );
++  FD_TEST( fd_sigstatuscache_is_complete( cache ) );
++
++  test_cache_delete( &test );
++}
++
++static void
++test_capacity_and_incomplete( void ) {
++  FD_LOG_NOTICE(( "sigstatuscache: capacity and sticky incomplete" ));
++
++  uchar bh1[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  uchar bh2[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  uchar sig1[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  uchar sig2[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fill_bytes( bh1,  sizeof(bh1),  1U );
++  fill_bytes( bh2,  sizeof(bh2),  2U );
++  fill_bytes( sig1, sizeof(sig1), 3U );
++  fill_bytes( sig2, sizeof(sig2), 4U );
++  fd_sigstatuscache_result_t r = result( -1, -2, 3, UINT_MAX, 0U );
++
++  {
++    test_cache_t test = test_cache_new( 1UL, 2UL, 2UL, 1UL );
++    fd_sigstatuscache_bank_id_t root = bank_id( 1UL, 1UL );
++    fd_sigstatuscache_bank_id_t child= bank_id( 2UL, 1UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_insert( test.cache, root, bh1, sig1, &r )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_publish_seq( test.cache )==2UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, child, root, 2UL )==FD_SIGSTATUSCACHE_ERR_NO_BANK_SPACE );
++    FD_TEST( fd_sigstatuscache_publish_seq( test.cache )==3UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, child, root, 2UL )==FD_SIGSTATUSCACHE_ERR_NO_BANK_SPACE );
++    FD_TEST( fd_sigstatuscache_publish_seq( test.cache )==3UL );
++    FD_TEST( !fd_sigstatuscache_is_complete( test.cache ) );
++    query_status( test.cache, root, sig1, FD_SIGSTATUSCACHE_QUERY_INCOMPLETE );
++    query_status( test.cache, root, sig2, FD_SIGSTATUSCACHE_QUERY_INCOMPLETE );
++    test_cache_delete( &test );
++  }
++
++  {
++    test_cache_t test = test_cache_new( 1UL, 1UL, 3UL, 2UL );
++    fd_sigstatuscache_bank_id_t root = bank_id( 1UL, 1UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_insert( test.cache, root, bh1, sig1, &r )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_insert( test.cache, root, bh2, sig2, &r )==FD_SIGSTATUSCACHE_ERR_NO_GROUP_SPACE );
++    FD_TEST( fd_sigstatuscache_group_cnt( test.cache )==1UL );
++    FD_TEST( fd_sigstatuscache_entry_cnt( test.cache )==1UL );
++    FD_TEST( !fd_sigstatuscache_is_complete( test.cache ) );
++    query_status( test.cache, root, sig1, FD_SIGSTATUSCACHE_QUERY_INCOMPLETE );
++    test_cache_delete( &test );
++  }
++
++  {
++    test_cache_t test = test_cache_new( 1UL, 2UL, 1UL, 3UL );
++    fd_sigstatuscache_bank_id_t root = bank_id( 1UL, 1UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_insert( test.cache, root, bh1, sig1, &r )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_insert( test.cache, root, bh1, sig2, &r )==FD_SIGSTATUSCACHE_ERR_NO_ENTRY_SPACE );
++    FD_TEST( fd_sigstatuscache_group_cnt( test.cache )==1UL );
++    FD_TEST( fd_sigstatuscache_entry_cnt( test.cache )==1UL );
++    FD_TEST( !fd_sigstatuscache_is_complete( test.cache ) );
++    test_cache_delete( &test );
++  }
++
++  {
++    test_cache_t test = test_cache_new( 2UL, 1UL, 1UL, 4UL );
++    fd_sigstatuscache_bank_id_t root = bank_id( 1UL, 1UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++    ulong seq = fd_sigstatuscache_publish_seq( test.cache );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 2UL )==FD_SIGSTATUSCACHE_ERR_CONFLICT );
++    FD_TEST( fd_sigstatuscache_publish_seq( test.cache )==seq+1UL );
++    FD_TEST( !fd_sigstatuscache_is_complete( test.cache ) );
++    query_status( test.cache, root, sig1, FD_SIGSTATUSCACHE_QUERY_INCOMPLETE );
++    test_cache_delete( &test );
++  }
++
++  {
++    /* DEAD tombstones are bounded by bank_max and reject resurrection. */
++    test_cache_t test = test_cache_new( 2UL, 2UL, 2UL, 5UL );
++    fd_sigstatuscache_bank_id_t root = bank_id( 1UL, 1UL );
++    fd_sigstatuscache_bank_id_t dead = bank_id( 2UL, 1UL );
++    fd_sigstatuscache_bank_id_t next = bank_id( 3UL, 1UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, dead, root, 2UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_insert( test.cache, dead, bh1, sig1, &r )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_bank_dead( test.cache, dead )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_bank_cnt( test.cache )==2UL );
++    FD_TEST( !fd_sigstatuscache_entry_cnt( test.cache ) );
++    FD_TEST( !fd_sigstatuscache_group_cnt( test.cache ) );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, dead, root, 2UL )==FD_SIGSTATUSCACHE_ERR_STALE_BANK );
++    FD_TEST( fd_sigstatuscache_bank_dead( test.cache, dead )==FD_SIGSTATUSCACHE_DUPLICATE );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, next, root, 3UL )==FD_SIGSTATUSCACHE_ERR_NO_BANK_SPACE );
++    FD_TEST( !fd_sigstatuscache_is_complete( test.cache ) );
++    query_status( test.cache, root, sig1, FD_SIGSTATUSCACHE_QUERY_INCOMPLETE );
++    test_cache_delete( &test );
++  }
++
++  {
++    /* A late insert into a DEAD exact identity is rejected and makes the
++       cache globally non-authoritative. */
++    test_cache_t test = test_cache_new( 3UL, 2UL, 2UL, 6UL );
++    fd_sigstatuscache_bank_id_t root = bank_id( 1UL, 1UL );
++    fd_sigstatuscache_bank_id_t dead = bank_id( 2UL, 1UL );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_bank_attach( test.cache, dead, root, 2UL )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_bank_dead( test.cache, dead )==FD_SIGSTATUSCACHE_OK );
++    FD_TEST( fd_sigstatuscache_insert( test.cache, dead, bh1, sig1, &r )==FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++    FD_TEST( !fd_sigstatuscache_is_complete( test.cache ) );
++    query_status( test.cache, root, sig1, FD_SIGSTATUSCACHE_QUERY_INCOMPLETE );
++    test_cache_delete( &test );
++  }
++}
++
++struct reader_ctx {
++  fd_sigstatuscache_t const * cache;
++  fd_sigstatuscache_bank_id_t view;
++  uchar                       signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fd_sigstatuscache_result_t  expected;
++  atomic_int                  started;
++  atomic_int                  seen;
++  atomic_int                  bad;
++};
++typedef struct reader_ctx reader_ctx_t;
++
++static void *
++reader_main( void * _ctx ) {
++  reader_ctx_t * ctx = (reader_ctx_t *)_ctx;
++  atomic_store_explicit( &ctx->started, 1, memory_order_release );
++  for( ulong i=0UL; i<2000000UL; i++ ) {
++    fd_sigstatuscache_query_result_t out;
++    fd_memset( &out, 0xA5, sizeof(out) );
++    fd_sigstatuscache_query_t q = fd_sigstatuscache_query( ctx->cache, ctx->view, ctx->signature, &out );
++    if( q==FD_SIGSTATUSCACHE_QUERY_NOT_FOUND || q==FD_SIGSTATUSCACHE_QUERY_AGAIN ) continue;
++    if( q==FD_SIGSTATUSCACHE_QUERY_FOUND &&
++        out.slot==88UL &&
++        fd_sigstatuscache_bank_id_eq( out.bank, ctx->view ) &&
++        result_eq( &out.result, &ctx->expected ) ) {
++      atomic_store_explicit( &ctx->seen, 1, memory_order_release );
++      return NULL;
++    }
++    atomic_store_explicit( &ctx->bad, 1, memory_order_release );
++    return NULL;
++  }
++  atomic_store_explicit( &ctx->bad, 1, memory_order_release );
++  return NULL;
++}
++
++static void
++test_read_only_atomic_publication( void ) {
++  FD_LOG_NOTICE(( "sigstatuscache: read-only mapping and atomic publication" ));
++
++  ulong footprint = fd_sigstatuscache_footprint( 4UL, 4UL, 8UL );
++  FILE * file = tmpfile();
++  FD_TEST( file );
++  int fd = fileno( file );
++  FD_TEST( fd>=0 );
++  FD_TEST( !ftruncate( fd, (off_t)footprint ) );
++
++  void * rw = mmap( NULL, footprint, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0 );
++  FD_TEST( rw!=MAP_FAILED );
++  void * ro = mmap( NULL, footprint, PROT_READ, MAP_SHARED, fd, 0 );
++  FD_TEST( ro!=MAP_FAILED );
++  FD_TEST( fd_sigstatuscache_new( rw, 4UL, 4UL, 8UL, 77UL )==rw );
++
++  fd_sigstatuscache_t * writer = fd_sigstatuscache_join( rw );
++  fd_sigstatuscache_t const * reader = fd_sigstatuscache_join( ro );
++  FD_TEST( writer );
++  FD_TEST( reader );
++
++  fd_sigstatuscache_bank_id_t bank = bank_id( 4UL, 99UL );
++  FD_TEST( fd_sigstatuscache_bank_attach( writer, bank, fd_sigstatuscache_bank_id_null(), 88UL )==FD_SIGSTATUSCACHE_OK );
++
++  uchar blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ];
++  uchar signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ];
++  fill_bytes( blockhash, sizeof(blockhash), 61U );
++  fill_bytes( signature, sizeof(signature), 62U );
++  fd_sigstatuscache_result_t expected = result( INT_MIN, -2, INT_MAX, UINT_MAX, UINT_MAX );
++  query_status( reader, bank, signature, FD_SIGSTATUSCACHE_QUERY_NOT_FOUND );
++
++  reader_ctx_t ctx = {
++    .cache    = reader,
++    .view     = bank,
++    .expected = expected
++  };
++  fd_memcpy( ctx.signature, signature, sizeof(signature) );
++  atomic_init( &ctx.started, 0 );
++  atomic_init( &ctx.seen,    0 );
++  atomic_init( &ctx.bad,     0 );
++
++  pthread_t thread;
++  FD_TEST( !pthread_create( &thread, NULL, reader_main, &ctx ) );
++  for( ulong i=0UL; !atomic_load_explicit( &ctx.started, memory_order_acquire ) && i<1000000UL; i++ )
++    FD_SPIN_PAUSE();
++  FD_TEST( atomic_load_explicit( &ctx.started, memory_order_acquire ) );
++
++  ulong seq = fd_sigstatuscache_publish_seq( writer );
++  FD_TEST( fd_sigstatuscache_insert( writer, bank, blockhash, signature, &expected )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_publish_seq( writer )==seq+1UL );
++  FD_TEST( !pthread_join( thread, NULL ) );
++  FD_TEST( atomic_load_explicit( &ctx.seen, memory_order_acquire ) );
++  FD_TEST( !atomic_load_explicit( &ctx.bad, memory_order_acquire ) );
++  query_found( reader, bank, signature, 88UL, bank, &expected );
++
++  FD_TEST( fd_sigstatuscache_delete( rw )==rw );
++  FD_TEST( !munmap( ro, footprint ) );
++  FD_TEST( !munmap( rw, footprint ) );
++  FD_TEST( !fclose( file ) );
++}
++
++static void
++test_bad_arguments_and_root_dead( void ) {
++  FD_LOG_NOTICE(( "sigstatuscache: bad arguments, stale views, and rooted DEAD rejection" ));
++
++  test_cache_t test = test_cache_new( 2UL, 2UL, 2UL, 55UL );
++  fd_sigstatuscache_bank_id_t root = bank_id( 1UL, 1UL );
++  uchar blockhash[ FD_SIGSTATUSCACHE_BLOCKHASH_SZ ] = {0};
++  uchar signature[ FD_SIGSTATUSCACHE_SIGNATURE_SZ ] = {0};
++  fd_sigstatuscache_result_t r = result( 0, 0, 0, UINT_MAX, 0U );
++  fd_sigstatuscache_query_result_t out;
++
++  FD_TEST( fd_sigstatuscache_bank_attach( test.cache, root, fd_sigstatuscache_bank_id_null(), 1UL )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_insert( NULL, root, blockhash, signature, &r )==FD_SIGSTATUSCACHE_ERR_INVAL );
++  FD_TEST( fd_sigstatuscache_insert( test.cache, fd_sigstatuscache_bank_id_null(), blockhash, signature, &r )==FD_SIGSTATUSCACHE_ERR_INVAL );
++  FD_TEST( fd_sigstatuscache_query( test.cache, bank_id( ULONG_MAX, 1UL ), signature, &out )==FD_SIGSTATUSCACHE_QUERY_BAD_ARGUMENT );
++  FD_TEST( fd_sigstatuscache_query( test.cache, root, NULL, &out )==FD_SIGSTATUSCACHE_QUERY_BAD_ARGUMENT );
++  FD_TEST( fd_sigstatuscache_query( test.cache, root, signature, NULL )==FD_SIGSTATUSCACHE_QUERY_BAD_ARGUMENT );
++  query_status( test.cache, bank_id( 99UL, 99UL ), signature, FD_SIGSTATUSCACHE_QUERY_STALE_VIEW );
++
++  FD_TEST( fd_sigstatuscache_publish_root( test.cache, root )==FD_SIGSTATUSCACHE_OK );
++  FD_TEST( fd_sigstatuscache_bank_dead( test.cache, root )==FD_SIGSTATUSCACHE_ERR_BAD_STATE );
++  FD_TEST( !fd_sigstatuscache_is_complete( test.cache ) );
++  query_status( test.cache, root, signature, FD_SIGSTATUSCACHE_QUERY_INCOMPLETE );
++
++  test_cache_delete( &test );
++}
++
++int
++main( int     argc,
++      char ** argv ) {
++  fd_boot( &argc, &argv );
++
++  test_layout_and_lifecycle();
++  test_forks_reuse_dead_and_prune();
++  test_compact_keys_and_results();
++  test_root_retention();
++  test_capacity_and_incomplete();
++  test_read_only_atomic_publication();
++  test_bad_arguments_and_root_dead();
++
++  FD_LOG_NOTICE(( "pass" ));
++  fd_halt();
++  return 0;
++}
+-- 
+2.50.1 (Apple Git-155)
+

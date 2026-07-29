@@ -285,14 +285,99 @@ function loadPolicy() {
         ]) &&
       JSON.stringify(executionResultPropagation.remainingProductionWork) ===
         JSON.stringify([
-          'signature-status-cache',
-          'snapshot-restore',
-          'dead-fork-eviction',
+          'live-cache-topology-and-replay-insertion',
+          'snapshot-result-storage-and-cache-restore',
+          'dead-fork-notification-integration',
           'commitment-confirmations',
           'rpc-json-implementation',
           'connected-native-validator-integration',
         ]),
     'native execution-result propagation evidence is incomplete or overstates RPC readiness',
+  );
+  const liveSignatureStatusCacheCore = capabilities.nativeRpc.liveSignatureStatusCacheCore;
+  assert(
+    liveSignatureStatusCacheCore?.sourceImplemented === true &&
+      liveSignatureStatusCacheCore.productionComplete === false &&
+      JSON.stringify(liveSignatureStatusCacheCore.rpcMethodsPromoted) === JSON.stringify([]) &&
+      liveSignatureStatusCacheCore.scope ===
+        'standalone caller-sized live replay-result cache core' &&
+      liveSignatureStatusCacheCore.linkedIntoValidatorBinaries === false &&
+      liveSignatureStatusCacheCore.connectedCaller === false &&
+      liveSignatureStatusCacheCore.snapshotRestoreSupported === false &&
+      liveSignatureStatusCacheCore.borshPayloadSupported === false &&
+      JSON.stringify(liveSignatureStatusCacheCore.exactBankIdentity) ===
+        JSON.stringify(['bank_idx', 'bank_seq']) &&
+      liveSignatureStatusCacheCore.rootRetentionSlots === 300 &&
+      liveSignatureStatusCacheCore.failClosedOnIncomplete === true &&
+      liveSignatureStatusCacheCore.deadBankTombstones === true &&
+      liveSignatureStatusCacheCore.deterministicRootPruning === true &&
+      liveSignatureStatusCacheCore.compactKey?.bytes === 20 &&
+      JSON.stringify(liveSignatureStatusCacheCore.compactKey.offsetRange) ===
+        JSON.stringify([0, 11]) &&
+      liveSignatureStatusCacheCore.compactKey.selection ===
+        'deterministic caller seed plus blockhash' &&
+      liveSignatureStatusCacheCore.compactKey.agaveProductionSelectionDifference ===
+        'Agave v3.1.8 selects the same range with runtime RNG' &&
+      liveSignatureStatusCacheCore.compactKey.collisionsReturnAmbiguous === true &&
+      liveSignatureStatusCacheCore.concurrency?.writers === 1 &&
+      liveSignatureStatusCacheCore.concurrency.readOnlyReadersSupported === true &&
+      liveSignatureStatusCacheCore.concurrency.publication ===
+        'lock-free C atomics with bounded seqlock retries' &&
+      liveSignatureStatusCacheCore.concurrency.retryExhaustion === 'QUERY_AGAIN' &&
+      liveSignatureStatusCacheCore.directNativeCTestExecution?.passed === true &&
+      liveSignatureStatusCacheCore.directNativeCTestExecution.environment ===
+        'linux-x86_64-docker-emulation' &&
+      liveSignatureStatusCacheCore.directNativeCTestExecution.nativeHardware === false &&
+      JSON.stringify(liveSignatureStatusCacheCore.directNativeCTestExecution.tests) ===
+        JSON.stringify(['test_sigstatuscache']) &&
+      JSON.stringify(liveSignatureStatusCacheCore.directNativeCTestExecution.sanitizers) ===
+        JSON.stringify(['address', 'undefined', 'leak']) &&
+      JSON.stringify(liveSignatureStatusCacheCore.remainingProductionWork) ===
+        JSON.stringify([
+          'topology-and-workspace-allocation',
+          'live-replay-insertion',
+          'dead-bank-and-root-event-wiring',
+          'snapshot-root-visibility-in-separately-versioned-abi',
+          'rpc-query-consumer',
+          'connected-native-validator-integration',
+        ]),
+    'native live signature-status cache core evidence is incomplete or overstates integration',
+  );
+  const snapshotResultParser = capabilities.nativeRpc.snapshotResultParser;
+  assert(
+    snapshotResultParser?.sourceImplemented === true &&
+      snapshotResultParser.productionComplete === false &&
+      JSON.stringify(snapshotResultParser.rpcMethodsPromoted) === JSON.stringify([]) &&
+      snapshotResultParser.boundary ===
+        'slot-delta parser typed result view with borrowed BorshIoError chunks' &&
+      snapshotResultParser.completeTransactionAndInstructionDiscriminants === true &&
+      snapshotResultParser.strictIncrementalUtf8 === true &&
+      snapshotResultParser.parserLocalBorshLengthCap === false &&
+      snapshotResultParser.snapinRetainsTypedResults === false &&
+      snapshotResultParser.sharedCacheRestoration === false &&
+      snapshotResultParser.agaveGeneratedGoldenFixture === false &&
+      snapshotResultParser.maxRootedSlotDeltas === 300 &&
+      snapshotResultParser.layoutBytes?.snapshotEntry === 64 &&
+      snapshotResultParser.layoutBytes.typedResult === 32 &&
+      snapshotResultParser.layoutBytes.advanceResult === 48 &&
+      snapshotResultParser.layoutBytes.parserFootprintBefore === 14_208 &&
+      snapshotResultParser.layoutBytes.parserFootprintAfter === 14_208 &&
+      snapshotResultParser.directNativeCTestExecution?.passed === true &&
+      snapshotResultParser.directNativeCTestExecution.environment ===
+        'linux-x86_64-docker-emulation' &&
+      snapshotResultParser.directNativeCTestExecution.nativeHardware === false &&
+      JSON.stringify(snapshotResultParser.directNativeCTestExecution.tests) ===
+        JSON.stringify(['test_slot_delta_parser', 'test_snap_roundtrip']) &&
+      snapshotResultParser.directNativeCTestExecution.fuzzerTargetBuilds === true &&
+      JSON.stringify(snapshotResultParser.remainingProductionWork) ===
+        JSON.stringify([
+          'configured-borsh-storage-with-fail-closed-capacity',
+          'snapin-to-shared-cache-restoration',
+          'snapshot-root-identity-and-visibility-abi',
+          'agave-generated-golden-or-differential-fixtures',
+          'immediate-post-restore-query-integration',
+        ]),
+    'native snapshot result parser evidence is incomplete or overstates restoration',
   );
   const programAccounts = capabilities.nativeRpc.getProgramAccounts;
   assert(
@@ -345,8 +430,20 @@ function loadPolicy() {
     'forbidden runtime binary policy is incomplete or duplicated',
   );
   assert(
-    Array.isArray(lock.downstream.patches) && lock.downstream.patches.length > 0,
-    'no downstream patches are pinned',
+    Array.isArray(lock.downstream.patches) &&
+      lock.downstream.patches.length === 8 &&
+      JSON.stringify(lock.downstream.patches.map(({ path }) => path)) ===
+        JSON.stringify([
+          'patches/0001-explicit-sovereign-genesis-allocations.patch',
+          'patches/0002-native-get-program-accounts.patch',
+          'patches/0003-wokenet-live-cluster-safety.patch',
+          'patches/0004-native-non-voting-rpc-observer.patch',
+          'patches/0005-native-c-test-execution-fixes.patch',
+          'patches/0006-wokenet-preserve-replay-execution-result-metadata.patch',
+          'patches/0007-wokenet-live-signature-status-cache-core.patch',
+          'patches/0008-wokenet-preserve-snapshot-transaction-result-metadata.patch',
+        ]),
+    'the exact ordered eight-patch downstream queue is not pinned',
   );
   for (const patch of lock.downstream.patches) {
     assert(
@@ -766,6 +863,34 @@ function sourceState(sourceRoot, lock) {
     join(sourceRoot, 'src', 'discof', 'replay', 'test_replay_tile.c'),
     'utf8',
   );
+  const sigstatuscacheHeader = readFileSync(
+    join(sourceRoot, 'src', 'flamenco', 'runtime', 'fd_sigstatuscache.h'),
+    'utf8',
+  );
+  const sigstatuscacheSource = readFileSync(
+    join(sourceRoot, 'src', 'flamenco', 'runtime', 'fd_sigstatuscache.c'),
+    'utf8',
+  );
+  const sigstatuscacheTestSource = readFileSync(
+    join(sourceRoot, 'src', 'flamenco', 'runtime', 'test_sigstatuscache.c'),
+    'utf8',
+  );
+  const slotDeltaParserHeader = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'restore', 'utils', 'fd_slot_delta_parser.h'),
+    'utf8',
+  );
+  const slotDeltaParserSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'restore', 'utils', 'fd_slot_delta_parser.c'),
+    'utf8',
+  );
+  const slotDeltaParserTestSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'restore', 'utils', 'test_slot_delta_parser.c'),
+    'utf8',
+  );
+  const snapinTileSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'restore', 'fd_snapin_tile.c'),
+    'utf8',
+  );
   const clusterHeader = readFileSync(
     join(sourceRoot, 'src', 'disco', 'genesis', 'fd_genesis_cluster.h'),
     'utf8',
@@ -895,6 +1020,56 @@ function sourceState(sourceRoot, lock) {
       replayTestSource.includes('info->exec_err_idx==UINT_MAX'),
     'native replay execution-result propagation, normalization, ordering, or C test changed',
   );
+  assert(
+    sigstatuscacheHeader.includes('V1 is a live replay-result cache core.') &&
+      sigstatuscacheHeader.includes('#define FD_SIGSTATUSCACHE_ROOT_MAX         (300UL)') &&
+      sigstatuscacheHeader.includes('FD_SIGSTATUSCACHE_QUERY_INCOMPLETE') &&
+      sigstatuscacheHeader.includes('FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS') &&
+      sigstatuscacheHeader.includes('FD_SIGSTATUSCACHE_QUERY_AGAIN') &&
+      sigstatuscacheHeader.includes('fd_sigstatuscache_bank_id_t child,') &&
+      sigstatuscacheHeader.includes('fd_sigstatuscache_bank_dead(') &&
+      sigstatuscacheHeader.includes('fd_sigstatuscache_publish_root(') &&
+      sigstatuscacheSource.includes('fd_sigstatuscache_fail_incomplete(') &&
+      sigstatuscacheSource.includes('FD_SIGSTATUSCACHE_BANK_DEAD') &&
+      sigstatuscacheSource.includes(
+        'atomic_fetch_add_explicit( &cache->publish_seq, 1UL, memory_order_relaxed );',
+      ) &&
+      sigstatuscacheTestSource.includes('test_forks_reuse_dead_and_prune();') &&
+      sigstatuscacheTestSource.includes('test_compact_keys_and_results();') &&
+      sigstatuscacheTestSource.includes('test_root_retention();') &&
+      sigstatuscacheTestSource.includes('test_capacity_and_incomplete();') &&
+      sigstatuscacheTestSource.includes('test_read_only_atomic_publication();') &&
+      sigstatuscacheTestSource.includes('FD_SIGSTATUSCACHE_QUERY_INCOMPLETE') &&
+      sigstatuscacheTestSource.includes('FD_SIGSTATUSCACHE_QUERY_AMBIGUOUS'),
+    'native live signature-status cache core, fail-closed semantics, or direct C tests changed',
+  );
+  assert(
+    slotDeltaParserHeader.includes(
+      'FD_STATIC_ASSERT( sizeof(fd_sstxncache_entry_t)==64UL, sstxncache_entry_footprint );',
+    ) &&
+      slotDeltaParserHeader.includes(
+        'FD_STATIC_ASSERT( sizeof(fd_sstxncache_txn_result_t)==32UL, sstxncache_txn_result_footprint );',
+      ) &&
+      slotDeltaParserHeader.includes(
+        'FD_STATIC_ASSERT( sizeof(fd_slot_delta_parser_advance_result_t)==48UL, slot_delta_parser_advance_result_footprint );',
+      ) &&
+      slotDeltaParserHeader.includes('FD_SLOT_DELTA_PARSER_ADVANCE_BORSH_IO_ERROR_DATA') &&
+      slotDeltaParserHeader.includes('FD_SLOT_DELTA_PARSER_ADVANCE_ERROR_INVALID_BORSH_IO_UTF8') &&
+      slotDeltaParserSource.includes('utf8_consume(') &&
+      slotDeltaParserSource.includes(
+        'parser->state==STATE_CACHE_STATUS_RESULT_ERR_INSTR_ERR_BORSH_IO_DATA',
+      ) &&
+      slotDeltaParserTestSource.includes('test_all_supported_error_discriminants( parser );') &&
+      slotDeltaParserTestSource.includes('test_borsh_then_next_entry( parser );') &&
+      slotDeltaParserTestSource.includes(
+        'test_multiple_slots_groups_and_empty_groups( parser );',
+      ) &&
+      snapinTileSource.includes(
+        'metadata for a future shared status cache and is not retained here.',
+      ) &&
+      snapinTileSource.includes('advance==FD_SLOT_DELTA_PARSER_ADVANCE_BORSH_IO_ERROR_DATA'),
+    'native snapshot result parser, streamed Borsh validation, bounded claims, or direct C tests changed',
+  );
   for (const policyEvidence of [
     'FD_CONFIG_WOKENET_LIVE_OK',
     'FD_CONFIG_WOKENET_LIVE_ERR_NATIVE_FIREDANCER_REQUIRED',
@@ -980,36 +1155,37 @@ function expectedPatchedDiff(sourceRoot, lock) {
   }
 }
 
+function actualWorkingTreeDiff(sourceRoot, lock) {
+  const temporaryRoot = mkdtempSync(join(trustedTemporaryRoot, 'wokenet-firedancer-worktree-'));
+  const temporaryIndex = join(temporaryRoot, 'index');
+  const env = { GIT_INDEX_FILE: temporaryIndex };
+  try {
+    run('git', ['read-tree', lock.upstream.commit], { cwd: sourceRoot, env });
+    run('git', ['add', '--all', '--', '.'], { cwd: sourceRoot, env });
+    run('git', ['diff', '--cached', '--check'], { cwd: sourceRoot, env });
+    return run(
+      'git',
+      ['diff', '--cached', '--binary', '--full-index', '--no-ext-diff', lock.upstream.commit, '--'],
+      { cwd: sourceRoot, env },
+    );
+  } finally {
+    rmSync(temporaryRoot, { force: true, recursive: true });
+  }
+}
+
 function checkSource(sourceRoot) {
   const { lock } = loadPolicy();
   sourceState(sourceRoot, lock);
   const expectedDiff = expectedPatchedDiff(sourceRoot, lock);
-  const actualDiff = run(
-    'git',
-    ['diff', '--binary', '--full-index', '--no-ext-diff', lock.upstream.commit, '--'],
-    { cwd: sourceRoot },
-  );
-  const untracked = run('git', ['ls-files', '--others', '--exclude-standard'], {
-    cwd: sourceRoot,
-  });
-  assert(untracked.length === 0, `source contains unexpected untracked files:\n${untracked}`);
+  const actualDiff = actualWorkingTreeDiff(sourceRoot, lock);
 
-  const patched = actualDiff.length > 0;
-  if (patched) {
-    assert(
-      actualDiff === expectedDiff,
-      'tracked source changes do not exactly match the pinned downstream patch queue',
-    );
-  } else {
-    for (const patch of lock.downstream.patches) {
-      run('git', ['apply', '--check', resolvePatch(patch.path)], { cwd: sourceRoot });
-    }
-  }
-  run('git', ['diff', '--check'], { cwd: sourceRoot });
-  process.stdout.write(
-    `WokeNet Firedancer source is ${patched ? 'patched' : 'patch-ready'} at ${lock.upstream.commit}.\n`,
+  assert(actualDiff.length > 0, 'source is missing the pinned downstream patch queue');
+  assert(
+    actualDiff === expectedDiff,
+    'source changes do not exactly match the pinned downstream patch queue',
   );
-  return { patched };
+  run('git', ['diff', '--check'], { cwd: sourceRoot });
+  process.stdout.write(`WokeNet Firedancer source is patched at ${lock.upstream.commit}.\n`);
 }
 
 function firedancerVersion(sourceRoot) {
@@ -1106,6 +1282,10 @@ function inspectBinaries(sourceRoot, objectRoot, lock) {
         `${binary} is missing defined global native Firedancer ${symbol.type.toLowerCase()} ${symbol.name}`,
       );
     }
+    assert(
+      !symbols.some((entry) => entry.name.startsWith('fd_sigstatuscache_')),
+      `${binary} unexpectedly links the dormant signature-status cache core without a caller`,
+    );
     const dynamicSection = run('readelf', ['--dynamic', '--wide', binaryPath]);
     for (const forbiddenBinary of lock.downstream.forbiddenRuntimeBinaries) {
       assert(
@@ -1147,19 +1327,11 @@ function assertFreshPatchedCheckout(sourceRoot, lock) {
     `fresh build checkout HEAD ${head} does not match ${lock.upstream.commit}`,
   );
   const expectedDiff = expectedPatchedDiff(sourceRoot, lock);
-  const actualDiff = run(
-    'git',
-    ['diff', '--binary', '--full-index', '--no-ext-diff', lock.upstream.commit, '--'],
-    { cwd: sourceRoot },
-  );
+  const actualDiff = actualWorkingTreeDiff(sourceRoot, lock);
   assert(
     actualDiff === expectedDiff,
     'fresh build checkout does not exactly match the pinned downstream patch queue',
   );
-  const untracked = run('git', ['ls-files', '--others', '--exclude-standard'], {
-    cwd: sourceRoot,
-  });
-  assert(untracked.length === 0, `fresh build checkout contains unexpected files:\n${untracked}`);
   run('git', ['diff', '--check'], { cwd: sourceRoot });
 }
 
@@ -1293,14 +1465,15 @@ function installFreshOpenSsl(freshSourceRoot, dependencySource) {
 
 function checkBinaries(sourceRoot) {
   const { lock } = loadPolicy();
-  const sourceCheck = checkSource(sourceRoot);
-  assert(
-    sourceCheck.patched,
-    'binary verification requires the exact applied downstream patch queue',
-  );
+  checkSource(sourceRoot);
   assert(
     process.platform === 'linux' && process.arch === 'x64',
     'native binary attestation requires the supported Linux x64 build host',
+  );
+  const attestationUser = run('id', ['-un']);
+  assert(
+    run('id', ['-u']) !== '0' && run('id', ['-g']) !== '0',
+    'native binary attestation must run as a non-root user and group',
   );
 
   const suppliedSourceRoot = realpathSync(sourceRoot);
@@ -1378,6 +1551,8 @@ function checkBinaries(sourceRoot) {
     const testInvocations = [
       { name: 'test_genesis_create', arguments: [] },
       { name: 'test_accdb', arguments: [] },
+      { name: 'test_sigstatuscache', arguments: [] },
+      { name: 'test_slot_delta_parser', arguments: [] },
       { name: 'test_rpc_tile', arguments: [] },
       { name: 'test_config_parse', arguments: [] },
       {
@@ -1403,10 +1578,10 @@ function checkBinaries(sourceRoot) {
       ...testInvocations.map(({ name }) => name),
     ];
     assert(
-      testInvocations.length === 8 &&
+      testInvocations.length === 10 &&
         new Set(testInvocations.map(({ name }) => name)).size === testInvocations.length &&
         new Set(buildTargets).size === buildTargets.length,
-      'native attestation targets must contain exactly eight unique focused tests',
+      'native attestation targets must contain exactly ten unique focused tests',
     );
     run(
       'bash',
@@ -1477,11 +1652,36 @@ function checkBinaries(sourceRoot) {
     }
 
     const manifest = inspectBinaries(freshSourceRoot, objectRoot, lock);
+    const flamencoArchivePath = join(objectRoot, 'lib', 'libfd_flamenco.a');
+    assert(existsSync(flamencoArchivePath), 'fresh build is missing libfd_flamenco.a');
+    const flamencoArchiveMembers = run('ar', ['t', flamencoArchivePath]).split(/\r?\n/u);
+    assert(
+      flamencoArchiveMembers.includes('fd_sigstatuscache.o'),
+      'libfd_flamenco.a is missing the standalone signature-status cache core',
+    );
+    const sigstatuscacheArchiveSymbols = run('nm', ['-g', '--defined-only', flamencoArchivePath])
+      .split(/\r?\n/u)
+      .filter((line) => /\bT fd_sigstatuscache_[0-9A-Za-z_]+$/u.test(line.trim()));
+    assert(
+      sigstatuscacheArchiveSymbols.length === 21,
+      'libfd_flamenco.a must expose exactly 21 signature-status cache core functions',
+    );
+    manifest.libraryComponents = {
+      signatureStatusCacheCore: {
+        archive: relative(freshSourceRoot, flamencoArchivePath),
+        member: 'fd_sigstatuscache.o',
+        publicFunctionSymbols: sigstatuscacheArchiveSymbols.length,
+        linkedIntoValidatorBinaries: false,
+      },
+    };
     const localnetTopologyBinary = join(objectRoot, 'bin', lock.downstream.developmentBinary);
     const memoryOutput = run(
       localnetTopologyBinary,
       ['--config', join(networkRoot, 'config', 'localnet.toml'), 'mem', '--json'],
-      { cwd: freshSourceRoot },
+      {
+        cwd: freshSourceRoot,
+        env: { LOGNAME: attestationUser, USER: attestationUser },
+      },
     );
     let memoryPlan;
     try {
