@@ -512,7 +512,7 @@ The workstreams have a strict dependency order:
 
 | Capability | Current status | Next evidence |
 |---|---|---|
-| Core social foundation | Partial, pre-release | Complete passkey publication issue #10 |
+| Core social foundation | Passkey localnet publication proven; pre-release | Extend registration with issue #14 pseudonymous `.woke` names |
 | Long/short video | Worker subset only | Versioned manifest and real browser upload/playback |
 | Middle-out optimization | Research label | Public benchmark and standards fallback |
 | Random `.woke` names | Planned | Namespace ADR, schemas, collision and recovery tests |

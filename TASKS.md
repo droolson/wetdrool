@@ -805,7 +805,7 @@ scope, not devnet, mainnet-beta, Seeker, or `$WOKE`-mint evidence.
 
 - [ ] Build gate passes from a clean checkout.
   - Historical baseline: a fresh same-host `git clone --no-hardlinks` of commit
-    `1513571e61ccf16ff3a715bc975b355646a0e935` began clean without
+    `866d88cc5031c41ae74abaa371ad4f62df8f1fba` began clean without
     `node_modules` and passed the then-current canonical verification suite.
     The Solana/Seeker pivot now passes the canonical suite in the working
     checkout, but it has not yet been re-attested from a fresh clone. The prior

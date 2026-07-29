@@ -137,7 +137,7 @@ not evidence of a devnet or mainnet-beta deployment.
   is destroyed and replayed to exact state, and both transaction signatures
   render on the restored feed/detail surface. The retained 2026-07-29 evidence
   has SHA-256
-  `587c47de8065429f286fcc524737a4f855df94b4fde3b08e5d195d13d3838261`;
+  `972f049d6afd2343d3b70d9266ef79ca8d60728b23a8e051af8d629739469d46`;
   all audited secret-match and forbidden-field counts are zero. This is local
   Solana program evidence, not a public deployment claim.
 - The updated package run covers deterministic canonical bytes and identifiers, Ed25519

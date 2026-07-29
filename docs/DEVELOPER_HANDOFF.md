@@ -18,17 +18,21 @@ Before changing anything:
 
 1. Run `git status --short`, `git branch --show-current`, and
    `git log -5 --oneline`.
-2. Preserve every existing modification and untracked source file. The working
-   tree may contain an integrated but not yet committed publication milestone.
+2. Expect a clean tree at the recorded handoff. If local modifications exist,
+   preserve and inventory them before changing anything.
 3. Read this document, [TASKS.md](../TASKS.md),
    [FINAL_REPORT.md](../FINAL_REPORT.md), and
    [Platform Expansion](PLATFORM_EXPANSION.md). AI work also requires
    [Woke AI Platform](AI_PLATFORM.md) and
    [Organization and Product Ownership](ORGANIZATION.md).
-4. Inspect [GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10)
-   for the active passkey-publication acceptance gate and
+4. Read closed [GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10)
+   for the passkey-publication evidence, then use
    [issue #12](https://github.com/AlexBTC420/wokesocial/issues/12) for the
-   expanded product program.
+   expanded product program. The next social-product slices are
+   [issue #14](https://github.com/AlexBTC420/wokesocial/issues/14) for
+   pseudonymous `.woke` names and
+   [issue #15](https://github.com/AlexBTC420/wokesocial/issues/15) for the
+   points/reputation foundation.
 5. Confirm the repository-local Git identity:
 
    ```sh
@@ -194,10 +198,10 @@ This breadth does not make the product production-ready. Read
 [FINAL_REPORT.md](../FINAL_REPORT.md) for the exact verified baseline and known
 limitations.
 
-## 6. Active milestone: passkey-first localnet publication
+## 6. Completed milestone: passkey-first localnet publication
 
-[GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10) is the
-highest-priority active slice. It connects one real browser flow:
+[GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10) completed
+the first real browser-to-WokeNet publication slice:
 
 ```mermaid
 sequenceDiagram
@@ -313,12 +317,13 @@ fresh validator, isolated PostgreSQL, rebuilt SBF program/indexer/web source,
 and real Chromium virtual authenticator:
 
 ```text
-retained run: .local/vertical-slice/run-tDbXHm
-evidence: .local/vertical-slice/run-tDbXHm/publication-evidence.json
-evidence mode/size: 0600 / 3419 bytes
-evidence SHA-256: 587c47de8065429f286fcc524737a4f855df94b4fde3b08e5d195d13d3838261
-baseline replay: 10 events / 2ff381e5e0cddc31a1424ecf70fa2c4a903a7f434741d81a44e738646382afb6
-expanded replay: 13 events / 5663a52768b9392f88303ae6eb065dfc1196129258b702b31040bd393ccba268
+tested commit: c8c04944648696fbaf19342077ffa99d64c8d967
+retained run: .local/vertical-slice/run-ZM7nNM
+evidence: .local/vertical-slice/run-ZM7nNM/publication-evidence.json
+evidence mode/size: 0600 / 3418 bytes
+evidence SHA-256: 972f049d6afd2343d3b70d9266ef79ca8d60728b23a8e051af8d629739469d46
+baseline replay: 10 events / 627c538cd2b03fc5c6c52a601a454870cf95602ac3cd19996285472e8c2d407a
+expanded replay: 13 events / 01d69a29076b48fd54fbeaeda6fef9e60227a4bb5a6ec5bb6727b59e5ff6934d
 web tests: 19 files / 252 tests
 secret matches: 0
 forbidden HTTP field names: 0
@@ -326,15 +331,15 @@ forbidden HTTP field names: 0
 
 The browser created identity
 `J8eUkB7sS8nbH1JDDM3DLF8WkNGo9JF9ZfJF4ACQqM2b` once at finalized slot 142,
-published two distinct posts at slots 176 and 287, and restored both exact
+published two distinct posts at slots 176 and 288, and restored both exact
 transaction signatures after replay. The first publication intentionally lost
 one forwarded response after finality and held the indexer unavailable for 60
 bounded reads. After one reload, the browser recovered the same finalized
 intent with the draft locked and with the send count unchanged at two. Across
 the identity plus two posts there were exactly three unique transaction wires.
 
-The secret audit scanned 543 HTTP requests, 557 HTTP responses, 22,617,314
-HTTP/browser bytes, 26,160 service-log bytes, and 3,273 Docker-log bytes. It
+The secret audit scanned 542 HTTP requests, 621 HTTP responses, 22,621,368
+HTTP/browser bytes, 26,164 service-log bytes, and 3,273 Docker-log bytes. It
 captured five PRF-output canaries and one seed canary in its test-only
 observation channel; request, response, browser, service, Docker, and
 forbidden-field match counts were all zero. This is development-localnet
@@ -527,44 +532,38 @@ Before committing:
 5. Scan for secrets and unsupported completion claims.
 6. Commit logical units with conventional subjects.
 
-Suggested split for the current working tree:
-
-1. `feat(web): add passkey-first localnet publication`
-2. `docs: define expanded WokeSocial platform roadmap`
+The passkey-first publication and expanded-roadmap milestone was committed as
+rewritten commit `c8c04944648696fbaf19342077ffa99d64c8d967`. Start subsequent
+work from a clean tree and keep each new product slice independently
+reviewable.
 
 Do not commit failed-run `.local/` artifacts. `.local/` is intentionally
 ignored.
 
-### 11.1 Required historical metadata repair
+### 11.1 Completed historical metadata repair
 
-The repository history currently contains older author and committer identities.
-The owner has explicitly requested that every commit show:
+The owner required every commit to show:
 
 ```text
 AlexBTC420 <alexbtc420@pm.me>
 ```
 
-This means both author and committer fields, including merge commits. Perform
-the rewrite only after the current tree is fully verified and committed.
+The repair completed on 2026-07-29. At the rewrite checkpoint, all 18 existing
+commits—including merge commits—used that exact value for both author and
+committer. Commit messages, timestamps, tree sequence, parent counts, and merge
+topology were preserved. The pre/post tree hash was
+`a4874530d580a92fc2f8e8e748b47a5c4f3d5d62`, and the rewritten milestone tip
+was `c8c04944648696fbaf19342077ffa99d64c8d967`.
 
-Safe sequence:
+The update used the exact prior remote SHA as a `--force-with-lease`, then
+verified the GitHub branch, private visibility, MIT license detection, and
+history. A mode-0600 recovery bundle was retained locally at
+`.local/history-backups/pre-identity-rewrite-a13dca9.bundle` with SHA-256
+`f9d4baf8a9060a0bddd3e65c446d12cfa01459510bf6e52c2ea47c3c037145a7`.
+That ignored bundle is a local recovery artifact, not part of a normal clone.
 
-1. Verify `origin/main` has not advanced and record its exact SHA.
-2. Create a recoverable ignored bundle under `.local/history-backups/`.
-3. Record the pre-rewrite tree hash.
-4. Rewrite the `main` history while preserving commit messages, timestamps,
-   trees, parents, and merge topology; change only author/committer name and
-   email.
-5. Verify every commit’s `%an`, `%ae`, `%cn`, and `%ce`.
-6. Verify the post-rewrite tree hash equals the pre-rewrite tree hash.
-7. Run at least the fast static boundary against the rewritten tip.
-8. Push with an exact `--force-with-lease`, never an unconditional force.
-9. Re-read GitHub’s default branch, private status, MIT license detection, and
-   commit history.
-10. Update issue comments with rewritten commit SHAs.
-
-Do not run the history rewrite while uncommitted changes, active agents, or
-background development servers exist.
+Do not repeat the rewrite. New commits must set both identities correctly before
+creation.
 
 ## 12. License and contributor posture
 
@@ -583,33 +582,31 @@ retroactively prove ownership of third-party work.
 
 ## 13. Prioritized continuation checklist
 
-If resuming the current milestone, follow this order:
+The publication milestone, final adversarial review, retained evidence run,
+workspace/program/browser/connected/security gates, Git history repair, private
+repository verification, MIT license verification, and issue #10 closure are
+complete.
 
-- [ ] Confirm no new P0/P1 finding remains from the final adversarial review.
-- [ ] Run a fresh full `pnpm test:vertical-slice` from the current source.
-- [ ] Require real Chromium passkey publication of two posts through one
-      deterministic identity.
-- [ ] Require exact finalized identity/post transactions, standard-RPC
-      simulation evidence, CAS verification, indexer checkpoints, ambiguous
-      transaction recovery without duplicate submission, and projection replay.
-- [ ] Require zero secret material in HTTP captures, logs, artifacts, storage,
-      and the repository scan.
-- [ ] Save the final evidence bundle and exact digest/count/signature/slot
-      summary.
-- [ ] Update Composer/web status in `README.md`, `TASKS.md`,
-      `docs/PRODUCT_SPEC.md`, `docs/ROADMAP.md`, and `FINAL_REPORT.md`.
-- [ ] Run focused protocol, SDK, and web gates.
-- [ ] Run the full workspace, program, browser, connected, audit, and secret
-      gates proportional to the changed surface.
-- [ ] Restore incidental `next-env.d.ts` generation if present.
-- [ ] Commit the implementation and documentation under the required Git
-      identity.
-- [ ] Close issue #10 only if every acceptance criterion is evidenced.
-- [ ] Rewrite author and committer metadata with a backup and
-      `--force-with-lease`.
-- [ ] Verify the private GitHub repository, MIT license, issues, branch, and
-      rewritten history.
-- [ ] Continue the dependency-ordered work in issues #13–#20.
+Continue in this order:
+
+- [ ] Implement issue #14’s random pseudonymous `.woke` allocation before
+      custom-name purchase or transfer.
+- [ ] Specify one canonical normalized-name representation, collision rules,
+      recovery behavior, reservation expiry, anti-squatting limits, and
+      identity/wallet mapping.
+- [ ] Add protocol schemas, deterministic SDK builders, indexer projections,
+      migration/replay coverage, and adversarial local-validator tests.
+- [ ] Connect anonymous passkey registration to the random name and render it
+      consistently in profile, composer, feed, search, and share surfaces.
+- [ ] Implement issue #15’s non-transferable reputation ledger and separately
+      accounted spendable points only after abuse simulations and audit rules.
+- [ ] Keep points, AI credits, future redemption claims, and any future `$WOKE`
+      token as distinct instruments.
+- [ ] Continue issue #13’s standards-based long/short video pipeline and
+      benchmark the “middle-out” optimization work rather than claiming an
+      unmeasured codec.
+- [ ] Continue issues #16–#20 only in dependency order, preserving the privacy,
+      noncustodial, legal-review, and truthful-status gates documented here.
 
 If a full gate fails, preserve the exact failure evidence, fix the cause at the
 correct trust boundary, add a regression, and rerun from a fresh environment.
