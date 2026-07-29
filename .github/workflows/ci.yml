@@ -282,7 +282,10 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4500/readyz
           docker exec wokesocial-ci-media-worker-1 \
             node scripts/verify-clamd.mjs
-          test -z "$(docker port wokesocial-ci-clamav-1 3310/tcp)"
+          test "$(
+            docker inspect wokesocial-ci-clamav-1 \
+              --format '{{json .HostConfig.PortBindings}}'
+          )" = '{}'
           test "$(
             docker inspect wokesocial-ci-clamav-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
@@ -296,6 +299,7 @@ jobs:
         if: failure()
         run: >-
           docker compose
+          --env-file .env.example
           --project-name wokesocial-ci
           --file infra/compose.yaml
           --profile services
@@ -307,6 +311,7 @@ jobs:
         if: always()
         run: >-
           docker compose
+          --env-file .env.example
           --project-name wokesocial-ci
           --file infra/compose.yaml
           --profile services
