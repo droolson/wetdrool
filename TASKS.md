@@ -85,8 +85,26 @@ Dependencies: repository audit.
     operation, and several launch boundaries remain incomplete.
 - [x] Add Docker Compose for PostgreSQL, Redis, and local content storage with
   health checks and least-privilege local credentials.
-- [x] Add structured logging, health/readiness conventions, and
-  OpenTelemetry-compatible instrumentation.
+- [ ] Add structured logging, uniform dependency-aware health/readiness,
+  metrics, and an OpenTelemetry SDK/export pipeline across every service.
+  - Implemented subset: services expose liveness/readiness routes, privacy-safe
+    structured logs are used in most runtimes, relay exposes metrics, and the
+    indexer creates API spans. Uniform route names, dependency/lag readiness,
+    service-wide metrics, explicit indexer redaction, and an SDK/exporter wired
+    to `OTEL_EXPORTER_OTLP_ENDPOINT` remain open.
+- [ ] Implement a fail-closed shared rate-limit store and verify limits across
+  multiple replicas.
+  - Current boundary: HTTP services and relay enforcement use process-local
+    state. Until a Redis-backed or edge-enforced shared limiter passes
+    two-instance tests, each affected service is limited to one replica and
+    multi-replica production deployment is blocked.
+- [x] Fail closed on local/insecure production configuration and dangerous
+  standalone service modes.
+  - Evidence: staging and production parsing require aligned runtime mode, finalized
+    non-local public-test selection, secure non-loopback browser/RPC/storage
+    endpoints, `rediss://`, explicit program/session values, and non-loopback
+    databases. Relay/auth/moderation development bypasses and the public local
+    media token are rejected outside local development with negative tests.
 - [x] Add CI for install, format, lint, typecheck, unit tests, program tests,
   integration tests, builds, dependency review, and secret scanning.
   - Evidence: CI includes frozen installation,
@@ -100,7 +118,12 @@ Dependencies: repository audit.
   - Evidence: `pnpm setup` installs checksum-verified toolchains under `.local`,
     starts healthy PostgreSQL/Redis/Kubo containers, validates configuration, and
     applies the ordered projection migrations through
-    `0011_public_search.sql`.
+    `0016_manifest_ingestion_state.sql`. `pnpm dev` reloads the selected environment for
+    every child process, starts the private ClamAV/media profile, applies all
+    local service migrations idempotently, enables advisory authorization only
+    after rejecting non-loopback or production use, and excludes the
+    containerized media worker from duplicate Turbo startup. Standalone relay
+    and moderation defaults remain locked.
 
 ### Phase 1 exit evidence
 
@@ -123,16 +146,20 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
 - [ ] Operate a sovereign WokeNet using native Firedancer validator and RPC
   software without Agave.
   - Implemented subset: the repository pins the official Firedancer revision
-    and exact downstream genesis patch, enforces an exact patch-queue diff,
-    defines native-only validator/RPC/localnet TOML, native WOKE at nine
-    decimals, deterministic local allocations, binary/process allowlists,
-    a bounded genesis-file hash verifier, machine-readable missing-RPC
-    capabilities, and a labeled Linux native-build workflow.
+    and exact downstream patch queue, enforces its exact diff, defines
+    native-only validator/RPC/localnet TOML, native WOKE at nine decimals,
+    deterministic local allocations, binary/process allowlists, a bounded
+    genesis-file hash verifier, and machine-readable RPC capabilities. The
+    downstream implements a bounded native `getProgramAccounts` owner scan with
+    direct account-database/RPC C tests, explicit supported and unsupported
+    filters/configuration, and hard scan/result/data ceilings. The labeled Linux
+    native-build workflow compiles and runs those tests.
   - Blocker: full native Firedancer has no production release and lacks required
-    submission, simulation, status, history, address-history, and
-    program-account RPC methods; the capability record also does not yet attest
-    the SDK's rent-exemption query. No native cluster or connected slice has
-    been verified, and no Agave fallback is permitted.
+    submission, simulation, status, transaction-history, and address-history
+    RPC methods; the bounded program-account subset is not production-complete,
+    and the capability record also does not yet attest the SDK's rent-exemption
+    query. No native cluster or connected slice has been verified, and no Agave
+    fallback is permitted.
 
 - [ ] Implement protocol configuration and versioning.
   - Implemented subset: the versioned configuration PDA is initialized once and
@@ -143,9 +170,11 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
   - Implemented subset: stable identity roots, profile hash/URI pointers,
     collision-safe global handle claim/release, dual-signed root rotation, and
     scoped/expiring/revocable delegations bound to the current root-rotation
-    epoch, plus a six-instruction delayed guardian-threshold recovery primitive.
-    Multiple linked wallets, complete device/product integration, and
-    email/passkey recovery UX remain planned.
+    epoch, a root-authorized one-way identity deactivation instruction with an
+    exact current-sequence replay barrier and versioned event, plus a
+    six-instruction delayed guardian-threshold recovery primitive. Multiple
+    linked wallets, complete device/product integration, and email/passkey
+    recovery UX remain planned.
 - [ ] Implement follow/unfollow and block-edge event semantics.
   - Implemented subset: checked follow/unfollow/refollow and block/unblock state
     with PDA substitution checks and versioned events. Root and current-epoch
@@ -180,26 +209,30 @@ pinned Rust/Anchor/Solana-format compatibility toolchains.
     signer control, handle collisions/releases, delegated authority attacks, and
     overflow are tested. A clean local-validator gate keeps representative
     transactions below 1,100 bytes and 150,000 CU (largest observed overall:
-    892 bytes and 64,523 CU; governance additions: at most 554 bytes and
-    26,856 CU). Exact rent is asserted for all 19 current account families.
+    892 bytes and 67,399 CU; governance additions: at most 581 bytes and
+    32,806 CU). Exact rent is asserted for all 19 current account families.
     Generalized close rules, fuzzing, and future account families remain
     incomplete.
 - [ ] Generate and verify the client from the IDL.
   - Implemented subset: Anchor generates the local IDL and TypeScript type used
-    by the local-validator and connected suites. A complete checked-in SDK
-    client and exhaustive cross-language conformance gate remain planned.
+    by the local-validator and connected suites. Eight manually reviewed
+    SDK builders now match the identity-deactivation and seven native-WOKE
+    administration/settlement instruction layouts. A complete generated,
+    checked-in SDK client and exhaustive cross-language conformance gate remain
+    planned.
 - [ ] Run Rust unit tests and Anchor local-validator tests for success, invalid
   signer, substitution, duplicate, replay, overflow, malformed input, and
   unauthorized-close cases.
-  - Verified subset: 21 native Rust tests cover account sizing, validation, PDA
+  - Verified subset: 24 native Rust tests cover account sizing, validation, PDA
     domains, discriminators, stale sequences, rotation epochs, governance and
-    payment arithmetic, deterministic allocation, and overflow. Thirty-three
+    payment arithmetic, deterministic allocation, and overflow. Thirty-four
     Agave compatibility-oracle flows exercise the original core path;
     rotation/delegation lifecycle;
     displaced-root invalidation; block/community/membership/governance
     commitments; proposal/vote/finalization snapshots; reactions; handle
     claim/release; recovery; all six delegated action variants; native WOKE
-    tips/subscriptions; identity, signer, recipient, fee, scope, expiry,
+    tips/subscriptions; root-only identity deactivation; identity, signer,
+    recipient, fee, scope, expiry,
     revocation, epoch, duplicate, late-member, substitution, replay, rounding,
     and threshold attacks; and transaction/compute/rent ceilings. This is
     Solana-wire compatibility evidence only. The full cross-language matrix,
@@ -246,15 +279,44 @@ Dependencies: phase 2 protocol identifiers and events.
     synchronization validates exact genesis/program identity, fails over RPC
     endpoints, replays from a configured deployment slot, verifies manifests,
     applies idempotent checkpoints, retries/DLQ, suppresses tombstones, and
-    rebuilds memory/PostgreSQL projections. All 32 events in the current built
-    IDL are decoded and projected, with exact drift checks that reject
-    additions, removals, field/discriminator changes, and unhandled
-    program-data events. Identity, handles, social/governance/recovery, and
+    rebuilds memory/PostgreSQL projections. All 33 events in the current built
+    IDL are decoded with exact drift checks that reject additions, removals,
+    field/discriminator changes, and unhandled program-data events. All 33
+    events are projected, including exact, one-way identity deactivation with
+    historical authorization and replay invariants. Identity, handles,
+    social/governance/recovery, and
     payment configuration/offerings/receipts/entitlements retain exact-network
-    and raw-event provenance. Seventy-nine unit and thirteen fresh-PostgreSQL cases
-    pass. Native Firedancer RPC, fork/provider reconciliation, and production
-    metrics remain incomplete.
-- [ ] Publish OpenAPI and an independently runnable indexer.
+    and raw-event provenance. Sixteen ordered, checksummed migrations, 184 unit
+    cases across 20 files, and 27 fresh-PostgreSQL cases across 11 files pass.
+    Native Firedancer RPC, fork/reorg handling, independent-provider
+    reconciliation, production metrics, and production-scale rebuilds above
+    50,000 events remain incomplete.
+  - Profile-manifest reads preserve signed schema-v1 history only before the
+    per-network `INDEXER_PROFILE_V2_ACTIVATION_SLOT`; events at or after that
+    immutable cutoff require schema v2. Live ingestion and exact-source rebuild
+    use the same cutoff. Implemented root and delegated profile instructions
+    accept only schema version 2 and append that commitment to the canonical
+    onchain profile-reference event; explicit non-v2 commitments fail at every
+    slot.
+  - Manifest references use exact CIDv1/base32-lowercase `raw`/SHA-256 CIDs in
+    the shared IPFS, local, Arweave-transaction/CID, or credential-free
+    HTTPS/CID grammar. Invalid case, length, codec, multihash, padding, URI
+    shape, or CID/URI disagreement becomes terminal `manifest-uri` before
+    provider I/O.
+  - Manifest-bearing raw events have immutable accepted, pending, or terminal
+    disposition. Temporary unavailability advances sequence/checkpoint without
+    exposing content. Every sync poll drains a deterministic batch-bounded due
+    queue independently of new chain events or checkpoint movement. Promotion,
+    rescheduling, and terminal conversion lock the exact fingerprint.
+    Tombstones bypass manifest I/O entirely; optional legacy object/CID/hash
+    fields are detached audit metadata that cannot gate suppression.
+  - Suppression-aware rebuild skips provider I/O among accepted events only for
+    a durably accepted obsolete profile followed by a later pointer or post
+    followed by a tombstone, as proven by the complete ordered ledger. It
+    retains accepted raw state, sequence/reference effects, and checkpoint.
+    Late profile hydration after identity deactivation remains historical
+    retention and never restores public person discovery.
+- [x] Publish OpenAPI and an independently runnable indexer.
   - Implemented subset: the Fastify service exposes liveness, readiness,
     OpenAPI, feed, post, and bounded public-search endpoints backed by PostgreSQL
     with CORS, rate limiting, security headers, structured logging, and tracing
@@ -263,6 +325,12 @@ Dependencies: phase 2 protocol identifiers and events.
     network, deployment-slot, `WOKENET_*` RPC, storage, and database configuration
     is supplied; it remains honestly disabled when that configuration is absent
     and rejects retired `SOLANA_*` runtime variables.
+  - Evidence: a multi-stage, digest-pinned image runs as UID/GID `10005` with a
+    read-only root, loopback-only Compose port, healthcheck, and one explicit
+    writable content volume. The optional `indexer` profile and final image
+    build were inspected. The packaged rebuild command validates the complete
+    durable raw ledger and every referenced manifest in an isolated projection
+    before an explicitly confirmed, per-network locked atomic replacement.
 - [ ] Implement complete search and discovery with visibility and personal-safety enforcement.
   - Implemented subset: memory and PostgreSQL projections search current public
     display names/bios, canonical active handles, and verified public posts. The
@@ -280,9 +348,16 @@ Dependencies: phase 2 protocol identifiers and events.
 - [x] Implement non-authoritative multi-relay protocol and failover.
   - Evidence: `apps/relay` verifies strict signed advisory events and
     subscriptions, starts locked without a finalized-state key authorizer,
-    bounds replay/retention/rate/backpressure state, exposes privacy-safe
-    readiness/policy/metrics, and its client passes real-loopback failover,
-    reconnect, deduplication, and gap tests across multiple relay endpoints.
+    and includes a bounded fail-closed HTTP adapter for a replaceable finalized
+    authorizer with network/checkpoint/freshness binding and dependency
+    readiness. It bounds replay/retention/rate/backpressure state, exposes
+    privacy-safe readiness/policy/metrics, and its client passes real-loopback
+    failover, reconnect, deduplication, and gap tests across multiple relay
+    endpoints. A separate bounded adapter authorizes opaque-topic subscriptions
+    against finalized policy, expires community delivery grants, and joins
+    dependency readiness. Eighty-one unit cases and 29 real-WebSocket
+    integration cases pass. Deploying the independent key and
+    policy/membership authorities remains an operational integration.
 - [x] Implement chronological, following, community, trending, media,
   explainable recommendation, and third-party feed interfaces.
   - Evidence: `apps/feed-service` deterministically scopes chronological,
@@ -291,15 +366,18 @@ Dependencies: phase 2 protocol identifiers and events.
     transparent recommendation scores; and reconciles versioned third-party
     order metadata without allowing it to bypass local safety filters. Stable
     cursors bind mode/provider/policy inputs, responses carry source checkpoints
-    and provider provenance, and 29 unit/API cases pass. Production source
+    and provider provenance, and 36 unit/API cases pass. Production source
     collection and a curated discovery registry remain replaceable integrations,
     not ranking-engine gaps.
 - [ ] Test full projection rebuild and alternate-provider reconciliation.
   - Implemented subset: PostgreSQL tests rebuild from synthetic inputs, and the
     connected gate completely clears its network projection and reconstructs
     identity, profile, posts, follow, tombstone, checkpoint, and suppression
-    from actual finalized validator history plus signed CAS manifests. Alternate
-    storage/RPC reconciliation remains planned.
+    from actual finalized validator history plus signed CAS manifests. Durable
+    accepted/pending/terminal replay, accepted-obsolete suppression without
+    provider I/O, and late hydration/deactivation parity pass in memory and
+    PostgreSQL. Alternate storage/RPC reconciliation, fork/reorg evidence, and
+    rebuilds above the current 50,000-event bound remain planned.
 
 ## 4. Flagship web application
 
@@ -366,12 +444,14 @@ Dependencies: identities, communities, signed labels, indexer, flagship flows.
     label/report/appeal objects; encrypts restricted evidence with AES-256-GCM;
     keeps accepted objects and status history append-only and idempotent in
     memory or PostgreSQL; prevents cross-provider supersession; supports scoped
-    conflict assertions/overrides, legal holds, bounded retention deletion,
-    due/review/expiry transitions, and transparency aggregation; and exposes
-    purpose-authorized restricted cases. Forty-one unit and three isolated
+    conflict assertions/overrides, legal holds, due/review/expiry transitions,
+    and transparency aggregation; and exposes
+    purpose-authorized restricted cases. Fifty-six unit and four isolated
     PostgreSQL cases pass. A production object authorizer, operator SSO,
-    specialist workflow UI, and community permission projection remain open;
-    production readiness fails closed without them.
+    specialist workflow UI, community permission projection, and separate
+    reviewed retention executor remain open. The web runtime cannot delete
+    ledger history and reports zero automatic removals; production readiness
+    fails closed without the missing executor and deletion evidence.
 - [ ] Implement replaceable client/indexer policies and narrow technical
   protocol restrictions.
   - Implemented subset: the moderation provider exposes OpenAPI and signed,
@@ -416,9 +496,9 @@ threat-model mitigations.
     Ed25519 root seed locally, strips PRF output from server requests, and
     supports discoverable sign-in plus list/add/revoke service passkeys. Each
     additional passkey unwraps and rewraps the same root, and revocation requires
-    fresh step-up, deletes that wrapper, and revokes service sessions. Twenty-four
-    auth unit, three isolated PostgreSQL, one auth-service browser integration,
-    79 web unit, and two desktop web virtual-authenticator lifecycle flows pass.
+    fresh step-up, deletes that wrapper, and revokes service sessions.
+    Thirty-four auth unit, four isolated PostgreSQL, one auth-service browser integration,
+    81 web unit, and two desktop web virtual-authenticator lifecycle flows pass.
   - Remaining scope: create the actual protocol identity/delegation through a
     simulated and confirmed WokeNet transaction, connect service-passkey
     revocation to the separate WokeNet delegation/device-authority lifecycle,
@@ -607,12 +687,12 @@ request interception. It is not native WokeNet evidence.
 
 ## Final completion gates
 
-- [x] Build gate passes from a clean checkout.
-  - Evidence: a separate local `git clone --no-hardlinks` of the final committed
-    source state passed `pnpm install --frozen-lockfile`, naming/domain/network
-    policy, formatting, lint, typecheck, 489 unit executions, and all 14
-    production builds. This is same-host isolation evidence, not an independent
-    clean-machine attestation.
+- [ ] Build gate passes from a clean checkout.
+  - Historical evidence: a separate local `git clone --no-hardlinks` of an
+    earlier committed source state passed frozen install, policy, formatting,
+    lint, typecheck, 777 unit executions, and all 14 production builds. The
+    current working tree still requires a fresh committed-source clone; the
+    historical same-host run is not an independent-machine attestation.
 - [ ] Unit, program, integration, E2E, accessibility, and critical security
   suites pass.
   - Implemented subset: every currently implemented suite passes, including the

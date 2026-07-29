@@ -12,6 +12,11 @@ import { repositoryRoot } from '../workspaces.mjs';
 const PROGRAM_ID = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const POSTGRES_IMAGE =
   'postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15';
+const POSTGRES_DATABASE = 'wokesocial_vertical';
+const POSTGRES_ADMIN_USER = 'wokesocial_vertical';
+const POSTGRES_ADMIN_PASSWORD = 'vertical-slice-local-only';
+const INDEXER_RUNTIME_PASSWORD = 'vertical-indexer-runtime-only';
+const INDEXER_MIGRATION_PASSWORD = 'vertical-indexer-migration-only';
 const EXPECTED_RUST_VERSION = 'rustc 1.89.0 ';
 const EXPECTED_AGAVE_VERSION = '2.3.0';
 const EXPECTED_ANCHOR_VERSION = '0.32.1';
@@ -276,7 +281,8 @@ async function main() {
 
   step('Starting an isolated disposable PostgreSQL projection');
   const database = await startPostgres();
-  const databaseUrl = `postgresql://wokesocial_vertical:vertical-slice-local-only@127.0.0.1:${database.port}/wokesocial_vertical`;
+  const databaseUrl = `postgresql://wokesocial_indexer_runtime:${INDEXER_RUNTIME_PASSWORD}@127.0.0.1:${database.port}/${POSTGRES_DATABASE}`;
+  const databaseMigrationUrl = `postgresql://wokesocial_indexer_migration:${INDEXER_MIGRATION_PASSWORD}@127.0.0.1:${database.port}/${POSTGRES_DATABASE}`;
 
   step('Publishing canonical signed manifests and finalized protocol transactions');
   await runChecked(
@@ -303,7 +309,6 @@ async function main() {
     ALLOWED_ORIGINS: webUrl,
     APP_ENV: 'test',
     CONTENT_STORAGE_PATH: contentDirectory,
-    DATABASE_MIGRATION_URL: databaseUrl,
     DATABASE_URL: databaseUrl,
     INDEXER_BATCH_SIZE: '1000',
     INDEXER_DEPLOYMENT_SLOT: '0',
@@ -326,10 +331,38 @@ async function main() {
     WOKENET_RPC_URLS: rpcUrl,
     WOKENET_WS_URLS: websocketUrl,
   };
+  const indexerEnvironment = {
+    ...serviceEnvironment,
+    NODE_ENV: 'test',
+  };
+  for (const name of Object.keys(indexerEnvironment)) {
+    if (
+      ['DATABASE_MIGRATION_URL', 'REDIS_URL', 'SESSION_SECRET', 'SPONSOR_SIGNER_URI'].includes(
+        name,
+      ) ||
+      ['PGPASSWORD', 'PGPASSFILE', 'POSTGRES_PASSWORD', 'POSTGRES_PASSWORD_FILE'].includes(name) ||
+      /(?:^|_)DATABASE_(?:MIGRATION|RUNTIME)_(?:PASSWORD|URL)$/u.test(name) ||
+      (/(?:^|_)DATABASE_URL$/u.test(name) && name !== 'DATABASE_URL')
+    ) {
+      Reflect.deleteProperty(indexerEnvironment, name);
+    }
+  }
+  const indexerMigrationEnvironment = {
+    ...indexerEnvironment,
+    DATABASE_MIGRATION_URL: databaseMigrationUrl,
+  };
+
+  step('Applying explicit production-built indexer migrations with the migration role');
+  await runChecked(
+    'Production-built indexer migrations',
+    process.execPath,
+    [join(repositoryRoot, 'apps', 'indexer', 'dist', 'src', 'migrate.js')],
+    { env: indexerMigrationEnvironment },
+  );
 
   step('Running the production indexer sync and asserting its public feed contract');
   await state.portReservation.release([28]);
-  let indexer = startIndexer(serviceEnvironment);
+  let indexer = startIndexer(indexerEnvironment);
   await waitForHttp(`${indexerUrl}/readyz`, indexer, 30_000, async (response) => {
     const body = await response.json();
     return response.ok && body?.ok === true;
@@ -357,14 +390,14 @@ async function main() {
     ['tests/vertical-slice/replay.mjs'],
     {
       env: {
-        ...serviceEnvironment,
+        ...indexerEnvironment,
         VERTICAL_SLICE_METADATA_PATH: metadataPath,
       },
     },
   );
 
   step('Restarting the production indexer over the replayed projection');
-  indexer = startIndexer(serviceEnvironment);
+  indexer = startIndexer(indexerEnvironment);
   await waitForExpectedFeed(indexerUrl, fixture, indexer);
 
   step('Exercising the production-built Next application after projection replay');
@@ -448,17 +481,17 @@ async function startPostgres() {
     '--name',
     state.containerName,
     '--env',
-    'POSTGRES_DB=wokesocial_vertical',
+    `POSTGRES_DB=${POSTGRES_DATABASE}`,
     '--env',
-    'POSTGRES_USER=wokesocial_vertical',
+    `POSTGRES_USER=${POSTGRES_ADMIN_USER}`,
     '--env',
-    'POSTGRES_PASSWORD=vertical-slice-local-only',
+    `POSTGRES_PASSWORD=${POSTGRES_ADMIN_PASSWORD}`,
     '--publish',
     '127.0.0.1::5432',
     '--tmpfs',
     '/var/lib/postgresql:rw,nosuid,nodev,size=512m',
     '--health-cmd',
-    'pg_isready -U wokesocial_vertical -d wokesocial_vertical -h 127.0.0.1',
+    `pg_isready -U ${POSTGRES_ADMIN_USER} -d ${POSTGRES_DATABASE} -h 127.0.0.1`,
     '--health-interval',
     '1s',
     '--health-timeout',
@@ -496,6 +529,37 @@ async function startPostgres() {
   if (health !== 'healthy') {
     throw new Error('Disposable PostgreSQL did not become healthy within 60 seconds.');
   }
+  const provisioningPath = '/tmp/wokesocial-provision-service-roles.sql';
+  await runChecked('PostgreSQL role provisioning source copy', 'docker', [
+    'cp',
+    join(repositoryRoot, 'infra', 'postgres', 'provision-service-roles.sql'),
+    `${state.containerName}:${provisioningPath}`,
+  ]);
+  await runChecked('PostgreSQL least-privilege role provisioning', 'docker', [
+    'exec',
+    '--env',
+    `POSTGRES_DB=${POSTGRES_DATABASE}`,
+    '--env',
+    'AUTH_DATABASE_RUNTIME_PASSWORD=vertical-unused-auth-runtime-only',
+    '--env',
+    'AUTH_DATABASE_MIGRATION_PASSWORD=vertical-unused-auth-migration-only',
+    '--env',
+    `INDEXER_DATABASE_RUNTIME_PASSWORD=${INDEXER_RUNTIME_PASSWORD}`,
+    '--env',
+    `INDEXER_DATABASE_MIGRATION_PASSWORD=${INDEXER_MIGRATION_PASSWORD}`,
+    '--env',
+    'MODERATION_DATABASE_RUNTIME_PASSWORD=vertical-unused-moderation-runtime-only',
+    '--env',
+    'MODERATION_DATABASE_MIGRATION_PASSWORD=vertical-unused-moderation-migration-only',
+    state.containerName,
+    'psql',
+    '--username',
+    POSTGRES_ADMIN_USER,
+    '--dbname',
+    POSTGRES_DATABASE,
+    '--file',
+    provisioningPath,
+  ]);
   const mapping = await capture('docker', ['port', state.containerName, '5432/tcp']);
   const port = Number(/127\.0\.0\.1:(\d+)/u.exec(mapping)?.[1]);
   if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
@@ -615,7 +679,8 @@ async function rpcCall(url, method, params = []) {
 
 async function waitForHttp(url, child, timeout, accept) {
   const deadline = Date.now() + timeout;
-  let lastError;
+  let lastFetchError;
+  let lastRejectedResponse;
   while (Date.now() < deadline) {
     assertRunning(child);
     try {
@@ -623,15 +688,21 @@ async function waitForHttp(url, child, timeout, accept) {
         headers: { accept: 'application/json,text/html' },
         signal: AbortSignal.timeout(3_000),
       });
+      const diagnosticBody = await response.clone().text();
       if (await accept(response)) {
         return;
       }
+      lastRejectedResponse = new Error(
+        `HTTP ${response.status}: ${diagnosticBody.slice(0, 500) || '<empty response body>'}`,
+      );
     } catch (error) {
-      lastError = error;
+      lastFetchError = error;
     }
     await delay(250);
   }
-  throw new Error(`Timed out waiting for ${url}: ${errorText(lastError)}`);
+  throw new Error(
+    `Timed out waiting for ${url}: ${errorText(lastRejectedResponse ?? lastFetchError)}`,
+  );
 }
 
 async function reservePortBlock(size) {

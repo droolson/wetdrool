@@ -14,6 +14,7 @@ RUN corepack enable && corepack prepare pnpm@11.2.2 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY patches ./patches
 COPY apps/moderation-service/package.json ./apps/moderation-service/package.json
+COPY packages/config/package.json ./packages/config/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
 COPY packages/test-fixtures/package.json ./packages/test-fixtures/package.json
 
@@ -21,9 +22,11 @@ RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
     pnpm install --frozen-lockfile --filter @wokesocial/moderation-service...
 
 COPY apps/moderation-service ./apps/moderation-service
+COPY packages/config ./packages/config
 COPY packages/protocol ./packages/protocol
 
-RUN pnpm --filter @wokesocial/protocol build \
+RUN pnpm --filter @wokesocial/config build \
+    && pnpm --filter @wokesocial/protocol build \
     && pnpm --filter @wokesocial/moderation-service build \
     && pnpm --filter @wokesocial/moderation-service deploy \
       --prod \
@@ -49,4 +52,5 @@ EXPOSE 4400
 HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:4400/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 
-ENTRYPOINT ["node", "dist/src/server.js"]
+ENTRYPOINT ["node", "--enable-source-maps"]
+CMD ["dist/src/server.js"]

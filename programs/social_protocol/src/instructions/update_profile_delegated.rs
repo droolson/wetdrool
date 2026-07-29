@@ -8,12 +8,16 @@ use crate::{
     errors::SocialProtocolError,
     events::ProfileReferenceUpdated,
     state::{Delegation, Identity, ProtocolConfig},
-    validation::{authorize_identity_action, checked_next_sequence, validate_manifest},
+    validation::{
+        authorize_identity_action, checked_next_sequence, validate_manifest,
+        validate_profile_schema_version,
+    },
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct UpdateProfileDelegatedArgs {
     pub expected_sequence: u64,
+    pub profile_schema_version: u16,
     pub manifest_hash: [u8; MANIFEST_HASH_BYTES],
     pub manifest_uri: String,
 }
@@ -65,6 +69,7 @@ pub fn handle_update_profile_delegated(
     ctx: Context<UpdateProfileDelegated>,
     args: UpdateProfileDelegatedArgs,
 ) -> Result<()> {
+    validate_profile_schema_version(args.profile_schema_version)?;
     validate_manifest(&args.manifest_hash, &args.manifest_uri)?;
     let updated_at_slot = Clock::get()?.slot;
     authorize_identity_action(
@@ -96,6 +101,7 @@ pub fn handle_update_profile_delegated(
         manifest_hash: args.manifest_hash,
         manifest_uri: args.manifest_uri,
         updated_at_slot,
+        profile_schema_version: args.profile_schema_version,
     });
 
     Ok(())

@@ -85,6 +85,9 @@ importers:
       '@simplewebauthn/server':
         specifier: 13.3.2
         version: 13.3.2
+      '@wokesocial/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@wokesocial/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
@@ -122,6 +125,9 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
+      '@wokesocial/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       fastify:
         specifier: 5.10.0
         version: 5.10.0
@@ -184,6 +190,9 @@ importers:
       '@types/node':
         specifier: 22.20.1
         version: 22.20.1
+      '@wokesocial/test-fixtures':
+        specifier: workspace:*
+        version: link:../../packages/test-fixtures
       tsx:
         specifier: 4.23.1
         version: 4.23.1
@@ -199,6 +208,9 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
+      '@wokesocial/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -236,6 +248,9 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
+      '@wokesocial/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -267,6 +282,9 @@ importers:
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0
+      '@wokesocial/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@wokesocial/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -353,6 +371,12 @@ importers:
 
   packages/config:
     dependencies:
+      '@fastify/proxy-addr':
+        specifier: 5.1.0
+        version: 5.1.0
+      ipaddr.js:
+        specifier: 2.4.0
+        version: 2.4.0
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -363,6 +387,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 4.1.10
         version: 4.1.10(vitest@4.1.10)
+      postgres:
+        specifier: 3.4.9
+        version: 3.4.9
+      tsx:
+        specifier: 4.23.1
+        version: 4.23.1
       typescript:
         specifier: 6.0.3
         version: 6.0.3

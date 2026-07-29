@@ -38,13 +38,16 @@ The in-memory store identifies itself as `memory-development-only`. Server start
 `AUTH_DATABASE_URL` unless `AUTH_DANGEROUSLY_USE_MEMORY_STORE=1` is explicitly configured.
 Production configuration uses RP ID `woke.social` and exact origin `https://woke.social`.
 `sociallywoke.com` is redirect-only and must not be added as a second WebAuthn origin.
+The long-running server never runs DDL and never reads the migration-role URL.
 
 ## Configuration
 
+- `APP_ENV` / `NODE_ENV` — deployment modes; staging or production requires verified database TLS
 - `AUTH_RP_ID` — exact WebAuthn relying-party ID
 - `AUTH_ORIGIN` — exact credential-free HTTPS origin (`http://localhost` is allowed locally)
 - `AUTH_RP_NAME` — user-visible relying-party name
-- `AUTH_DATABASE_URL` — durable PostgreSQL URL
+- `AUTH_DATABASE_URL` — durable runtime PostgreSQL URL for the DML-only service role
+- `AUTH_DATABASE_MIGRATION_URL` — dedicated DDL role, accepted only by the explicit migration command
 - `AUTH_HOST` / `AUTH_PORT` — listener, default `127.0.0.1:4300`
 - `AUTH_DANGEROUSLY_USE_MEMORY_STORE=1` — explicit local-only fallback
 - `AUTH_CLEANUP_INTERVAL_MS` / `AUTH_CLEANUP_BATCH_SIZE` — bounded, nonoverlapping cleanup cadence
@@ -53,6 +56,32 @@ Production configuration uses RP ID `woke.social` and exact origin `https://woke
 
 The OpenAPI description is available from `GET /openapi.json`; explicit custody and recovery
 capabilities are available from `GET /v1/policy`.
+
+## Database migrations
+
+Apply migrations before starting a database-backed server:
+
+```sh
+AUTH_DATABASE_MIGRATION_URL='postgresql://auth_migration@localhost/wokesocial' \
+  pnpm --filter @wokesocial/auth-service migrate
+```
+
+The command refuses to fall back to `AUTH_DATABASE_URL`. It takes one
+session-scoped PostgreSQL advisory lock before creating the migration ledger,
+holds that lock while it applies every numbered migration transactionally, and
+releases it when the dedicated connection closes. Grant DDL only to the
+migration role; grant the long-running role only the DML privileges it needs.
+In staging and production, both role URLs must contain exactly one
+`sslmode=verify-full`, and process-wide TLS verification cannot be disabled.
+
+Every ledger row stores the lowercase SHA-256 of its packaged SQL file. Startup
+requires the applied rows to be an exact ordered prefix of the nonempty
+packaged migration set; unknown versions, gaps, reordered rows, missing
+checksums, and changed SQL are refused. Legacy rows are never silently
+backfilled—verify their applied SQL and repair the ledger through the reviewed
+procedure in `docs/OPERATIONS.md`. The runner removes runtime
+`INSERT`/`UPDATE`/`DELETE` grants from `auth_schema_migrations` before checking
+integrity, so a failed migration cannot leave the ledger writable.
 
 ## Verification
 

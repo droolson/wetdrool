@@ -1,3 +1,10 @@
+export { assertNodeTlsVerificationPolicy, assertPostgresTlsPolicy } from './database-security.ts';
+
+export type { NodeTlsPolicyOptions, PostgresTlsPolicyOptions } from './database-security.ts';
+
+export { isLocalOrUnspecifiedHostname, isLoopbackHostname } from './network-security.ts';
+export { assertNoMigrationCredentials } from './runtime-security.ts';
+
 export {
   EnvironmentValidationError,
   parsePublicEnvironment,

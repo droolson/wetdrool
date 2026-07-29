@@ -1,3 +1,5 @@
+import { isCanonicalRawSha256Cid } from '@wokesocial/protocol';
+
 import {
   type ContentAddressedStorage,
   type StorageHealth,
@@ -48,7 +50,14 @@ export class MultiProviderStorage {
         throw new RangeError('Storage result has no matching provider.');
       }
       if (result.status === 'fulfilled') {
-        receipts.push(result.value);
+        if (isCanonicalRawSha256Cid(result.value.cid)) {
+          receipts.push(result.value);
+        } else {
+          failures.push({
+            provider: provider.name,
+            message: 'Provider returned a noncanonical content CID.',
+          });
+        }
       } else {
         failures.push({
           provider: provider.name,
@@ -81,6 +90,12 @@ export class MultiProviderStorage {
   }
 
   async get(cid: string): Promise<Uint8Array> {
+    if (!isCanonicalRawSha256Cid(cid)) {
+      throw new StorageError(
+        'Only canonical base32 CIDv1 raw SHA-256 identifiers are accepted.',
+        'invalid-cid',
+      );
+    }
     const failures: string[] = [];
     for (const provider of this.#providers) {
       try {

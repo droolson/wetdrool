@@ -1,8 +1,10 @@
 import WebSocket, { type RawData } from 'ws';
 
-import { RELAY_PATH } from './policy.js';
+import { RELAY_PATH, RELAY_POLICY } from './policy.js';
 import {
   verifyRelayEvent,
+  verifySubscription,
+  type RelayEventKind,
   type RelayKeyAuthorizer,
   type SignedRelayEvent,
   type SignedSubscription,
@@ -53,6 +55,18 @@ interface EndpointHealth {
   failures: number;
   cooldownUntil: number;
   lastConnectedAt?: number;
+  relayId?: string;
+}
+
+interface QueuedServerFrame {
+  readonly bytes: Uint8Array;
+  readonly isBinary: boolean;
+}
+
+interface VerifiedSubscriptionScope {
+  readonly expiresAt: number;
+  readonly identity: string;
+  readonly topics: ReadonlyMap<string, ReadonlySet<RelayEventKind>>;
 }
 
 export class MultiRelayClient {
@@ -213,8 +227,20 @@ export class MultiRelayClient {
     const handshakeTimeout = this.options.handshakeTimeoutMilliseconds ?? 5_000;
     let helloReceived = false;
     let settled = false;
+    let connectionClosed = false;
+    let negotiatedRelayId: string | undefined;
+    let expectedSubscription:
+      | Readonly<{
+          expiresAt: string;
+          scope: VerifiedSubscriptionScope;
+          subscriptionId: string;
+          topicCount: number;
+        }>
+      | undefined;
 
     await new Promise<void>((resolve, reject) => {
+      const pendingFrames: QueuedServerFrame[] = [];
+      let processingFrames = false;
       const timer = setTimeout(() => {
         fail(new RelayClientError('Relay handshake timed out.', 'handshake-timeout'));
       }, handshakeTimeout);
@@ -225,62 +251,171 @@ export class MultiRelayClient {
           return;
         }
         settled = true;
+        connectionClosed = true;
+        pendingFrames.length = 0;
         clearTimeout(timer);
         socket.terminate();
         reject(error);
       };
 
-      socket.on('message', (data, isBinary) => {
-        void this.#parseServerFrame(data, isBinary)
-          .then(async (frame) => {
-            if (!helloReceived) {
-              if (frame.op !== 'hello') {
-                throw new RelayClientError('Relay sent data before hello.', 'invalid-server-frame');
-              }
-              helloReceived = true;
-              const authorization = await this.options.subscriptionFactory({
-                endpoint: endpoint.url,
-                lastSequenceByRelay: this.lastSequenceByRelay(),
-              });
-              socket.send(JSON.stringify({ op: 'subscribe', authorization }));
-              return;
-            }
-            if (!settled && frame.op === 'subscribed') {
-              settled = true;
-              clearTimeout(timer);
-              this.#socket = socket;
-              this.#activeEndpoint = endpoint.url;
-              endpoint.failures = 0;
-              endpoint.cooldownUntil = 0;
-              endpoint.lastConnectedAt = this.#now().getTime();
-              this.#setStatus('connected', { endpoint: endpoint.url });
-              resolve();
-              return;
-            }
-            if (!settled && frame.op === 'error') {
-              throw new RelayClientError(
-                `Relay rejected handshake: ${frame.code}`,
-                'handshake-rejected',
-              );
-            }
-            await this.#handleServerFrame(frame);
-          })
-          .catch((error: unknown) => {
-            if (!settled) {
-              fail(
-                error instanceof Error
-                  ? error
-                  : new RelayClientError('Invalid relay frame.', 'invalid-server-frame'),
-              );
-            } else {
-              socket.close(4002, 'invalid relay frame');
-            }
+      const handshakeOpen = () =>
+        !connectionClosed &&
+        this.#desired &&
+        generation === this.#generation &&
+        socket.readyState === WebSocket.OPEN;
+      const activeConnection = () => handshakeOpen() && settled && socket === this.#socket;
+      const abortConnection = (error: Error, closeCode = 4002, reason = 'invalid relay frame') => {
+        pendingFrames.length = 0;
+        if (!settled) {
+          fail(error);
+          return;
+        }
+        connectionClosed = true;
+        socket.close(closeCode, reason);
+      };
+
+      const processFrame = async (queued: QueuedServerFrame): Promise<void> => {
+        const frame = await this.#parseServerFrame(queued.bytes, queued.isBinary);
+        if (!helloReceived) {
+          if (frame.op !== 'hello') {
+            throw new RelayClientError('Relay sent data before hello.', 'invalid-server-frame');
+          }
+          if (endpoint.relayId !== undefined && endpoint.relayId !== frame.relayId) {
+            throw new RelayClientError(
+              'Relay identity changed for a configured endpoint.',
+              'invalid-server-frame',
+            );
+          }
+          negotiatedRelayId = frame.relayId;
+          helloReceived = true;
+          const authorization = await this.options.subscriptionFactory({
+            endpoint: endpoint.url,
+            lastSequenceByRelay: this.lastSequenceByRelay(),
           });
+          const verified = await verifySubscription(authorization, { now: this.#now });
+          if (!handshakeOpen()) {
+            return;
+          }
+          const verifiedMessage = verified.envelope.message;
+          expectedSubscription = {
+            expiresAt: verifiedMessage.expiresAt,
+            scope: subscriptionScope(verified.envelope),
+            subscriptionId: verified.subscriptionId,
+            topicCount: verifiedMessage.subscriptions.length,
+          };
+          socket.send(JSON.stringify({ op: 'subscribe', authorization: verified.envelope }));
+          return;
+        }
+        if (!settled && frame.op === 'subscribed') {
+          if (
+            expectedSubscription === undefined ||
+            frame.subscriptionId !== expectedSubscription.subscriptionId ||
+            frame.topicCount !== expectedSubscription.topicCount ||
+            frame.expiresAt !== expectedSubscription.expiresAt
+          ) {
+            throw new RelayClientError(
+              'Relay acknowledged a different subscription.',
+              'invalid-server-frame',
+            );
+          }
+          if (negotiatedRelayId === undefined) {
+            throw new RelayClientError(
+              'Relay identity was not negotiated.',
+              'invalid-server-frame',
+            );
+          }
+          settled = true;
+          clearTimeout(timer);
+          this.#socket = socket;
+          this.#activeEndpoint = endpoint.url;
+          endpoint.relayId = negotiatedRelayId;
+          endpoint.failures = 0;
+          endpoint.cooldownUntil = 0;
+          endpoint.lastConnectedAt = this.#now().getTime();
+          this.#setStatus('connected', { endpoint: endpoint.url });
+          resolve();
+          return;
+        }
+        if (!settled && frame.op === 'error') {
+          throw new RelayClientError(
+            `Relay rejected handshake: ${frame.code}`,
+            'handshake-rejected',
+          );
+        }
+        if (!settled) {
+          throw new RelayClientError(
+            'Relay sent data before subscription acknowledgement.',
+            'invalid-server-frame',
+          );
+        }
+        if (!activeConnection()) {
+          return;
+        }
+        if (expectedSubscription === undefined) {
+          throw new RelayClientError(
+            'Relay connection has no verified subscription scope.',
+            'invalid-server-frame',
+          );
+        }
+        await this.#handleServerFrame(
+          frame,
+          negotiatedRelayId,
+          expectedSubscription.scope,
+          activeConnection,
+        );
+      };
+
+      const drainFrames = async (): Promise<void> => {
+        try {
+          while (!connectionClosed) {
+            const queued = pendingFrames.shift();
+            if (queued === undefined) {
+              return;
+            }
+            await processFrame(queued);
+          }
+        } catch (error) {
+          abortConnection(
+            error instanceof Error
+              ? error
+              : new RelayClientError('Invalid relay frame.', 'invalid-server-frame'),
+          );
+        } finally {
+          processingFrames = false;
+          if (!connectionClosed && pendingFrames.length > 0) {
+            processingFrames = true;
+            void drainFrames();
+          }
+        }
+      };
+
+      socket.on('message', (data, isBinary) => {
+        if (connectionClosed) {
+          return;
+        }
+        if (pendingFrames.length >= RELAY_POLICY.connection.maximumPendingFrames) {
+          abortConnection(
+            new RelayClientError('Relay exceeded the bounded inbound frame queue.', 'backpressure'),
+            4008,
+            'inbound backpressure',
+          );
+          return;
+        }
+        pendingFrames.push({
+          bytes: Uint8Array.from(rawDataBytes(data)),
+          isBinary,
+        });
+        if (!processingFrames) {
+          processingFrames = true;
+          void drainFrames();
+        }
       });
       socket.once('error', () => {
         fail(new RelayClientError('Relay WebSocket failed.', 'connection-failed'));
       });
       socket.once('close', () => {
+        connectionClosed = true;
+        pendingFrames.length = 0;
         if (!settled) {
           fail(new RelayClientError('Relay closed during handshake.', 'connection-closed'));
         }
@@ -306,13 +441,13 @@ export class MultiRelayClient {
     });
   }
 
-  async #parseServerFrame(data: RawData, isBinary: boolean): Promise<RelayServerFrame> {
+  async #parseServerFrame(data: Uint8Array, isBinary: boolean): Promise<RelayServerFrame> {
     if (isBinary) {
       throw new RelayClientError('Relay sent an unsupported binary frame.', 'invalid-server-frame');
     }
     let decoded: unknown;
     try {
-      decoded = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(rawDataBytes(data)));
+      decoded = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(data));
     } catch {
       throw new RelayClientError('Relay sent invalid UTF-8 JSON.', 'invalid-server-frame');
     }
@@ -323,18 +458,38 @@ export class MultiRelayClient {
     return parsed.data;
   }
 
-  async #handleServerFrame(frame: RelayServerFrame): Promise<void> {
+  async #handleServerFrame(
+    frame: RelayServerFrame,
+    negotiatedRelayId: string | undefined,
+    subscription: VerifiedSubscriptionScope,
+    activeConnection: () => boolean,
+  ): Promise<void> {
     if (frame.op !== 'event') {
       return;
     }
+    if (negotiatedRelayId === undefined || frame.relayId !== negotiatedRelayId) {
+      throw new RelayClientError(
+        'Relay event identity does not match the negotiated endpoint.',
+        'invalid-event',
+      );
+    }
     const verified = await verifyRelayEvent(frame.envelope, {
-      now: this.#now(),
+      now: this.#now,
       ...(this.options.authorizeEventKey === undefined
         ? {}
         : { authorize: this.options.authorizeEventKey }),
     });
+    if (!activeConnection()) {
+      return;
+    }
     if (verified.eventId !== frame.eventId) {
       throw new RelayClientError('Relay event ID does not match its envelope.', 'invalid-event');
+    }
+    if (!eventIsWithinSubscriptionScope(verified.envelope, subscription, this.#now().getTime())) {
+      throw new RelayClientError(
+        'Relay delivered an event outside the verified subscription scope.',
+        'invalid-event',
+      );
     }
     const previous = this.#lastSequenceByRelay.get(frame.relayId);
     if (previous !== undefined && frame.relaySequence <= previous) {
@@ -347,12 +502,23 @@ export class MultiRelayClient {
         receivedSequence: frame.relaySequence,
       });
     }
-    this.#lastSequenceByRelay.set(frame.relayId, frame.relaySequence);
 
     this.#pruneDedupe();
     if (this.#seenEventIds.has(frame.eventId)) {
+      // The application already accepted this signed event through another
+      // relay, so advancing this relay-local cursor cannot lose delivery.
+      this.#lastSequenceByRelay.set(frame.relayId, frame.relaySequence);
       return;
     }
+
+    if (!activeConnection()) {
+      return;
+    }
+    await this.options.onEvent(frame);
+    // Commit relay-local delivery state only after the application callback
+    // succeeds. A callback failure closes the socket and allows reconciliation
+    // to retry instead of silently checkpointing an undelivered event.
+    this.#lastSequenceByRelay.set(frame.relayId, frame.relaySequence);
     this.#seenEventIds.set(frame.eventId, Date.parse(frame.envelope.message.expiresAt));
     while (this.#seenEventIds.size > 10_000) {
       const oldest = this.#seenEventIds.keys().next().value as string | undefined;
@@ -361,8 +527,6 @@ export class MultiRelayClient {
       }
       this.#seenEventIds.delete(oldest);
     }
-
-    await this.options.onEvent(frame);
   }
 
   #orderedEndpoints(): EndpointHealth[] {
@@ -427,6 +591,7 @@ export class RelayClientError extends Error {
     message: string,
     readonly code:
       | 'all-endpoints-failed'
+      | 'backpressure'
       | 'cancelled'
       | 'connection-closed'
       | 'connection-failed'
@@ -473,4 +638,42 @@ function safeCloseReason(reason: Buffer): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function subscriptionScope(subscription: SignedSubscription): VerifiedSubscriptionScope {
+  return {
+    expiresAt: Date.parse(subscription.message.expiresAt),
+    identity: subscription.message.identity,
+    topics: new Map(
+      subscription.message.subscriptions.map(({ kinds, topic }) => [topic, new Set(kinds)]),
+    ),
+  };
+}
+
+export function eventIsWithinSignedSubscription(
+  event: SignedRelayEvent,
+  subscription: SignedSubscription,
+  now: Date,
+): boolean {
+  return eventIsWithinSubscriptionScope(event, subscriptionScope(subscription), now.getTime());
+}
+
+function eventIsWithinSubscriptionScope(
+  event: SignedRelayEvent,
+  subscription: VerifiedSubscriptionScope,
+  now: number,
+): boolean {
+  if (subscription.expiresAt <= now) {
+    return false;
+  }
+  const topic = subscription.topics.get(event.message.topic);
+  if (topic === undefined || !topic.has(event.message.kind)) {
+    return false;
+  }
+  const audience = event.message.audience;
+  return (
+    audience.kind !== 'identity' ||
+    event.message.identity === subscription.identity ||
+    audience.recipients.includes(subscription.identity)
+  );
 }

@@ -74,8 +74,36 @@ simulate, confirm, query, and index the application's transactions.
 4. Validator and RPC configurations disable telemetry, set `no_agave = true`,
    bind the expected genesis and shred version, and reject arbitrary gossip
    snapshot sources.
-5. Voting validators do not expose public RPC. Non-voting RPC nodes bind native
-   RPC to loopback behind a separately hardened and monitored gateway.
+5. Production templates set `consensus.wokenet_live_cluster = true`. The
+   downstream policy requires that mode for every non-local, non-development
+   `FD_CLUSTER_UNKNOWN` configuration, so omitting the bit cannot bypass live
+   protections. Local/development and recognized built-in clusters may preserve
+   upstream classification. Enabled mode binds to the same exact
+   `consensus.expected_genesis_hash` enforced by the native genesi tile and
+   refuses local/development, Frankendancer, Agave-backed, missing-identity,
+   unsandboxed, single-process, benchmark-relaxed, malformed-hash, all-zero,
+   or built-in Solana/Pyth configurations.
+6. Voting validators do not expose public RPC. The RPC template disables block
+   production and binds native RPC to loopback. The downstream accepts an empty
+   `paths.vote_account` only for the exact live-WokeNet, block-production-off,
+   native-RPC-on role with zero authorized voters. Other missing-vote roles fail
+   closed, and a supplied vote account always remains voting.
+7. The non-voting observer keeps tower for local stake-weighted fork choice and
+   emits local reset/root signals for downstream consumers. It skips
+   lookup/reconciliation of an own vote account and cannot construct a vote
+   transaction. This is source and direct native C unit evidence, not a
+   connected boot or tower-to-replay-to-RPC integration result.
+8. The pinned source opens tower checkpoint/restore descriptors but does not
+   implement observed tower serialization or restoration. An observer restart
+   cannot create conflicting cluster votes, but local commitment continuity may
+   rebuild or regress. Connected restart and health-gating evidence is required
+   before activation.
+9. A follow-up test-execution patch keeps the shared `fdctl` default valid after
+   the explicit-allocation fields became mandatory and makes the observer tower
+   test runnable in containerized x86-64 CI. Its captured-voter mock updates the
+   same voter registries as production, reuses the final captured snapshot for
+   one additional slot to cross the root threshold, and uses a test-only
+   mmap-backed workspace where NUMA policy syscalls are unavailable.
 
 ### Reproducible downstream source
 
@@ -90,13 +118,14 @@ simulate, confirm, query, and index the application's transactions.
    untracked source, inspects both native binary declarations/mode flags, and
    checks current native-RPC capability evidence.
 5. On a supported Linux x64 build host, `pnpm wokenet:binary-check` requires the
-   exact downstream patch to be applied, creates a disposable no-hardlink
+   exact downstream patch queue to be applied, creates a disposable no-hardlink
    checkout at the pinned commit, reapplies only the patch queue, clones and
    rebuilds OpenSSL at its separately pinned source commit, and owns a clean
    object directory there rather than trusting pre-existing ignored source,
    dependency artifacts, or executable files. It builds both native ELFs plus
-   the pinned genesis/RPC tests, executes those tests, parses and checks the
-   native localnet topology, and verifies ELF target/symbols plus the binaries’
+   the pinned genesis/account-database/RPC/config-policy/tower tests, executes
+   those tests, parses and checks the native localnet topology through
+   `firedancer-dev mem --json`, and verifies ELF target/symbols plus the binaries’
    source-locked downstream marker, upstream commit, and version before
    recording dependency/toolchain and distinct binary hashes and rejecting
    forbidden dynamic runtime dependencies. The entire checkout is removed
@@ -118,10 +147,13 @@ simulate, confirm, query, and index the application's transactions.
    - social-program ID and program build provenance;
    - every validator identity, vote/stake account, allocation, and authority;
    - signed ceremony attestations.
-4. Production templates contain deliberately invalid replacement markers. They
-   cannot be used as launch configuration before the ceremony.
+4. Production templates contain deliberately invalid ceremony placeholder
+   values: a genesis-hash marker and numeric zero shred version. They cannot be
+   used as launch configuration before the ceremony.
 5. Nodes fail closed on a mismatched genesis hash, shred version, program ID,
-   or untrusted snapshot source.
+   or untrusted snapshot source. The WokeNet live classification closes the
+   upstream `FD_CLUSTER_UNKNOWN` safety gap only after the exact ceremony
+   values replace the invalid template values; it does not authorize launch.
 
 ### Compatibility evidence during the activation block
 
@@ -141,9 +173,11 @@ Production remains disabled until all of the following are independently
 verified:
 
 1. Native Firedancer has a supported release and reproducible build provenance.
-2. Native RPC implements and passes conformance for at least
-   `sendTransaction`, `simulateTransaction`, `getSignatureStatuses`,
-   `getTransaction`, `getSignaturesForAddress`, and `getProgramAccounts`.
+2. Native RPC implements and passes conformance for the five still-missing
+   methods—`sendTransaction`, `simulateTransaction`, `getSignatureStatuses`,
+   `getTransaction`, and `getSignaturesForAddress`—and the bounded downstream
+   `getProgramAccounts` subset passes the wider semantics, performance, and
+   connected-cluster gates required for production.
 3. Program deployment, upgrade, restart, replay, repair, snapshots, finality,
    and indexer rebuild pass without an Agave process.
 4. Multi-validator consensus and byzantine/failover rehearsals pass with at
@@ -183,6 +217,9 @@ flags remain false until the evidence above exists.
   operations, economics, upgrades, incident response, and ecosystem tooling.
 - Native Firedancer immaturity blocks a truthful production launch today.
 - Existing compatibility tests do not prove full native runtime behavior.
+- The non-voting observer role removes the empty-vote source fatal but does not
+  prove connected boot, catch-up, restart commitment continuity, or health
+  gating.
 - A sovereign native currency creates material legal, economic, abuse,
   custody, and user-safety obligations even when the social application remains
   noncustodial.

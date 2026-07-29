@@ -24,6 +24,47 @@ services:
     tmpfs:
       - /var/run/postgresql
 
+  postgres-provision:
+    profiles:
+      - provision
+      - services
+      - indexer
+      - locked-services
+      - privilege-probe
+    image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        exec psql --host postgres --username "$${POSTGRES_USER}"
+        --dbname "$${POSTGRES_DB}"
+        --file /opt/wokesocial/provision-service-roles.sql
+    environment:
+      AUTH_DATABASE_MIGRATION_PASSWORD: ${AUTH_DATABASE_MIGRATION_PASSWORD:-local-auth-migration-only}
+      AUTH_DATABASE_RUNTIME_PASSWORD: ${AUTH_DATABASE_RUNTIME_PASSWORD:-local-auth-runtime-only}
+      INDEXER_DATABASE_MIGRATION_PASSWORD: ${INDEXER_DATABASE_MIGRATION_PASSWORD:-local-indexer-migration-only}
+      INDEXER_DATABASE_RUNTIME_PASSWORD: ${INDEXER_DATABASE_RUNTIME_PASSWORD:-local-indexer-runtime-only}
+      MODERATION_DATABASE_MIGRATION_PASSWORD: ${MODERATION_DATABASE_MIGRATION_PASSWORD:-local-moderation-migration-only}
+      MODERATION_DATABASE_RUNTIME_PASSWORD: ${MODERATION_DATABASE_RUNTIME_PASSWORD:-local-moderation-runtime-only}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+      POSTGRES_DB: ${POSTGRES_DB:-wokesocial}
+      POSTGRES_USER: ${POSTGRES_USER:-wokesocial}
+    volumes:
+      - ./postgres/provision-service-roles.sql:/opt/wokesocial/provision-service-roles.sql:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    restart: 'no'
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+
   redis:
     image: redis:8.8.1-alpine3.23@sha256:8096655e437712b07503796fb64d81359256cfcff0ab29d95a7da72863786efb
     command:
@@ -78,6 +119,34 @@ services:
     tmpfs:
       - /tmp
 
+  auth-service-migrate:
+    profiles:
+      - services
+      - privilege-probe
+    image: wokesocial-auth-service:local
+    build:
+      context: ..
+      dockerfile: apps/auth-service/Dockerfile
+    command:
+      - dist/src/migrate.js
+    environment:
+      APP_ENV: ${AUTH_APP_ENV:-development}
+      AUTH_DATABASE_MIGRATION_URL: ${AUTH_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wokesocial_auth_migration:${AUTH_DATABASE_MIGRATION_PASSWORD:-local-auth-migration-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      NODE_ENV: ${AUTH_NODE_ENV:-development}
+    depends_on:
+      postgres-provision:
+        condition: service_completed_successfully
+    read_only: true
+    restart: 'no'
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m
+
   auth-service:
     profiles:
       - services
@@ -86,23 +155,26 @@ services:
       context: ..
       dockerfile: apps/auth-service/Dockerfile
     environment:
+      APP_ENV: ${AUTH_APP_ENV:-development}
       AUTH_HOST: 0.0.0.0
       AUTH_PORT: 4300
       AUTH_RP_NAME: ${AUTH_RP_NAME:-WokeSocial}
       AUTH_RP_ID: ${AUTH_RP_ID:-localhost}
       AUTH_ORIGIN: ${AUTH_ORIGIN:-http://localhost:3000}
-      AUTH_DATABASE_URL: postgresql://${POSTGRES_USER:-wokesocial}:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/${POSTGRES_DB:-wokesocial}
+      AUTH_DATABASE_URL: ${AUTH_COMPOSE_DATABASE_URL:-postgresql://wokesocial_auth_runtime:${AUTH_DATABASE_RUNTIME_PASSWORD:-local-auth-runtime-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
       AUTH_DANGEROUSLY_USE_MEMORY_STORE: 0
       AUTH_CLEANUP_INTERVAL_MS: ${AUTH_CLEANUP_INTERVAL_MS:-60000}
       AUTH_PENDING_ACCOUNT_RETENTION_MS: ${AUTH_PENDING_ACCOUNT_RETENTION_MS:-3600000}
       AUTH_CEREMONY_RETENTION_MS: ${AUTH_CEREMONY_RETENTION_MS:-86400000}
       AUTH_SESSION_RETENTION_MS: ${AUTH_SESSION_RETENTION_MS:-604800000}
       AUTH_CLEANUP_BATCH_SIZE: ${AUTH_CLEANUP_BATCH_SIZE:-500}
+      NODE_ENV: ${AUTH_NODE_ENV:-development}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
     ports:
       - 127.0.0.1:${AUTH_PORT:-4300}:4300
     depends_on:
-      postgres:
-        condition: service_healthy
+      auth-service-migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -136,9 +208,12 @@ services:
       context: ..
       dockerfile: apps/feed-service/Dockerfile
     environment:
+      APP_ENV: ${FEED_SERVICE_APP_ENV:-development}
       FEED_SERVICE_HOST: 0.0.0.0
       FEED_SERVICE_PORT: 4100
       FEED_SERVICE_CORS_ORIGINS: ${FEED_SERVICE_CORS_ORIGINS:-http://localhost:3000}
+      NODE_ENV: ${FEED_SERVICE_NODE_ENV:-development}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
     ports:
       - 127.0.0.1:${FEED_SERVICE_PORT:-4100}:4100
     healthcheck:
@@ -166,6 +241,96 @@ services:
     tmpfs:
       - /tmp
 
+  indexer-migrate:
+    profiles:
+      - indexer
+      - privilege-probe
+    image: wokesocial-indexer:local
+    build:
+      context: ..
+      dockerfile: apps/indexer/Dockerfile
+    command:
+      - dist/src/migrate.js
+    environment:
+      APP_ENV: ${INDEXER_APP_ENV:-development}
+      DATABASE_MIGRATION_URL: ${INDEXER_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wokesocial_indexer_migration:${INDEXER_DATABASE_MIGRATION_PASSWORD:-local-indexer-migration-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      NODE_ENV: ${INDEXER_NODE_ENV:-development}
+    depends_on:
+      postgres-provision:
+        condition: service_completed_successfully
+    read_only: true
+    restart: 'no'
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m
+
+  indexer:
+    profiles:
+      - indexer
+    image: wokesocial-indexer:local
+    build:
+      context: ..
+      dockerfile: apps/indexer/Dockerfile
+    environment:
+      ALLOWED_ORIGINS: ${INDEXER_ALLOWED_ORIGINS:-http://localhost:3000}
+      APP_ENV: ${INDEXER_APP_ENV:-development}
+      CONTENT_STORAGE_PATH: /var/lib/wokesocial/content
+      DATABASE_URL: ${INDEXER_DATABASE_URL:-postgresql://wokesocial_indexer_runtime:${INDEXER_DATABASE_RUNTIME_PASSWORD:-local-indexer-runtime-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      INDEXER_BATCH_SIZE: ${INDEXER_BATCH_SIZE:-100}
+      INDEXER_DEPLOYMENT_SLOT: ${INDEXER_DEPLOYMENT_SLOT:-0}
+      INDEXER_HOST: 0.0.0.0
+      INDEXER_NETWORK_ID: ${INDEXER_NETWORK_ID:-}
+      INDEXER_POLL_INTERVAL_MS: ${INDEXER_POLL_INTERVAL_MS:-2000}
+      INDEXER_PORT: 4000
+      INDEXER_PROFILE_V2_ACTIVATION_SLOT: ${INDEXER_PROFILE_V2_ACTIVATION_SLOT:-0}
+      INDEXER_RETRY_ATTEMPTS: ${INDEXER_RETRY_ATTEMPTS:-3}
+      INDEXER_RETRY_BASE_MS: ${INDEXER_RETRY_BASE_MS:-250}
+      INDEXER_RETRY_MAX_MS: ${INDEXER_RETRY_MAX_MS:-60000}
+      INDEXER_SYNC_STALE_AFTER_MS: ${INDEXER_SYNC_STALE_AFTER_MS:-30000}
+      NEXT_PUBLIC_PROGRAM_ID: ${NEXT_PUBLIC_PROGRAM_ID:-}
+      NODE_ENV: ${INDEXER_NODE_ENV:-development}
+      WOKENET_COMMITMENT: finalized
+      WOKENET_RPC_URLS: ${INDEXER_WOKENET_RPC_URLS:-http://host.docker.internal:8899}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+    ports:
+      - 127.0.0.1:${INDEXER_PORT:-4000}:4000
+    volumes:
+      - indexer-content:/var/lib/wokesocial/content:ro
+    depends_on:
+      indexer-migrate:
+        condition: service_completed_successfully
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:4000/readyz')
+          .then(response => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    read_only: true
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+
   relay:
     profiles:
       - locked-services
@@ -174,11 +339,22 @@ services:
       context: ..
       dockerfile: apps/relay/Dockerfile
     environment:
+      APP_ENV: ${RELAY_APP_ENV:-development}
+      NODE_ENV: ${RELAY_NODE_ENV:-development}
       RELAY_HOST: 0.0.0.0
       RELAY_PORT: 4200
       RELAY_ID: ${RELAY_ID:-wokesocial-local}
       RELAY_ALLOWED_ORIGINS: ${RELAY_ALLOWED_ORIGINS:-http://localhost:3000}
       RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: ${RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE:-0}
+      RELAY_KEY_AUTHORIZER_URL: ${RELAY_KEY_AUTHORIZER_URL:-}
+      RELAY_KEY_AUTHORIZER_READINESS_URL: ${RELAY_KEY_AUTHORIZER_READINESS_URL:-}
+      RELAY_KEY_AUTHORIZER_BEARER_TOKEN: ${RELAY_KEY_AUTHORIZER_BEARER_TOKEN:-}
+      RELAY_KEY_AUTHORIZER_TIMEOUT_MS: ${RELAY_KEY_AUTHORIZER_TIMEOUT_MS:-2000}
+      RELAY_SUBSCRIPTION_AUTHORIZER_URL: ${RELAY_SUBSCRIPTION_AUTHORIZER_URL:-}
+      RELAY_SUBSCRIPTION_AUTHORIZER_READINESS_URL: ${RELAY_SUBSCRIPTION_AUTHORIZER_READINESS_URL:-}
+      RELAY_SUBSCRIPTION_AUTHORIZER_BEARER_TOKEN: ${RELAY_SUBSCRIPTION_AUTHORIZER_BEARER_TOKEN:-}
+      RELAY_SUBSCRIPTION_AUTHORIZER_TIMEOUT_MS: ${RELAY_SUBSCRIPTION_AUTHORIZER_TIMEOUT_MS:-2000}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
     ports:
       - 127.0.0.1:${RELAY_PORT:-4200}:4200
     healthcheck:
@@ -206,6 +382,34 @@ services:
     tmpfs:
       - /tmp
 
+  moderation-service-migrate:
+    profiles:
+      - locked-services
+      - privilege-probe
+    image: wokesocial-moderation-service:local
+    build:
+      context: ..
+      dockerfile: apps/moderation-service/Dockerfile
+    command:
+      - dist/src/migrate.js
+    environment:
+      APP_ENV: ${MODERATION_APP_ENV:-development}
+      MODERATION_DATABASE_MIGRATION_URL: ${MODERATION_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wokesocial_moderation_migration:${MODERATION_DATABASE_MIGRATION_PASSWORD:-local-moderation-migration-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      NODE_ENV: ${MODERATION_NODE_ENV:-development}
+    depends_on:
+      postgres-provision:
+        condition: service_completed_successfully
+    read_only: true
+    restart: 'no'
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 128
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m
+
   moderation-service:
     profiles:
       - locked-services
@@ -214,12 +418,20 @@ services:
       context: ..
       dockerfile: apps/moderation-service/Dockerfile
     environment:
+      APP_ENV: ${MODERATION_APP_ENV:-development}
       MODERATION_HOST: 0.0.0.0
       MODERATION_PORT: 4400
       MODERATION_ALLOWED_ORIGINS: ${MODERATION_ALLOWED_ORIGINS:-http://localhost:3000}
+      MODERATION_DATABASE_URL: ${MODERATION_COMPOSE_DATABASE_URL:-postgresql://wokesocial_moderation_runtime:${MODERATION_DATABASE_RUNTIME_PASSWORD:-local-moderation-runtime-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      MODERATION_DATA_KEYS: ${MODERATION_DATA_KEYS:-}
       MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: ${MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE:-0}
+      NODE_ENV: ${MODERATION_NODE_ENV:-development}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
     ports:
       - 127.0.0.1:${MODERATION_PORT:-4400}:4400
+    depends_on:
+      moderation-service-migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -244,6 +456,41 @@ services:
     stop_grace_period: 15s
     tmpfs:
       - /tmp
+
+  postgres-privilege-probe:
+    profiles:
+      - privilege-probe
+    image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+    command:
+      - /bin/sh
+      - /opt/wokesocial/probe-service-roles.sh
+    environment:
+      AUTH_DATABASE_MIGRATION_PASSWORD: ${AUTH_DATABASE_MIGRATION_PASSWORD:-local-auth-migration-only}
+      AUTH_DATABASE_RUNTIME_PASSWORD: ${AUTH_DATABASE_RUNTIME_PASSWORD:-local-auth-runtime-only}
+      INDEXER_DATABASE_MIGRATION_PASSWORD: ${INDEXER_DATABASE_MIGRATION_PASSWORD:-local-indexer-migration-only}
+      INDEXER_DATABASE_RUNTIME_PASSWORD: ${INDEXER_DATABASE_RUNTIME_PASSWORD:-local-indexer-runtime-only}
+      MODERATION_DATABASE_MIGRATION_PASSWORD: ${MODERATION_DATABASE_MIGRATION_PASSWORD:-local-moderation-migration-only}
+      MODERATION_DATABASE_RUNTIME_PASSWORD: ${MODERATION_DATABASE_RUNTIME_PASSWORD:-local-moderation-runtime-only}
+      POSTGRES_DB: ${POSTGRES_DB:-wokesocial}
+    volumes:
+      - ./postgres/probe-service-roles.sh:/opt/wokesocial/probe-service-roles.sh:ro
+    depends_on:
+      auth-service-migrate:
+        condition: service_completed_successfully
+      indexer-migrate:
+        condition: service_completed_successfully
+      moderation-service-migrate:
+        condition: service_completed_successfully
+    read_only: true
+    restart: 'no'
+    init: true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
 
   clamav:
     profiles:
@@ -287,6 +534,7 @@ services:
       context: ..
       dockerfile: apps/media-worker/Dockerfile
     environment:
+      APP_ENV: ${MEDIA_WORKER_APP_ENV:-development}
       MEDIA_WORKER_HOST: 0.0.0.0
       MEDIA_WORKER_PORT: 4500
       MEDIA_WORKER_ALLOWED_ORIGINS: ${MEDIA_WORKER_ALLOWED_ORIGINS:-http://localhost:3000}
@@ -301,6 +549,8 @@ services:
       MEDIA_WORKER_TEMPORARY_ROOT: /var/lib/wokesocial/temporary
       MEDIA_WORKER_STORAGE_ROOT: /var/lib/wokesocial/cas
       MEDIA_WORKER_CLEANUP_INTERVAL_MS: ${MEDIA_WORKER_CLEANUP_INTERVAL_MS:-900000}
+      NODE_ENV: ${MEDIA_WORKER_NODE_ENV:-development}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
       TZ: Etc/UTC
     ports:
       - 127.0.0.1:${MEDIA_WORKER_PORT:-4500}:4500
@@ -342,6 +592,7 @@ services:
 volumes:
   clamav-data:
   ipfs-data:
+  indexer-content:
   media-cas:
   media-staging:
   media-temporary:

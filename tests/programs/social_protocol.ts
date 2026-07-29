@@ -8,8 +8,11 @@ import { describe, it } from "mocha";
 import type { Program } from "@coral-xyz/anchor";
 import type { SocialProtocol } from "../../target/types/social_protocol";
 import { registerGovernanceTests } from "./governance";
+import { parsedEvents } from "./governance_test_helpers";
+import { registerIdentityDeactivationTests } from "./identity_deactivation";
 import { registerPaymentTests } from "./payments";
 import { registerPhase2Tests } from "./phase2";
+import { manifestUri, TEST_MANIFEST_CID } from "./phase2_test_helpers";
 import { registerRecoveryTests } from "./recovery";
 
 const {
@@ -32,6 +35,7 @@ const MEMBERSHIP_SEED = Buffer.from("membership");
 const REACTION_SEED = Buffer.from("reaction");
 
 const SCOPE_PROFILE = 1;
+const PROFILE_SCHEMA_VERSION = 2;
 const SCOPE_SOCIAL = 1 << 2;
 const SCOPE_COMMUNITY = 1 << 3;
 const COMMUNITY_ROLE_MEMBER = 1;
@@ -293,11 +297,66 @@ describe("social_protocol local-validator vertical slice", () => {
       .signers([subjectAuthority])
       .rpc();
 
-    await program.methods
+    await assert.rejects(
+      program.methods
+        .updateProfile({
+          expectedSequence: new BN(0),
+          profileSchemaVersion: 1,
+          manifestHash: digest("legacy-profile-schema"),
+          manifestUri: manifestUri("legacy-profile-schema"),
+        })
+        .accountsStrict({
+          config,
+          identity: authorIdentity,
+          rootAuthority: authorAuthority.publicKey,
+        })
+        .signers([authorAuthority])
+        .rpc(),
+      (error: unknown) => {
+        const anchorError = error as {
+          error?: { errorCode?: { code?: string } };
+        };
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "UnsupportedProfileSchemaVersion",
+        );
+        return true;
+      },
+    );
+
+    await assert.rejects(
+      program.methods
+        .updateProfile({
+          expectedSequence: new BN(0),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
+          manifestHash: digest("fake-cid-profile"),
+          manifestUri: "ipfs://baaaaaaaaaaaaaaaaaaaa",
+        })
+        .accountsStrict({
+          config,
+          identity: authorIdentity,
+          rootAuthority: authorAuthority.publicKey,
+        })
+        .signers([authorAuthority])
+        .rpc(),
+      (error: unknown) => {
+        const anchorError = error as {
+          error?: { errorCode?: { code?: string } };
+        };
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "UnsupportedManifestUri",
+        );
+        return true;
+      },
+    );
+
+    const profileSignature = await program.methods
       .updateProfile({
         expectedSequence: new BN(0),
+        profileSchemaVersion: PROFILE_SCHEMA_VERSION,
         manifestHash: profileHash,
-        manifestUri: "local://sha256/profile-manifest-v1",
+        manifestUri: manifestUri("profile-manifest-v1"),
       })
       .accountsStrict({
         config,
@@ -307,12 +366,24 @@ describe("social_protocol local-validator vertical slice", () => {
       .signers([authorAuthority])
       .rpc();
 
+    const profileEvents = (await parsedEvents(
+      { config, program, provider },
+      profileSignature,
+    )).filter(({ name }) => name === "profileReferenceUpdated");
+    assert.equal(profileEvents.length, 1);
+    const profileEvent = profileEvents[0]?.data as
+      | Record<string, unknown>
+      | undefined;
+    assert.ok(profileEvent);
+    assert.equal(profileEvent.profileSchemaVersion, PROFILE_SCHEMA_VERSION);
+
     await assert.rejects(
       program.methods
         .updateProfile({
           expectedSequence: new BN(1),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
           manifestHash: digest("attacker-profile"),
-          manifestUri: "local://sha256/attacker-profile",
+          manifestUri: manifestUri("attacker-profile"),
         })
         .accountsStrict({
           config,
@@ -328,7 +399,7 @@ describe("social_protocol local-validator vertical slice", () => {
         expectedAuthorSequence: new BN(1),
         postNonce,
         manifestHash: postHash,
-        manifestUri: "local://sha256/post-manifest-v1",
+        manifestUri: manifestUri("post-manifest-v1"),
       })
       .accountsStrict({
         config,
@@ -347,7 +418,7 @@ describe("social_protocol local-validator vertical slice", () => {
           expectedAuthorSequence: new BN(2),
           postNonce,
           manifestHash: postHash,
-          manifestUri: "local://sha256/post-manifest-v1",
+          manifestUri: manifestUri("post-manifest-v1"),
         })
         .accountsStrict({
           config,
@@ -494,8 +565,9 @@ describe("social_protocol local-validator vertical slice", () => {
       program.methods
         .updateProfile({
           expectedSequence: new BN(7),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
           manifestHash: digest("old-root-rejected"),
-          manifestUri: "local://sha256/old-root-rejected",
+          manifestUri: manifestUri("old-root-rejected"),
         })
         .accountsStrict({
           config,
@@ -526,11 +598,40 @@ describe("social_protocol local-validator vertical slice", () => {
       .signers([rotatedAuthority])
       .rpc();
 
+    await assert.rejects(
+      program.methods
+        .updateProfileDelegated({
+          expectedSequence: new BN(8),
+          profileSchemaVersion: 1,
+          manifestHash: digest("legacy-delegated-profile-schema"),
+          manifestUri: manifestUri("legacy-delegated-profile-schema"),
+        })
+        .accountsStrict({
+          config,
+          identity: authorIdentity,
+          delegation: profileDelegation,
+          delegateAuthority: profileDelegate.publicKey,
+        })
+        .signers([profileDelegate])
+        .rpc(),
+      (error: unknown) => {
+        const anchorError = error as {
+          error?: { errorCode?: { code?: string } };
+        };
+        assert.equal(
+          anchorError.error?.errorCode?.code,
+          "UnsupportedProfileSchemaVersion",
+        );
+        return true;
+      },
+    );
+
     await program.methods
       .updateProfileDelegated({
         expectedSequence: new BN(8),
+        profileSchemaVersion: PROFILE_SCHEMA_VERSION,
         manifestHash: digest("delegated-profile"),
-        manifestUri: "local://sha256/delegated-profile",
+        manifestUri: manifestUri("delegated-profile"),
       })
       .accountsStrict({
         config,
@@ -564,8 +665,9 @@ describe("social_protocol local-validator vertical slice", () => {
       program.methods
         .updateProfileDelegated({
           expectedSequence: new BN(10),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
           manifestHash: digest("wrong-scope"),
-          manifestUri: "local://sha256/wrong-scope",
+          manifestUri: manifestUri("wrong-scope"),
         })
         .accountsStrict({
           config,
@@ -614,8 +716,9 @@ describe("social_protocol local-validator vertical slice", () => {
       program.methods
         .updateProfileDelegated({
           expectedSequence: new BN(11),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
           manifestHash: digest("expired-delegation"),
-          manifestUri: "local://sha256/expired-delegation",
+          manifestUri: manifestUri("expired-delegation"),
         })
         .accountsStrict({
           config,
@@ -642,8 +745,9 @@ describe("social_protocol local-validator vertical slice", () => {
       program.methods
         .updateProfileDelegated({
           expectedSequence: new BN(12),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
           manifestHash: digest("revoked-delegation"),
-          manifestUri: "local://sha256/revoked-delegation",
+          manifestUri: manifestUri("revoked-delegation"),
         })
         .accountsStrict({
           config,
@@ -725,8 +829,9 @@ describe("social_protocol local-validator vertical slice", () => {
     await program.methods
       .updateProfileDelegated({
         expectedSequence: new BN(1),
+        profileSchemaVersion: PROFILE_SCHEMA_VERSION,
         manifestHash: digest("pre-rotation-delegated-profile"),
-        manifestUri: "local://sha256/pre-rotation-delegated-profile",
+        manifestUri: manifestUri("pre-rotation-delegated-profile"),
       })
       .accountsStrict({
         config,
@@ -754,8 +859,9 @@ describe("social_protocol local-validator vertical slice", () => {
       program.methods
         .updateProfileDelegated({
           expectedSequence: new BN(3),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
           manifestHash: digest("superseded-delegation"),
-          manifestUri: "local://sha256/superseded-delegation",
+          manifestUri: manifestUri("superseded-delegation"),
         })
         .accountsStrict({
           config,
@@ -794,9 +900,11 @@ describe("social_protocol local-validator vertical slice", () => {
       program.methods
         .updateProfileDelegated({
           expectedSequence: new BN(4),
+          profileSchemaVersion: PROFILE_SCHEMA_VERSION,
           manifestHash: digest("superseded-delegation-after-rotate-back"),
-          manifestUri:
-            "local://sha256/superseded-delegation-after-rotate-back",
+          manifestUri: manifestUri(
+            "superseded-delegation-after-rotate-back",
+          ),
         })
         .accountsStrict({
           config,
@@ -922,7 +1030,7 @@ describe("social_protocol local-validator vertical slice", () => {
         expectedCreatorSequence: new BN(15),
         communityNonce,
         manifestHash: communityManifestHash,
-        manifestUri: "local://sha256/community-manifest-v1",
+        manifestUri: manifestUri("community-manifest-v1"),
         governanceVersion: 1,
         governanceStrategyHash: governanceHashV1,
       })
@@ -1145,7 +1253,7 @@ describe("social_protocol local-validator vertical slice", () => {
         expectedAuthorSequence: new BN(22),
         postNonce: secondPostNonce,
         manifestHash: secondPostHash,
-        manifestUri: "local://sha256/post-manifest-v2",
+        manifestUri: manifestUri("post-manifest-v2"),
       })
       .accountsStrict({
         config,
@@ -1271,7 +1379,13 @@ describe("social_protocol local-validator vertical slice", () => {
     const measuredAuthorNonce = nonce(171);
     const measuredViewerNonce = nonce(191);
     const measuredPostNonce = nonce(211);
-    const maximumLengthUri = `local://${"a".repeat(192)}`;
+    const maximumCid = TEST_MANIFEST_CID;
+    const maximumPrefix = "https://example.test/";
+    const maximumDirectory = "a".repeat(
+      200 - maximumPrefix.length - maximumCid.length - 1,
+    );
+    const maximumLengthUri =
+      `${maximumPrefix}${maximumDirectory}/${maximumCid}`;
     const [measuredAuthorIdentity] = PublicKey.findProgramAddressSync(
       [
         PDA_PREFIX,
@@ -1430,6 +1544,7 @@ describe("social_protocol local-validator vertical slice", () => {
         program.methods
           .updateProfile({
             expectedSequence: new BN(0),
+            profileSchemaVersion: PROFILE_SCHEMA_VERSION,
             manifestHash: digest("measured-profile"),
             manifestUri: maximumLengthUri,
           })
@@ -1551,4 +1666,5 @@ describe("social_protocol local-validator vertical slice", () => {
   registerGovernanceTests({ config, program, provider });
   registerRecoveryTests({ config, program, provider });
   registerPaymentTests({ config, program, provider });
+  registerIdentityDeactivationTests({ config, program, provider });
 });

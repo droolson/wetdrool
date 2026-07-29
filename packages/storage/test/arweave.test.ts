@@ -66,7 +66,7 @@ describe('Arweave-compatible permanent storage', () => {
     expect(receipt).toMatchObject({
       provider: 'arweave-permanent',
       providerVersion: '1',
-      locator: `ar://${transactionId}`,
+      locator: `ar://${transactionId}/${receipt.cid}`,
       byteLength: bytes.byteLength,
       publishedAt: confirmedAt,
       policy: permanentPolicy,

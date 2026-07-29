@@ -17,6 +17,7 @@ import {
   type SignedEnvelope,
 } from '@wokesocial/protocol';
 import { MemoryContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
+import { createProtocolFixtureSet } from '@wokesocial/test-fixtures';
 
 import {
   buildIndexerApp,
@@ -26,6 +27,7 @@ import {
   ProjectionError,
   ProjectionRootKeyAuthorizer,
 } from '../src/index.js';
+import { seedAdversarialFeedProjection } from './projection-security-fixtures.js';
 
 const privateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 31);
 const publicKey = ed25519.getPublicKey(privateKey);
@@ -41,8 +43,7 @@ const transactionSignature = (seed: number) =>
 const profileContent: ProfileContent = {
   displayName: 'River Chen',
   bio: 'Building a social web people can carry with them.',
-  pronouns: [{ value: 'they/them', visibility: 'public' }],
-  genderVisibility: 'private',
+  pronouns: [{ visibility: 'public', value: 'they/them' }],
   chosenFamilyLabels: [],
   links: [],
 };
@@ -63,6 +64,104 @@ const postContent: PostContent = {
 };
 
 describe('indexer HTTP contract', () => {
+  it('verifies and publicly projects the immutable signed profile-v1 fixture', async () => {
+    const fixtures = createProtocolFixtureSet();
+    const historicalProfile = fixtures.manifests.aliceProfileV1;
+    const fixtureIdentity = fixtures.participants.alice;
+    const fixtureProgramId = fixtures.network.split(':').at(-1);
+    const fixtureIdentityAddress = fixtureIdentity.author.split(':').at(-1);
+    if (fixtureProgramId === undefined || fixtureIdentityAddress === undefined) {
+      throw new Error('The historical fixture identifiers are malformed.');
+    }
+
+    const storage = new MemoryContentAddressedStorage();
+    const receipt = await storage.put(historicalProfile.canonicalBytes, {
+      permanence: 'deletion-compatible',
+    });
+    const projection = new MemoryProjectionStore();
+    const verifier = new ManifestVerifier(
+      storage,
+      {
+        authorize: async () => true,
+      },
+      { profileSchemaV2ActivationSlot: 3n },
+    );
+    const indexer = new OpenIndexer(projection, verifier);
+    const profileEvent = {
+      networkId: fixtures.network,
+      programId: fixtureProgramId,
+      transactionSignature: transactionSignature(92),
+      slot: 2n,
+      logIndex: 0,
+      blockTime: '2026-07-28T14:02:01.000Z',
+      finalized: true as const,
+      type: 'profile-updated' as const,
+      identityId: fixtureIdentity.author,
+      authority: bs58.encode(fixtureIdentity.publicKey),
+      objectId: historicalProfile.objectId,
+      cid: receipt.cid,
+      payloadHash: historicalProfile.envelope.proof.payloadHash,
+      sequence: 1n,
+    };
+
+    try {
+      await indexer.ingest({
+        networkId: fixtures.network,
+        programId: fixtureProgramId,
+        transactionSignature: transactionSignature(91),
+        slot: 1n,
+        logIndex: 0,
+        blockTime: '2026-07-28T14:01:00.000Z',
+        finalized: true,
+        type: 'identity-created',
+        identityId: fixtureIdentity.author,
+        identityAddress: fixtureIdentityAddress,
+        rootAuthority: bs58.encode(fixtureIdentity.publicKey),
+      });
+
+      await expect(verifier.forEvent(profileEvent)).resolves.toMatchObject({
+        schemaVersion: 1,
+        content: {
+          genderVisibility: 'private',
+        },
+      });
+      await expect(
+        verifier.forEvent({
+          ...profileEvent,
+          transactionSignature: transactionSignature(93),
+          slot: 3n,
+        }),
+      ).rejects.toMatchObject({ code: 'schema-version' });
+      await expect(
+        verifier.forEvent({
+          ...profileEvent,
+          transactionSignature: transactionSignature(94),
+          profileSchemaVersion: 1,
+        }),
+      ).rejects.toMatchObject({ code: 'schema-version' });
+      await expect(
+        verifier.forEvent({
+          ...profileEvent,
+          transactionSignature: transactionSignature(95),
+          profileSchemaVersion: 2,
+        }),
+      ).rejects.toMatchObject({ code: 'schema-version' });
+      await expect(indexer.ingest(profileEvent)).resolves.toMatchObject({ applied: true });
+
+      const projected = await projection.getProfile(fixtureIdentity.author);
+      expect(projected?.content).toEqual({
+        displayName: 'Alice Example',
+        bio: 'Building kinder, user-owned social spaces.',
+        pronouns: [{ visibility: 'public', value: 'she/her' }],
+        chosenFamilyLabels: [],
+        links: [{ label: 'Protocol notes', url: 'https://example.com/alice/protocol' }],
+      });
+      expect(JSON.stringify(projected?.content)).not.toContain('genderVisibility');
+    } finally {
+      await projection.close();
+    }
+  });
+
   it('returns a retryable 503 when bounded public-search capacity is unavailable', async () => {
     const projection = new MemoryProjectionStore();
     vi.spyOn(projection, 'searchPublic').mockRejectedValue(
@@ -283,6 +382,68 @@ describe('indexer HTTP contract', () => {
     }
   });
 
+  it('paginates equal finalized times opaquely and never exposes unlisted feed plaintext', async () => {
+    const projection = new MemoryProjectionStore();
+    const fixture = await seedAdversarialFeedProjection(projection, 150);
+    const app = await buildIndexerApp({
+      projection,
+      defaultNetworkId: fixture.networkId,
+      logger: false,
+    });
+
+    try {
+      const collected: string[] = [];
+      let cursor: string | undefined;
+      for (;;) {
+        const response = await app.inject({
+          method: 'GET',
+          url: `/v1/feed?network=${encodeURIComponent(fixture.networkId)}&limit=1${
+            cursor === undefined ? '' : `&before=${encodeURIComponent(cursor)}`
+          }`,
+        });
+        expect(response.statusCode, response.body).toBe(200);
+        expect(response.body).not.toContain(fixture.unlistedSentinel);
+        const body = response.json<{
+          entries: { post: { objectId: string } }[];
+          nextCursor?: string;
+        }>();
+        const entry = body.entries[0];
+        if (entry === undefined) break;
+        collected.push(entry.post.objectId);
+        expect(body.nextCursor).toMatch(/^[A-Za-z0-9_-]+$/u);
+        cursor = body.nextCursor;
+      }
+      expect(collected).toEqual(fixture.expectedPublicPostIds);
+
+      const home = await app.inject({ method: 'GET', url: '/v1/feed/home?limit=20' });
+      expect(home.statusCode).toBe(200);
+      expect(home.body).not.toContain(fixture.unlistedSentinel);
+      expect(home.json<{ posts: { id: string }[] }>().posts.map(({ id }) => id)).toEqual(
+        fixture.expectedPublicPostIds,
+      );
+
+      const following = await app.inject({
+        method: 'GET',
+        url: `/v1/feed?network=${encodeURIComponent(
+          fixture.networkId,
+        )}&mode=following&viewer=${encodeURIComponent(fixture.viewerIdentityId)}&limit=20`,
+      });
+      expect(following.statusCode).toBe(200);
+      expect(following.body).not.toContain(fixture.unlistedSentinel);
+
+      const malformed = await app.inject({
+        method: 'GET',
+        url: `/v1/feed?network=${encodeURIComponent(fixture.networkId)}&before=not%2Bopaque`,
+      });
+      expect(malformed.statusCode).toBe(400);
+      expect(malformed.json()).toMatchObject({ error: { code: 'invalid-feed-cursor' } });
+    } finally {
+      await app.close();
+      await projection.clearProjection(fixture.networkId);
+      await projection.close();
+    }
+  });
+
   it('removes tombstoned content from both feed and post routes', async () => {
     const fixture = await indexedFixture();
     await fixture.indexer.ingest({
@@ -472,6 +633,7 @@ async function indexedFixture(selectedProfileContent: ProfileContent = profileCo
     cid: profile.receipt.cid,
     payloadHash: profile.envelope.proof.payloadHash,
     sequence: 1n,
+    profileSchemaVersion: 2,
   });
 
   const post = await publish(

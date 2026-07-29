@@ -11,15 +11,20 @@ import {
 } from '../src/index.js';
 import { migrate } from '../src/migrate.js';
 import { createPaymentFixture, publicKey, signature } from './payment-fixtures.js';
+import { purgePostgresTestNetworks } from './postgres-test-cleanup.js';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+const migrationDatabaseUrl =
+  process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
+  process.env['DATABASE_MIGRATION_URL'] ??
+  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL payment projection integration', () => {
   it('migrates, validates transitions atomically, rebuilds, and isolates exact networks', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const first = await createPaymentFixture({ genesisSeed: 241, coordinateSeed: 1_000 });
     const second = await createPaymentFixture({ genesisSeed: 242, coordinateSeed: 2_000 });
     const projection = new PostgresProjectionStore(databaseUrl);
@@ -32,8 +37,10 @@ describe('PostgreSQL payment projection integration', () => {
     );
 
     try {
-      await projection.clearProjection(first.networkId);
-      await projection.clearProjection(second.networkId);
+      await purgePostgresTestNetworks(projection, migrationDatabaseUrl, [
+        first.networkId,
+        second.networkId,
+      ]);
       for (const event of first.events.slice(0, 8)) {
         await expect(indexer.ingest(event)).resolves.toMatchObject({ applied: true });
       }
@@ -178,8 +185,10 @@ describe('PostgreSQL payment projection integration', () => {
       `;
       expect(splitCount[0]?.count).toBe('2');
     } finally {
-      await projection.clearProjection(first.networkId);
-      await projection.clearProjection(second.networkId);
+      await purgePostgresTestNetworks(projection, migrationDatabaseUrl, [
+        first.networkId,
+        second.networkId,
+      ]);
       await projection.close();
       await inspectionSql.end({ timeout: 5 });
     }

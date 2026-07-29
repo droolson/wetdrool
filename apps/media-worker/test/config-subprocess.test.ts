@@ -14,11 +14,17 @@ const secureEnvironment = {
   MEDIA_WORKER_CLAMD_HOST: '127.0.0.1',
   MEDIA_WORKER_STATIC_BEARER_TOKEN: Buffer.alloc(32, 0xa5).toString('base64url'),
 };
+const localExampleBearerToken = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 describe('media worker configuration', () => {
   it('uses loopback service defaults only after explicit scanner and authorization configuration', () => {
     expect(() => parseMediaWorkerConfig({})).toThrow();
-    expect(parseMediaWorkerConfig(secureEnvironment)).toMatchObject({
+    expect(
+      parseMediaWorkerConfig({
+        ...secureEnvironment,
+        TRUSTED_PROXY_CIDRS: '127.0.0.1/32',
+      }),
+    ).toMatchObject({
       host: '127.0.0.1',
       port: 4500,
       allowedOrigins: [],
@@ -29,7 +35,19 @@ describe('media worker configuration', () => {
       clamdScanTimeoutMilliseconds: 120_000,
       clamdStreamMaximumBytes: 100_000_000,
       clamdMaximumDatabaseAgeMilliseconds: 259_200_000,
+      trustedProxyCidrs: ['127.0.0.1/32'],
     });
+  });
+
+  it('rejects every database credential from the long-running process', () => {
+    for (const variableName of ['AUTH_DATABASE_MIGRATION_URL', 'AUTH_DATABASE_URL']) {
+      expect(() =>
+        parseMediaWorkerConfig({
+          ...secureEnvironment,
+          [variableName]: 'postgresql://unrelated:secret@database.test/wokesocial',
+        }),
+      ).toThrow(/must not be injected/u);
+    }
   });
 
   it('accepts exact HTTP origins and rejects credentials or URL components', () => {
@@ -57,6 +75,12 @@ describe('media worker configuration', () => {
         MEDIA_WORKER_ALLOWED_ORIGINS: 'https://sociallywoke.com',
       }),
     ).toThrow(/legacy redirect host/);
+    expect(() =>
+      parseMediaWorkerConfig({
+        ...secureEnvironment,
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://SOCIALLYWOKE.COM..',
+      }),
+    ).toThrow(/legacy redirect host/);
   });
 
   it('rejects weak tokens and clamd stream limits below the advertised upload maximum', () => {
@@ -82,6 +106,57 @@ describe('media worker configuration', () => {
         MEDIA_WORKER_CLAMD_STREAM_MAX_BYTES: '99999999',
       }),
     ).toThrow();
+  });
+
+  it.each([
+    { APP_ENV: 'staging' as const },
+    { APP_ENV: 'production' as const },
+    { NODE_ENV: 'production' as const },
+  ])('rejects the public local token outside local development: %o', (mode) => {
+    expect(() =>
+      parseMediaWorkerConfig({
+        ...secureEnvironment,
+        ...mode,
+        MEDIA_WORKER_STATIC_BEARER_TOKEN: localExampleBearerToken,
+      }),
+    ).toThrow(/public local media token/u);
+  });
+
+  it.each([
+    { APP_ENV: 'staging' as const },
+    { APP_ENV: 'production' as const },
+    { NODE_ENV: 'production' as const },
+  ])('rejects insecure browser origins outside local development: %o', (mode) => {
+    expect(() =>
+      parseMediaWorkerConfig({
+        ...secureEnvironment,
+        ...mode,
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'http://localhost:3000',
+      }),
+    ).toThrow(/non-local HTTPS/u);
+  });
+
+  it.each(['127.0.0.1', '[::1]', '[::ffff:7f00:1]', '[::]', 'app.localhost'])(
+    'rejects local or unspecified HTTPS origin %s in staging',
+    (hostname) => {
+      expect(() =>
+        parseMediaWorkerConfig({
+          ...secureEnvironment,
+          APP_ENV: 'staging',
+          MEDIA_WORKER_ALLOWED_ORIGINS: `https://${hostname}`,
+        }),
+      ).toThrow(/non-local HTTPS/u);
+    },
+  );
+
+  it('accepts a nonlocal HTTPS browser origin in production', () => {
+    expect(
+      parseMediaWorkerConfig({
+        ...secureEnvironment,
+        NODE_ENV: 'production',
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://woke.social',
+      }).allowedOrigins,
+    ).toEqual(['https://woke.social']);
   });
 });
 

@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-static.mjs",
     "clean": "rm -rf dist coverage",
-    "dev": "tsx watch src/server.ts",
+    "dev": "node ../../scripts/run-scoped-runtime.mjs AUTH_DATABASE_URL -- tsx watch src/server.ts",
     "lint": "eslint scripts src test",
     "migrate": "tsx src/migrate.ts",
     "setup:local": "tsx src/migrate.ts",
@@ -22,6 +22,7 @@
     "@fastify/cors": "11.3.0",
     "@fastify/rate-limit": "11.1.0",
     "@simplewebauthn/server": "13.3.2",
+    "@wokesocial/config": "workspace:*",
     "@wokesocial/crypto": "workspace:*",
     "fastify": "5.10.0",
     "postgres": "3.4.9",

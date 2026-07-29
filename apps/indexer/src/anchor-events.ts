@@ -18,6 +18,7 @@ export const SOCIAL_PROTOCOL_EVENT_LAYOUT = {
     HandleClaimed: [23, 183, 225, 13, 62, 87, 199, 150],
     HandleReleased: [46, 27, 52, 76, 216, 175, 174, 128],
     IdentityCreated: [247, 185, 231, 174, 133, 94, 200, 142],
+    IdentityDeactivated: [19, 21, 51, 7, 82, 100, 132, 255],
     PaymentAuthorityRotated: [163, 98, 210, 236, 171, 187, 204, 62],
     PaymentConfigInitialized: [12, 146, 193, 194, 231, 51, 227, 9],
     PaymentConfigUpdated: [186, 235, 216, 17, 194, 224, 181, 66],
@@ -66,6 +67,15 @@ export type DecodedAnchorEvent =
       readonly createdAtSlot: bigint;
     }
   | {
+      readonly kind: 'identity-deactivated';
+      readonly eventVersion: number;
+      readonly config: string;
+      readonly identity: string;
+      readonly rootAuthority: string;
+      readonly identitySequence: bigint;
+      readonly deactivatedAtSlot: bigint;
+    }
+  | {
       readonly kind: 'handle-claimed';
       readonly eventVersion: number;
       readonly config: string;
@@ -100,6 +110,11 @@ export type DecodedAnchorEvent =
       readonly manifestHash: Uint8Array;
       readonly manifestUri: string;
       readonly updatedAtSlot: bigint;
+      /**
+       * Appended to ProfileReferenceUpdated by the protected-profile rollout.
+       * Its absence is retained only for replaying pre-activation legacy events.
+       */
+      readonly profileSchemaVersion?: number;
     }
   | {
       readonly kind: 'post-published';
@@ -563,6 +578,16 @@ export function decodeAnchorEventLog(encoded: string): DecodedAnchorEvent {
       identityNonce: reader.bytes(16),
       createdAtSlot: reader.u64(),
     };
+  } else if (matches(discriminator, SOCIAL_PROTOCOL_EVENT_LAYOUT.events.IdentityDeactivated)) {
+    event = {
+      kind: 'identity-deactivated',
+      eventVersion: reader.u16(),
+      config: reader.publicKey(),
+      identity: reader.publicKey(),
+      rootAuthority: reader.publicKey(),
+      identitySequence: reader.u64(),
+      deactivatedAtSlot: reader.u64(),
+    };
   } else if (matches(discriminator, SOCIAL_PROTOCOL_EVENT_LAYOUT.events.HandleClaimed)) {
     event = {
       kind: 'handle-claimed',
@@ -590,17 +615,28 @@ export function decodeAnchorEventLog(encoded: string): DecodedAnchorEvent {
       releasedAtSlot: reader.u64(),
     };
   } else if (matches(discriminator, SOCIAL_PROTOCOL_EVENT_LAYOUT.events.ProfileReferenceUpdated)) {
+    const eventVersion = reader.u16();
+    const config = reader.publicKey();
+    const identity = reader.publicKey();
+    const authority = reader.publicKey();
+    const sequence = reader.u64();
+    const previousManifestHash = reader.bytes(32);
+    const manifestHash = reader.bytes(32);
+    const manifestUri = reader.string();
+    const updatedAtSlot = reader.u64();
+    const profileSchemaVersion = reader.optionalTrailingU16();
     event = {
       kind: 'profile-updated',
-      eventVersion: reader.u16(),
-      config: reader.publicKey(),
-      identity: reader.publicKey(),
-      authority: reader.publicKey(),
-      sequence: reader.u64(),
-      previousManifestHash: reader.bytes(32),
-      manifestHash: reader.bytes(32),
-      manifestUri: reader.string(),
-      updatedAtSlot: reader.u64(),
+      eventVersion,
+      config,
+      identity,
+      authority,
+      sequence,
+      previousManifestHash,
+      manifestHash,
+      manifestUri,
+      updatedAtSlot,
+      ...(profileSchemaVersion === undefined ? {} : { profileSchemaVersion }),
     };
   } else if (matches(discriminator, SOCIAL_PROTOCOL_EVENT_LAYOUT.events.PostReferencePublished)) {
     event = {
@@ -1237,6 +1273,19 @@ class BorshReader {
   subscriptionPaymentKind(): 'weekly-subscription' {
     if (this.u8() === 1) return 'weekly-subscription';
     throw new AnchorEventDecodingError('Subscription event contains a mismatched payment kind.');
+  }
+
+  optionalTrailingU16(): number | undefined {
+    const remaining = this.value.byteLength - this.#offset;
+    if (remaining === 0) {
+      return undefined;
+    }
+    if (remaining !== 2) {
+      throw new AnchorEventDecodingError(
+        'Profile reference event has a malformed trailing schema-version commitment.',
+      );
+    }
+    return this.u16();
   }
 
   assertFinished(): void {

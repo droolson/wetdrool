@@ -23,11 +23,15 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+const migrationDatabaseUrl =
+  process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
+  process.env['DATABASE_MIGRATION_URL'] ??
+  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL recovery projection integration', () => {
   it('rolls back invalid transitions and deterministically rebuilds policy and request state', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const fixture = await recoveryFixture();
     const secondNetworkId =
       `wokenet:v1:${publicKey()}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;

@@ -5,11 +5,13 @@ import {
   MAX_INLINE_POST_BYTES,
   MAX_MEDIA_ITEMS,
   MAX_PROFILE_BIO_BYTES,
+  PROFILE_SCHEMA_VERSION,
 } from './constants.js';
 import {
   authorLabelSchema,
   commonPayloadFields,
   contentReferenceSchema,
+  encryptedContentReferenceSchema,
   languageSchema,
   limitedString,
   mediaReferenceSchema,
@@ -116,12 +118,73 @@ export const postContentSchema = z
     'Follower, community, and restricted content must use encrypted references without inline body text.',
   );
 
-const pronounSchema = z
+const legacyProfilePronounSchema = z
   .object({
     value: limitedString(80),
     visibility: z.enum(['public', 'followers', 'private']),
   })
   .strict();
+
+/**
+ * Historical schema-version-1 profile content.
+ *
+ * This schema is intentionally frozen. It remains available only so immutable
+ * signed v1 objects can be decoded and verified; current builders emit the
+ * protected schema-version-2 shape below.
+ */
+export const legacyProfileContentSchema = z
+  .object({
+    displayName: limitedString(MAX_DISPLAY_NAME_BYTES),
+    bio: limitedString(MAX_PROFILE_BIO_BYTES).default(''),
+    avatar: mediaReferenceSchema.optional(),
+    banner: mediaReferenceSchema.optional(),
+    pronouns: z.array(legacyProfilePronounSchema).max(8).default([]),
+    gender: limitedString(160).optional(),
+    genderVisibility: z.enum(['public', 'followers', 'private']).default('private'),
+    chosenFamilyLabels: z.array(limitedString(160)).max(16).default([]),
+    location: limitedString(240).optional(),
+    website: safeHttpsUrlSchema.optional(),
+    links: z
+      .array(
+        z
+          .object({
+            label: limitedString(80),
+            url: safeHttpsUrlSchema,
+          })
+          .strict(),
+      )
+      .max(12)
+      .default([]),
+  })
+  .strict();
+
+function protectedProfileValueSchema(maximumBytes: number) {
+  return z.discriminatedUnion('visibility', [
+    z
+      .object({
+        visibility: z.literal('public'),
+        value: limitedString(maximumBytes),
+      })
+      .strict(),
+    z
+      .object({
+        visibility: z.literal('followers'),
+        valueReference: encryptedContentReferenceSchema,
+      })
+      .strict(),
+    z
+      .object({
+        visibility: z.literal('private'),
+        valueReference: encryptedContentReferenceSchema,
+      })
+      .strict(),
+  ]);
+}
+
+export const profilePronounSchema = protectedProfileValueSchema(80);
+export const profileGenderSchema = protectedProfileValueSchema(160);
+export const profileChosenFamilyLabelSchema = protectedProfileValueSchema(160);
+export const profileLocationSchema = protectedProfileValueSchema(240);
 
 export const profileContentSchema = z
   .object({
@@ -129,11 +192,10 @@ export const profileContentSchema = z
     bio: limitedString(MAX_PROFILE_BIO_BYTES).default(''),
     avatar: mediaReferenceSchema.optional(),
     banner: mediaReferenceSchema.optional(),
-    pronouns: z.array(pronounSchema).max(8).default([]),
-    gender: limitedString(160).optional(),
-    genderVisibility: z.enum(['public', 'followers', 'private']).default('private'),
-    chosenFamilyLabels: z.array(limitedString(160)).max(16).default([]),
-    location: limitedString(240).optional(),
+    pronouns: z.array(profilePronounSchema).max(8).default([]),
+    gender: profileGenderSchema.optional(),
+    chosenFamilyLabels: z.array(profileChosenFamilyLabelSchema).max(16).default([]),
+    location: profileLocationSchema.optional(),
     website: safeHttpsUrlSchema.optional(),
     links: z
       .array(
@@ -289,8 +351,17 @@ export const postPayloadSchema = z
 export const profilePayloadSchema = z
   .object({
     ...commonPayloadFields,
+    schemaVersion: z.literal(PROFILE_SCHEMA_VERSION),
     type: z.literal('profile'),
     content: profileContentSchema,
+  })
+  .strict();
+
+export const legacyProfilePayloadSchema = z
+  .object({
+    ...commonPayloadFields,
+    type: z.literal('profile'),
+    content: legacyProfileContentSchema,
   })
   .strict();
 
@@ -335,6 +406,7 @@ export const mediaManifestPayloadSchema = z
   .strict();
 
 export type PostContent = z.infer<typeof postContentSchema>;
+export type LegacyProfileContent = z.infer<typeof legacyProfileContentSchema>;
 export type ProfileContent = z.infer<typeof profileContentSchema>;
 export type TombstoneContent = z.infer<typeof tombstoneContentSchema>;
 export type DeletionTombstoneContent = TombstoneContent;
@@ -343,6 +415,7 @@ export type ReplyContent = z.infer<typeof replyContentSchema>;
 export type QuoteContent = z.infer<typeof quoteContentSchema>;
 export type MediaManifestContent = z.infer<typeof mediaManifestContentSchema>;
 export type PostPayload = z.infer<typeof postPayloadSchema>;
+export type LegacyProfilePayload = z.infer<typeof legacyProfilePayloadSchema>;
 export type ProfilePayload = z.infer<typeof profilePayloadSchema>;
 export type TombstonePayload = z.infer<typeof tombstonePayloadSchema>;
 export type DeletionTombstonePayload = TombstonePayload;

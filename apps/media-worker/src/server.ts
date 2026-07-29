@@ -49,6 +49,7 @@ async function start(): Promise<void> {
     service,
     allowedOrigins: config.allowedOrigins,
     authorizeRequest: authorization.authorize,
+    trustedProxyCidrs: config.trustedProxyCidrs,
   });
   const cleanupTimer = setInterval(() => {
     void service.cleanupExpired(100).catch((error: unknown) => {

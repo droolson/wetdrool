@@ -3,6 +3,8 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
+import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+
 import { mediaWorkerOriginSchema } from './config.js';
 import { MediaWorkerError } from './errors.js';
 import { listAllowedMediaTypes } from './mime.js';
@@ -32,6 +34,7 @@ export interface MediaWorkerAppOptions {
   readonly logger?: boolean;
   readonly allowedOrigins?: readonly string[];
   readonly rateLimitMax?: number;
+  readonly trustedProxyCidrs?: readonly string[];
   readonly authorizeRequest?: (input: {
     readonly action: 'create' | 'claim' | 'read' | 'append' | 'cancel' | 'finalize';
     readonly uploadId?: string;
@@ -51,6 +54,7 @@ export async function buildMediaWorkerApp(
     options.allowedOrigins === undefined
       ? undefined
       : [...new Set(options.allowedOrigins.map((origin) => mediaWorkerOriginSchema.parse(origin)))];
+  const clientIpPolicy = createTrustedProxyPolicy(options.trustedProxyCidrs ?? []);
   await options.service.initialize();
   const app = Fastify({
     logger:
@@ -75,6 +79,7 @@ export async function buildMediaWorkerApp(
     keepAliveTimeout: 5_000,
     requestTimeout: 180_000,
     requestIdHeader: 'x-request-id',
+    trustProxy: clientIpPolicy.trustProxy,
   });
   app.addContentTypeParser(
     'application/offset+octet-stream',
@@ -96,6 +101,7 @@ export async function buildMediaWorkerApp(
     exposedHeaders: ['location', 'upload-expires', 'upload-length', 'upload-offset'],
   });
   await app.register(rateLimit, {
+    keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 120,
     timeWindow: '1 minute',
   });

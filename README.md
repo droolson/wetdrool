@@ -1,8 +1,9 @@
-# WokeSocial
+# WokeNet
 
-WokeSocial is an open, LGBTQ+ affirming, trans-owned social-network protocol
-and reference client built around user-controlled identity, signed content, and
-replaceable infrastructure.
+This `wokenet` repository contains WokeNet, the sovereign blockchain network,
+and WokeSocial, its open, LGBTQ+ affirming, trans-owned social-network protocol
+and reference client. The platform is built around user-controlled identity,
+signed content, and replaceable infrastructure.
 
 The flagship experience is intended to feel like a polished consumer product.
 Users should not need cryptocurrency knowledge, a visible wallet address, or
@@ -29,12 +30,12 @@ requirement may contain a tested subset without being complete.
 | --- | --- |
 | Architecture and specifications | Initial baseline implemented; v1 conformance work remains |
 | Monorepo and local infrastructure | Implemented and verified locally with PostgreSQL, Redis, Kubo, and hardened service-container profiles |
-| WokeNet | Sovereign network identity, native WOKE policy, pinned native-Firedancer downstream, deterministic genesis patch, native-only configurations, and fail-closed capability gates are implemented; no native cluster has been verified and production activation is blocked |
-| Social protocol | The Solana-wire compatibility oracle verifies 40 instructions, 19 account layouts, and 32 events covering identity/profile references, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, native WOKE tips, subscriptions, receipts, and entitlements; this is not native WokeNet evidence |
+| WokeNet | Sovereign network identity, native WOKE policy, pinned native-Firedancer downstream, deterministic genesis patch, a bounded native `getProgramAccounts` subset with direct C tests, native-only configurations, and fail-closed capability gates are implemented; five required RPC methods and native-cluster evidence remain missing, so production activation is blocked |
+| Social protocol | The Solana-wire compatibility oracle verifies 41 instructions, 19 account layouts, and 33 events covering identity/profile references, root-authorized one-way identity deactivation, handles, root rotation, scoped delegation, delayed guardian-threshold recovery, social actions, communities/governance, posts, reactions, tombstones, native WOKE tips, subscriptions, receipts, and entitlements; this is not native WokeNet evidence |
 | Signed content and storage | A strict 29-family portable object registry, canonical signed manifests, local CAS, multi-provider storage, IPFS/Kubo, and an Arweave-compatible permanent-storage adapter are implemented and tested |
-| Open indexer | Finalized Solana-format RPC synchronization tested against the Agave compatibility oracle, exact 32-event IDL projection including payment state, manifest verification, PostgreSQL replay, failover, checkpoints, DLQ, provenance, and REST APIs are implemented; native WokeNet RPC remains unverified |
+| Open indexer | Finalized Solana-format RPC synchronization tested against the Agave compatibility oracle, exact decoding and projection of all 33 IDL events including one-way identity deactivation, canonical onchain profile-v2 commitments plus an immutable legacy cutoff, exact CID/manifest-URI verification, accepted/pending/terminal ingestion, checkpoint-independent bounded hydration, suppression-aware replay, sixteen PostgreSQL migrations, failover, DLQ, provenance, and REST APIs are implemented; native Firedancer RPC, fork/reorg evidence, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Feed service | Independently replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and third-party reconciliation engine implemented and tested |
-| Relay | Replaceable signed WebSocket transport and multi-relay failover client implemented and tested; authoritative key authorization must be injected and E2EE remains upstream |
+| Relay | Replaceable signed WebSocket transport, bounded finalized key and expiring opaque-topic subscription authorizer HTTP adapters, and multi-relay failover client implemented and tested; independent authorizer deployments and E2EE remain external |
 | Flagship web application | Complete required route surface, production build, responsive/a11y states, local composer/preferences/export, provider settings, and real passkey-service registration/sign-in implemented; unsupported onchain mutations fail closed |
 | Moderation and safety | Replaceable signed label/report/appeal service, encrypted durable PostgreSQL case ledger, retention/legal-hold lifecycle, transparency aggregation, locked-by-default authorization, and restricted case reads are implemented; production authorizer/SSO and complete specialist product workflows remain blocked |
 | Passkeys and recovery | Replaceable WebAuthn service, durable one-time ceremonies/sessions, discoverable browser registration/sign-in, and ciphertext-only PRF key-bundle sync implemented and tested; protocol-identity creation, recovery, sponsorship, and complete device flows remain open |
@@ -51,16 +52,19 @@ not evidence of a native WokeNet deployment.
 
 - `pnpm wokenet:check` structurally verifies the pinned Firedancer source
   and patch checksums, native-only build declarations, fail-closed RPC
-  capability record, WOKE unit policy, TOML safety settings, and local genesis
-  allocations. `pnpm wokenet:materialize -- /absolute/path` produces the
-  exact downstream source tree. A supported Linux native build/cluster is still
+  capability record, the bounded `getProgramAccounts` filters, configurations,
+  and resource ceilings, the five still-missing required RPC methods, WOKE unit
+  policy, TOML safety settings, and local genesis allocations.
+  `pnpm wokenet:materialize -- /absolute/path` produces the exact downstream
+  source tree. The supported-Linux binary gate builds and runs the native
+  account-database and RPC C tests; a connected native cluster is still
   required.
 - `pnpm setup` installs checksum-verified, project-local Rust 1.89.0, Agave
   2.3.0, and Anchor 0.32.1 compatibility toolchains; starts the pinned local
   containers; and applies PostgreSQL migrations. Agave is never WokeNet
   runtime evidence.
 - `pnpm test:programs` performs a native Anchor SBF build and passes a real
-  33-case Agave compatibility-oracle suite covering core actions, handle
+  34-case Agave compatibility-oracle suite covering core actions, handle
   release, all six delegated social variants, delayed guardian recovery,
   one-member-one-vote proposal/vote/finalization, native WOKE payment paths,
   and adversarial authorization, substitution, snapshot, replay, cancellation,
@@ -74,11 +78,14 @@ not evidence of a native WokeNet deployment.
 - Package tests cover deterministic canonical bytes and identifiers, Ed25519
   verification across 29 portable object families, local CAS integrity, storage
   replication, recoverable SDK publication, manifest verification, exhaustive
-  current-IDL indexing, and in-memory rebuild.
-- Relay tests exercise 35 protocol and real-loopback WebSocket cases, including
-  signed envelopes, locked-by-default authorization, bounded retention,
-  backpressure, failover, reconnect, deduplication, and relay-local gap
-  detection.
+  current-IDL indexing, and in-memory rebuild. The current focused evidence
+  includes 144 configuration unit cases plus four verified-database-TLS
+  integration cases, 184 indexer unit cases across 20 files, 27 isolated
+  indexer PostgreSQL cases across 11 files, and 36 feed-service cases.
+- Relay tests exercise 81 unit cases and 29 real-loopback WebSocket integration
+  cases, including signed envelopes, locked-by-default authorization, bounded
+  retention, backpressure, failover, reconnect, deduplication, subscription
+  scope enforcement, and relay-local gap detection.
 - Thirteen real-WASM messaging cases create independent devices, establish
   authenticated Olm sessions through opaque directory requests, verify
   sender-signed routing metadata before stateful decryption, reject relay
@@ -86,7 +93,7 @@ not evidence of a native WokeNet deployment.
   revocation, bound dependency stalls, and keep plaintext out of directory and
   relay artifacts. The adapter exposes no group/room API and rejects its
   memory-only storage mode in production.
-- The media worker passes 57 adversarial unit cases and three real
+- The media worker passes 70 adversarial unit cases and three real
   Sharp/FFmpeg/ffprobe integrations. Its hardened Compose profile additionally
   passes benign/EICAR scans through the production adapter and digest-pinned
   ClamAV 1.5.3 while both containers run unprivileged with read-only roots and
@@ -94,20 +101,23 @@ not evidence of a native WokeNet deployment.
 - Container integration tests pass against PostgreSQL and Kubo. The PostgreSQL
   test projects signed profile/post/tombstone manifests, a follow edge, duplicate
   delivery, feed filtering, and deterministic rebuild.
-- The 46-page Next.js route surface builds for production; 79 web unit tests and
+- The 46-page Next.js route surface builds for production; 81 web unit tests and
   206 desktop/mobile Playwright cases pass, with two deliberate duplicate
   mobile passkey lifecycle cases skipped. The suite includes automated axe WCAG A/AA
   checks across 45 route fixtures in both desktop and mobile projects, plus
   semantic connected-post coverage and a real virtual-authenticator
   atomic-registration, logout, and discoverable-sign-in journey.
-- The replaceable authentication service passes 24 unit/API security and
-  retention cases, three isolated PostgreSQL integration cases, and one
+- The replaceable authentication service passes 34 unit/API security and
+  retention cases, four isolated PostgreSQL integration cases, and one
   real-browser WebAuthn ceremony case. Initial credential/root-wrapper/account
   activation, same-root passkey addition, and authentication/session issuance
   are atomic at their respective store boundaries; revocation is step-up
   protected and invalidates service sessions. The service never receives a PRF
   result or plaintext signing seed and does not claim to create or revoke the
   protocol identity or WokeNet delegation.
+- The moderation provider passes 56 unit cases and four isolated PostgreSQL
+  cases, including append-only ledger enforcement, runtime-role deletion
+  denial, readiness privilege checks, and retention-safe maintenance behavior.
 - Digest-pinned OCI images for authentication, feed, relay, and moderation
   services have been locally built and exercised as unprivileged users with
   read-only roots, dropped capabilities, bounded process counts, and explicit
@@ -225,8 +235,14 @@ secret scan when the required local services are available. Native Firedancer
 build/cluster evidence remains a separate supported-Linux gate and is not
 inferred from `verify:all`.
 
-`pnpm dev` starts implemented workspace development processes; it does not
-manufacture services for planned packages.
+`pnpm dev` loads `.env` or the checked-in local-only `.env.example`, starts and
+waits for PostgreSQL, Redis, Kubo, the private ClamAV network, and the
+containerized media worker, reapplies idempotent local migrations, then starts
+the implemented workspace development processes. Relay and moderation run in
+an explicitly loopback-only advisory mode. The command rejects production
+environments and non-loopback service binds before it enables those two
+development-only overrides. Standalone services remain locked by default. Stop
+persistent containers with `pnpm infra:down`.
 
 ## Security and privacy
 

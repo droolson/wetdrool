@@ -243,7 +243,28 @@ creation time from `createdAt`.
 
 The default content identifier for a signed JSON envelope is a CIDv1 using the
 `raw` multicodec and `sha2-256` over the exact canonical envelope bytes. Its
-textual form is base32 lowercase.
+textual form is the 59-character canonical base32-lowercase form. The exact
+wire prefilter is
+`^bafkrei[a-h][a-z2-7]{50}[aeimquy4]$`; implementations then parse the CID and
+require version 1, `raw`, a SHA-256 multihash, a 32-byte digest, and an
+unchanged canonical string. Case folding, alternate codecs/hashes, different
+lengths, and noncanonical base32 padding are not accepted.
+
+An onchain manifest locator is at most 200 visible ASCII bytes and uses exactly
+one of these forms:
+
+- `ipfs://<canonical-cid>`;
+- `local://<canonical-cid>`;
+- `ar://<43-character-transaction-id>/<canonical-cid>`, where the transaction
+  ID matches `[A-Za-z0-9_-]{43}`; or
+- `https://<credential-free-host>[:1-65535]/<one-or-more-nonempty-segments-ending-in-cid>`.
+
+HTTPS host labels contain only ASCII letters, digits, or interior hyphens; path
+segments are nonempty, and query strings, fragments, credentials, IPv6
+authorities, and the characters `<`, `>`, `"`, `'`, and `\\` are rejected.
+The program, protocol package, SDK, materializer, verifier, and storage
+boundaries share this grammar. A malformed locator or inconsistent explicit
+CID is terminal `manifest-uri` before provider I/O.
 
 For media, the CID is over the exact validated file or deterministic rendition.
 A media manifest carries each rendition's CID, SHA-256 digest, byte length,
@@ -344,7 +365,7 @@ only with a separately versioned normalization and confusable-defense design.
 | Instruction group | Current instructions | Status and invariants |
 | --- | --- | --- |
 | Protocol | `initialize_protocol` | Implemented: one-time configuration PDA creation and checked aggregate counters |
-| Identity/profile | `create_identity`, `update_profile`, `update_profile_delegated`, `rotate_root_authority` | Implemented: stable origin-authority/nonce identity PDA, dual-signed root rotation, checked rotation/identity/profile sequences, bounded hash/URI, and current-epoch profile delegation |
+| Identity/profile | `create_identity`, `deactivate_identity`, `update_profile`, `update_profile_delegated`, `rotate_root_authority` | Implemented: stable origin-authority/nonce identity PDA, root-authorized one-way deactivation, dual-signed root rotation, checked rotation/identity/profile sequences, bounded hash/URI, and current-epoch profile delegation. Deactivation requires the exact config/identity PDAs, current root signer, supported account version, active state, and expected identity sequence; it advances the sequence once and clears `active` without closing or reassigning the identity |
 | Social graph | `follow`, `unfollow`, `follow_delegated`, `unfollow_delegated` | Implemented: root variants remain stable; delegated variants require the exact follower identity/delegate account, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; all variants reject self-follow, validate relationships, and use checked actor/edge sequences |
 | Content | `publish_post`, `tombstone_post`, `publish_post_delegated`, `tombstone_post_delegated` | Implemented: root variants remain stable; delegated variants require the exact author identity/delegate account, current root-rotation epoch, `post` scope, inclusive slot expiry, and non-revoked state; all variants preserve immutable post PDAs, hash/URI bounds, checked author sequences, and one tombstone PDA |
 | Delegation | `create_delegation`, `revoke_delegation` | Implemented: closed scopes, expiry, explicit revocation, checked state/identity sequence, and invalidation on any root-rotation epoch change |
@@ -514,7 +535,7 @@ commitment/finality
 ```
 
 The implemented Anchor IDL currently emits `ProtocolInitialized`,
-`IdentityCreated`, `ProfileReferenceUpdated`, `PostReferencePublished`,
+`IdentityCreated`, `IdentityDeactivated`, `ProfileReferenceUpdated`, `PostReferencePublished`,
 `FollowStateChanged`, `PostTombstoned`, `RootAuthorityRotated`,
 `DelegationCreated`, `DelegationRevoked`, `BlockStateChanged`,
 `CommunityCreated`, `CommunityGovernanceUpdated`,
@@ -531,17 +552,26 @@ root authority, exact normalized handle, full SHA-256 digest, checked identity
 sequence, and transition slot. The other event fields bind the configuration
 and relevant accounts, event version, sequence or nonce, authority, manifest or
 strategy data where applicable, and source slot. The resulting Anchor surface
-has 32 event types. The six recovery events bind the version,
+has 33 event types. `IdentityDeactivated` binds the configuration, identity,
+current root authority, incremented identity sequence, event version, and
+transition slot. The six recovery events bind the version,
 policy/request/identity relationships, relevant signer, snapshot sequences,
 threshold/approval state, target or previous/new root, and transition slot.
 Successful recovery execution also emits the existing `RootAuthorityRotated`
-event. The production indexer decoder is pinned to this exact 32-event surface:
+event. The production indexer decoder is pinned to this exact 33-event surface:
 its drift gate compares the complete name set, discriminators, ordered fields,
 and relevant enum variants against the generated IDL. It ingests all six
 recovery events into deterministic memory and PostgreSQL policy/request
 projections. Those projections are explicitly non-canonical: a projected
 `pending` request means no terminal event was observed and is not an assertion
 that the current WokeNet accounts still make the request executable.
+`IdentityDeactivated` is decoded and materialized exactly by both memory and
+PostgreSQL projections. It advances only the current active identity at the
+next sequence and records immutable deactivation provenance. Historical
+authorization remains position-aware; new identity-authorized actions fail
+after retirement. A profile reference that was already durably pending may
+hydrate after deactivation only as retained historical state; it cannot
+reactivate the identity or restore public person discovery.
 
 `ProposalCreated` records the immutable strategy, thresholds, eligibility
 count, manifest, authority, window, and checked creator/community/proposal
@@ -562,7 +592,7 @@ conformance fixtures are stabilized.
 
 | Object | Canonical representation | Required signer/authority | Revision rule | Deletion semantics |
 | --- | --- | --- | --- | --- |
-| Identity | WokeNet identity account and events | Root authority or valid recovery execution | Monotonic state version | Deactivate/revoke; identity URI is never reassigned |
+| Identity | WokeNet identity account and events | Root authority or valid recovery execution | Monotonic state version | Root-authorized v1 deactivation is one-way and leaves the account/history intact; identity URI is never reassigned |
 | Profile | Signed profile manifest plus latest onchain reference | `profile` delegation or root | New immutable manifest points to previous ID | Tombstone/suppress old profile; history may remain replicated |
 | Handle claim | WokeNet PDA | Identity authority | Release then new claim under anti-impersonation policy | Release does not erase history |
 | Delegation | WokeNet account/event | Root or scoped recovery authority | Add/revoke; never mutate a key into broader scope | Revocation retained in replay history |
@@ -604,6 +634,30 @@ schemas in `packages/protocol`. They are illustrative instances, not a substitut
 for distributable JSON Schemas or conformance fixtures. Media-manifest support
 remains a planned extension.
 
+### Profile schema transition
+
+Portable profile history has two readable shapes within protocol version
+`1.0`. Schema v1 is frozen for verification of existing signed bytes; the
+current creation surface emits only schema v2, whose protected pronoun, gender,
+chosen-family-label, and location values must use encrypted references.
+
+Each WokeNet deployment fixes one immutable
+`INDEXER_PROFILE_V2_ACTIVATION_SLOT`. A historical profile-update event without
+the appended schema commitment may reference a legacy schema-v1 profile only
+before that slot. An event with an explicit commitment must declare schema v2
+at every slot, and an event at or after activation must carry that commitment
+and reference a schema-v2 envelope. The indexer's live verifier and exact-source
+rebuild use the same event-slot gate. The portable reader remains able to
+decode v1 so historical IDs and signatures do not change, but that
+compatibility is not permission to publish a new v1 profile.
+
+The current WokeSocial program requires
+`profile_schema_version = CURRENT_PROFILE_SCHEMA_VERSION = 2` in both root and
+delegated update instructions and appends the value to
+`ProfileReferenceUpdated`. The legacy event prefix remains decodable only for
+historical pre-activation data. The manifest digest, locator, and schema
+commitment are therefore bound by the same canonical onchain event.
+
 ### Profile content
 
 ```json
@@ -612,20 +666,47 @@ remains a planned extension.
   "bio": "Community organizer and photographer.",
   "pronouns": [
     {
-      "value": "they/them",
-      "visibility": "public"
+      "visibility": "public",
+      "value": "they/them"
     }
   ],
-  "gender": "nonbinary",
-  "genderVisibility": "followers",
-  "chosenFamilyLabels": [],
+  "gender": {
+    "visibility": "followers",
+    "valueReference": {
+      "cid": "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+      "digest": "uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "bytes": 96,
+      "mediaType": "application/octet-stream",
+      "protection": {
+        "kind": "encrypted",
+        "encryptionFormat": "wokesocial-sealed-profile-value-v1",
+        "keyEnvelope": {
+          "id": "wokesocialobj:v1:media-manifest:uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        },
+        "accessPolicy": {
+          "id": "wokesocialobj:v1:community-rule-set:uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        }
+      }
+    }
+  },
+  "chosenFamilyLabels": [
+    {
+      "visibility": "public",
+      "value": "chosen sibling"
+    }
+  ],
   "links": []
 }
 ```
 
-Chosen name is independent of legal name. Gender, sexuality, pronouns, legal
-identity, and other sensitive attributes are optional, separately visible, and
-never inferred.
+Chosen name is independent of legal name. Pronouns, gender, chosen-family
+labels, and location use the same strict visibility union. Only a `public`
+attribute may contain an inline `value`. A `followers` or `private` attribute
+must contain a `valueReference` whose required protection is
+`{"kind":"encrypted", ...}` with a named encryption format, key envelope, and
+access policy. Raw protected plaintext, an unprotected reference, and the
+legacy `genderVisibility` field are invalid. Gender, sexuality, pronouns, legal
+identity, and other sensitive attributes are optional and never inferred.
 
 ### Post content
 
@@ -700,8 +781,8 @@ rendition is independently hashed and bounded.
 ```json
 {
   "target": {
-    "id": "wokesocialobj:v1:post:u...",
-    "cid": "bafy..."
+    "id": "wokesocialobj:v1:post:ujOrBjnUJaGYhNMmIlg-7sf4OeeDi5JvznJnZo_DF6PM",
+    "cid": "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
   },
   "reason": "author-deleted",
   "explanation": "Removed by the author."
@@ -710,6 +791,13 @@ rendition is independently hashed and bounded.
 
 Public tombstones SHOULD use broad, nonsensitive reason codes. Detailed
 moderation evidence or personal explanations are not included.
+
+The canonical suppression signal for an anchored post is the authenticated
+finalized `PostTombstoned` event and its target. Optional legacy tombstone
+object/CID/payload-hash fields are all-or-none detached audit metadata. A
+conforming indexer does not fetch those optional bytes and MUST NOT let their
+absence, corruption, or provider outage delay suppression, identity-sequence
+advancement, or checkpoint progress.
 
 ## Authorization
 
@@ -787,6 +875,7 @@ Deletion has three distinct effects:
    that official consumers should no longer display the target.
 2. **Projection suppression:** compliant indexers remove the body from normal
    queries and retain only minimal provenance needed to avoid resurrection.
+   Optional tombstone-manifest bytes are detached, non-gating audit metadata.
 3. **Provider deletion:** clients/operators request unpinning or erasure from
    providers that support it.
 
@@ -813,10 +902,24 @@ A conforming indexer:
 7. stores source provenance on every projection row;
 8. can delete projections and reproduce them from public inputs;
 9. exposes checkpoint, lag, schema range, and verification status;
-10. never labels missing or invalid bytes as a verified post.
+10. never labels missing or invalid bytes as a verified post;
+11. persists exact accepted, pending, or terminal disposition for every
+    manifest-bearing raw event;
+12. drains due pending hydration in bounded batches independently of new chain
+    events or checkpoint movement; and
+13. during rebuild, skips provider I/O for an accepted manifest only when its
+    durable accepted disposition and the complete event order prove it obsolete
+    through a later profile pointer or tombstone, while retaining its raw
+    sequence/reference/checkpoint effects.
 
 Detailed replay behavior is in
 [ADR-0004](DECISIONS/0004-indexer-projection-and-replay.md).
+
+For profile history, conformance also requires a published, immutable
+per-network `INDEXER_PROFILE_V2_ACTIVATION_SLOT`. Live ingestion and every
+rebuild must accept legacy schema v1 only before that event slot and require
+schema v2 at or after it. Two indexers that use different cutoffs are not
+conformant projections of the same WokeNet history.
 
 ## Relay protocol boundary
 
@@ -885,7 +988,8 @@ A feed response is nonauthoritative and carries:
 - ordered object IDs;
 - per-item explanation factor codes;
 - filtering policy and moderation providers applied;
-- pagination cursor scoped to provider/version/checkpoint;
+- bounded opaque pagination cursor scoped to provider/version/checkpoint and
+  carrying every deterministic ordering tie-break;
 - response creation and expiry time.
 
 The client re-applies blocks, mutes, tombstones, and sensitive-content controls.
@@ -955,6 +1059,13 @@ the relevant alias and substitution cases. A creator root rotation deliberately
 stales every existing offering; the creator must publish new terms under the
 new root epoch. Retirement is terminal.
 
+Identity retirement does not implicitly release a handle, dissolve a
+community, or retire a subscription offering. Because those cleanup actions
+require an active identity in protocol v1, clients must complete them before
+deactivation. Otherwise the resources and identifiers remain reserved or
+frozen with their history intact; post-retirement cleanup requires a future,
+explicitly versioned protocol transition rather than an indexer inference.
+
 An offering is immutable after creation and commits its manifest hash and URI,
 price, weekly interval, refund-policy hash, maximum protocol fee, creator root
 epoch, and one to three canonically ordered recipient identity/destination
@@ -1015,6 +1126,10 @@ belong onchain merely because its body is unreadable.
 - Onchain accounts and events begin with an explicit version discriminator.
 - Indexers publish the protocol, account, event, and object schema ranges they
   understand.
+- Indexers publish the immutable network activation slot used to decide whether
+  a historical profile event without the appended schema commitment may still
+  reference schema v1. New root and delegated profile updates commit schema v2
+  onchain, and explicit commitments other than v2 are rejected.
 
 A migration plan must define dual-read/dual-publish windows, downgrade behavior,
 and tombstone preservation before a new major version activates.
@@ -1068,13 +1183,13 @@ fixtures independently in each test suite is insufficient.
 | Versioned machine-readable schemas | Implemented for the current TypeScript v1 registry | Strict Zod schemas and builders cover all 29 current portable object families; a checked-in Draft 2020-12 signed-envelope artifact is generated from that registry and fails CI on drift. Rust consumption and cross-language conformance remain incomplete |
 | Canonicalization library wrappers | Implemented for the current TypeScript object subset | RFC 8785/JCS wrapper tests cover deterministic bytes, NFC rejection, exact canonical-envelope decoding, and stable IDs |
 | Cross-language golden vectors | Not implemented | None |
-| Anchor program and IDL | Experimental compatibility implementation | Native SBF build generates an IDL and TypeScript type for 40 instructions, 32 events, and 19 account families under compatibility-harness program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; legacy, recovery, and native-WOKE payment discriminators are frozen by native tests |
+| Anchor program and IDL | Experimental compatibility implementation | Native SBF build generates an IDL and TypeScript type for 41 instructions, 33 events, and 19 account families under compatibility-harness program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; legacy, identity-deactivation, recovery, and native-WOKE payment discriminators are frozen by native tests |
 | Account-size and transaction-cost analysis | Implemented for the current compatibility subset | Native serialization tests assert all 19 account layouts. The real-validator harness enforces transaction-size, compute, balance-conservation, substitution, replay, recovery, governance, and payment bounds. These measurements are Solana-wire compatibility evidence, not native Firedancer performance evidence |
 | Local-validator tests | Experimental compatibility coverage | Real-validator flows cover root and delegated identity/social actions, handles, governance, delayed guardian recovery, native WOKE tips, weekly subscriptions, receipts, entitlements, substitution, replay, and exact balance deltas. The full cross-language, passkey/email product, native-Firedancer, and public-network matrix remains incomplete |
-| Native Firedancer runtime | Blocked | The exact official upstream commit and downstream genesis patch are reproducibly pinned, but full native Firedancer has no production release and lacks required submit/simulate/status/history/program-account RPC methods; no Agave fallback is permitted |
-| SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus seven IDL-aligned native-WOKE instruction builders, exact plans, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict RPC simulation/status parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit WokeNet endpoint/genesis/program context; a complete generated account client, flagship wallet/passkey signer integration, executable-artifact attestation, finalized receipt/entitlement proof orchestration, wallet UX, and native Firedancer evidence remain absent |
+| Native Firedancer runtime | Blocked | The exact official upstream commit and ordered downstream patch queue are reproducibly pinned. A bounded native `getProgramAccounts` subset has direct account-database/RPC C tests, explicit supported/unsupported request shapes, and hard resource ceilings, but it is not production-complete or connected-cluster conformance. `getSignaturesForAddress`, `getSignatureStatuses`, `getTransaction`, `sendTransaction`, and `simulateTransaction` remain unimplemented; full native Firedancer has no production release, and no Agave fallback is permitted |
+| SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus eight IDL-aligned instructions, including one-way identity deactivation and native-WOKE administration/settlement builders, exact plans, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict RPC simulation/status parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit WokeNet endpoint/genesis/program context; a complete generated account client, flagship wallet/passkey signer integration, executable-artifact attestation, finalized receipt/entitlement proof orchestration, wallet UX, and native Firedancer evidence remain absent |
 | Storage adapters and local CID verification | Implemented subset | Memory/local CAS, multi-provider quorum, IPFS HTTP/Kubo, and Arweave-compatible permanent-storage adapters are tested; no funded live Arweave uploader is configured |
-| Rebuildable indexer | Experimental connected implementation | Finalized Solana-compatible RPC ingestion, exhaustive 32-event current-IDL decoding, network-scoped checkpoints and identity references, signed-manifest verification, social/governance/recovery/payment projection, tombstone suppression, read APIs, PostgreSQL durability, and destructive replay are implemented and tested locally; native Firedancer and independent-provider reconciliation remain incomplete |
+| Rebuildable indexer | Experimental connected implementation | Finalized Solana-compatible RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2 commitment, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, non-gating tombstone metadata, suppression-aware destructive replay, read APIs, PostgreSQL durability, and sixteen ordered migrations are implemented. The current evidence is 184 unit cases across 20 files and 27 PostgreSQL cases across 11 files. Native Firedancer RPC, fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |
 | Alternate-provider conformance | Partial | Storage quorum/failover and real-loopback multi-relay failover/reconnect/deduplication are tested; independent RPC/indexer/feed conformance remains absent |
 | Independent security review | Not performed | None |
 

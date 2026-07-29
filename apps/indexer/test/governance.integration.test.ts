@@ -23,16 +23,21 @@ import {
   type ProtocolEvent,
   type VoteCastEvent,
 } from '../src/index.js';
+import { TEST_CID } from './cid-fixtures.js';
 import { migrate } from '../src/migrate.js';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+const migrationDatabaseUrl =
+  process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
+  process.env['DATABASE_MIGRATION_URL'] ??
+  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL governance projection integration', () => {
   it('rolls back invalid transitions and deterministically rebuilds proposal and vote state', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
     const networkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
     const secondNetworkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
@@ -155,7 +160,7 @@ describe('PostgreSQL governance projection integration', () => {
         creatorIdentityId,
         authority: creatorAuthority,
         creatorSequence: 1n,
-        manifestCid: `b${'a'.repeat(58)}`,
+        manifestCid: TEST_CID,
         manifestHash: digest(),
         governanceVersion: 1,
         governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,

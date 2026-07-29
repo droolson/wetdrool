@@ -128,7 +128,6 @@ function loadPolicy() {
     'native Firedancer must remain fail-closed until its production gates pass',
   );
   const requiredMissingMethods = [
-    'getProgramAccounts',
     'getSignaturesForAddress',
     'getSignatureStatuses',
     'getTransaction',
@@ -141,6 +140,7 @@ function loadPolicy() {
     'getGenesisHash',
     'getLatestBlockhash',
     'getMultipleAccounts',
+    'getProgramAccounts',
     'getSlot',
   ];
   assert(
@@ -149,16 +149,119 @@ function loadPolicy() {
       capabilities.nativeValidator.upstreamReleaseAvailable === false,
     'native validator capability policy is incomplete or unsafe',
   );
+  const liveClusterSafety = capabilities.liveClusterSafety;
+  assert(
+    liveClusterSafety?.implemented === true &&
+      liveClusterSafety.productionActivationAuthorized === false &&
+      liveClusterSafety.configMode === 'consensus.wokenet_live_cluster' &&
+      liveClusterSafety.exactGenesisHashBinding === 'consensus.expected_genesis_hash' &&
+      liveClusterSafety.runtimeClassification ===
+        'config.is_live_cluster=true; config.cluster=wokenet' &&
+      liveClusterSafety.modeOmissionFailsClosed === true &&
+      liveClusterSafety.localnetTopologyAttestationBinary === lock.downstream.developmentBinary &&
+      JSON.stringify(liveClusterSafety.disabledModePreservesUpstreamClassificationOnlyFor) ===
+        JSON.stringify(['local-or-development', 'recognized-built-in-cluster']) &&
+      liveClusterSafety.rejectsBuiltInSolanaAndPythGenesisHashes === true &&
+      JSON.stringify(liveClusterSafety.requirements) ===
+        JSON.stringify([
+          'native-firedancer',
+          'non-local-production-command',
+          'no-agave',
+          'canonical-nonzero-32-byte-genesis-hash',
+          'nonzero-expected-shred-version',
+          'genesis-validation',
+          'explicit-identity',
+          'sandbox',
+          'multiprocess',
+          'production-benchmark-limits',
+        ]) &&
+      JSON.stringify(liveClusterSafety.directNativeCTestCoverage) ===
+        JSON.stringify([
+          'test_config_parse:wokenet-live-policy',
+          'test_config_parse:wokenet-live-toml-parse',
+          'test_config_parse:wokenet-live-classification',
+        ]),
+    'WokeNet live-cluster safety capability evidence is incomplete or unsafe',
+  );
   assert(
     capabilities.nativeRpc?.binary === lock.downstream.validatorBinary &&
-      capabilities.nativeRpc.evidenceClassification === 'source-observation-not-conformance' &&
+      capabilities.nativeRpc.evidenceClassification ===
+        'mixed-source-observation-and-native-c-unit-conformance' &&
+      capabilities.nativeRpc.nonVotingTemplateBootProven === false &&
+      capabilities.nativeRpc.templateBlockProductionEnabled === false &&
+      JSON.stringify(capabilities.nativeRpc.templateBootBlockers) ===
+        JSON.stringify([
+          'connected-native-rpc-observer-boot-not-demonstrated',
+          'tower-to-replay-to-rpc-finalized-and-cache-pruning-integration-not-demonstrated',
+          'observer-restart-commitment-continuity-not-demonstrated',
+        ]) &&
       JSON.stringify(capabilities.nativeRpc.directNativeCTestCoverage) ===
-        JSON.stringify(['getMultipleAccounts']) &&
+        JSON.stringify(['getMultipleAccounts', 'getProgramAccounts']) &&
       JSON.stringify(capabilities.nativeRpc.implementedRequiredReads) ===
         JSON.stringify(observedRequiredReads) &&
       JSON.stringify(capabilities.nativeRpc.missingRequiredMethods) ===
         JSON.stringify(requiredMissingMethods),
     'native RPC capability sets or evidence classification are stale',
+  );
+  const nonVotingObserver = capabilities.nativeRpc.nonVotingObserver;
+  assert(
+    nonVotingObserver?.sourceImplemented === true &&
+      nonVotingObserver.wokenetLiveClusterOnly === true &&
+      nonVotingObserver.exactConfigRole ===
+        'empty paths.vote_account; layout.enable_block_production=false; tiles.rpc.enabled=true; zero paths.authorized_voter_paths' &&
+      nonVotingObserver.voteAccountRequiredOutsideExactRole === true &&
+      nonVotingObserver.suppliedVoteAccountRemainsVoting === true &&
+      nonVotingObserver.retainsVirtualTowerRootAndReset === true &&
+      nonVotingObserver.skipsOwnVoteAccountReconciliation === true &&
+      nonVotingObserver.constructsVoteTransactions === false &&
+      nonVotingObserver.checkpointSerializationObserved === false &&
+      nonVotingObserver.restartCommitmentContinuityProven === false &&
+      nonVotingObserver.connectedBootProven === false &&
+      nonVotingObserver.directNativeCTestExecution?.passed === true &&
+      nonVotingObserver.directNativeCTestExecution.environment ===
+        'linux-x86_64-docker-emulation' &&
+      nonVotingObserver.directNativeCTestExecution.nativeHardware === false &&
+      JSON.stringify(nonVotingObserver.directNativeCTestExecution.tests) ===
+        JSON.stringify(['test_config_parse', 'test_tower_tile']) &&
+      JSON.stringify(nonVotingObserver.directNativeCTestCoverage) ===
+        JSON.stringify([
+          'test_config_parse:wokenet-rpc-observer-role-matrix',
+          'test_tower_tile:observer-vote-suppression',
+          'test_tower_tile:observer-account-reconciliation-skip',
+          'test_tower_tile:observer-virtual-tower-replay-root-and-pruning',
+        ]),
+    'native WokeNet non-voting RPC observer evidence is incomplete or unsafe',
+  );
+  const programAccounts = capabilities.nativeRpc.getProgramAccounts;
+  assert(
+    programAccounts?.productionComplete === false &&
+      programAccounts.conformance ===
+        'bounded native subset; not unrestricted or full Solana RPC conformance' &&
+      programAccounts.storagePath ===
+        'native epoch-protected fd_accdb owner scan on a referenced frozen fork' &&
+      JSON.stringify(programAccounts.supportedFilters) ===
+        JSON.stringify(['dataSize', 'memcmp:base58', 'memcmp:base64', 'memcmp:bytes']) &&
+      JSON.stringify(programAccounts.unsupportedFilters) ===
+        JSON.stringify(['tokenAccountState']) &&
+      programAccounts.limits?.filters === 4 &&
+      programAccounts.limits?.results === 1024 &&
+      programAccounts.limits?.scanWorkUnits === 4_000_000 &&
+      programAccounts.limits?.scanOwnerDataBytes === 64 * 1024 * 1024 &&
+      programAccounts.limits?.preSliceMatchedAccountDataBytes === 32 * 1024 * 1024 &&
+      JSON.stringify(programAccounts.supportedConfig) ===
+        JSON.stringify([
+          'commitment',
+          'dataSlice',
+          'encoding:binary',
+          'encoding:base58',
+          'encoding:base64',
+          'encoding:base64+zstd',
+          'minContextSlot',
+          'sortResults',
+          'withContext',
+        ]) &&
+      JSON.stringify(programAccounts.unsupportedConfig) === JSON.stringify(['encoding:jsonParsed']),
+    'native getProgramAccounts semantics or resource limits are stale',
   );
   assert(
     lock.downstream.validatorBinary === 'firedancer' &&
@@ -336,6 +439,7 @@ function checkStatic() {
       genesisPolicy.production?.supplyApproved === false &&
       genesisPolicy.production?.inflationApproved === false &&
       genesisPolicy.production?.allocationApproved === false &&
+      genesisPolicy.production?.liveClusterActivationApproved === false &&
       genesisPolicy.production?.publicSaleConfigured === false &&
       genesisPolicy.production?.legalReviewComplete === false,
     'production genesis must remain locked pending explicit reviews',
@@ -357,6 +461,7 @@ function checkStatic() {
   assertTomlValue(localConfig, 'tiles.gui.enabled', false, localContext);
   assertTomlValue(localConfig, 'tiles.rpc.enabled', true, localContext);
   assertTomlValue(localConfig, 'tiles.rpc.rpc_listen_address', '127.0.0.1', localContext);
+  assertTomlValue(localConfig, 'consensus.wokenet_live_cluster', false, localContext);
   assertTomlValue(localConfig, 'development.sandbox', true, localContext);
   assertTomlValue(localConfig, 'development.no_agave', true, localContext);
   assertTomlValue(
@@ -429,18 +534,30 @@ function checkStatic() {
       'REPLACE_WITH_CEREMONY_GENESIS_HASH',
       template,
     );
-    assertTomlValue(
-      config,
-      'consensus.expected_shred_version',
-      'REPLACE_WITH_CEREMONY_SHRED_VERSION',
-      template,
-    );
+    assertTomlValue(config, 'consensus.expected_shred_version', 0n, template);
+    assertTomlValue(config, 'consensus.wokenet_live_cluster', true, template);
     assertTomlValue(config, 'tiles.gui.enabled', false, template);
     assertTomlValue(config, 'tiles.rpc.enabled', rpcEnabled, template);
     if (rpcEnabled) {
       assertTomlValue(config, 'tiles.rpc.rpc_listen_address', '127.0.0.1', template);
+      assertTomlValue(config, 'layout.enable_block_production', false, template);
+      assert(
+        !config.has('paths.vote_account'),
+        `${template} must keep paths.vote_account empty for the non-voting observer role`,
+      );
+      assert(
+        !config.has('paths.authorized_voter_paths'),
+        `${template} must not configure authorized voters for the non-voting observer role`,
+      );
     }
+    assertTomlValue(config, 'development.sandbox', true, template);
+    assertTomlValue(config, 'development.no_clone', false, template);
     assertTomlValue(config, 'development.no_agave', true, template);
+    assertTomlValue(config, 'development.genesis.validate_genesis_hash', true, template);
+    assertTomlValue(config, 'development.bench.larger_max_cost_per_block', false, template);
+    assertTomlValue(config, 'development.bench.larger_shred_limits_per_block', false, template);
+    assertTomlValue(config, 'development.bench.disable_blockstore_from_slot', 0n, template);
+    assertTomlValue(config, 'development.bench.disable_status_cache', false, template);
   }
 
   process.stdout.write(
@@ -479,7 +596,6 @@ function sourceState(sourceRoot, lock) {
   );
   const rpcSource = readFileSync(join(sourceRoot, 'src', 'discof', 'rpc', 'fd_rpc_tile.c'), 'utf8');
   for (const method of [
-    'getProgramAccounts',
     'getSignaturesForAddress',
     'getSignatureStatuses',
     'getTransaction',
@@ -491,6 +607,175 @@ function sourceState(sourceRoot, lock) {
       `capability evidence is stale: ${method} is no longer marked unimplemented`,
     );
   }
+  assert(
+    !rpcSource.includes('UNIMPLEMENTED(getProgramAccounts)') &&
+      rpcSource.includes('fd_accdb_scan_owner_nocache(') &&
+      rpcSource.includes('fd_rpc_program_scan_visit'),
+    'native getProgramAccounts implementation evidence is missing',
+  );
+  const rpcTestSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'rpc', 'test_rpc_tile.c'),
+    'utf8',
+  );
+  const accdbTestSource = readFileSync(
+    join(sourceRoot, 'src', 'flamenco', 'accdb', 'test_accdb.c'),
+    'utf8',
+  );
+  assert(
+    rpcTestSource.includes('-- getProgramAccounts --') &&
+      rpcTestSource.includes('method\\":\\"getProgramAccounts') &&
+      accdbTestSource.includes('test_scan_owner_nocache'),
+    'native getProgramAccounts C conformance tests are missing',
+  );
+  const configSource = readFileSync(
+    join(sourceRoot, 'src', 'app', 'shared', 'fd_config.c'),
+    'utf8',
+  );
+  const configHeader = readFileSync(
+    join(sourceRoot, 'src', 'app', 'shared', 'fd_config.h'),
+    'utf8',
+  );
+  const configParser = readFileSync(
+    join(sourceRoot, 'src', 'app', 'shared', 'fd_config_parse.c'),
+    'utf8',
+  );
+  const configTestSource = readFileSync(
+    join(sourceRoot, 'src', 'app', 'shared', 'test_config_parse.c'),
+    'utf8',
+  );
+  const defaultConfigSource = readFileSync(
+    join(sourceRoot, 'src', 'app', 'firedancer', 'config', 'default.toml'),
+    'utf8',
+  );
+  const compatibilityDefaultConfigSource = readFileSync(
+    join(sourceRoot, 'src', 'app', 'fdctl', 'config', 'default.toml'),
+    'utf8',
+  );
+  const topologySource = readFileSync(
+    join(sourceRoot, 'src', 'app', 'firedancer', 'topology.c'),
+    'utf8',
+  );
+  const topoHeader = readFileSync(join(sourceRoot, 'src', 'disco', 'topo', 'fd_topo.h'), 'utf8');
+  const genesisTileSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'genesis', 'fd_genesi_tile.c'),
+    'utf8',
+  );
+  const towerTileSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'tower', 'fd_tower_tile.c'),
+    'utf8',
+  );
+  const towerTestSource = readFileSync(
+    join(sourceRoot, 'src', 'discof', 'tower', 'test_tower_tile.c'),
+    'utf8',
+  );
+  const clusterHeader = readFileSync(
+    join(sourceRoot, 'src', 'disco', 'genesis', 'fd_genesis_cluster.h'),
+    'utf8',
+  );
+  assert(
+    configHeader.includes('int    wokenet_live_cluster;') &&
+      configParser.includes('CFG_POP      ( bool,   consensus.wokenet_live_cluster') &&
+      defaultConfigSource.includes('wokenet_live_cluster = false') &&
+      configSource.includes('fd_config_wokenet_live_policy_check(') &&
+      configSource.includes('!is_local_cluster && !dev && cluster==FD_CLUSTER_UNKNOWN') &&
+      configSource.includes('return FD_CONFIG_WOKENET_LIVE_ERR_MODE_REQUIRED;') &&
+      configSource.includes('fd_config_classify_cluster( config, is_local_cluster, dev );') &&
+      configSource.includes('config->consensus.expected_genesis_hash') &&
+      configSource.includes('config->is_live_cluster = 1;') &&
+      configSource.includes('strcpy( config->cluster, "wokenet" );') &&
+      !clusterHeader.includes('FD_CLUSTER_WOKENET'),
+    'WokeNet live-cluster classification is missing or changes protocol cluster identity',
+  );
+  assert(
+    topologySource.includes(
+      'tile->genesi.has_expected_genesis_hash = !!strcmp( config->consensus.expected_genesis_hash, "" );',
+    ) &&
+      topologySource.includes(
+        'fd_base58_decode_32( config->consensus.expected_genesis_hash, tile->genesi.expected_genesis_hash )',
+      ) &&
+      genesisTileSource.includes(
+        'ctx->has_expected_genesis_hash && memcmp( ctx->genesis_hash, ctx->expected_genesis_hash, 32UL )',
+      ),
+    'WokeNet live mode is not bound to the exact genesis bytes enforced by the genesi tile',
+  );
+  assert(
+    topologySource.includes('fd_topob_tile( topo, "tower",   "tower"') &&
+      topoHeader.includes('int   is_voting;') &&
+      topoHeader.includes('int   vote_observer;') &&
+      topologySource.includes(
+        `tile->tower.vote_observer      = config->consensus.wokenet_live_cluster &&
+                                     !config->firedancer.layout.enable_block_production &&
+                                     config->tiles.rpc.enabled &&
+                                     !tile->tower.is_voting &&
+                                     !config->firedancer.paths.authorized_voter_paths_cnt;`,
+      ) &&
+      topologySource.includes(
+        'tile->tower.is_voting          = !!config->paths.vote_account[ 0 ];',
+      ) &&
+      configSource.includes(
+        'config->firedancer.layout.enable_block_production || !config->tiles.rpc.enabled',
+      ) &&
+      configSource.includes('config->firedancer.paths.authorized_voter_paths_cnt') &&
+      towerTileSource.includes(
+        'int found_authority  = ctx->is_voting && found && vote_account_config(',
+      ) &&
+      towerTileSource.includes('if( FD_UNLIKELY( !ctx->is_voting ) ) {') &&
+      towerTileSource.includes('ctx->our_vote_acct_sz = 0UL;') &&
+      towerTileSource.includes(
+        'reconcile_our_vote_account( ctx, bank, slot_completed, found_our_vote_acct, our_vote_acct_bal );',
+      ) &&
+      towerTileSource.includes('fd_tower_vote_and_reset(') &&
+      towerTileSource.includes('FD_TEST( ctx->is_voting!=ctx->vote_observer );') &&
+      towerTestSource.includes('test_observer_skips_vote_account_reconcile();') &&
+      towerTestSource.includes('pub->msg.slot_done.has_vote_txn==0') &&
+      towerTestSource.includes('FD_TEST( ctx->vote_observer );') &&
+      towerTestSource.includes('FD_TEST( slot_done_cnt==num_slots );') &&
+      towerTestSource.includes('FD_TEST( virtual_vote_cnt );') &&
+      towerTestSource.includes('FD_TEST( new_root_cnt );') &&
+      towerTestSource.includes('FD_TEST( ctx->tower->root>start_slot );') &&
+      towerTestSource.includes('slot<ctx->tower->root') &&
+      towerTestSource.includes('slot>=ctx->tower->root') &&
+      towerTestSource.includes('test_wksp_new_mmap(') &&
+      towerTestSource.includes('fd_votes_update_voters( ctx->votes') &&
+      compatibilityDefaultConfigSource.includes('faucet_balance_lamports = 500000000000000000') &&
+      compatibilityDefaultConfigSource.includes('identity_balance_lamports = 500000000000'),
+    'native WokeNet non-voting RPC observer policy, topology, tower, or direct C tests changed',
+  );
+  for (const policyEvidence of [
+    'FD_CONFIG_WOKENET_LIVE_OK',
+    'FD_CONFIG_WOKENET_LIVE_ERR_NATIVE_FIREDANCER_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_PRODUCTION_MODE_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_NO_AGAVE_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_GENESIS_HASH_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_GENESIS_HASH_INVALID',
+    'FD_CONFIG_WOKENET_LIVE_ERR_SOVEREIGN_HASH_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_SHRED_VERSION_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_GENESIS_VALIDATION_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_IDENTITY_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_SANDBOX_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_MULTIPROCESS_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_LARGER_BLOCK_COST_FORBIDDEN',
+    'FD_CONFIG_WOKENET_LIVE_ERR_LARGER_SHREDS_FORBIDDEN',
+    'FD_CONFIG_WOKENET_LIVE_ERR_BLOCKSTORE_BYPASS_FORBIDDEN',
+    'FD_CONFIG_WOKENET_LIVE_ERR_STATUS_CACHE_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_MODE_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_VOTE_ACCOUNT_REQUIRED',
+    'FD_CONFIG_WOKENET_LIVE_ERR_OBSERVER_VOTERS_FORBIDDEN',
+  ]) {
+    assert(
+      configSource.includes(policyEvidence) && configTestSource.includes(policyEvidence),
+      `native WokeNet live-cluster policy or C test is missing ${policyEvidence}`,
+    );
+  }
+  assert(
+    configTestSource.includes('test_wokenet_live_policy( config );') &&
+      configTestSource.includes('test_wokenet_live_vote_roles( config );') &&
+      configTestSource.includes('static char const cfg_str_3[]') &&
+      configTestSource.includes('config->consensus.expected_shred_version==1') &&
+      configTestSource.includes('fd_config_classify_cluster( config, 0, 0 );') &&
+      configTestSource.includes('!strcmp( config->cluster, "wokenet" )'),
+    'native WokeNet live-cluster C parser, policy, or classification test is not executed',
+  );
   for (const binary of [lock.downstream.validatorBinary, lock.downstream.developmentBinary]) {
     const buildLine = nativeBuildLine(sourceRoot, binary);
     const linkTokens = buildLine.split(/[,\s)]+/u);
@@ -507,10 +792,15 @@ function sourceState(sourceRoot, lock) {
     join(sourceRoot, 'src', 'app', 'firedancer-dev', 'main.c'),
     'utf8',
   );
+  const developmentMainHeader = readFileSync(
+    join(sourceRoot, 'src', 'app', 'firedancer-dev', 'main.h'),
+    'utf8',
+  );
   assert(nativeMain.includes('fd_main( argc, argv, 1,'), 'firedancer is not in native mode');
   assert(
-    developmentMain.includes('fd_dev_main( argc, argv, 1,'),
-    'firedancer-dev is not in native mode',
+    developmentMain.includes('fd_dev_main( argc, argv, 1,') &&
+      developmentMainHeader.includes('&fd_action_mem,'),
+    'firedancer-dev is not in native mode or cannot attest localnet through mem',
   );
 }
 
@@ -927,7 +1217,7 @@ function checkBinaries(sourceRoot) {
         '-c',
         [
           'source ./activate "BUILDDIR=$1" CC=gcc >/dev/null',
-          'make -j"$2" firedancer firedancer-dev test_genesis_create test_rpc_tile',
+          'make -j"$2" firedancer firedancer-dev test_genesis_create test_accdb test_rpc_tile test_config_parse test_tower_tile',
         ].join(' && '),
         '--',
         buildDirectory,
@@ -936,20 +1226,39 @@ function checkBinaries(sourceRoot) {
       { cwd: freshSourceRoot, stdio: 'inherit' },
     );
 
-    for (const testBinary of ['test_genesis_create', 'test_rpc_tile']) {
+    for (const testBinary of [
+      'test_genesis_create',
+      'test_accdb',
+      'test_rpc_tile',
+      'test_config_parse',
+      'test_tower_tile',
+    ]) {
       const testPath = join(objectRoot, 'unit-test', testBinary);
       assert(existsSync(testPath), `missing freshly built test executable ${testPath}`);
       assert(
         realpathSync(testPath) === testPath,
         `${testBinary} must be a regular in-tree build output, not a symlink`,
       );
-      run(testPath, [], { cwd: freshSourceRoot, stdio: 'inherit' });
+      if (testBinary === 'test_tower_tile') {
+        run(
+          'bash',
+          [
+            '-c',
+            'ulimit -n 200000 && exec "$1" --page-sz normal --page-cnt 1048576',
+            '--',
+            testPath,
+          ],
+          { cwd: freshSourceRoot, stdio: 'inherit' },
+        );
+      } else {
+        run(testPath, [], { cwd: freshSourceRoot, stdio: 'inherit' });
+      }
     }
 
     const manifest = inspectBinaries(freshSourceRoot, objectRoot, lock);
-    const validatorPath = join(objectRoot, 'bin', lock.downstream.validatorBinary);
+    const localnetTopologyBinary = join(objectRoot, 'bin', lock.downstream.developmentBinary);
     const memoryOutput = run(
-      validatorPath,
+      localnetTopologyBinary,
       ['--config', join(networkRoot, 'config', 'localnet.toml'), 'mem', '--json'],
       { cwd: freshSourceRoot },
     );
@@ -1004,9 +1313,27 @@ function checkBinaries(sourceRoot) {
         make: run('make', ['--version']).split('\n')[0],
         kernel: run('uname', ['-srmo']),
       },
-      targets: ['firedancer', 'firedancer-dev', 'test_genesis_create', 'test_rpc_tile'],
-      unitTestsExecuted: ['test_genesis_create', 'test_rpc_tile'],
+      targets: [
+        'firedancer',
+        'firedancer-dev',
+        'test_genesis_create',
+        'test_accdb',
+        'test_rpc_tile',
+        'test_config_parse',
+        'test_tower_tile',
+      ],
+      unitTestsExecuted: [
+        'test_genesis_create',
+        'test_accdb',
+        'test_rpc_tile',
+        'test_config_parse',
+        'test_tower_tile',
+      ],
+      unitTestArguments: {
+        test_tower_tile: ['--page-sz', 'normal', '--page-cnt', '1048576'],
+      },
       localnetConfigParsed: true,
+      localnetConfigParsedBy: lock.downstream.developmentBinary,
       nativeTopologyTilesVerified: ['replay', 'execrp', 'rpc'],
       agaveAffinityEmpty: true,
       buildInfoSha256: sha256(buildInfoPath),

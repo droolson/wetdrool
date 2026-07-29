@@ -4,21 +4,24 @@ import { buildModerationApp } from './app.js';
 import { parseModerationConfig } from './config.js';
 import { LockedModerationStore } from './locked-store.js';
 import { MemoryModerationStore, type ModerationStore } from './store.js';
-import { migrateModeration } from './migrate.js';
 import { PostgresModerationStore } from './postgres-store.js';
 import { ModerationService } from './service.js';
 
+export function createModerationStore(
+  config: ReturnType<typeof parseModerationConfig>,
+): ModerationStore {
+  if (config.databaseUrl !== undefined && config.keyRing !== undefined) {
+    return new PostgresModerationStore(config.databaseUrl, config.keyRing);
+  }
+  if (config.deploymentPolicy === 'nonlocal') {
+    return new LockedModerationStore();
+  }
+  return new MemoryModerationStore();
+}
+
 export async function startModerationServer(): Promise<void> {
   const config = parseModerationConfig();
-  let store: ModerationStore;
-  if (config.databaseUrl !== undefined && config.keyRing !== undefined) {
-    await migrateModeration(config.databaseUrl);
-    store = new PostgresModerationStore(config.databaseUrl, config.keyRing);
-  } else if (config.environment === 'production') {
-    store = new LockedModerationStore();
-  } else {
-    store = new MemoryModerationStore();
-  }
+  const store = createModerationStore(config);
   const service = new ModerationService({
     store,
     dangerouslyAllowUnverifiedLocalMode: config.dangerouslyAllowUnverifiedLocalMode,
@@ -28,6 +31,7 @@ export async function startModerationServer(): Promise<void> {
     allowedOrigins: config.allowedOrigins,
     readinessCheck: () => store.readiness(),
     transparencyMinimumCellSize: config.transparencyMinimumCellSize,
+    trustedProxyCidrs: config.trustedProxyCidrs,
   });
   let maintenancePromise: Promise<void> | undefined;
   const maintenance = () => {

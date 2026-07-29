@@ -8,8 +8,7 @@ import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
 const databaseUrl =
-  process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
-  process.env['DATABASE_URL'] ??
+  process.env['INDEXER_INTEGRATION_ADMIN_DATABASE_URL'] ??
   'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
 const migrationDirectory = join(dirname(fileURLToPath(import.meta.url)), '../migrations');
 const governanceStrategyHash = 'uwm8vfQxM7tZkfr0DZsEnFVxa4ZgsIPg8DsCn-xbX_HA';

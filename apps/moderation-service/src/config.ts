@@ -1,11 +1,21 @@
 import { z } from 'zod';
 
+import {
+  assertNodeTlsVerificationPolicy,
+  assertNoMigrationCredentials,
+  assertPostgresTlsPolicy,
+  isLocalOrUnspecifiedHostname,
+  isLoopbackHostname,
+} from '@wokesocial/config';
+import { parseTrustedProxyCidrs } from '@wokesocial/config/trusted-proxy';
+
 import { parseModerationKeyRingJson } from './encryption.js';
 
 const LEGACY_REDIRECT_HOSTS = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const PUBLIC_LOCAL_MODERATION_DATA_KEY = new Uint8Array(32).fill(1);
 const originSchema = z.url().superRefine((value, context) => {
   const url = new URL(value);
-  const hostname = url.hostname.replace(/\.+$/u, '');
+  const hostname = url.hostname.toLowerCase().replace(/\.+$/u, '');
   if (
     !['http:', 'https:'].includes(url.protocol) ||
     url.username ||
@@ -32,9 +42,14 @@ const databaseUrlSchema = z.url().refine((value) => {
 }, 'Database URL must use PostgreSQL.');
 
 export function parseModerationConfig(input: NodeJS.ProcessEnv = process.env) {
+  assertNoMigrationCredentials(input, {
+    allowedRuntimeUrls: ['MODERATION_DATABASE_URL'],
+  });
   const environment = z
     .object({
+      APP_ENV: z.enum(['development', 'test', 'staging', 'production']).optional(),
       NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+      NODE_TLS_REJECT_UNAUTHORIZED: z.string().optional(),
       MODERATION_HOST: z.string().min(1).default('127.0.0.1'),
       MODERATION_PORT: z.coerce.number().int().min(1).max(65_535).default(4400),
       MODERATION_ALLOWED_ORIGINS: z.string().default(''),
@@ -56,9 +71,19 @@ export function parseModerationConfig(input: NodeJS.ProcessEnv = process.env) {
         .max(10 * 365 * 86_400_000)
         .default(365 * 86_400_000),
       MODERATION_TRANSPARENCY_MINIMUM_CELL_SIZE: z.coerce.number().int().min(3).max(100).default(5),
+      TRUSTED_PROXY_CIDRS: z.string().optional(),
     })
     .parse(input);
-
+  const deploymentPolicy =
+    environment.APP_ENV === 'staging' ||
+    environment.APP_ENV === 'production' ||
+    environment.NODE_ENV === 'production'
+      ? 'nonlocal'
+      : 'local';
+  const databaseTlsRequired = deploymentPolicy === 'nonlocal';
+  assertNodeTlsVerificationPolicy(environment.NODE_TLS_REJECT_UNAUTHORIZED, {
+    tlsRequired: databaseTlsRequired,
+  });
   const allowedOrigins = environment.MODERATION_ALLOWED_ORIGINS.split(',')
     .map((value) => value.trim())
     .filter(Boolean)
@@ -67,18 +92,21 @@ export function parseModerationConfig(input: NodeJS.ProcessEnv = process.env) {
     throw new Error('Moderation allowed origins must be unique.');
   }
   if (
-    environment.NODE_ENV === 'production' &&
+    deploymentPolicy === 'nonlocal' &&
     allowedOrigins.some((value) => {
       const url = new URL(value);
-      return url.protocol !== 'https:' && url.hostname !== 'localhost';
+      return url.protocol !== 'https:' || isLocalOrUnspecifiedHostname(url.hostname);
     })
   ) {
-    throw new Error('Production moderation origins must use HTTPS except for localhost.');
+    throw new Error('Staging and production moderation origins must use nonlocal HTTPS endpoints.');
   }
   const dangerouslyAllowUnverifiedLocalMode =
     environment.MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE === '1';
-  if (environment.NODE_ENV === 'production' && dangerouslyAllowUnverifiedLocalMode) {
-    throw new Error('Unverified moderation authorization is forbidden in production.');
+  if (databaseTlsRequired && dangerouslyAllowUnverifiedLocalMode) {
+    throw new Error('Unverified moderation authorization is forbidden in production and staging.');
+  }
+  if (dangerouslyAllowUnverifiedLocalMode && !isLoopbackHostname(environment.MODERATION_HOST)) {
+    throw new Error('Unverified moderation authorization is restricted to loopback.');
   }
   if (
     (environment.MODERATION_DATABASE_URL === undefined) !==
@@ -88,17 +116,29 @@ export function parseModerationConfig(input: NodeJS.ProcessEnv = process.env) {
       'MODERATION_DATABASE_URL and MODERATION_DATA_KEYS must be configured together.',
     );
   }
+  if (environment.MODERATION_DATABASE_URL !== undefined) {
+    assertPostgresTlsPolicy(environment.MODERATION_DATABASE_URL, {
+      tlsRequired: databaseTlsRequired,
+      variableName: 'MODERATION_DATABASE_URL',
+    });
+  }
+  const keyRing =
+    environment.MODERATION_DATA_KEYS === undefined
+      ? undefined
+      : parseModerationKeyRingJson(
+          environment.MODERATION_DATA_KEYS,
+          deploymentPolicy === 'nonlocal'
+            ? { forbiddenKeys: [PUBLIC_LOCAL_MODERATION_DATA_KEY] }
+            : {},
+        );
 
   return {
-    environment: environment.NODE_ENV,
+    deploymentPolicy,
     host: environment.MODERATION_HOST,
     port: environment.MODERATION_PORT,
     allowedOrigins,
     databaseUrl: environment.MODERATION_DATABASE_URL,
-    keyRing:
-      environment.MODERATION_DATA_KEYS === undefined
-        ? undefined
-        : parseModerationKeyRingJson(environment.MODERATION_DATA_KEYS),
+    keyRing,
     dangerouslyAllowUnverifiedLocalMode,
     maintenanceIntervalMs: environment.MODERATION_MAINTENANCE_INTERVAL_MS,
     maintenance: {
@@ -107,5 +147,6 @@ export function parseModerationConfig(input: NodeJS.ProcessEnv = process.env) {
       closedCaseRetentionMs: environment.MODERATION_CLOSED_CASE_RETENTION_MS,
     },
     transparencyMinimumCellSize: environment.MODERATION_TRANSPARENCY_MINIMUM_CELL_SIZE,
+    trustedProxyCidrs: parseTrustedProxyCidrs(environment.TRUSTED_PROXY_CIDRS),
   } as const;
 }

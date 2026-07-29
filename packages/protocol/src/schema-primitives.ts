@@ -16,6 +16,7 @@ import {
   hasMaximumUtf8Bytes,
   isAbsoluteHttpsUrl,
 } from './validation.js';
+import { CANONICAL_RAW_SHA256_CID_PATTERN, isCanonicalRawSha256Cid } from './content-cid.js';
 
 const base58Pattern = '[1-9A-HJ-NP-Za-km-z]+';
 const networkPattern = new RegExp(`^wokenet:v1:${base58Pattern}:${base58Pattern}$`, 'u');
@@ -31,7 +32,6 @@ const objectIdPattern = /^wokesocialobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{4
 const digestPattern = /^u[A-Za-z0-9_-]{43}$/u;
 const signaturePattern = /^u[A-Za-z0-9_-]{86}$/u;
 const noncePattern = /^u[A-Za-z0-9_-]{22}$/u;
-const cidPattern = /^b[a-z2-7]{20,120}$/u;
 const languagePattern = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u;
 const jsonPointerPattern = /^(?:|\/(?:[^~/]|~0|~1)*)$/u;
 const extensionNamePattern =
@@ -112,7 +112,13 @@ export const objectIdSchema = z.string().regex(objectIdPattern);
 export const digestSchema = z.string().regex(digestPattern);
 export const signatureSchema = z.string().regex(signaturePattern);
 export const nonceSchema = z.string().regex(noncePattern);
-export const cidSchema = z.string().regex(cidPattern);
+export const cidSchema = z
+  .string()
+  .regex(CANONICAL_RAW_SHA256_CID_PATTERN)
+  .refine(
+    isCanonicalRawSha256Cid,
+    'CID must be canonical base32 CIDv1 using the raw codec and a SHA-256 multihash.',
+  );
 export const timestampSchema = z
   .string()
   .refine(hasExactMillisecondTimestamp, 'Timestamp must use exact UTC milliseconds.');
@@ -232,6 +238,10 @@ export const contentReferenceSchema = z
   })
   .strict();
 
+export const encryptedContentReferenceSchema = contentReferenceSchema.extend({
+  protection: encryptedContentProtectionSchema,
+});
+
 export const mediaReferenceSchema = z
   .object({
     cid: cidSchema,
@@ -345,6 +355,7 @@ export type SigningKeyId = z.infer<typeof signingKeyIdSchema>;
 export type ObjectId = z.infer<typeof objectIdSchema>;
 export type ObjectReference = z.infer<typeof objectReferenceSchema>;
 export type ContentReference = z.infer<typeof contentReferenceSchema>;
+export type EncryptedContentReference = z.infer<typeof encryptedContentReferenceSchema>;
 export type MediaReference = z.infer<typeof mediaReferenceSchema>;
 export type Visibility = z.infer<typeof visibilitySchema>;
 export type Replacement = z.infer<typeof replacementSchema>;

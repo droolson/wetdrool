@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import { z } from 'zod';
 
@@ -161,12 +161,19 @@ export class ModerationKeyRing {
   }
 }
 
-export function parseModerationKeyRingJson(source: string): ModerationKeyRing {
+export interface ParseModerationKeyRingOptions {
+  readonly forbiddenKeys?: readonly Uint8Array[];
+}
+
+export function parseModerationKeyRingJson(
+  source: string,
+  options: ParseModerationKeyRingOptions = {},
+): ModerationKeyRing {
   let input: unknown;
   try {
     input = JSON.parse(source) as unknown;
-  } catch (error) {
-    throw new TypeError('MODERATION_DATA_KEYS must be valid JSON.', { cause: error });
+  } catch {
+    throw new TypeError('MODERATION_DATA_KEYS must be valid JSON.');
   }
   const parsed = z
     .object({
@@ -182,7 +189,18 @@ export function parseModerationKeyRingJson(source: string): ModerationKeyRing {
     .parse(input);
   const keys: Record<string, Uint8Array> = {};
   for (const [keyId, encoded] of Object.entries(parsed.keys)) {
-    keys[keyId] = decodeExact(encoded, 32, `data key ${keyId}`);
+    const key = decodeExact(encoded, 32, `data key ${keyId}`);
+    if (
+      options.forbiddenKeys?.some(
+        (forbiddenKey) =>
+          forbiddenKey.byteLength === key.byteLength &&
+          timingSafeEqual(Buffer.from(forbiddenKey), key),
+      )
+    ) {
+      key.fill(0);
+      throw new TypeError('MODERATION_DATA_KEYS contains the public local-development data key.');
+    }
+    keys[keyId] = key;
   }
   return new ModerationKeyRing({ activeKeyId: parsed.activeKeyId, keys });
 }

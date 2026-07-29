@@ -18,11 +18,15 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+const migrationDatabaseUrl =
+  process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
+  process.env['DATABASE_MIGRATION_URL'] ??
+  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL handle projection integration', () => {
   it('rolls back invalid claims, releases exactly, and rebuilds a reclaim', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
 
     const networkId =
       `wokenet:v1:${bs58.encode(randomBytes(32))}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
@@ -116,7 +120,7 @@ describe('PostgreSQL handle projection integration', () => {
           ...base(networkId, 2n, 9),
           identitySequence: 3n,
         }),
-      ).rejects.toThrow('does not exactly match');
+      ).rejects.toThrow('exactly advance');
       await expect(projection.checkpoint(networkId)).resolves.toBe(3n);
 
       // The failed event insert and checkpoint share the projection transaction. Reusing
@@ -130,7 +134,7 @@ describe('PostgreSQL handle projection integration', () => {
           ...base(networkId, 5n, 10),
           identitySequence: release.identitySequence,
         }),
-      ).rejects.toThrow('does not advance');
+      ).rejects.toThrow('exactly advance');
       await expect(projection.checkpoint(networkId)).resolves.toBe(4n);
 
       await expect(indexer.ingest(reclaim)).resolves.toMatchObject({ applied: true });

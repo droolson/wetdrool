@@ -132,6 +132,8 @@ exists. All requirements below beyond those subsets are **Planned**.
 - Operation name, stable result code, duration, retry count.
 - WokeNet environment, genesis hash, native Firedancer version, RPC
   provider alias, observed slot, commitment, and checkpoint where relevant.
+- The immutable per-network `INDEXER_PROFILE_V2_ACTIVATION_SLOT` in indexer
+  release and rebuild records.
 - An explicit `compatibility-oracle` marker plus Agave/Solana tool versions for
   tests that intentionally exercise the Solana-format compatibility path.
 - Queue name and lag, database migration version, storage provider alias, and
@@ -149,8 +151,9 @@ moderation evidence, or full signed transaction payloads.
 - Database connections, query latency, replication and backup health.
 - Redis availability, memory, evictions, queue depth, oldest job, retries, and
   dead letters.
-- Indexer observed/finalized slot, lag, checkpoint age, reorg count, invalid
-  event/manifest count, and replay throughput.
+- Indexer observed/finalized slot, lag, checkpoint age, reorg count, accepted,
+  pending, and terminal manifest counts, oldest due hydration, hydration
+  attempts/latency, invalid event/manifest count, and replay throughput.
 - RPC health, genesis mismatch, slot divergence, throttling, and failover.
 - Storage publish/retrieve latency, hash mismatch, replication, and deletion
   request state.
@@ -266,8 +269,9 @@ Trigger: signature/hash failures, impossible invariants, checkpoint disagreement
 reorg handling defect, corrupted database, or a scheduled rebuild drill.
 
 1. Stop projection writers and expose the projection as stale or unavailable.
-2. Record release, schema, program ID, deployment slot, last observed/finalized
-   slot, checkpoint, dead letters, and provider observations.
+2. Record release, schema, program ID, deployment slot, the network's immutable
+   `INDEXER_PROFILE_V2_ACTIVATION_SLOT`, last observed/finalized slot,
+   checkpoint, dead letters, and provider observations.
 3. Preserve the suspect database and logs read-only for analysis; do not mutate
    them to manufacture agreement.
 4. Identify and quarantine malformed or unverifiable inputs with reason codes.
@@ -276,7 +280,24 @@ reorg handling defect, corrupted database, or a scheduled rebuild drill.
    identity and idempotent event keys.
 7. Fetch manifests from alternate providers and verify canonical bytes,
    signatures, delegations, hashes, versions, and tombstone precedence.
-8. Track throughput, retry limits, dead letters, and provider divergence.
+   Content references must use exact CIDv1/base32-lowercase `raw`/SHA-256 CIDs
+   in the supported IPFS, local, Arweave-transaction/CID, or credential-free
+   HTTPS/CID URI grammar; malformed references are terminal before provider
+   I/O. Apply the recorded profile-v2 cutoff exactly: only a historical
+   legacy-prefix event before it may omit the schema commitment; current
+   root/delegated events and every event at or after it must commit v2 onchain
+   and reference a v2 envelope.
+8. Preserve each raw event's accepted, pending, or terminal disposition.
+   Pending and terminal rows are replayed without provider I/O. Among accepted
+   rows, provider I/O may be skipped only when the complete ordered ledger
+   proves that an accepted post was later tombstoned or an accepted profile
+   pointer was later superseded. Preserve that obsolete event's accepted raw
+   state, sequence/reference effects, and checkpoint without rematerializing
+   its content. Every other accepted manifest is re-fetched and reverified; a
+   terminal result is disposition drift and blocks the rebuild. Tombstone
+   object/CID/hash fields are detached audit metadata and are never fetched or
+   allowed to gate suppression. Track throughput, due hydration age, retries,
+   dead letters, and provider divergence.
 9. Compare deterministic invariants, representative API results, counts, and
    state hashes between independent rebuilds where practical.
 10. Run the new projection in shadow mode before shifting reads.
@@ -292,9 +313,10 @@ the compatibility connected gate clears its network projection and
 deterministically reconstructs identity, profile, post, follow, tombstone,
 checkpoint, and suppression state from actual finalized Agave local-validator
 history plus signed CAS manifests. The synchronizer handles finalized polling,
-checkpoints, retry/DLQ, and RPC failover against that compatibility oracle.
-This is not native WokeNet/Firedancer evidence. Native history, native RPC
-failover, production-scale timing, and independent-provider comparison remain
+checkpoints, retry/DLQ, RPC failover, and the same immutable profile-schema gate
+for live ingestion and rebuild against that compatibility oracle. This is not
+native WokeNet/Firedancer evidence. Native history, native RPC failover,
+production-scale timing, and independent-provider comparison remain
 unverified.
 
 ## Runbook: content gateway or storage-provider failure
@@ -312,6 +334,26 @@ unverified.
 7. Update health and user-facing replication state.
 8. Rotate provider credentials and audit publication/deletion activity if
    compromise is possible.
+
+For already anchored profile/post references, temporary retrieval failure is a
+durable pending state rather than a global checkpoint barrier. The raw event,
+identity sequence, and checkpoint advance atomically while unverified profile
+content is suppressed and an unverified post remains feed-invisible. A bounded
+due queue is drained after every synchronization poll, even when no new
+signature was found and the chain checkpoint was already current. It retries
+at most the configured batch size in deterministic order. Success promotes the
+exact raw fingerprint without a second sequence advance, continued
+unavailability is rescheduled with bounded backoff, and deterministic
+verification failure moves it to terminal quarantine. Operators must not
+rewrite raw disposition or delete the linked dead letter with runtime
+credentials.
+
+A pending profile that hydrates after the same identity was deactivated is
+retained only as historical, replay-verifiable profile state. It must not
+reactivate the identity or return that person to public search/discovery.
+Likewise, a finalized onchain tombstone suppresses its target immediately:
+optional legacy tombstone bytes are non-gating audit metadata, so their
+provider outage is not an incident-level checkpoint blocker.
 
 The current Kubo integration proves publish, CID verification, gateway
 retrieval, health, and unpin against the local container. Multi-gateway failure
@@ -424,6 +466,82 @@ production action.
    coordinated abuse signals.
 
 This runbook requires qualified safety and legal review before production.
+
+## Legacy public-schema volume upgrade or reset
+
+The local provisioner refuses to create the parallel `wokesocial_auth`,
+`wokesocial_indexer`, and `wokesocial_moderation` schemas when it finds tables,
+partitioned tables, sequences, views, materialized views, foreign tables,
+routines, domains, or enums in `public`. This is intentional. A pre-isolation
+volume may contain live application state, and silently creating empty service
+schemas beside it would make the runtimes appear healthy against the wrong
+data. Do not bypass or weaken this preflight.
+
+First stop every writer and identify the exact Compose project and PostgreSQL
+volume. Do not infer a volume name from a shell variable:
+
+```sh
+docker compose --env-file .env.example --file infra/compose.yaml \
+  --project-name wokesocial-local down
+docker volume ls --filter label=com.docker.compose.project=wokesocial-local
+docker volume inspect wokesocial-local_postgres-data
+```
+
+If the volume is disposable local data, reset it explicitly. The following
+command permanently deletes that project's PostgreSQL, Redis, Kubo, indexer
+content, media, and scanner volumes; verify the project name and accepted data
+loss before running it:
+
+```sh
+docker compose --env-file .env.example --file infra/compose.yaml \
+  --project-name wokesocial-local down --volumes --remove-orphans
+pnpm infra:up
+```
+
+If any data must be preserved, use this reviewed upgrade procedure:
+
+1. Keep writers stopped. Take a restorable custom-format PostgreSQL backup and
+   record its SHA-256, PostgreSQL version, source volume identity, row counts,
+   and the exact repository commit. Restore it into a separate disposable
+   database and perform the upgrade there first.
+2. Inventory every `public` relation, sequence, view, routine, domain, enum,
+   extension, owner, grant, and cross-object dependency. Assign every object to
+   exactly one of the auth, indexer, or moderation schemas. An unassigned or
+   multiply assigned object blocks the upgrade.
+3. Establish a checksum baseline before moving anything. For each row in
+   `auth_schema_migrations`, `schema_migrations`, and
+   `moderation_schema_migrations`, map its version to the same packaged SQL file
+   and independently compute that file's lowercase SHA-256. Each ledger must be
+   an exact ordered prefix of its packaged migration directory. A missing file,
+   gap, duplicate, unknown version, changed SQL file, or unexplained database
+   object blocks the upgrade.
+4. Legacy ledger rows without checksums are not backfilled automatically.
+   Record the independently verified version-to-SHA-256 mapping in the change
+   ticket and backup evidence, then use a reviewed, one-time transaction to add
+   and populate the checksum column. Never copy hashes from an unverified
+   working tree or infer that a matching filename proves matching SQL.
+5. Write an explicit transactional rehome script for the inventoried objects.
+   Move tables, owned sequences, views, routines, domains, and enums to their
+   assigned schemas; update schema-qualified dependencies; transfer ownership
+   to the matching migration role; set service search paths; and apply the
+   least-privilege grants from
+   `infra/postgres/provision-service-roles.sql`. Provision `pg_trgm` and
+   `btree_gin` in `wokesocial_indexer`. Do not use a blanket `public.*` move.
+6. Run all three migration commands against their scoped migration roles, then
+   run the `privilege-probe` profile. Verify that each runtime can perform
+   required DML only in its own schema, cannot perform DDL or read another
+   service schema, and cannot insert, update, or delete any migration ledger.
+7. Compare the isolated result with the baseline: migration checksums, row
+   counts, constraints, indexes, sequence ownership, sample service reads and
+   writes, replay invariants, and backup restore must all pass. Rehearse
+   rollback by restoring the original backup.
+8. Schedule a write outage, take a final backup, repeat the reviewed script,
+   rerun every check, and retain the before/after evidence. If any step differs
+   from rehearsal, stop and restore rather than partially activating runtimes.
+
+The repository deliberately provides no automatic public-schema mover and no
+automatic checksum backfill. Production or irreplaceable data requires a
+database engineer's reviewed, deployment-specific mapping and rollback plan.
 
 ## Backup policy
 

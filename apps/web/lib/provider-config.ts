@@ -11,6 +11,11 @@ export interface ProviderSummary {
 type Environment = Readonly<Record<string, string | undefined>>;
 
 const LEGACY_REDIRECT_HOSTS = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+
+function isLegacyRedirectHostname(hostname: string): boolean {
+  return LEGACY_REDIRECT_HOSTS.has(hostname.toLowerCase().replace(/\.+$/u, ''));
+}
+
 const ENDPOINT_KEYS: Readonly<
   Record<ProviderKind, { key: string; label: string; plural: boolean }>
 > = {
@@ -77,7 +82,7 @@ function parseEndpoint(
   if (endpoint.username || endpoint.password) {
     throw new ProviderConfigurationError('Provider credentials must not be embedded in a URL.');
   }
-  if (LEGACY_REDIRECT_HOSTS.has(endpoint.hostname.toLowerCase())) {
+  if (isLegacyRedirectHostname(endpoint.hostname)) {
     throw new ProviderConfigurationError(
       'The legacy redirect-only hostname cannot be a provider endpoint.',
     );

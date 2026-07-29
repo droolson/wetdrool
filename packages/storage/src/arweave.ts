@@ -188,7 +188,7 @@ export class ArweavePermanentStorage implements ContentAddressedStorage {
       cid: contentCid,
       provider: this.name,
       providerVersion: this.version,
-      locator: `ar://${providerReceipt.transactionId}`,
+      locator: `ar://${providerReceipt.transactionId}/${contentCid}`,
       byteLength: bytes.byteLength,
       publishedAt: providerReceipt.confirmedAt,
       policy: { permanence: 'permanent', consentId },
@@ -241,7 +241,7 @@ export class ArweavePermanentStorage implements ContentAddressedStorage {
   async delete(cid: string): Promise<boolean> {
     // Arweave publication is permanent. Returning false is the only truthful
     // implementation of the legacy deletion-compatible storage interface.
-    void cid;
+    requireCanonicalRawCid(cid);
     return false;
   }
 

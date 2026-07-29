@@ -21,8 +21,9 @@ import {
 } from './encoding.js';
 import { getContentCid, getObjectId } from './identifiers.js';
 import {
-  portablePayloadSchema,
+  currentPortablePayloadSchema,
   signedEnvelopeSchema,
+  type CurrentSignedEnvelope,
   type PortablePayload,
   type SignedEnvelope,
 } from './schemas.js';
@@ -91,12 +92,12 @@ export function signingKeyIdFor(
   return `${author}#${kind}/${bs58.encode(publicKey)}`;
 }
 
-export function signPayload(input: PortablePayload, privateKey: Uint8Array): SignedEnvelope {
+export function signPayload(input: PortablePayload, privateKey: Uint8Array): CurrentSignedEnvelope {
   if (privateKey.byteLength !== 32) {
     throw new ProtocolValidationError('Ed25519 private keys must contain 32 bytes.');
   }
 
-  const payload = portablePayloadSchema.parse(input);
+  const payload = currentPortablePayloadSchema.parse(input);
   assertIntrinsicObjectAuthorization(payload);
   const expectedPublicKey = publicKeyFromSigningKeyId(payload.signingKey);
   const actualPublicKey = ed25519.getPublicKey(privateKey);

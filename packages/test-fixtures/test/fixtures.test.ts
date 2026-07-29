@@ -1,4 +1,6 @@
 import {
+  canonicalizeEnvelope,
+  decodeCanonicalEnvelope,
   getEnvelopeCid,
   identityIdSchema,
   networkIdSchema,
@@ -40,6 +42,29 @@ describe('canonical protocol fixtures', () => {
     }
   });
 
+  it('round-trips the immutable signed profile-v1 fixture without rewriting its bytes', async () => {
+    const fixture = createProtocolFixtureSet().manifests.aliceProfileV1;
+    const decoded = decodeCanonicalEnvelope(fixture.canonicalBytes);
+
+    expect(decoded.payload).toMatchObject({
+      type: 'profile',
+      schemaVersion: 1,
+      content: {
+        genderVisibility: 'private',
+        pronouns: [{ value: 'she/her', visibility: 'public' }],
+      },
+    });
+    expect(canonicalizeEnvelope(decoded)).toEqual(fixture.canonicalBytes);
+    await expect(verifyEnvelope(fixture.canonicalBytes, () => true)).resolves.toMatchObject({
+      objectId: fixture.objectId,
+    });
+
+    expect(createProtocolFixtureSet().manifests.aliceProfile.envelope.payload).toMatchObject({
+      type: 'profile',
+      schemaVersion: 2,
+    });
+  });
+
   it('pins interoperability vectors for accidental-change detection', async () => {
     const { manifests } = createProtocolFixtureSet();
 
@@ -56,13 +81,17 @@ describe('canonical protocol fixtures', () => {
         ),
       ),
     ).toEqual({
-      aliceProfile: {
+      aliceProfileV1: {
         objectId: 'wokesocialobj:v1:profile:uXkdJJqsNndfcFsSA9vg-NFqZgNm-xi5E3Pf0wdgvhVY',
         cid: 'bafkreicm6agizzet73qfterxlhsuxqn3aoq63r3547nbhgsfwepsqtuxk4',
       },
+      aliceProfile: {
+        objectId: 'wokesocialobj:v1:profile:uYest1swDczVAkR-TAm939husRUn0kvPna_DKvdlSyvs',
+        cid: 'bafkreideebtdlal4m7rwoffvfjaf37f4x2khbk3w3hhroked7i7otewbti',
+      },
       bobProfile: {
-        objectId: 'wokesocialobj:v1:profile:uIp4aWTFtgY6MAoe2hon1CwcTzmtecKu9Q8wAYduuhT8',
-        cid: 'bafkreiaknqbmvp2k6dmteixoxf5i4wr2eqp4aa5owcynnrtgstyzzb6wnm',
+        objectId: 'wokesocialobj:v1:profile:uYJbmmQbX8UJirf8B1GYhYCKfo52axkbQiptDNRE63Ek',
+        cid: 'bafkreigalscswut4q73wtvc6zb4xoj3tczxcfk7ewnohapfhjkmekm4gna',
       },
       alicePost: {
         objectId: 'wokesocialobj:v1:post:ujOrBjnUJaGYhNMmIlg-7sf4OeeDi5JvznJnZo_DF6PM',

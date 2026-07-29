@@ -20,6 +20,7 @@ import {
   deriveReaction,
   deriveTombstone,
   digest,
+  manifestUri,
   measureAndSend,
   nonce,
   waitForAccountClosure,
@@ -190,7 +191,7 @@ export function registerPhase2Tests(context: Phase2Context): void {
           expectedAuthorSequence: new BN(0),
           postNonce: targetPostNonce,
           manifestHash: targetPostHash,
-          manifestUri: "local://sha256/phase-two-live-target",
+          manifestUri: manifestUri("phase-two-live-target"),
         })
         .accountsStrict({
           config,
@@ -237,7 +238,7 @@ export function registerPhase2Tests(context: Phase2Context): void {
           expectedAuthorSequence: new BN(1),
           postNonce: delegatedPostNonce,
           manifestHash: delegatedPostHash,
-          manifestUri: "local://sha256/phase-two-delegated-post",
+          manifestUri: manifestUri("phase-two-delegated-post"),
         })
         .accountsStrict({
           config,
@@ -419,7 +420,7 @@ export function registerPhase2Tests(context: Phase2Context): void {
             expectedAuthorSequence: new BN(expectedSequence),
             postNonce,
             manifestHash: digest(`rejected-${postNonceStart}`),
-            manifestUri: `local://sha256/rejected-${postNonceStart}`,
+            manifestUri: manifestUri(`rejected-${postNonceStart}`),
           })
           .accountsStrict({
             config,
@@ -565,7 +566,7 @@ export function registerPhase2Tests(context: Phase2Context): void {
           expectedAuthorSequence: new BN(0),
           postNonce: targetPostNonce,
           manifestHash: digest("phase-two-budget-target"),
-          manifestUri: "local://sha256/phase-two-budget-target",
+          manifestUri: manifestUri("phase-two-budget-target"),
         })
         .accountsStrict({
           config,
@@ -672,7 +673,7 @@ export function registerPhase2Tests(context: Phase2Context): void {
                 expectedAuthorSequence: new BN(3),
                 postNonce: delegatedPostNonce,
                 manifestHash: delegatedPostHash,
-                manifestUri: "local://sha256/phase-two-budget-post",
+                manifestUri: manifestUri("phase-two-budget-post"),
               })
               .accountsStrict({
                 config,

@@ -77,6 +77,14 @@ jobs:
     name: Local infrastructure and integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      AUTH_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wokesocial_auth_migration:local-auth-migration-only@127.0.0.1:5432/wokesocial
+      AUTH_INTEGRATION_DATABASE_URL: postgresql://wokesocial_auth_runtime:local-auth-runtime-only@127.0.0.1:5432/wokesocial
+      INDEXER_INTEGRATION_ADMIN_DATABASE_URL: postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial
+      INDEXER_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial
+      INDEXER_INTEGRATION_DATABASE_URL: postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial
+      MODERATION_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wokesocial_moderation_migration:local-moderation-migration-only@127.0.0.1:5432/wokesocial
+      MODERATION_INTEGRATION_DATABASE_URL: postgresql://wokesocial_moderation_runtime:local-moderation-runtime-only@127.0.0.1:5432/wokesocial
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -122,11 +130,78 @@ jobs:
           docker compose --project-name wokesocial-ci --file infra/compose.yaml exec -T ipfs \
             ipfs id
 
+      - name: Provision isolated service schemas and roles
+        run: >-
+          docker compose
+          --env-file .env.example
+          --project-name wokesocial-ci
+          --file infra/compose.yaml
+          --profile provision
+          run --rm postgres-provision
+
       - name: Build integration dependencies
         run: pnpm build
 
       - name: Run PostgreSQL and Kubo integration tests
         run: pnpm test:integration
+
+      - name: Probe PostgreSQL role isolation on a fresh volume
+        run: |
+          export POSTGRES_HOST_PORT=55432
+          role_compose=(
+            docker compose
+            --env-file .env.example
+            --project-name wokesocial-ci-roles
+            --file infra/compose.yaml
+          )
+          cleanup_role_probe() {
+            "${role_compose[@]}" --profile privilege-probe down --volumes --remove-orphans
+          }
+          trap cleanup_role_probe EXIT
+
+          "${role_compose[@]}" --profile privilege-probe \
+            up --detach --build postgres-privilege-probe
+          "${role_compose[@]}" --profile privilege-probe wait postgres-privilege-probe
+
+          "${role_compose[@]}" --profile provision run --rm postgres-provision
+          "${role_compose[@]}" exec -T postgres psql \
+            --username wokesocial \
+            --dbname wokesocial \
+            --set ON_ERROR_STOP=1 \
+            --command "
+              GRANT INSERT, UPDATE, DELETE
+              ON wokesocial_indexer.schema_migrations
+              TO wokesocial_indexer_runtime;
+              UPDATE wokesocial_indexer.schema_migrations
+              SET checksum = repeat('0', 64)
+              WHERE version = (
+                SELECT min(version)
+                FROM wokesocial_indexer.schema_migrations
+              );
+            "
+          if "${role_compose[@]}" --profile privilege-probe run \
+            --rm --no-deps indexer-migrate; then
+            echo 'Expected the corrupted migration ledger to fail integrity validation.' >&2
+            exit 1
+          fi
+          if "${role_compose[@]}" exec -T \
+            -e PGPASSWORD=local-indexer-runtime-only \
+            postgres psql \
+            --host 127.0.0.1 \
+            --username wokesocial_indexer_runtime \
+            --dbname wokesocial \
+            --set ON_ERROR_STOP=1 \
+            --command "
+              UPDATE wokesocial_indexer.schema_migrations
+              SET checksum = checksum
+              WHERE false;
+            "; then
+            echo 'Runtime ledger writes remained available after migration failure.' >&2
+            exit 1
+          fi
+
+          cleanup_role_probe
+          trap - EXIT
 
       - name: Build and smoke-test service images
         run: |

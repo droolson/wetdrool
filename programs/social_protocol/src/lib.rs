@@ -44,6 +44,13 @@ pub mod social_protocol {
         instructions::create_identity::handle_create_identity(ctx, args)
     }
 
+    pub fn deactivate_identity(
+        ctx: Context<DeactivateIdentity>,
+        args: DeactivateIdentityArgs,
+    ) -> Result<()> {
+        instructions::deactivate_identity::handle_deactivate_identity(ctx, args)
+    }
+
     pub fn claim_handle(ctx: Context<ClaimHandle>, args: ClaimHandleArgs) -> Result<()> {
         instructions::handle::handle_claim_handle(ctx, args)
     }

@@ -14,15 +14,18 @@ RUN corepack enable && corepack prepare pnpm@11.2.2 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY patches ./patches
 COPY apps/relay/package.json ./apps/relay/package.json
+COPY packages/config/package.json ./packages/config/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
 
 RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
     pnpm install --frozen-lockfile --filter @wokesocial/relay...
 
 COPY apps/relay ./apps/relay
+COPY packages/config ./packages/config
 COPY packages/protocol ./packages/protocol
 
-RUN pnpm --filter @wokesocial/protocol build \
+RUN pnpm --filter @wokesocial/config build \
+    && pnpm --filter @wokesocial/protocol build \
     && pnpm --filter @wokesocial/relay build \
     && pnpm --filter @wokesocial/relay deploy \
       --prod \

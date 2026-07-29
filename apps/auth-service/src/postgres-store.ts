@@ -415,7 +415,101 @@ export class PostgresAuthStore implements AuthStore {
   }
 
   async readiness(): Promise<void> {
-    await this.#sql`SELECT 1`;
+    const rows = await this.#sql<{ ready: boolean }[]>`
+      SELECT
+        (
+          SELECT count(*) = 5
+            AND bool_and(checksum ~ '^[0-9a-f]{64}$')
+            AND bool_or(version = '0005_root_bundle_integrity.sql')
+          FROM auth_schema_migrations
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM unnest(
+            ARRAY[
+              'auth_accounts',
+              'auth_ceremonies',
+              'auth_credentials',
+              'auth_sessions',
+              'auth_key_bundles'
+            ]
+          ) AS required_relation(name)
+          CROSS JOIN unnest(
+            ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']
+          ) AS required_privilege(name)
+          WHERE NOT has_table_privilege(
+            current_user,
+            required_relation.name,
+            required_privilege.name
+          )
+        )
+        AND has_table_privilege(current_user, 'auth_schema_migrations', 'SELECT')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM unnest(ARRAY['INSERT', 'UPDATE', 'DELETE']) AS forbidden_privilege(name)
+          WHERE has_table_privilege(
+            current_user,
+            'auth_schema_migrations',
+            forbidden_privilege.name
+          )
+        )
+        AS ready
+    `;
+    if (rows[0]?.ready !== true) {
+      throw new AuthServiceError(
+        'Authentication storage migrations or runtime privileges are incomplete.',
+        'database-error',
+      );
+    }
+
+    await this.#sql`
+      SELECT
+        account.account_id,
+        account.webauthn_user_handle,
+        account.status,
+        account.created_at,
+        account.activated_at,
+        ceremony.ceremony_id,
+        ceremony.purpose,
+        ceremony.account_id,
+        ceremony.challenge_hash,
+        ceremony.expires_at,
+        ceremony.attempts,
+        ceremony.max_attempts,
+        ceremony.consumed_at,
+        ceremony.created_at,
+        credential.credential_id,
+        credential.account_id,
+        credential.public_key,
+        credential.counter,
+        credential.transports,
+        credential.device_type,
+        credential.backed_up,
+        credential.created_at,
+        credential.last_used_at,
+        credential.revoked_at,
+        session.session_id,
+        session.account_id,
+        session.secret_hash,
+        session.csrf_hash,
+        session.created_at,
+        session.expires_at,
+        session.last_authenticated_at,
+        session.step_up_at,
+        session.revoked_at,
+        bundle.account_id,
+        bundle.credential_id,
+        bundle.key_kind,
+        bundle.public_key,
+        bundle.bundle,
+        bundle.updated_at
+      FROM auth_accounts AS account
+      FULL JOIN auth_ceremonies AS ceremony ON false
+      FULL JOIN auth_credentials AS credential ON false
+      FULL JOIN auth_sessions AS session ON false
+      FULL JOIN auth_key_bundles AS bundle ON false
+      WHERE false
+    `;
   }
 
   async close(): Promise<void> {

@@ -2,15 +2,15 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::{
-        BASIS_POINTS_DENOMINATOR, COMMUNITY_ROLE_MEMBER, GOVERNANCE_APPROVAL_BPS,
-        GOVERNANCE_QUORUM_BPS, MANIFEST_HASH_BYTES, MAX_GOVERNANCE_START_DELAY_SLOTS,
-        MAX_GOVERNANCE_VOTING_SLOTS, MAX_HANDLE_BYTES, MAX_MANIFEST_URI_BYTES,
-        MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS, MAX_RECOVERY_DELAY_SLOTS,
-        MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS, MIN_GOVERNANCE_VOTING_SLOTS,
-        MIN_HANDLE_BYTES, MIN_RECOVERY_DELAY_SLOTS, MIN_RECOVERY_GUARDIANS,
-        ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PDA_PREFIX, PDA_VERSION, REACTION_CELEBRATE,
-        REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT, VALID_COMMUNITY_ROLES,
-        VALID_DELEGATION_SCOPES, WEEK_SECONDS,
+        ACCOUNT_VERSION, BASIS_POINTS_DENOMINATOR, COMMUNITY_ROLE_MEMBER,
+        CURRENT_PROFILE_SCHEMA_VERSION, GOVERNANCE_APPROVAL_BPS, GOVERNANCE_QUORUM_BPS,
+        MANIFEST_HASH_BYTES, MAX_GOVERNANCE_START_DELAY_SLOTS, MAX_GOVERNANCE_VOTING_SLOTS,
+        MAX_HANDLE_BYTES, MAX_MANIFEST_URI_BYTES, MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS,
+        MAX_RECOVERY_DELAY_SLOTS, MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS,
+        MIN_GOVERNANCE_VOTING_SLOTS, MIN_HANDLE_BYTES, MIN_RECOVERY_DELAY_SLOTS,
+        MIN_RECOVERY_GUARDIANS, ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PDA_PREFIX, PDA_VERSION,
+        REACTION_CELEBRATE, REACTION_INSIGHTFUL, REACTION_LIKE, REACTION_SUPPORT,
+        VALID_COMMUNITY_ROLES, VALID_DELEGATION_SCOPES, WEEK_SECONDS,
     },
     errors::SocialProtocolError,
     state::{
@@ -80,6 +80,15 @@ pub fn validate_nonzero_hash(hash: &[u8; MANIFEST_HASH_BYTES]) -> Result<()> {
     Ok(())
 }
 
+pub fn validate_profile_schema_version(profile_schema_version: u16) -> Result<()> {
+    require_eq!(
+        profile_schema_version,
+        CURRENT_PROFILE_SCHEMA_VERSION,
+        SocialProtocolError::UnsupportedProfileSchemaVersion
+    );
+    Ok(())
+}
+
 pub fn validate_manifest(
     manifest_hash: &[u8; MANIFEST_HASH_BYTES],
     manifest_uri: &str,
@@ -104,6 +113,11 @@ pub fn authorize_identity_action(
     required_scope: u16,
     current_slot: u64,
 ) -> Result<()> {
+    require_eq!(
+        identity.version,
+        ACCOUNT_VERSION,
+        SocialProtocolError::UnsupportedProtocolVersion
+    );
     require!(identity.active, SocialProtocolError::IdentityInactive);
 
     if signer == identity.root_authority {
@@ -127,6 +141,11 @@ pub fn authorize_identity_action_any_scope(
     permitted_scopes: u16,
     current_slot: u64,
 ) -> Result<()> {
+    require_eq!(
+        identity.version,
+        ACCOUNT_VERSION,
+        SocialProtocolError::UnsupportedProtocolVersion
+    );
     require!(identity.active, SocialProtocolError::IdentityInactive);
     require!(
         permitted_scopes != 0 && permitted_scopes & !VALID_DELEGATION_SCOPES == 0,
@@ -156,7 +175,7 @@ fn validated_delegation_scopes(
     let delegation = delegation.ok_or_else(|| error!(SocialProtocolError::Unauthorized))?;
     require_eq!(
         delegation.version,
-        crate::constants::ACCOUNT_VERSION,
+        ACCOUNT_VERSION,
         SocialProtocolError::UnsupportedProtocolVersion
     );
     require_keys_eq!(
@@ -231,18 +250,105 @@ pub fn validate_manifest_uri(manifest_uri: &str) -> Result<()> {
         SocialProtocolError::UnsafeManifestUri
     );
 
-    let supported_prefix = ["ipfs://", "ar://", "https://", "local://"]
-        .iter()
-        .find(|prefix| manifest_uri.starts_with(*prefix));
-    let Some(prefix) = supported_prefix else {
-        return err!(SocialProtocolError::UnsupportedManifestUri);
-    };
     require!(
-        manifest_uri.len() > prefix.len(),
-        SocialProtocolError::EmptyManifestUri
+        manifest_uri_cid(manifest_uri).is_some(),
+        SocialProtocolError::UnsupportedManifestUri
     );
 
     Ok(())
+}
+
+fn manifest_uri_cid(manifest_uri: &str) -> Option<&str> {
+    if let Some(cid) = manifest_uri.strip_prefix("ipfs://") {
+        return is_manifest_cid(cid).then_some(cid);
+    }
+    if let Some(cid) = manifest_uri.strip_prefix("local://") {
+        return is_manifest_cid(cid).then_some(cid);
+    }
+    if let Some(locator) = manifest_uri.strip_prefix("ar://") {
+        let (transaction_id, cid) = locator.split_once('/')?;
+        return (is_arweave_transaction_id(transaction_id) && is_manifest_cid(cid)).then_some(cid);
+    }
+    if let Some(locator) = manifest_uri.strip_prefix("https://") {
+        if locator.contains('?') || locator.contains('#') {
+            return None;
+        }
+        let (authority, path) = locator.split_once('/')?;
+        if !is_https_authority(authority) {
+            return None;
+        }
+        let mut segments = path.split('/');
+        let mut last = segments.next()?;
+        if last.is_empty() {
+            return None;
+        }
+        for segment in segments {
+            if segment.is_empty() {
+                return None;
+            }
+            last = segment;
+        }
+        return is_manifest_cid(last).then_some(last);
+    }
+    None
+}
+
+fn is_manifest_cid(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 59
+        && bytes.starts_with(b"bafkrei")
+        && bytes
+            .get(7)
+            .is_some_and(|byte| (b'a'..=b'h').contains(byte))
+        && bytes[8..58]
+            .iter()
+            .all(|byte| byte.is_ascii_lowercase() || (b'2'..=b'7').contains(byte))
+        && bytes.last().is_some_and(|byte| {
+            matches!(*byte, b'a' | b'e' | b'i' | b'm' | b'q' | b'u' | b'y' | b'4')
+        })
+}
+
+fn is_arweave_transaction_id(value: &str) -> bool {
+    value.len() == 43
+        && value
+            .as_bytes()
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(*byte, b'_' | b'-'))
+}
+
+fn is_https_authority(value: &str) -> bool {
+    let (host, port) = match value.rsplit_once(':') {
+        Some((host, port)) => (host, Some(port)),
+        None => (value, None),
+    };
+    if host.is_empty()
+        || host.contains(':')
+        || host.split('.').any(|label| {
+            label.is_empty()
+                || !label
+                    .as_bytes()
+                    .iter()
+                    .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'-')
+                || !label
+                    .as_bytes()
+                    .first()
+                    .is_some_and(u8::is_ascii_alphanumeric)
+                || !label
+                    .as_bytes()
+                    .last()
+                    .is_some_and(u8::is_ascii_alphanumeric)
+        })
+    {
+        return false;
+    }
+    match port {
+        None => true,
+        Some(port) => {
+            (1..=5).contains(&port.len())
+                && port.as_bytes().iter().all(u8::is_ascii_digit)
+                && port.parse::<u16>().is_ok_and(|value| value != 0)
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

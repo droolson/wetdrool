@@ -3,7 +3,6 @@ import { pathToFileURL } from 'node:url';
 import { buildAuthApp } from './app.js';
 import { parseAuthConfig } from './config.js';
 import { MemoryAuthStore } from './memory-store.js';
-import { migrateAuth } from './migrate.js';
 import { PostgresAuthStore } from './postgres-store.js';
 import { cleanupExpiredAuthRecords } from './retention.js';
 import { AuthService } from './service.js';
@@ -14,16 +13,16 @@ export async function startAuthServer(): Promise<void> {
     config.databaseUrl === undefined
       ? new MemoryAuthStore()
       : new PostgresAuthStore(config.databaseUrl);
-  if (config.databaseUrl !== undefined) {
-    await migrateAuth(config.databaseUrl);
-  }
   const service = new AuthService({
     store,
     rpName: config.rpName,
     rpId: config.rpId,
     origin: config.origin,
   });
-  const app = await buildAuthApp({ service });
+  const app = await buildAuthApp({
+    service,
+    trustedProxyCidrs: config.trustedProxyCidrs,
+  });
   let cleanupPromise: Promise<void> | undefined;
   const cleanup = () => {
     cleanupPromise ??= cleanupExpiredAuthRecords(store, config.retention)

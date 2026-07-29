@@ -17,6 +17,7 @@ import {
   encodeMultibaseBase64Url,
   getObjectId,
   signPayload,
+  type EncryptedContentReference,
   type NetworkId,
   type PortablePayload,
   type PostContent,
@@ -28,25 +29,109 @@ import { LocalContentAddressedStorage, type StorageReceipt } from '@wokesocial/s
 
 import {
   buildIndexerApp,
+  loadDurableRawEventLedger,
   ManifestVerifier,
   MemoryProjectionStore,
   OpenIndexer,
   PostgresProjectionStore,
+  rawEventCoordinateKey,
   type ProtocolEvent,
   type VerifiedManifest,
 } from '../src/index.js';
 import { migrate } from '../src/migrate.js';
+import {
+  exerciseSameSlotProfileSequencing,
+  expectAdversarialFeedProjection,
+  projectionSecurityNetworkId,
+  seedAdversarialFeedProjection,
+} from './projection-security-fixtures.js';
+import { TEST_CID, testCid } from './cid-fixtures.js';
+import { purgePostgresTestNetworks } from './postgres-test-cleanup.js';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+const migrationDatabaseUrl =
+  process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
+  process.env['DATABASE_MIGRATION_URL'] ??
+  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
 const programId = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 const ZERO_DIGEST = 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const protectedProfileValue = {
+  cid: TEST_CID,
+  digest: ZERO_DIGEST,
+  bytes: 128,
+  mediaType: 'application/octet-stream',
+  protection: {
+    kind: 'encrypted',
+    encryptionFormat: 'wokesocial-sealed-profile-value-v1',
+    keyEnvelope: {
+      id: `wokesocialobj:v1:media-manifest:${ZERO_DIGEST}`,
+    },
+    accessPolicy: {
+      id: `wokesocialobj:v1:community-rule-set:${ZERO_DIGEST}`,
+    },
+  },
+} as const satisfies EncryptedContentReference;
 
 describe('PostgreSQL indexer integration', () => {
+  it('fails readiness when required runtime write access is revoked', async () => {
+    await migrate(migrationDatabaseUrl);
+    const projection = new PostgresProjectionStore(databaseUrl);
+    const runtimeSql = postgres(databaseUrl, { max: 1 });
+    const migrationSql = postgres(migrationDatabaseUrl, { max: 1 });
+    const runtimeRows = await runtimeSql<{ current_user: string }[]>`SELECT current_user`;
+    const runtimeRole = runtimeRows[0]?.current_user;
+    if (runtimeRole === undefined) throw new Error('Expected an indexer runtime role.');
+
+    try {
+      await expect(projection.readiness()).resolves.toBeUndefined();
+      await migrationSql`
+        REVOKE INSERT ON posts FROM ${migrationSql(runtimeRole)}
+      `;
+      await expect(projection.readiness()).rejects.toThrow('runtime privileges are incomplete');
+    } finally {
+      await migrationSql`
+        GRANT INSERT ON posts TO ${migrationSql(runtimeRole)}
+      `;
+      await Promise.all([
+        projection.close(),
+        runtimeSql.end({ timeout: 5 }),
+        migrationSql.end({ timeout: 5 }),
+      ]);
+    }
+  });
+
+  it('matches memory ordering for same-slot profile updates and stale rejection', async () => {
+    await migrate(migrationDatabaseUrl);
+    const projection = new PostgresProjectionStore(databaseUrl);
+    const networkId = projectionSecurityNetworkId(90);
+    try {
+      await purgePostgresTestNetworks(projection, migrationDatabaseUrl, [networkId]);
+      await exerciseSameSlotProfileSequencing(projection, 90);
+    } finally {
+      await purgePostgresTestNetworks(projection, migrationDatabaseUrl, [networkId]);
+      await projection.close();
+    }
+  });
+
+  it('matches memory finalized chronology, composite pagination, and public-only feeds', async () => {
+    await migrate(migrationDatabaseUrl);
+    const projection = new PostgresProjectionStore(databaseUrl);
+    const networkId = projectionSecurityNetworkId(120);
+    try {
+      await purgePostgresTestNetworks(projection, migrationDatabaseUrl, [networkId]);
+      const fixture = await seedAdversarialFeedProjection(projection, 120);
+      await expectAdversarialFeedProjection(projection, fixture);
+    } finally {
+      await purgePostgresTestNetworks(projection, migrationDatabaseUrl, [networkId]);
+      await projection.close();
+    }
+  });
+
   it('distinguishes exact duplicates from conflicting immutable event coordinates', async () => {
-    await migrate(databaseUrl);
+    await Promise.all([migrate(migrationDatabaseUrl), migrate(migrationDatabaseUrl)]);
     const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identity = makeIdentity(networkId, 81);
     const projection = new PostgresProjectionStore(databaseUrl);
@@ -92,6 +177,19 @@ describe('PostgreSQL indexer integration', () => {
         });
       }
 
+      await expect(projection.rebuildProjection(networkId, [])).rejects.toThrow(
+        'exactly match the immutable raw event source',
+      );
+      await expect(
+        projection.rebuildProjection(networkId, [
+          { event: first },
+          { event: identityEvent(identity, 2n, 91) },
+        ]),
+      ).rejects.toThrow('exactly match the immutable raw event source');
+      await expect(projection.rebuildProjection(networkId, [{ event: first }])).resolves.toBe(
+        undefined,
+      );
+
       await expect(projection.getProtocolConfig(networkId)).resolves.toMatchObject({
         configAddress,
         initializedSlot: 1n,
@@ -110,7 +208,7 @@ describe('PostgreSQL indexer integration', () => {
   });
 
   it('serializes rebuild before a queued live apply without orphaning raw state', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identity = makeIdentity(networkId, 82);
     const projection = new PostgresProjectionStore(databaseUrl);
@@ -165,7 +263,7 @@ describe('PostgreSQL indexer integration', () => {
   });
 
   it('allows mutations for different networks to proceed concurrently', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const networkA = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const networkB = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const projection = new PostgresProjectionStore(databaseUrl);
@@ -226,8 +324,9 @@ describe('PostgreSQL indexer integration', () => {
   });
 
   it('uses valid generated search indexes and the same deterministic normalization as JavaScript', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const inspection = postgres(databaseUrl, { max: 1 });
+    const maintenance = postgres(migrationDatabaseUrl, { max: 1 });
     const explainNetwork = 'wokenet:v1:public-search-explain:program';
 
     try {
@@ -256,7 +355,7 @@ describe('PostgreSQL indexer integration', () => {
       const generated = await inspection<{ count: number }[]>`
         SELECT count(*)::integer AS count
         FROM information_schema.columns
-        WHERE table_schema = 'public'
+        WHERE table_schema = current_schema()
           AND is_generated = 'ALWAYS'
           AND column_name IN (
             'search_identity_id',
@@ -309,7 +408,7 @@ describe('PostgreSQL indexer integration', () => {
       await inspection`
         INSERT INTO profiles (
           identity_id, object_id, cid, payload_hash, display_name, bio,
-          pronouns, updated_slot, updated_at
+          pronouns, content, updated_slot, updated_at
         )
         SELECT
           'wokesocialid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
@@ -319,6 +418,13 @@ describe('PostgreSQL indexer integration', () => {
           CASE WHEN value = 1 THEN '!!! prefix' ELSE 'zz name ' || value END,
           CASE WHEN value = 2 THEN 'ab cd prefix' ELSE 'zz bio ' || value END,
           '[]'::jsonb,
+          jsonb_build_object(
+            'displayName', CASE WHEN value = 1 THEN '!!! prefix' ELSE 'zz name ' || value END,
+            'bio', CASE WHEN value = 2 THEN 'ab cd prefix' ELSE 'zz bio ' || value END,
+            'pronouns', '[]'::jsonb,
+            'chosenFamilyLabels', '[]'::jsonb,
+            'links', '[]'::jsonb
+          ),
           2,
           '2026-07-28T16:01:00.000Z'
         FROM generate_series(1, 600) value
@@ -363,10 +469,10 @@ describe('PostgreSQL indexer integration', () => {
           true
         FROM generate_series(1, 600) value
       `;
-      await inspection`ANALYZE identities`;
-      await inspection`ANALYZE profiles`;
-      await inspection`ANALYZE handle_claims`;
-      await inspection`ANALYZE posts`;
+      await maintenance`ANALYZE identities`;
+      await maintenance`ANALYZE profiles`;
+      await maintenance`ANALYZE handle_claims`;
+      await maintenance`ANALYZE posts`;
 
       const plans = await inspection.begin(async (sql) => {
         await sql`SET LOCAL enable_seqscan = off`;
@@ -383,8 +489,7 @@ describe('PostgreSQL indexer integration', () => {
             EXPLAIN (COSTS OFF, FORMAT JSON)
             SELECT identity_id
             FROM handle_claims
-            WHERE network_id = ${explainNetwork}
-              AND active
+            WHERE active
               AND search_handle LIKE ${'%riv%'}
           `,
           sql<{ 'QUERY PLAN': unknown }[]>`
@@ -425,12 +530,12 @@ describe('PostgreSQL indexer integration', () => {
         )
       `;
       await inspection`DELETE FROM identities WHERE network_id = ${explainNetwork}`;
-      await inspection.end({ timeout: 5 });
+      await Promise.all([inspection.end({ timeout: 5 }), maintenance.end({ timeout: 5 })]);
     }
   });
 
   it('keeps public search on isolated bounded read capacity with cancellation', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const projection = new PostgresProjectionStore(databaseUrl, {
       searchConcurrency: 1,
@@ -488,7 +593,7 @@ describe('PostgreSQL indexer integration', () => {
   });
 
   it('returns search results and checkpoint from one repeatable-read snapshot', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identityId = `wokesocialid:v1:${networkId}:snapshot-address`;
     const objectId = `snapshot-post-${networkId}`;
@@ -556,7 +661,7 @@ describe('PostgreSQL indexer integration', () => {
   });
 
   it('matches memory and PostgreSQL for canonical handles, NFKC, ties, and adversarial volume', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
     const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const postgresProjection = new PostgresProjectionStore(databaseUrl);
     const memoryProjection = new MemoryProjectionStore();
@@ -583,6 +688,7 @@ describe('PostgreSQL indexer integration', () => {
         identity_address: identity.identityAddress,
         root_authority: `parity-root-${index}`,
         root_rotation_count: '0',
+        identity_sequence: index >= noiseIdentities.length ? '1' : '0',
         created_slot: '1',
         created_at: '2026-07-28T16:00:00.000Z',
         updated_slot: '1',
@@ -596,6 +702,7 @@ describe('PostgreSQL indexer integration', () => {
           'identity_address',
           'root_authority',
           'root_rotation_count',
+          'identity_sequence',
           'created_slot',
           'created_at',
           'updated_slot',
@@ -611,6 +718,13 @@ describe('PostgreSQL indexer integration', () => {
           display_name: '  NEEDLE\u3000\u00a0\u2003\u212aIOSK  ',
           bio: '',
           pronouns: inspection.json([]),
+          content: inspection.json({
+            displayName: '  NEEDLE\u3000\u00a0\u2003\u212aIOSK  ',
+            bio: '',
+            pronouns: [],
+            chosenFamilyLabels: [],
+            links: [],
+          }),
           updated_slot: '2',
           updated_at: '2026-07-28T16:01:00.000Z',
         },
@@ -622,6 +736,13 @@ describe('PostgreSQL indexer integration', () => {
           display_name: 'Éclair Tie',
           bio: '',
           pronouns: inspection.json([]),
+          content: inspection.json({
+            displayName: 'Éclair Tie',
+            bio: '',
+            pronouns: [],
+            chosenFamilyLabels: [],
+            links: [],
+          }),
           updated_slot: '2',
           updated_at: '2026-07-28T16:02:00.000Z',
         })),
@@ -636,6 +757,7 @@ describe('PostgreSQL indexer integration', () => {
           'display_name',
           'bio',
           'pronouns',
+          'content',
           'updated_slot',
           'updated_at',
         )}
@@ -647,12 +769,12 @@ describe('PostgreSQL indexer integration', () => {
         ) VALUES
           (
             ${networkId}, 'alpha-claim', 'alpha_handle', ${ZERO_DIGEST},
-            ${relevantIdentityId}, ${'parity-root-225'}, 1, true, 3,
+            ${relevantIdentityId}, ${'parity-root-225'}, 2, true, 3,
             '2026-07-28T16:03:00.000Z'
           ),
           (
             ${networkId}, 'zulu-claim', 'zulu_handle', ${ZERO_DIGEST},
-            ${relevantIdentityId}, ${'parity-root-225'}, 2, true, 4,
+            ${relevantIdentityId}, ${'parity-root-225'}, 3, true, 4,
             '2026-07-28T16:04:00.000Z'
           )
       `;
@@ -702,7 +824,7 @@ describe('PostgreSQL indexer integration', () => {
           handleClaimAddress: `${handle}-claim`,
           identityId: relevantIdentityId,
           authority: 'parity-root-225',
-          identitySequence: BigInt(index + 1),
+          identitySequence: BigInt(index + 2),
           handleHash: ZERO_DIGEST,
           handle,
         } as ProtocolEvent);
@@ -752,7 +874,7 @@ describe('PostgreSQL indexer integration', () => {
   }, 30_000);
 
   it('projects verified manifests idempotently and rebuilds from finalized events', async () => {
-    await migrate(databaseUrl);
+    await migrate(migrationDatabaseUrl);
 
     const contentRoot = await mkdtemp(join(tmpdir(), 'wokesocial-indexer-integration-'));
     const genesis = bs58.encode(randomBytes(32));
@@ -779,9 +901,24 @@ describe('PostgreSQL indexer integration', () => {
       const profileContent: ProfileContent = {
         displayName: 'River Chen',
         bio: 'Building a user-owned social web.',
-        pronouns: [{ value: 'they/them', visibility: 'public' }],
-        genderVisibility: 'private',
-        chosenFamilyLabels: [],
+        pronouns: [
+          { visibility: 'public', value: 'they/them' },
+          { visibility: 'private', valueReference: protectedProfileValue },
+        ],
+        gender: { visibility: 'public', value: 'nonbinary' },
+        chosenFamilyLabels: [
+          { visibility: 'public', value: 'chosen sibling' },
+          { visibility: 'private', valueReference: protectedProfileValue },
+        ],
+        location: { visibility: 'followers', valueReference: protectedProfileValue },
+        links: [{ label: 'Protocol notes', url: 'https://example.com/protocol' }],
+      };
+      const publicProfileContent: ProfileContent = {
+        displayName: 'River Chen',
+        bio: 'Building a user-owned social web.',
+        pronouns: [{ visibility: 'public', value: 'they/them' }],
+        gender: { visibility: 'public', value: 'nonbinary' },
+        chosenFamilyLabels: [{ visibility: 'public', value: 'chosen sibling' }],
         links: [{ label: 'Protocol notes', url: 'https://example.com/protocol' }],
       };
       const postContent: PostContent = {
@@ -856,6 +993,7 @@ describe('PostgreSQL indexer integration', () => {
           cid: profile.receipt.cid,
           payloadHash: profile.envelope.proof.payloadHash,
           sequence: 1n,
+          profileSchemaVersion: 2,
         },
         {
           ...eventBase(networkId, 4n, 4, '2026-07-28T13:03:01.000Z'),
@@ -874,7 +1012,8 @@ describe('PostgreSQL indexer integration', () => {
           followerIdentityId: viewer.identityId,
           followedIdentityId: author.identityId,
           active: true,
-          sequence: 1n,
+          followerSequence: 1n,
+          edgeStateSequence: 1n,
         },
         {
           ...eventBase(networkId, 6n, 6, '2026-07-28T13:05:01.000Z'),
@@ -1021,8 +1160,8 @@ describe('PostgreSQL indexer integration', () => {
         profile: {
           objectId: profile.objectId,
           content: {
-            displayName: profileContent.displayName,
-            pronouns: profileContent.pronouns,
+            displayName: publicProfileContent.displayName,
+            pronouns: publicProfileContent.pronouns,
           },
         },
         reason: {
@@ -1030,6 +1169,9 @@ describe('PostgreSQL indexer integration', () => {
           followedIdentityId: author.identityId,
         },
       });
+      expect((await projection.getProfile(author.identityId))?.content).toEqual(
+        publicProfileContent,
+      );
       await expect(
         projection.searchPublic({
           networkId,
@@ -1205,6 +1347,10 @@ describe('PostgreSQL indexer integration', () => {
       const rebuilt = await indexer.rebuild(networkId, [...events].reverse());
       expect(rebuilt).toHaveLength(events.length);
       expect(rebuilt.every((result) => result.applied)).toBe(true);
+      expect(beforeRebuild.post).toMatchObject({
+        objectId: post.objectId,
+        tombstonedAt: '2026-07-28T13:05:01.000Z',
+      });
       await expect(projection.getIdentity(viewer.identityId)).resolves.toEqual(
         beforeRebuild.viewer,
       );
@@ -1214,7 +1360,15 @@ describe('PostgreSQL indexer integration', () => {
       await expect(projection.getProfile(author.identityId)).resolves.toEqual(
         beforeRebuild.profile,
       );
-      await expect(projection.getPost(post.objectId)).resolves.toEqual(beforeRebuild.post);
+      // Exact-source replay need not refetch or rematerialize deletion-compatible
+      // bytes once a later authenticated tombstone makes the accepted post obsolete.
+      await expect(projection.getPost(post.objectId)).resolves.toBeUndefined();
+      await expect(projection.findPostObjectIdByReference(networkId, postReference)).resolves.toBe(
+        post.objectId,
+      );
+      await expect(
+        projection.manifestEventDisposition(events[4] as ProtocolEvent),
+      ).resolves.toEqual({ state: 'accepted' });
       await expect(projection.getProtocolConfig(networkId)).resolves.toEqual(beforeRebuild.config);
       await expect(projection.getDelegations(author.identityId)).resolves.toEqual(
         beforeRebuild.delegations,
@@ -1241,6 +1395,203 @@ describe('PostgreSQL indexer integration', () => {
       }
     }
   }, 45_000);
+
+  it('atomically quarantines terminal manifests and rebuilds their durable disposition', async () => {
+    await migrate(migrationDatabaseUrl);
+    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const identity = makeIdentity(networkId, 241);
+    const projection = new PostgresProjectionStore(databaseUrl);
+    const inspection = postgres(databaseUrl, { max: 1 });
+    const created = identityEvent(identity, 1n, 241);
+    const profileDigest = encodeMultibaseBase64Url(Uint8Array.from({ length: 32 }, () => 11));
+    const rejectedDigest = encodeMultibaseBase64Url(Uint8Array.from({ length: 32 }, () => 12));
+    const postDigest = encodeMultibaseBase64Url(Uint8Array.from({ length: 32 }, () => 13));
+    const profile: ProtocolEvent = {
+      ...eventBase(networkId, 2n, 242, '2026-07-28T16:02:00.000Z'),
+      type: 'profile-updated',
+      identityId: identity.identityId,
+      objectId: `wokesocialobj:v1:profile:${profileDigest}`,
+      cid: testCid(1),
+      payloadHash: profileDigest,
+      sequence: 1n,
+    };
+    const profileManifest: VerifiedManifest = {
+      objectId: profile.objectId,
+      cid: profile.cid as string,
+      payloadHash: profileDigest,
+      schemaVersion: 2,
+      signingKeyId: identity.builder.signingKey,
+      authorIdentityId: identity.identityId,
+      createdAt: profile.blockTime,
+      type: 'profile',
+      content: {
+        displayName: 'Profile that must be suppressed',
+        bio: '',
+        pronouns: [],
+        chosenFamilyLabels: [],
+        links: [],
+      } satisfies ProfileContent,
+    };
+    const rejected: ProtocolEvent = {
+      ...eventBase(networkId, 3n, 243, '2026-07-28T16:03:00.000Z'),
+      type: 'profile-updated',
+      identityId: identity.identityId,
+      objectId: `wokesocialobj:v1:profile:${rejectedDigest}`,
+      cid: testCid(2),
+      payloadHash: rejectedDigest,
+      sequence: 2n,
+    };
+    const postContent: PostContent = {
+      format: 'plain',
+      body: 'The valid event after a terminal manifest.',
+      media: [],
+      language: 'en',
+      contentWarnings: [],
+      accessibility: {
+        altTextReminderAcknowledged: false,
+        captionReferences: [],
+      },
+      visibility: { kind: 'public' },
+      authorLabels: [],
+      replyPolicy: 'anyone',
+      quotePolicy: 'allowed',
+    };
+    const post: ProtocolEvent = {
+      ...eventBase(networkId, 4n, 244, '2026-07-28T16:04:00.000Z'),
+      type: 'post-published',
+      identityId: identity.identityId,
+      objectId: `wokesocialobj:v1:post:${postDigest}`,
+      cid: testCid(3),
+      payloadHash: postDigest,
+      sequence: 3n,
+    };
+    const postManifest: VerifiedManifest = {
+      objectId: post.objectId,
+      cid: post.cid as string,
+      payloadHash: postDigest,
+      schemaVersion: 1,
+      signingKeyId: identity.builder.signingKey,
+      authorIdentityId: identity.identityId,
+      createdAt: post.blockTime,
+      type: 'post',
+      content: postContent,
+    };
+    const rejection = {
+      eventBody: { encodedData: 'terminal-fixture' },
+      failureCode: 'schema-version' as const,
+      failureDetail: 'Profile schema v1 is disabled at this slot.',
+    };
+
+    try {
+      await projection.clearProjection(networkId);
+      await projection.apply(created);
+      await projection.apply(profile, profileManifest);
+
+      const gap = {
+        ...rejected,
+        transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 245)),
+        sequence: 3n,
+      } satisfies ProtocolEvent;
+      await expect(projection.quarantineManifestEvent(gap, rejection)).rejects.toMatchObject({
+        code: 'stale-event',
+      });
+      await expect(projection.getProfile(identity.identityId)).resolves.toBeDefined();
+      const gapRows = await inspection<{ count: number }[]>`
+        SELECT count(*)::integer AS count
+        FROM protocol_events
+        WHERE network_id = ${networkId}
+          AND transaction_signature = ${gap.transactionSignature}
+      `;
+      expect(gapRows[0]?.count).toBe(0);
+
+      await expect(projection.quarantineManifestEvent(rejected, rejection)).resolves.toBe(true);
+      await expect(projection.quarantineManifestEvent(rejected, rejection)).resolves.toBe(false);
+      await projection.resolveDeadLetter(
+        networkId,
+        rejected.transactionSignature,
+        rejected.logIndex,
+      );
+      await projection.apply(post, postManifest);
+
+      await expect(projection.getProfile(identity.identityId)).resolves.toBeUndefined();
+      await expect(projection.getIdentity(identity.identityId)).resolves.toMatchObject({
+        identitySequence: 3n,
+      });
+      await expect(projection.getPost(post.objectId)).resolves.toBeDefined();
+      await expect(projection.checkpoint(networkId)).resolves.toBe(4n);
+      await expect(
+        projection.deadLetter(networkId, rejected.transactionSignature, rejected.logIndex),
+      ).resolves.toEqual({
+        attempts: 1,
+        terminalFailureCode: 'schema-version',
+      });
+
+      const audit = await inspection<
+        {
+          event_count: number;
+          failure_code: string;
+          next_attempt_at: Date | null;
+          attempts: number;
+        }[]
+      >`
+        SELECT
+          (SELECT count(*)::integer FROM protocol_events WHERE network_id = ${networkId})
+            AS event_count,
+          dead.failure_code,
+          dead.next_attempt_at,
+          dead.attempts
+        FROM indexer_dead_letters AS dead
+        WHERE dead.network_id = ${networkId}
+          AND dead.transaction_signature = ${rejected.transactionSignature}
+          AND dead.log_index = ${rejected.logIndex}
+      `;
+      expect(audit[0]).toMatchObject({
+        event_count: 4,
+        failure_code: 'schema-version',
+        next_attempt_at: null,
+        attempts: 1,
+      });
+      const durableLedger = await loadDurableRawEventLedger(databaseUrl, networkId);
+      expect(durableLedger.events).toHaveLength(4);
+      expect(durableLedger.terminalFailureCodes.get(rawEventCoordinateKey(rejected))).toBe(
+        'schema-version',
+      );
+
+      await expect(
+        inspection`
+          UPDATE protocol_events
+          SET terminal_manifest_failure_code = 'hash-mismatch'
+          WHERE network_id = ${networkId}
+            AND transaction_signature = ${rejected.transactionSignature}
+            AND log_index = ${rejected.logIndex}
+        `,
+      ).rejects.toThrow('permission denied');
+
+      await expect(
+        projection.rebuildProjection(networkId, [
+          { event: created },
+          { event: profile, manifest: profileManifest },
+          { event: rejected, terminalFailureCode: 'schema-version' },
+          { event: post, manifest: postManifest },
+        ]),
+      ).resolves.toBeUndefined();
+      await expect(projection.getProfile(identity.identityId)).resolves.toBeUndefined();
+      await expect(projection.getIdentity(identity.identityId)).resolves.toMatchObject({
+        identitySequence: 3n,
+      });
+      await expect(
+        projection.rebuildProjection(networkId, [
+          { event: created },
+          { event: profile, manifest: profileManifest },
+          { event: rejected, terminalFailureCode: 'hash-mismatch' },
+          { event: post, manifest: postManifest },
+        ]),
+      ).rejects.toMatchObject({ code: 'event-conflict' });
+    } finally {
+      await projection.clearProjection(networkId);
+      await Promise.all([projection.close(), inspection.end({ timeout: 5 })]);
+    }
+  }, 30_000);
 });
 
 async function insertSearchIdentity(
@@ -1320,19 +1671,21 @@ async function applyMemoryProfile(
   signatureSeed: number,
 ): Promise<void> {
   const objectId = `profile-${signatureSeed}`;
+  const cid = `bafyprofile-${signatureSeed}`;
   const event: ProtocolEvent = {
     ...eventBase(networkId, 2n, signatureSeed, blockTime),
     type: 'profile-updated',
     identityId,
     objectId,
-    cid: `bafyprofile-${signatureSeed}`,
+    cid,
     payloadHash: ZERO_DIGEST,
     sequence: 1n,
   };
   const manifest: VerifiedManifest = {
     objectId,
-    cid: event.cid,
+    cid,
     payloadHash: ZERO_DIGEST,
+    schemaVersion: 2,
     signingKeyId: `root-${signatureSeed}`,
     authorIdentityId: identityId,
     createdAt: blockTime,
@@ -1341,7 +1694,6 @@ async function applyMemoryProfile(
       displayName,
       bio: '',
       pronouns: [],
-      genderVisibility: 'private',
       chosenFamilyLabels: [],
       links: [],
     } satisfies ProfileContent,

@@ -10,6 +10,11 @@ import type { Duplex } from 'node:stream';
 import WebSocket, { WebSocketServer, type RawData } from 'ws';
 
 import {
+  createTrustedProxyPolicy,
+  type TrustedProxyPolicy,
+} from '@wokesocial/config/trusted-proxy';
+
+import {
   RELAY_PATH,
   RELAY_POLICY,
   RELAY_PROTOCOL_VERSION,
@@ -17,6 +22,7 @@ import {
   type RelayKeyAuthorizationMode,
 } from './policy.js';
 import {
+  assertRelayMessageCurrent,
   RelayProtocolError,
   verifyRelayEvent,
   verifySubscription,
@@ -52,6 +58,13 @@ export interface RelaySubscriptionAuthorization {
   readonly kinds: readonly RelayEventKind[];
 }
 
+export interface RelaySubscriptionGrant {
+  readonly authorized: true;
+  readonly expiresAt: number;
+}
+
+export type RelaySubscriptionAuthorizationDecision = boolean | RelaySubscriptionGrant;
+
 export interface RelayServerOptions {
   readonly host?: string;
   readonly port?: number;
@@ -62,19 +75,28 @@ export interface RelayServerOptions {
   readonly dangerouslyAllowUnverifiedLocalMode?: boolean;
   readonly authorizeSubscription?: (
     input: RelaySubscriptionAuthorization,
-  ) => boolean | Promise<boolean>;
+  ) => RelaySubscriptionAuthorizationDecision | Promise<RelaySubscriptionAuthorizationDecision>;
   readonly readinessCheck?: () => void | Promise<void>;
   readonly now?: () => Date;
+  readonly trustedProxyCidrs?: readonly string[];
 }
 
 interface ConnectionState {
   readonly id: string;
   readonly socket: WebSocket;
   readonly ip: string;
+  readonly pendingFrames: QueuedClientFrame[];
   alive: boolean;
+  closed: boolean;
   lastSeenAt: number;
+  processingFrames: boolean;
   violations: number;
   subscription?: RelaySubscriptionView;
+}
+
+interface QueuedClientFrame {
+  readonly bytes: Uint8Array;
+  readonly isBinary: boolean;
 }
 
 export class RelayServer {
@@ -85,8 +107,11 @@ export class RelayServer {
   readonly #keyAuthorizationMode: RelayKeyAuthorizationMode;
   readonly #logger: RelayLogger;
   readonly #now: () => Date;
+  readonly #clientIpPolicy: TrustedProxyPolicy;
   readonly #http: HttpServer;
   readonly #webSockets: WebSocketServer;
+  readonly #transportSockets = new Set<Duplex>();
+  readonly #transportHeaderDeadlines = new Map<Duplex, NodeJS.Timeout>();
   readonly #connections = new Map<WebSocket, ConnectionState>();
   readonly #connectionsByIp = new Map<string, number>();
   readonly #ipLimiter = new SlidingWindowRateLimiter(
@@ -107,11 +132,11 @@ export class RelayServer {
 
   constructor(private readonly options: RelayServerOptions = {}) {
     if (
-      options.authorizeKey !== undefined &&
+      (options.authorizeKey !== undefined || options.authorizeSubscription !== undefined) &&
       options.dangerouslyAllowUnverifiedLocalMode === true
     ) {
       throw new TypeError(
-        'Choose verified key authorization or dangerous local-unverified mode, never both.',
+        'Choose verified authorization adapters or dangerous local-unverified mode, never both.',
       );
     }
     this.#host = options.host ?? '127.0.0.1';
@@ -127,9 +152,28 @@ export class RelayServer {
     this.#logger =
       options.logger === false ? silentLogger : (options.logger ?? createPrivacySafeJsonLogger());
     this.#now = options.now ?? (() => new Date());
-    this.#http = createServer((request, response) => {
-      void this.#handleHttp(request, response);
-    });
+    this.#clientIpPolicy = createTrustedProxyPolicy(options.trustedProxyCidrs ?? []);
+    this.#http = createServer(
+      {
+        connectionsCheckingInterval:
+          RELAY_POLICY.connection.connectionsCheckingIntervalMilliseconds,
+        headersTimeout: RELAY_POLICY.connection.headersTimeoutMilliseconds,
+        keepAliveTimeout: RELAY_POLICY.connection.keepAliveTimeoutMilliseconds,
+        maxHeaderSize: RELAY_POLICY.connection.maximumHeaderBytes,
+        requestTimeout: RELAY_POLICY.connection.requestTimeoutMilliseconds,
+      },
+      (request, response) => {
+        this.#clearTransportHeaderDeadline(request.socket);
+        response.once('finish', () => {
+          if (!request.socket.destroyed && this.#transportSockets.has(request.socket)) {
+            this.#armTransportHeaderDeadline(request.socket);
+          }
+        });
+        void this.#handleHttp(request, response);
+      },
+    );
+    this.#http.maxHeadersCount = RELAY_POLICY.connection.maximumHeadersCount;
+    this.#http.prependListener('connection', (socket) => this.#acceptTransportSocket(socket));
     this.#webSockets = new WebSocketServer({
       noServer: true,
       clientTracking: false,
@@ -228,6 +272,13 @@ export class RelayServer {
       }
       this.#webSockets.once('error', reject);
     }).catch(() => undefined);
+    for (const socket of this.#transportSockets) {
+      socket.destroy();
+    }
+    for (const deadline of this.#transportHeaderDeadlines.values()) {
+      clearTimeout(deadline);
+    }
+    this.#transportHeaderDeadlines.clear();
     if (this.#started) {
       await new Promise<void>((resolve, reject) => {
         this.#http.close((error) => (error === undefined ? resolve() : reject(error)));
@@ -254,6 +305,10 @@ export class RelayServer {
 
   metrics(): ReturnType<RelayMetrics['snapshot']> {
     return this.#metrics.snapshot(this.#retention.size);
+  }
+
+  transportSocketCount(): number {
+    return this.#transportSockets.size;
   }
 
   async #handleHttp(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -308,6 +363,11 @@ export class RelayServer {
   }
 
   #handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void {
+    if (!this.#transportSockets.has(socket)) {
+      socket.destroy();
+      return;
+    }
+    this.#clearTransportHeaderDeadline(socket);
     if (this.#keyAuthorizationMode === 'locked') {
       this.#metrics.rejectedConnections += 1;
       rejectUpgrade(socket, 503, 'Key Authorizer Required');
@@ -318,7 +378,7 @@ export class RelayServer {
       rejectUpgrade(socket, 403, 'Forbidden');
       return;
     }
-    const ip = clientIp(request);
+    const ip = this.#clientIpPolicy.clientIp(request);
     const current = this.#connectionsByIp.get(ip) ?? 0;
     if (current >= RELAY_POLICY.connection.maximumConnectionsPerIp) {
       this.#metrics.rejectedConnections += 1;
@@ -330,15 +390,55 @@ export class RelayServer {
     });
   }
 
+  #acceptTransportSocket(socket: Duplex): void {
+    if (
+      this.#stopping ||
+      this.#transportSockets.size >= RELAY_POLICY.connection.maximumTransportSockets
+    ) {
+      this.#metrics.rejectedConnections += 1;
+      socket.destroy();
+      return;
+    }
+    this.#transportSockets.add(socket);
+    this.#armTransportHeaderDeadline(socket);
+    socket.once('close', () => {
+      this.#clearTransportHeaderDeadline(socket);
+      this.#transportSockets.delete(socket);
+    });
+  }
+
+  #armTransportHeaderDeadline(socket: Duplex): void {
+    this.#clearTransportHeaderDeadline(socket);
+    const deadline = setTimeout(() => {
+      this.#transportHeaderDeadlines.delete(socket);
+      this.#metrics.rejectedConnections += 1;
+      socket.destroy();
+    }, RELAY_POLICY.connection.headersTimeoutMilliseconds);
+    deadline.unref();
+    this.#transportHeaderDeadlines.set(socket, deadline);
+  }
+
+  #clearTransportHeaderDeadline(socket: Duplex): void {
+    const deadline = this.#transportHeaderDeadlines.get(socket);
+    if (deadline === undefined) {
+      return;
+    }
+    clearTimeout(deadline);
+    this.#transportHeaderDeadlines.delete(socket);
+  }
+
   #acceptConnection(socket: WebSocket, request: IncomingMessage): void {
-    const ip = clientIp(request);
+    const ip = this.#clientIpPolicy.clientIp(request);
     const now = this.#now().getTime();
     const state: ConnectionState = {
       id: randomUUID(),
       socket,
       ip,
+      pendingFrames: [],
       alive: true,
+      closed: false,
       lastSeenAt: now,
+      processingFrames: false,
       violations: 0,
     };
     this.#connections.set(socket, state);
@@ -350,7 +450,7 @@ export class RelayServer {
       state.lastSeenAt = this.#now().getTime();
     });
     socket.on('message', (data, isBinary) => {
-      void this.#handleMessage(state, data, isBinary);
+      this.#enqueueMessage(state, data, isBinary);
     });
     socket.on('error', () => {
       this.#logger.warn({ connectionId: state.id, code: 'websocket-error' }, 'relay socket error');
@@ -372,7 +472,71 @@ export class RelayServer {
     });
   }
 
-  async #handleMessage(state: ConnectionState, data: RawData, isBinary: boolean): Promise<void> {
+  #enqueueMessage(state: ConnectionState, data: RawData, isBinary: boolean): void {
+    if (!this.#connectionOpen(state)) {
+      return;
+    }
+    if (state.pendingFrames.length >= RELAY_POLICY.connection.maximumPendingFrames) {
+      this.#metrics.rejectedFrames += 1;
+      this.#metrics.backpressureDisconnects += 1;
+      this.#sendErrorDirect(state.socket, {
+        op: 'error',
+        code: 'backpressure',
+        message: 'Too many relay frames are awaiting authorization.',
+        retryable: true,
+      });
+      state.closed = true;
+      state.pendingFrames.length = 0;
+      state.socket.close(4008, 'inbound backpressure');
+      return;
+    }
+    state.pendingFrames.push({
+      bytes: Uint8Array.from(rawDataBytes(data)),
+      isBinary,
+    });
+    if (state.processingFrames) {
+      return;
+    }
+    state.processingFrames = true;
+    void this.#drainMessages(state);
+  }
+
+  async #drainMessages(state: ConnectionState): Promise<void> {
+    try {
+      while (this.#connectionOpen(state)) {
+        const frame = state.pendingFrames.shift();
+        if (frame === undefined) {
+          return;
+        }
+        await this.#handleMessage(state, frame.bytes, frame.isBinary);
+      }
+    } catch {
+      this.#logger.error(
+        { connectionId: state.id, code: 'frame-queue-failed' },
+        'relay frame queue failed',
+      );
+      if (this.#connectionOpen(state)) {
+        state.closed = true;
+        state.pendingFrames.length = 0;
+        state.socket.close(1011, 'relay frame processing failed');
+      }
+    } finally {
+      state.processingFrames = false;
+      if (this.#connectionOpen(state) && state.pendingFrames.length > 0) {
+        state.processingFrames = true;
+        void this.#drainMessages(state);
+      }
+    }
+  }
+
+  async #handleMessage(
+    state: ConnectionState,
+    bytes: Uint8Array,
+    isBinary: boolean,
+  ): Promise<void> {
+    if (!this.#connectionOpen(state)) {
+      return;
+    }
     const now = this.#now();
     state.lastSeenAt = now.getTime();
     if (!this.#ipLimiter.allow(privacyHash(state.ip), now.getTime())) {
@@ -380,7 +544,6 @@ export class RelayServer {
       this.#rejectFrame(state, 'rate-limit', 'The per-IP message rate limit was exceeded.', true);
       return;
     }
-    const bytes = rawDataBytes(data);
     if (isBinary || bytes.byteLength > RELAY_POLICY.message.maximumBytes) {
       this.#metrics.rejectedFrames += 1;
       this.#rejectFrame(
@@ -413,68 +576,112 @@ export class RelayServer {
     }
 
     if (frame.data.op === 'subscribe') {
-      await this.#subscribe(state, frame.data.authorization, now);
+      await this.#subscribe(state, frame.data.authorization);
     } else {
       await this.#publish(state, frame.data.envelope, now);
     }
   }
 
-  async #subscribe(state: ConnectionState, input: unknown, now: Date): Promise<void> {
+  async #subscribe(state: ConnectionState, input: unknown): Promise<void> {
     try {
       const verified = await verifySubscription(input, {
-        now,
+        now: this.#now,
         ...(this.options.authorizeKey === undefined
           ? {}
           : { authorize: this.options.authorizeKey }),
       });
+      if (!this.#connectionOpen(state)) {
+        return;
+      }
       const message = verified.envelope.message;
+      const subscriptionExpiresAt = Date.parse(message.expiresAt);
+      let authorizationNow = this.#now();
+      assertRelayMessageCurrent(message, authorizationNow);
       if (
         !this.#replays.accept(
           message.identity,
           message.nonce,
-          Date.parse(message.expiresAt),
-          now.getTime(),
+          subscriptionExpiresAt,
+          authorizationNow.getTime(),
         )
       ) {
         this.#metrics.replayRejections += 1;
         this.#rejectFrame(state, 'replay', 'Subscription authorization was already used.', false);
         return;
       }
+      const authorizationExpiries = new Map<string, number | undefined>();
       for (const subscription of message.subscriptions) {
-        if (
-          this.options.authorizeSubscription !== undefined &&
-          !(await this.options.authorizeSubscription({
+        if (this.options.authorizeSubscription !== undefined) {
+          assertRelayMessageCurrent(message, this.#now());
+          const decision = await this.options.authorizeSubscription({
             identityId: message.identity,
             topic: subscription.topic,
             kinds: subscription.kinds,
-          }))
-        ) {
-          this.#rejectFrame(
-            state,
-            'forbidden',
-            'A requested subscription is not authorized.',
-            false,
+          });
+          if (!this.#connectionOpen(state)) {
+            return;
+          }
+          authorizationNow = this.#now();
+          assertRelayMessageCurrent(message, authorizationNow);
+          const grantExpiry = subscriptionGrantExpiry(
+            decision,
+            authorizationNow.getTime(),
+            subscriptionExpiresAt,
           );
-          return;
+          if (grantExpiry === false) {
+            this.#rejectFrame(
+              state,
+              'forbidden',
+              'A requested subscription is not authorized.',
+              false,
+            );
+            return;
+          }
+          authorizationExpiries.set(subscription.topic, grantExpiry);
         }
+      }
+      authorizationNow = this.#now();
+      assertRelayMessageCurrent(message, authorizationNow);
+      if (
+        [...authorizationExpiries.values()].some(
+          (expiresAt) => expiresAt !== undefined && expiresAt <= authorizationNow.getTime(),
+        )
+      ) {
+        this.#rejectFrame(
+          state,
+          'forbidden',
+          'A requested subscription authorization expired before installation.',
+          true,
+        );
+        return;
+      }
+      if (!this.#connectionOpen(state)) {
+        return;
       }
       const topics = new Map<
         string,
-        Readonly<{ kinds: ReadonlySet<RelayEventKind>; sinceSequence?: number }>
+        Readonly<{
+          kinds: ReadonlySet<RelayEventKind>;
+          sinceSequence?: number;
+          authorizationExpiresAt?: number;
+        }>
       >();
       for (const subscription of message.subscriptions) {
+        const authorizationExpiresAt = authorizationExpiries.get(subscription.topic);
         topics.set(subscription.topic, {
           kinds: new Set(subscription.kinds),
           ...(subscription.sinceSequence === undefined
             ? {}
             : { sinceSequence: subscription.sinceSequence }),
+          ...(authorizationExpiresAt === undefined ? {} : { authorizationExpiresAt }),
         });
       }
       state.subscription = {
         identity: message.identity,
-        expiresAt: Date.parse(message.expiresAt),
+        expiresAt: subscriptionExpiresAt,
         topics,
       };
+      state.lastSeenAt = authorizationNow.getTime();
       this.#send(state, {
         op: 'subscribed',
         subscriptionId: verified.subscriptionId,
@@ -482,15 +689,16 @@ export class RelayServer {
         expiresAt: message.expiresAt,
       });
       for (const [topic, subscription] of topics) {
+        const replayStartedAt = this.#now().getTime();
+        if (state.subscription.expiresAt <= replayStartedAt) {
+          break;
+        }
         for (const retained of this.#retention.replay(
           topic,
           subscription.sinceSequence,
-          now.getTime(),
+          replayStartedAt,
         )) {
-          if (
-            subscription.kinds.has(retained.envelope.message.kind) &&
-            this.#audienceAllows(retained.envelope, state.subscription)
-          ) {
+          if (this.#shouldReceive(state, retained.envelope, this.#now().getTime())) {
             this.#send(state, retained);
           }
         }
@@ -498,12 +706,14 @@ export class RelayServer {
       this.#logger.info(
         {
           connectionId: state.id,
-          identityHash: privacyHash(message.identity),
           subscriptionCount: topics.size,
         },
         'relay subscription authenticated',
       );
     } catch (error) {
+      if (!this.#connectionOpen(state)) {
+        return;
+      }
       this.#metrics.rejectedFrames += 1;
       this.#rejectProtocolError(state, error);
     }
@@ -516,13 +726,31 @@ export class RelayServer {
     }
     try {
       const verified = await verifyRelayEvent(input, {
-        now,
+        now: this.#now,
         ...(this.options.authorizeKey === undefined
           ? {}
           : { authorize: this.options.authorizeKey }),
       });
+      if (!this.#connectionOpen(state)) {
+        return;
+      }
       const message = verified.envelope.message;
-      if (message.identity !== state.subscription.identity) {
+      const acceptedAt = this.#now();
+      assertRelayMessageCurrent(message, acceptedAt);
+      const activeSubscription = state.subscription;
+      if (
+        activeSubscription === undefined ||
+        activeSubscription.expiresAt <= acceptedAt.getTime()
+      ) {
+        this.#rejectFrame(
+          state,
+          'not-subscribed',
+          'Authenticate a live subscription first.',
+          false,
+        );
+        return;
+      }
+      if (message.identity !== activeSubscription.identity) {
         this.#rejectFrame(
           state,
           'forbidden',
@@ -531,7 +759,7 @@ export class RelayServer {
         );
         return;
       }
-      if (!this.#identityLimiter.allow(privacyHash(message.identity), now.getTime())) {
+      if (!this.#identityLimiter.allow(privacyHash(message.identity), acceptedAt.getTime())) {
         this.#metrics.rateLimitRejections += 1;
         this.#rejectFrame(
           state,
@@ -546,7 +774,7 @@ export class RelayServer {
           message.identity,
           message.nonce,
           Date.parse(message.expiresAt),
-          now.getTime(),
+          acceptedAt.getTime(),
         )
       ) {
         this.#metrics.replayRejections += 1;
@@ -559,7 +787,7 @@ export class RelayServer {
         op: 'event',
         relayId: this.#relayId,
         relaySequence: this.#relaySequence,
-        receivedAt: now.toISOString(),
+        receivedAt: acceptedAt.toISOString(),
         retained: false,
         eventId: verified.eventId,
         envelope: verified.envelope,
@@ -567,7 +795,7 @@ export class RelayServer {
         canonical: false,
         keyAuthorization: this.#wireKeyAuthorization(),
       };
-      this.#retention.add(eventFrame, verified.envelope, now.getTime());
+      this.#retention.add(eventFrame, verified.envelope, acceptedAt.getTime());
       this.#metrics.acceptedEvents += 1;
       this.#send(state, {
         op: 'published',
@@ -578,7 +806,7 @@ export class RelayServer {
         keyAuthorization: this.#wireKeyAuthorization(),
       });
       for (const recipient of this.#connections.values()) {
-        if (this.#shouldReceive(recipient, verified.envelope, now.getTime())) {
+        if (this.#shouldReceive(recipient, verified.envelope, this.#now().getTime())) {
           this.#send(recipient, eventFrame);
         }
       }
@@ -586,12 +814,14 @@ export class RelayServer {
         {
           eventId: verified.eventId,
           eventKind: message.kind,
-          identityHash: privacyHash(message.identity),
           relaySequence: this.#relaySequence,
         },
         'advisory relay event accepted',
       );
     } catch (error) {
+      if (!this.#connectionOpen(state)) {
+        return;
+      }
       this.#metrics.rejectedFrames += 1;
       this.#rejectProtocolError(state, error);
     }
@@ -606,11 +836,15 @@ export class RelayServer {
     return (
       topic !== undefined &&
       topic.kinds.has(event.message.kind) &&
-      this.#audienceAllows(event, subscription)
+      this.#audienceAllows(event, subscription, now)
     );
   }
 
-  #audienceAllows(event: SignedRelayEvent, subscription: RelaySubscriptionView): boolean {
+  #audienceAllows(
+    event: SignedRelayEvent,
+    subscription: RelaySubscriptionView,
+    now: number,
+  ): boolean {
     const audience = event.message.audience;
     if (audience.kind === 'public') {
       return true;
@@ -620,7 +854,13 @@ export class RelayServer {
       // deployment must explicitly authorize subscriptions against its current
       // membership projection before restricted community events can leave the
       // relay.
-      return this.options.authorizeSubscription !== undefined;
+      const authorizationExpiresAt = subscription.topics.get(
+        event.message.topic,
+      )?.authorizationExpiresAt;
+      return (
+        this.options.authorizeSubscription !== undefined &&
+        (authorizationExpiresAt === undefined || authorizationExpiresAt > now)
+      );
     }
     return (
       event.message.identity === subscription.identity ||
@@ -629,7 +869,7 @@ export class RelayServer {
   }
 
   #send(state: ConnectionState, frame: RelayServerFrame): boolean {
-    if (state.socket.readyState !== WebSocket.OPEN) {
+    if (!this.#connectionOpen(state)) {
       return false;
     }
     if (state.socket.bufferedAmount > RELAY_POLICY.connection.maximumBufferedBytes) {
@@ -703,6 +943,9 @@ export class RelayServer {
   }
 
   #removeConnection(state: ConnectionState): void {
+    state.closed = true;
+    state.pendingFrames.length = 0;
+    delete state.subscription;
     if (!this.#connections.delete(state.socket)) {
       return;
     }
@@ -713,6 +956,14 @@ export class RelayServer {
       this.#connectionsByIp.set(state.ip, count);
     }
     this.#metrics.activeConnections = Math.max(0, this.#metrics.activeConnections - 1);
+  }
+
+  #connectionOpen(state: ConnectionState): boolean {
+    return (
+      !state.closed &&
+      this.#connections.has(state.socket) &&
+      state.socket.readyState === WebSocket.OPEN
+    );
   }
 
   #originAllowed(origin: string | undefined): boolean {
@@ -728,6 +979,30 @@ export class RelayServer {
     }
     return this.#keyAuthorizationMode;
   }
+}
+
+function subscriptionGrantExpiry(
+  decision: RelaySubscriptionAuthorizationDecision,
+  now: number,
+  signedSubscriptionExpiresAt: number,
+): number | undefined | false {
+  if (decision === false) {
+    return false;
+  }
+  if (decision === true) {
+    // Boolean callbacks remain supported as deployment-owned policy. The
+    // shipped HTTP adapter instead returns a time-bounded finalized grant.
+    return undefined;
+  }
+  if (
+    decision.authorized !== true ||
+    !Number.isFinite(decision.expiresAt) ||
+    !Number.isSafeInteger(decision.expiresAt) ||
+    decision.expiresAt <= now
+  ) {
+    return false;
+  }
+  return Math.min(decision.expiresAt, signedSubscriptionExpiresAt);
 }
 
 export interface RelayServerAddress {
@@ -772,10 +1047,6 @@ function rawDataBytes(data: RawData): Uint8Array {
     return new Uint8Array(Buffer.concat(data));
   }
   return new Uint8Array(data);
-}
-
-function clientIp(request: IncomingMessage): string {
-  return request.socket.remoteAddress ?? 'unknown';
 }
 
 function safePathname(rawUrl: string | undefined): string {

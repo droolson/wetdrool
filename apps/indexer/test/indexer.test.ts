@@ -1,15 +1,17 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
 import bs58 from 'bs58';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildPostPayload,
+  buildProfilePayload,
   canonicalizeEnvelope,
   createPayloadBuilderIdentity,
   getObjectId,
   signPayload,
   type NetworkId,
   type PostContent,
+  type ProfileContent,
 } from '@wokesocial/protocol';
 import { MemoryContentAddressedStorage } from '@wokesocial/storage';
 
@@ -19,6 +21,7 @@ import {
   OpenIndexer,
   type ProtocolEvent,
 } from '../src/index.js';
+import { TEST_CID } from './cid-fixtures.js';
 
 const privateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const publicKey = ed25519.getPublicKey(privateKey);
@@ -209,6 +212,242 @@ describe('open indexer', () => {
         sequence: 1n,
       }),
     ).rejects.toThrow('Stored envelope is invalid');
+  });
+
+  it('preserves a durable terminal disposition through the public rebuild entry point', async () => {
+    const identityEvent: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'identity-created',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 81)),
+      slot: 1n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:00:00.000Z',
+      finalized: true,
+      identityId,
+      identityAddress,
+      rootAuthority: authority,
+    };
+    const rejectedPost: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'post-published',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 82)),
+      slot: 2n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:01:00.000Z',
+      finalized: true,
+      identityId,
+      objectId: `wokesocialobj:v1:post:u${'A'.repeat(43)}`,
+      cid: TEST_CID,
+      payloadHash: `u${'A'.repeat(43)}`,
+      sequence: 1n,
+    };
+
+    await projection.apply(identityEvent);
+    await projection.quarantineManifestEvent(rejectedPost, {
+      eventBody: {},
+      failureCode: 'manifest-invalid',
+      failureDetail: 'test immutable rejection',
+    });
+
+    await expect(indexer.rebuild(networkId, [rejectedPost, identityEvent])).resolves.toHaveLength(
+      2,
+    );
+    await expect(projection.getIdentity(identityId)).resolves.toMatchObject({
+      identitySequence: 1n,
+    });
+    await expect(
+      projection.getFeed({ networkId, mode: 'chronological', limit: 10 }),
+    ).resolves.toEqual([]);
+    await expect(projection.manifestEventDisposition(rejectedPost)).resolves.toEqual({
+      state: 'terminal',
+      failureCode: 'manifest-invalid',
+    });
+  });
+
+  it('rebuilds an accepted tombstoned post after its manifest bytes are deleted', async () => {
+    const identityEvent: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'identity-created',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 61)),
+      transactionIndex: 0,
+      slot: 1n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:00:00.000Z',
+      finalized: true,
+      identityId,
+      identityAddress,
+      rootAuthority: authority,
+    };
+    const payload = buildPostPayload(identity, content, {
+      createdAt: new Date('2026-07-28T12:01:00.000Z'),
+      nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 64),
+    });
+    const envelope = signPayload(payload, privateKey);
+    const receipt = await storage.put(canonicalizeEnvelope(envelope), {
+      permanence: 'deletion-compatible',
+    });
+    const postReference = bs58.encode(Uint8Array.from({ length: 32 }, () => 62));
+    const post: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'post-published',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 62)),
+      transactionIndex: 0,
+      slot: 2n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:01:01.000Z',
+      finalized: true,
+      identityId,
+      postReference,
+      objectId: getObjectId(payload),
+      cid: receipt.cid,
+      payloadHash: envelope.proof.payloadHash,
+      sequence: 1n,
+    };
+    const tombstone: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'tombstoned',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 63)),
+      transactionIndex: 0,
+      slot: 3n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:02:00.000Z',
+      finalized: true,
+      identityId,
+      targetPostReference: postReference,
+      targetObjectId: post.objectId,
+      sequence: 2n,
+    };
+
+    await indexer.ingest(identityEvent);
+    await indexer.ingest(post);
+    await storage.delete(receipt.cid);
+    const get = vi.spyOn(storage, 'get');
+
+    await expect(indexer.rebuild(networkId, [tombstone, post, identityEvent])).rejects.toThrow(
+      'requires every supplied event to exist in the durable raw ledger',
+    );
+    expect(get).not.toHaveBeenCalled();
+
+    await indexer.ingest(tombstone);
+    await expect(
+      indexer.rebuild(networkId, [tombstone, post, identityEvent]),
+    ).resolves.toHaveLength(3);
+    expect(get).not.toHaveBeenCalled();
+    await expect(projection.getPost(post.objectId)).resolves.toBeUndefined();
+    await expect(projection.getIdentity(identityId)).resolves.toMatchObject({
+      identitySequence: 2n,
+    });
+    await expect(projection.findPostObjectIdByReference(networkId, postReference)).resolves.toBe(
+      post.objectId,
+    );
+    await expect(projection.manifestEventDisposition(post)).resolves.toEqual({
+      state: 'accepted',
+    });
+  });
+
+  it('rebuilds the current profile without reading deleted superseded profile bytes', async () => {
+    const identityEvent: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'identity-created',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 71)),
+      transactionIndex: 0,
+      slot: 1n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:00:00.000Z',
+      finalized: true,
+      identityId,
+      identityAddress,
+      rootAuthority: authority,
+    };
+    const oldContent: ProfileContent = {
+      displayName: 'Deleted historical profile',
+      bio: '',
+      pronouns: [],
+      chosenFamilyLabels: [],
+      links: [],
+    };
+    const currentContent: ProfileContent = {
+      ...oldContent,
+      displayName: 'Current retained profile',
+    };
+    const oldPayload = buildProfilePayload(identity, oldContent, {
+      createdAt: new Date('2026-07-28T12:01:00.000Z'),
+      nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 80),
+    });
+    const currentPayload = buildProfilePayload(identity, currentContent, {
+      createdAt: new Date('2026-07-28T12:02:00.000Z'),
+      nonce: Uint8Array.from({ length: 16 }, (_, index) => index + 96),
+    });
+    const oldEnvelope = signPayload(oldPayload, privateKey);
+    const currentEnvelope = signPayload(currentPayload, privateKey);
+    const oldReceipt = await storage.put(canonicalizeEnvelope(oldEnvelope), {
+      permanence: 'deletion-compatible',
+    });
+    const currentReceipt = await storage.put(canonicalizeEnvelope(currentEnvelope), {
+      permanence: 'deletion-compatible',
+    });
+    const oldProfile: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'profile-updated',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 72)),
+      transactionIndex: 0,
+      slot: 2n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:01:01.000Z',
+      finalized: true,
+      identityId,
+      objectId: getObjectId(oldPayload),
+      cid: oldReceipt.cid,
+      payloadHash: oldEnvelope.proof.payloadHash,
+      sequence: 1n,
+      profileSchemaVersion: 2,
+    };
+    const currentProfile: ProtocolEvent = {
+      networkId,
+      programId: program,
+      type: 'profile-updated',
+      transactionSignature: bs58.encode(Uint8Array.from({ length: 64 }, () => 73)),
+      transactionIndex: 0,
+      slot: 3n,
+      logIndex: 0,
+      blockTime: '2026-07-28T12:02:01.000Z',
+      finalized: true,
+      identityId,
+      objectId: getObjectId(currentPayload),
+      cid: currentReceipt.cid,
+      payloadHash: currentEnvelope.proof.payloadHash,
+      sequence: 2n,
+      profileSchemaVersion: 2,
+    };
+
+    await indexer.ingest(identityEvent);
+    await indexer.ingest(oldProfile);
+    await indexer.ingest(currentProfile);
+    await storage.delete(oldReceipt.cid);
+    const get = vi.spyOn(storage, 'get');
+
+    await expect(
+      indexer.rebuild(networkId, [currentProfile, identityEvent, oldProfile]),
+    ).resolves.toHaveLength(3);
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(get).toHaveBeenCalledWith(currentReceipt.cid);
+    await expect(projection.getProfile(identityId)).resolves.toMatchObject({
+      objectId: currentProfile.objectId,
+      content: { displayName: 'Current retained profile' },
+    });
+    await expect(projection.getIdentity(identityId)).resolves.toMatchObject({
+      identitySequence: 2n,
+    });
+    await expect(projection.manifestEventDisposition(oldProfile)).resolves.toEqual({
+      state: 'accepted',
+    });
   });
 
   it('distinguishes exact duplicate coordinates from immutable event conflicts', async () => {

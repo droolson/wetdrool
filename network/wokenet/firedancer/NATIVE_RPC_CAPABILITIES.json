@@ -7,26 +7,115 @@
     "usesAgaveRuntime": false,
     "upstreamReleaseAvailable": false
   },
+  "liveClusterSafety": {
+    "implemented": true,
+    "productionActivationAuthorized": false,
+    "configMode": "consensus.wokenet_live_cluster",
+    "exactGenesisHashBinding": "consensus.expected_genesis_hash",
+    "runtimeClassification": "config.is_live_cluster=true; config.cluster=wokenet",
+    "modeOmissionFailsClosed": true,
+    "localnetTopologyAttestationBinary": "firedancer-dev",
+    "disabledModePreservesUpstreamClassificationOnlyFor": [
+      "local-or-development",
+      "recognized-built-in-cluster"
+    ],
+    "rejectsBuiltInSolanaAndPythGenesisHashes": true,
+    "requirements": [
+      "native-firedancer",
+      "non-local-production-command",
+      "no-agave",
+      "canonical-nonzero-32-byte-genesis-hash",
+      "nonzero-expected-shred-version",
+      "genesis-validation",
+      "explicit-identity",
+      "sandbox",
+      "multiprocess",
+      "production-benchmark-limits"
+    ],
+    "directNativeCTestCoverage": [
+      "test_config_parse:wokenet-live-policy",
+      "test_config_parse:wokenet-live-toml-parse",
+      "test_config_parse:wokenet-live-classification"
+    ]
+  },
   "nativeRpc": {
     "binary": "firedancer",
-    "evidenceClassification": "source-observation-not-conformance",
-    "directNativeCTestCoverage": ["getMultipleAccounts"],
+    "evidenceClassification": "mixed-source-observation-and-native-c-unit-conformance",
+    "nonVotingTemplateBootProven": false,
+    "templateBlockProductionEnabled": false,
+    "templateBootBlockers": [
+      "connected-native-rpc-observer-boot-not-demonstrated",
+      "tower-to-replay-to-rpc-finalized-and-cache-pruning-integration-not-demonstrated",
+      "observer-restart-commitment-continuity-not-demonstrated"
+    ],
+    "nonVotingObserver": {
+      "sourceImplemented": true,
+      "wokenetLiveClusterOnly": true,
+      "exactConfigRole": "empty paths.vote_account; layout.enable_block_production=false; tiles.rpc.enabled=true; zero paths.authorized_voter_paths",
+      "voteAccountRequiredOutsideExactRole": true,
+      "suppliedVoteAccountRemainsVoting": true,
+      "retainsVirtualTowerRootAndReset": true,
+      "skipsOwnVoteAccountReconciliation": true,
+      "constructsVoteTransactions": false,
+      "checkpointSerializationObserved": false,
+      "restartCommitmentContinuityProven": false,
+      "connectedBootProven": false,
+      "directNativeCTestExecution": {
+        "passed": true,
+        "environment": "linux-x86_64-docker-emulation",
+        "nativeHardware": false,
+        "tests": ["test_config_parse", "test_tower_tile"]
+      },
+      "directNativeCTestCoverage": [
+        "test_config_parse:wokenet-rpc-observer-role-matrix",
+        "test_tower_tile:observer-vote-suppression",
+        "test_tower_tile:observer-account-reconciliation-skip",
+        "test_tower_tile:observer-virtual-tower-replay-root-and-pruning"
+      ]
+    },
+    "directNativeCTestCoverage": ["getMultipleAccounts", "getProgramAccounts"],
     "implementedRequiredReads": [
       "getAccountInfo",
       "getBalance",
       "getGenesisHash",
       "getLatestBlockhash",
       "getMultipleAccounts",
+      "getProgramAccounts",
       "getSlot"
     ],
     "missingRequiredMethods": [
-      "getProgramAccounts",
       "getSignaturesForAddress",
       "getSignatureStatuses",
       "getTransaction",
       "sendTransaction",
       "simulateTransaction"
     ],
+    "getProgramAccounts": {
+      "productionComplete": false,
+      "conformance": "bounded native subset; not unrestricted or full Solana RPC conformance",
+      "storagePath": "native epoch-protected fd_accdb owner scan on a referenced frozen fork",
+      "supportedFilters": ["dataSize", "memcmp:base58", "memcmp:base64", "memcmp:bytes"],
+      "unsupportedFilters": ["tokenAccountState"],
+      "supportedConfig": [
+        "commitment",
+        "dataSlice",
+        "encoding:binary",
+        "encoding:base58",
+        "encoding:base64",
+        "encoding:base64+zstd",
+        "minContextSlot",
+        "sortResults",
+        "withContext"
+      ],
+      "unsupportedConfig": ["encoding:jsonParsed"],
+      "limits": {
+        "filters": 4,
+        "results": 1024,
+        "scanWorkUnits": 4000000,
+        "scanOwnerDataBytes": 67108864,
+        "preSliceMatchedAccountDataBytes": 33554432
+      }
+    },
     "blockedMethodDesigns": [
       {
         "method": "getSignatureStatuses",

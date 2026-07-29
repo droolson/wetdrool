@@ -6,10 +6,14 @@ export interface IdentityProjection {
   readonly identityAddress: string;
   readonly rootAuthority: string;
   readonly rootRotationCount: bigint;
+  readonly active: boolean;
+  readonly identitySequence: bigint;
   readonly createdSlot: bigint;
   readonly createdAt: string;
   readonly updatedSlot: bigint;
   readonly updatedAt: string;
+  readonly deactivatedSlot?: bigint;
+  readonly deactivatedAt?: string;
 }
 
 export interface ProtocolConfigProjection {
@@ -370,7 +374,12 @@ export interface FeedQuery {
   readonly viewerIdentityId?: string;
   readonly mode: 'chronological' | 'following';
   readonly limit: number;
-  readonly before?: string;
+  readonly before?: FeedCursor;
+}
+
+export interface FeedCursor {
+  readonly createdAt: string;
+  readonly objectId: string;
 }
 
 export type PublicSearchMatch =

@@ -21,9 +21,10 @@ const artifact = {
   description:
     'Structural interchange schema for every WokeSocial v1 portable object and its Ed25519 proof.',
   $comment:
-    'JSON Schema validates transport structure. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, and current external authorization policy from the protocol library.',
+    'JSON Schema validates the protocol-v1 read surface, including frozen schema-version-1 profiles and protected schema-version-2 profiles. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, and current external authorization policy from the protocol library. New objects MUST use the current creation schema/builders.',
   'x-wokesocial-protocol-version': '1.0',
-  'x-wokesocial-schema-version': 1,
+  'x-wokesocial-schema-versions': [1, 2],
+  'x-wokesocial-current-profile-schema-version': 2,
   'x-wokesocial-object-types': PORTABLE_OBJECT_TYPES,
 };
 

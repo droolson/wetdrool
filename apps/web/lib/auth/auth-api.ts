@@ -23,6 +23,10 @@ const AUTHENTICATOR_TRANSPORTS = new Set([
   'usb',
 ]);
 
+function normalizeDnsHostname(hostname: string): string {
+  return hostname.toLowerCase().replace(/\.+$/u, '');
+}
+
 export interface TokenStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -405,10 +409,11 @@ function normalizeBaseUrl(input: string): string {
   } catch {
     throw new BrowserAuthError('origin-invalid');
   }
-  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  const hostname = normalizeDnsHostname(url.hostname);
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
   if (
     (url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) ||
-    LEGACY_REDIRECT_HOSTS.has(url.hostname.toLowerCase()) ||
+    LEGACY_REDIRECT_HOSTS.has(hostname) ||
     url.username !== '' ||
     url.password !== '' ||
     url.pathname !== '/' ||

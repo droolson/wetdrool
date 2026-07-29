@@ -309,7 +309,14 @@ the phase exit criteria.
 The current relay starts locked without a finalized-state key authorizer and
 implements signed advisory envelopes, short bounded retention, metadata-safe
 logs/metrics, origin and rate controls, reconnect, deduplication, and endpoint
-failover. The pairwise-only adapter now delegates real Olm ratchets and
+failover. A shipped bounded HTTP adapter can connect the relay entrypoint to a
+replaceable finalized-state authorizer and binds each decision to its nonce,
+WokeNet network, finalized checkpoint, and short expiry; an independent
+authorizer deployment remains open. A separate shipped adapter applies the same
+bounded finalized-state contract to opaque-topic subscriptions, and community
+delivery stops when its short-lived grant expires; an operator still must deploy
+the policy/membership authority and its finalized projection. The
+pairwise-only adapter now delegates real Olm ratchets and
 authenticated encryption to pinned Matrix Rust crypto WASM, binds device keys
 to current WokeSocial authorization, verifies sender-signed outer metadata
 before stateful Olm processing, and passes 13 independent-device adversarial

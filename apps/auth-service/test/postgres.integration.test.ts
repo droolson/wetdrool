@@ -23,12 +23,16 @@ import {
 
 const databaseUrl =
   process.env['AUTH_INTEGRATION_DATABASE_URL'] ??
-  process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  process.env['AUTH_DATABASE_URL'] ??
+  'postgresql://wokesocial_auth_runtime:local-auth-runtime-only@127.0.0.1:5432/wokesocial';
+const migrationDatabaseUrl =
+  process.env['AUTH_INTEGRATION_DATABASE_MIGRATION_URL'] ??
+  process.env['AUTH_DATABASE_MIGRATION_URL'] ??
+  'postgresql://wokesocial_auth_migration:local-auth-migration-only@127.0.0.1:5432/wokesocial';
 
 describe('PostgreSQL authentication integration', () => {
   it('persists atomic ceremonies, credentials, sessions, and ciphertext lifecycle', async () => {
-    await migrateAuth(databaseUrl);
+    await Promise.all([migrateAuth(migrationDatabaseUrl), migrateAuth(migrationDatabaseUrl)]);
     const store = new PostgresAuthStore(databaseUrl);
     const verifier = new FakeCeremonyVerifier();
     const now = () => new Date('2026-07-28T20:00:00.000Z');
@@ -146,7 +150,13 @@ describe('PostgreSQL authentication integration', () => {
 
       const sql = postgres(databaseUrl, { max: 1 });
       try {
-        const rows = await sql<{ credential_count: string; active_session_count: string }[]>`
+        const rows = await sql<
+          {
+            credential_count: string;
+            active_session_count: string;
+            migration_checksums_valid: boolean;
+          }[]
+        >`
           SELECT
             (
               SELECT count(*)::text
@@ -158,11 +168,16 @@ describe('PostgreSQL authentication integration', () => {
               FROM auth_sessions
               WHERE account_id = ${registration.accountId}
                 AND revoked_at IS NULL
-            ) AS active_session_count
+            ) AS active_session_count,
+            (
+              SELECT bool_and(checksum ~ '^[0-9a-f]{64}$')
+              FROM auth_schema_migrations
+            ) AS migration_checksums_valid
         `;
         expect(rows[0]).toEqual({
           credential_count: '2',
           active_session_count: '0',
+          migration_checksums_valid: true,
         });
       } finally {
         await sql.end({ timeout: 5 });
@@ -174,7 +189,7 @@ describe('PostgreSQL authentication integration', () => {
   }, 45_000);
 
   it('rolls back the credential transition when atomic session persistence fails', async () => {
-    await migrateAuth(databaseUrl);
+    await migrateAuth(migrationDatabaseUrl);
     const store = new PostgresAuthStore(databaseUrl);
     const verifier = new FakeCeremonyVerifier();
     const now = () => new Date('2026-07-28T20:00:00.000Z');
@@ -228,7 +243,7 @@ describe('PostgreSQL authentication integration', () => {
   }, 45_000);
 
   it('cleans stale rows in bounded batches without deleting active or recent records', async () => {
-    await migrateAuth(databaseUrl);
+    await migrateAuth(migrationDatabaseUrl);
     const store = new PostgresAuthStore(databaseUrl);
     const abandoned = retentionAccount('2000-12-30T00:00:00.000Z');
     const recentPending = retentionAccount('2001-01-01T12:00:00.000Z');
@@ -330,6 +345,111 @@ describe('PostgreSQL authentication integration', () => {
         standaloneCeremonies.map((ceremony) => ceremony.ceremonyId),
       );
       await store.close();
+    }
+  }, 45_000);
+
+  it('fails readiness when required columns or runtime privileges are unavailable', async () => {
+    await migrateAuth(migrationDatabaseUrl);
+    const store = new PostgresAuthStore(databaseUrl);
+    const runtimeSql = postgres(databaseUrl, { max: 1 });
+    const migrationSql = postgres(migrationDatabaseUrl, { max: 1 });
+    const runtimeRows = await runtimeSql<{ current_user: string }[]>`SELECT current_user`;
+    const runtimeRole = runtimeRows[0]?.current_user;
+    if (runtimeRole === undefined) throw new Error('Expected a PostgreSQL runtime role.');
+
+    try {
+      await expect(store.readiness()).resolves.toBeUndefined();
+
+      await migrationSql`
+        REVOKE SELECT ON auth_sessions FROM ${migrationSql(runtimeRole)}
+      `;
+      await expect(store.readiness()).rejects.toThrow();
+      await migrationSql`
+        GRANT SELECT ON auth_sessions TO ${migrationSql(runtimeRole)}
+      `;
+      await expect(store.readiness()).resolves.toBeUndefined();
+
+      const writePrivilegeChanges = [
+        {
+          revoke: () =>
+            migrationSql`REVOKE INSERT ON auth_sessions FROM ${migrationSql(runtimeRole)}`,
+          grant: () => migrationSql`GRANT INSERT ON auth_sessions TO ${migrationSql(runtimeRole)}`,
+        },
+        {
+          revoke: () =>
+            migrationSql`REVOKE UPDATE ON auth_sessions FROM ${migrationSql(runtimeRole)}`,
+          grant: () => migrationSql`GRANT UPDATE ON auth_sessions TO ${migrationSql(runtimeRole)}`,
+        },
+        {
+          revoke: () =>
+            migrationSql`REVOKE DELETE ON auth_sessions FROM ${migrationSql(runtimeRole)}`,
+          grant: () => migrationSql`GRANT DELETE ON auth_sessions TO ${migrationSql(runtimeRole)}`,
+        },
+      ];
+      for (const change of writePrivilegeChanges) {
+        await change.revoke();
+        await expect(store.readiness()).rejects.toThrow();
+        await change.grant();
+        await expect(store.readiness()).resolves.toBeUndefined();
+      }
+
+      const forbiddenLedgerPrivilegeChanges = [
+        {
+          grant: () =>
+            migrationSql`GRANT INSERT ON auth_schema_migrations TO ${migrationSql(runtimeRole)}`,
+          revoke: () =>
+            migrationSql`REVOKE INSERT ON auth_schema_migrations FROM ${migrationSql(runtimeRole)}`,
+        },
+        {
+          grant: () =>
+            migrationSql`GRANT UPDATE ON auth_schema_migrations TO ${migrationSql(runtimeRole)}`,
+          revoke: () =>
+            migrationSql`REVOKE UPDATE ON auth_schema_migrations FROM ${migrationSql(runtimeRole)}`,
+        },
+        {
+          grant: () =>
+            migrationSql`GRANT DELETE ON auth_schema_migrations TO ${migrationSql(runtimeRole)}`,
+          revoke: () =>
+            migrationSql`REVOKE DELETE ON auth_schema_migrations FROM ${migrationSql(runtimeRole)}`,
+        },
+      ];
+      for (const change of forbiddenLedgerPrivilegeChanges) {
+        await change.grant();
+        try {
+          await expect(store.readiness()).rejects.toThrow();
+        } finally {
+          await change.revoke();
+        }
+        await expect(store.readiness()).resolves.toBeUndefined();
+      }
+
+      await migrationSql`
+        ALTER TABLE auth_sessions RENAME COLUMN csrf_hash TO csrf_hash_readiness_probe
+      `;
+      try {
+        await expect(store.readiness()).rejects.toThrow();
+      } finally {
+        await migrationSql`
+          ALTER TABLE auth_sessions RENAME COLUMN csrf_hash_readiness_probe TO csrf_hash
+        `;
+      }
+      await expect(store.readiness()).resolves.toBeUndefined();
+    } finally {
+      await migrationSql`
+        GRANT SELECT, INSERT, UPDATE, DELETE
+        ON auth_sessions
+        TO ${migrationSql(runtimeRole)}
+      `;
+      await migrationSql`
+        REVOKE INSERT, UPDATE, DELETE
+        ON auth_schema_migrations
+        FROM ${migrationSql(runtimeRole)}
+      `;
+      await Promise.all([
+        store.close(),
+        runtimeSql.end({ timeout: 5 }),
+        migrationSql.end({ timeout: 5 }),
+      ]);
     }
   }, 45_000);
 });

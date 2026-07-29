@@ -1,0 +1,155 @@
+diff --git a/src/app/fdctl/config/default.toml b/src/app/fdctl/config/default.toml
+index 2c8b9563edd221b2230636c27ac2d9c761c59ef7..7dc66fb028860e2f76854ada54a9f38e512e8132 100644
+--- a/src/app/fdctl/config/default.toml
++++ b/src/app/fdctl/config/default.toml
+@@ -1607,6 +1607,12 @@ dynamic_port_range = "8900-9000"
+         allow_private_address = false
+ 
+     [development.genesis]
++        # Explicit bootstrap allocations.  These defaults preserve upstream
++        # development behavior and keep the shared configuration validator
++        # consistent with the native Firedancer default.
++        faucet_balance_lamports = 500000000000000000
++        identity_balance_lamports = 500000000000
++
+         # When creating a new chain from genesis during development,
+         # this option can be used to specify the number of hashes in
+         # each tick of the proof history component.
+diff --git a/src/discof/tower/test_tower_tile.c b/src/discof/tower/test_tower_tile.c
+index 69ef9cccb0004278e31d8b5fe620a6c57fda9fa9..c1b76dd9e306404f724ccb79f80dcd9192889146 100644
+--- a/src/discof/tower/test_tower_tile.c
++++ b/src/discof/tower/test_tower_tile.c
+@@ -10,6 +10,9 @@ mock_query_voters( fd_tower_tile_t *            ctx,
+                    fd_replay_slot_completed_t * slot_completed FD_PARAM_UNUSED,
+                    ulong                        epoch ) {
+   ctx->root_epoch = epoch;
++  fd_eqvoc_update_voters( ctx->eqvoc, ctx->id_keys,   ctx->vtr_cnt );
++  fd_hfork_update_voters( ctx->hfork, ctx->vote_accs, ctx->vtr_cnt );
++  fd_votes_update_voters( ctx->votes, ctx->vote_accs, ctx->vtr_cnt );
+ }
+ 
+ #include <stdio.h>
+@@ -17,6 +20,42 @@ mock_query_voters( fd_tower_tile_t *            ctx,
+ #include <unistd.h>
+ #include <sys/mman.h>
+ 
++/* Use a plain mmap-backed workspace so this unit test can run in
++   containerized x86-64 CI where NUMA policy syscalls may be unavailable.
++   The production shmem/NUMA path is exercised by its own tests. */
++
++static fd_wksp_t *
++test_wksp_new_mmap( ulong        footprint,
++                    char const * name ) {
++  FD_TEST( footprint && !(footprint%FD_SHMEM_NORMAL_PAGE_SZ) );
++  void * mem = mmap( NULL, footprint, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
++  FD_TEST( mem!=MAP_FAILED );
++
++  ulong part_max = fd_wksp_part_max_est( footprint, 64UL<<10 );
++  ulong data_max = fd_wksp_data_max_est( footprint, part_max );
++  FD_TEST( part_max );
++  FD_TEST( data_max );
++
++  fd_wksp_t * wksp = fd_wksp_join( fd_wksp_new( mem, name, 1U, part_max, data_max ) );
++  FD_TEST( wksp );
++  FD_TEST( !fd_shmem_join_anonymous( name,
++                                     FD_SHMEM_JOIN_MODE_READ_WRITE,
++                                     wksp,
++                                     mem,
++                                     FD_SHMEM_NORMAL_PAGE_SZ,
++                                     footprint/FD_SHMEM_NORMAL_PAGE_SZ ) );
++  return wksp;
++}
++
++static void
++test_wksp_delete_mmap( fd_wksp_t * wksp,
++                       ulong       footprint ) {
++  FD_TEST( !fd_shmem_leave_anonymous( wksp, NULL ) );
++  void * mem = fd_wksp_delete( fd_wksp_leave( wksp ) );
++  FD_TEST( mem );
++  FD_TEST( !munmap( mem, footprint ) );
++}
++
+ /* mock_vote_txn builds a vote transaction from a tower.  Constructs an
+    fd_tower_t with the given (slot, conf) pairs, serializes it via
+    fd_tower_to_vote_txn, and returns the parsed fd_txn_t and payload.
+@@ -91,7 +130,8 @@ test_publish_slot_done_identity_mismatch( void ) {
+   memset( ctx->identity_key, 0x11, sizeof(fd_pubkey_t) );
+   memset( ctx->vote_account, 0x22, sizeof(fd_pubkey_t) );
+ 
+-  fd_wksp_t * wksp = fd_wksp_new_anonymous( FD_SHMEM_NORMAL_PAGE_SZ, 4096UL, 0UL, "tower_id_test", 0UL );
++  ulong const wksp_footprint = FD_SHMEM_NORMAL_PAGE_SZ*4096UL;
++  fd_wksp_t * wksp = test_wksp_new_mmap( wksp_footprint, "tower_id_test" );
+   FD_TEST( wksp );
+ 
+   void * ghost_mem = fd_wksp_alloc_laddr( wksp, fd_ghost_align(), fd_ghost_footprint( 2UL, 2UL ), 1UL );
+@@ -169,14 +209,14 @@ test_publish_slot_done_identity_mismatch( void ) {
+   FD_TEST( pub->msg.slot_done.has_vote_txn==0 );
+   FD_TEST( pub->msg.slot_done.is_voting==0 );
+ 
+-  fd_wksp_delete( fd_wksp_leave( wksp ) );
++  test_wksp_delete_mmap( wksp, wksp_footprint );
+ 
+   FD_LOG_NOTICE(( "pass: test_publish_slot_done_identity_mismatch" ));
+ }
+ 
+ static void
+ test_observer_skips_vote_account_reconcile( void ) {
+-  fd_tower_tile_t ctx[1];
++  static fd_tower_tile_t ctx[1];
+   memset( ctx, 0, sizeof(*ctx) );
+   ctx->is_voting        = 0;
+   ctx->vote_observer    = 1;
+@@ -416,6 +456,7 @@ test_parent_vote_txn_recent_blockhash( void ) {
+ #define FIXTURE_VTR_CNT    (100UL)
+ #define FIXTURE_RECORD_SZ  (32UL + 32UL + 8UL + 8UL + FD_VOTE_STATE_DATA_MAX)
+ #define FIXTURE_FILE_SZ    (FIXTURE_VTR_CNT * FIXTURE_RECORD_SZ)
++#define FIXTURE_LAST_SLOT  (398915665UL)
+ 
+ /* mock_query_towers: loads voter data from a fixture file for the
+    current slot and calls count_vote_acc for each record. */
+@@ -427,10 +468,13 @@ mock_query_towers( fd_tower_tile_t *            ctx,
+                    int *                        found_our_vote_acct,
+                    ulong *                      our_vote_acct_bal ) {
+ 
+-  /* Open the fixture file for this slot. */
++  /* The captured corpus has 32 consecutive slots.  Reuse the final
++     voter snapshot for the one extra replay needed to cross the tower
++     root threshold. */
+ 
+   char path[256];
+-  FD_TEST( snprintf( path, sizeof(path), "src/discof/tower/fixtures/voters-%lu.bin", slot_completed->slot ) < (int)sizeof(path) );
++  ulong fixture_slot = fd_ulong_min( slot_completed->slot, FIXTURE_LAST_SLOT );
++  FD_TEST( snprintf( path, sizeof(path), "src/discof/tower/fixtures/voters-%lu.bin", fixture_slot ) < (int)sizeof(path) );
+ 
+   FILE * f = fopen( path, "rb" );
+   FD_TEST( f );
+@@ -560,7 +604,7 @@ test_fixture_replay( fd_wksp_t * wksp ) {
+   /* Replay each fixture slot. */
+ 
+   ulong start_slot = 398915634UL;
+-  ulong num_slots  = 32UL;
++  ulong num_slots  = 33UL;
+ 
+   fd_vote_stake_weight_t fixture_stakes[1] = {{ .vote_key = {{0}}, .id_key = {{0}}, .stake = 1UL }};
+   ctx->mleaders->lsched[0] = fd_epoch_leaders_join( fd_epoch_leaders_new( ctx->mleaders->_lsched[0], 0, start_slot - 1, num_slots + MOCK_SLOT_MAX + 100, 1UL, fixture_stakes, 0UL ) );
+@@ -958,9 +1002,10 @@ main( int     argc,
+ 
+   char const * _page_sz = fd_env_strip_cmdline_cstr ( &argc, &argv, "--page-sz",  NULL, "gigantic"              );
+   ulong        page_cnt = fd_env_strip_cmdline_ulong( &argc, &argv, "--page-cnt", NULL, 4UL                     );
+-  ulong        numa_idx = fd_env_strip_cmdline_ulong( &argc, &argv, "--numa-idx", NULL, fd_shmem_numa_idx( 0UL ) );
+-  fd_wksp_t * wksp      = fd_wksp_new_anonymous( fd_cstr_to_shmem_page_sz( _page_sz ), page_cnt, fd_shmem_cpu_idx( numa_idx ), "wksp", 0UL );
+-  FD_TEST( wksp );
++  ulong        page_sz  = fd_cstr_to_shmem_page_sz( _page_sz );
++  FD_TEST( page_cnt && page_sz<=ULONG_MAX/page_cnt );
++  ulong        wksp_footprint = page_sz*page_cnt;
++  fd_wksp_t * wksp = test_wksp_new_mmap( wksp_footprint, "wksp" );
+ 
+   test_fixture_replay( wksp );
+ 
+@@ -971,5 +1016,6 @@ main( int     argc,
+   fd_wksp_reset( wksp, 1UL ); test_eqvoc_erc_diff( wksp );
+   fd_wksp_reset( wksp, 1UL ); test_eqvoc_cre_diff( wksp );
+ 
++  test_wksp_delete_mmap( wksp, wksp_footprint );
+   fd_halt();
+ }

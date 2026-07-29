@@ -10,12 +10,14 @@ RUN corepack enable && corepack prepare pnpm@11.2.2 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json .npmrc ./
 COPY patches ./patches
+COPY packages/config/package.json ./packages/config/package.json
 COPY packages/protocol/package.json ./packages/protocol/package.json
 COPY packages/storage/package.json ./packages/storage/package.json
 COPY apps/media-worker/package.json ./apps/media-worker/package.json
 
 RUN pnpm install --frozen-lockfile --filter @wokesocial/media-worker...
 
+COPY packages/config ./packages/config
 COPY packages/protocol ./packages/protocol
 COPY packages/storage ./packages/storage
 COPY apps/media-worker ./apps/media-worker

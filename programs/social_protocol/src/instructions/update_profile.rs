@@ -7,12 +7,13 @@ use crate::{
     errors::SocialProtocolError,
     events::ProfileReferenceUpdated,
     state::{Identity, ProtocolConfig},
-    validation::{checked_next_sequence, validate_manifest},
+    validation::{checked_next_sequence, validate_manifest, validate_profile_schema_version},
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct UpdateProfileArgs {
     pub expected_sequence: u64,
+    pub profile_schema_version: u16,
     pub manifest_hash: [u8; MANIFEST_HASH_BYTES],
     pub manifest_uri: String,
 }
@@ -45,6 +46,7 @@ pub struct UpdateProfile<'info> {
 }
 
 pub fn handle_update_profile(ctx: Context<UpdateProfile>, args: UpdateProfileArgs) -> Result<()> {
+    validate_profile_schema_version(args.profile_schema_version)?;
     validate_manifest(&args.manifest_hash, &args.manifest_uri)?;
 
     let updated_at_slot = Clock::get()?.slot;
@@ -71,6 +73,7 @@ pub fn handle_update_profile(ctx: Context<UpdateProfile>, args: UpdateProfileArg
         manifest_hash: args.manifest_hash,
         manifest_uri: args.manifest_uri,
         updated_at_slot,
+        profile_schema_version: args.profile_schema_version,
     });
 
     Ok(())

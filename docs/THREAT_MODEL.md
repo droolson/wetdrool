@@ -208,8 +208,9 @@ All mitigations below are **Planned**.
 | CNT-06 | Indexer poisoning creates false social state | Verify program/source/finality, signature/hash/schema checks, idempotent ingestion, dead letters | Poisoned log/manifest and replay invariant tests |
 | CNT-07 | Reorg or checkpoint error loses or duplicates events | Finality-aware cursor, slot/block identity, rollback/replay, deterministic projections | Fork/reorg simulation and full rebuild comparison |
 | CNT-08 | Feed provider bypasses blocks, mutes, or safety policy | Client-side final filtering, signed provider response metadata where applicable, local fallback | Adversarial feed and privacy-control tests |
-| CNT-09 | Gateway/storage outage removes public content | Multiple providers/gateways, local verification, health state, operator-independent publication | Provider-loss and cold-recovery exercises |
-| CNT-10 | Tombstoned content remains in official projections | Tombstone precedence, purge queue, cache invalidation, provider deletion attempts | Deletion propagation and rebuild tests |
+| CNT-09 | An author uses a future/backdated manifest timestamp, equal-time cursor collision, or nonpublic visibility to pin, skip, or disclose a post | Indexer chronology binds to finalized event time plus object-ID tie-break; bounded opaque composite cursors; unauthenticated feeds are public-only | Memory/PostgreSQL/API adversarial timestamp, pagination, and unlisted-plaintext tests |
+| CNT-10 | Gateway/storage outage removes public content | Multiple providers/gateways, local verification, health state, operator-independent publication | Provider-loss and cold-recovery exercises |
+| CNT-11 | Tombstoned content remains in official projections | Tombstone precedence, purge queue, cache invalidation, provider deletion attempts | Deletion propagation and rebuild tests |
 
 Residual risk: copied public content can survive deletion. The composer and
 deletion UI must explain the difference between removal from operated services

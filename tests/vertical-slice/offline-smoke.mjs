@@ -33,7 +33,6 @@ for (const payload of [
       displayName: 'Offline smoke',
       bio: '',
       pronouns: [],
-      genderVisibility: 'private',
       chosenFamilyLabels: [],
       links: [],
     },

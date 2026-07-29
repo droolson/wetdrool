@@ -4,20 +4,47 @@ import { RELAY_POLICY, type RelayKeyAuthorizationMode } from './policy.js';
 import type { SignedRelayEvent } from './protocol.js';
 import type { RelayEventFrame } from './wire.js';
 
+interface ExpiringHeapEntry {
+  readonly expiresAt: number;
+  heapIndex: number;
+}
+
+interface RateLimitEntry extends ExpiringHeapEntry {
+  count: number;
+  readonly key: string;
+}
+
 export class SlidingWindowRateLimiter {
-  readonly #entries = new Map<string, { count: number; windowStartedAt: number }>();
+  readonly #entries = new Map<string, RateLimitEntry>();
+  readonly #expirations: ExpirationMinHeap<RateLimitEntry>;
+  #maintenanceOperations = 0;
 
   constructor(
     private readonly maximum: number,
     private readonly windowMilliseconds: number,
     private readonly maximumKeys = 20_000,
-  ) {}
+  ) {
+    assertPositiveSafeInteger(maximum, 'rate-limit maximum');
+    assertPositiveSafeInteger(windowMilliseconds, 'rate-limit window');
+    assertPositiveSafeInteger(maximumKeys, 'rate-limit key capacity');
+    this.#expirations = new ExpirationMinHeap(() => {
+      this.#maintenanceOperations += 1;
+    });
+  }
 
   allow(key: string, now: number): boolean {
     this.#prune(now);
     const current = this.#entries.get(key);
-    if (current === undefined || current.windowStartedAt + this.windowMilliseconds <= now) {
-      this.#entries.set(key, { count: 1, windowStartedAt: now });
+    if (current === undefined) {
+      this.#makeSpace();
+      const entry: RateLimitEntry = {
+        count: 1,
+        expiresAt: now + this.windowMilliseconds,
+        heapIndex: -1,
+        key,
+      };
+      this.#entries.set(key, entry);
+      this.#expirations.push(entry);
       return true;
     }
     if (current.count >= this.maximum) {
@@ -27,27 +54,59 @@ export class SlidingWindowRateLimiter {
     return true;
   }
 
+  get size(): number {
+    return this.#entries.size;
+  }
+
+  get maintenanceOperations(): number {
+    return this.#maintenanceOperations;
+  }
+
   #prune(now: number): void {
-    if (this.#entries.size < this.maximumKeys) {
-      return;
-    }
-    for (const [key, entry] of this.#entries) {
-      if (entry.windowStartedAt + this.windowMilliseconds <= now) {
-        this.#entries.delete(key);
+    for (;;) {
+      const next = this.#expirations.peek();
+      if (next === undefined || next.expiresAt > now) {
+        return;
+      }
+      const expired = this.#expirations.popMinimum();
+      if (expired !== undefined && this.#entries.get(expired.key) === expired) {
+        this.#entries.delete(expired.key);
       }
     }
+  }
+
+  #makeSpace(): void {
     while (this.#entries.size >= this.maximumKeys) {
-      const oldest = this.#entries.keys().next().value as string | undefined;
+      const oldestKey = this.#entries.keys().next().value as string | undefined;
+      if (oldestKey === undefined) {
+        return;
+      }
+      const oldest = this.#entries.get(oldestKey);
+      this.#entries.delete(oldestKey);
       if (oldest === undefined) {
         return;
       }
-      this.#entries.delete(oldest);
+      this.#maintenanceOperations += 1;
+      this.#expirations.remove(oldest);
     }
   }
 }
 
+interface ReplayEntry extends ExpiringHeapEntry {
+  readonly key: string;
+}
+
 export class ReplayWindow {
-  readonly #nonces = new Map<string, number>();
+  readonly #nonces = new Map<string, ReplayEntry>();
+  readonly #expirations: ExpirationMinHeap<ReplayEntry>;
+  #maintenanceOperations = 0;
+
+  constructor(private readonly maximumNonces: number = RELAY_POLICY.retention.maximumReplayNonces) {
+    assertPositiveSafeInteger(maximumNonces, 'replay nonce capacity');
+    this.#expirations = new ExpirationMinHeap(() => {
+      this.#maintenanceOperations += 1;
+    });
+  }
 
   accept(identity: string, nonce: string, expiresAt: number, now: number): boolean {
     this.#prune(now);
@@ -55,23 +114,158 @@ export class ReplayWindow {
     if (this.#nonces.has(key)) {
       return false;
     }
-    this.#nonces.set(key, expiresAt);
-    while (this.#nonces.size > RELAY_POLICY.retention.maximumReplayNonces) {
-      const oldest = this.#nonces.keys().next().value as string | undefined;
-      if (oldest === undefined) {
-        break;
-      }
-      this.#nonces.delete(oldest);
-    }
+    this.#makeSpace();
+    const entry: ReplayEntry = {
+      expiresAt,
+      heapIndex: -1,
+      key,
+    };
+    this.#nonces.set(key, entry);
+    this.#expirations.push(entry);
     return true;
   }
 
+  get size(): number {
+    return this.#nonces.size;
+  }
+
+  get maintenanceOperations(): number {
+    return this.#maintenanceOperations;
+  }
+
+  #makeSpace(): void {
+    while (this.#nonces.size >= this.maximumNonces) {
+      const oldestKey = this.#nonces.keys().next().value as string | undefined;
+      if (oldestKey === undefined) {
+        return;
+      }
+      const oldest = this.#nonces.get(oldestKey);
+      this.#nonces.delete(oldestKey);
+      if (oldest === undefined) {
+        return;
+      }
+      this.#maintenanceOperations += 1;
+      this.#expirations.remove(oldest);
+    }
+  }
+
   #prune(now: number): void {
-    for (const [key, expiresAt] of this.#nonces) {
-      if (expiresAt <= now) {
-        this.#nonces.delete(key);
+    for (;;) {
+      const next = this.#expirations.peek();
+      if (next === undefined || next.expiresAt > now) {
+        return;
+      }
+      const expired = this.#expirations.popMinimum();
+      if (expired !== undefined && this.#nonces.get(expired.key) === expired) {
+        this.#nonces.delete(expired.key);
       }
     }
+  }
+}
+
+class ExpirationMinHeap<TEntry extends ExpiringHeapEntry> {
+  readonly #entries: TEntry[] = [];
+
+  constructor(private readonly onMaintenanceOperation: () => void) {}
+
+  peek(): TEntry | undefined {
+    return this.#entries[0];
+  }
+
+  push(entry: TEntry): void {
+    entry.heapIndex = this.#entries.length;
+    this.#entries.push(entry);
+    this.#bubbleUp(entry.heapIndex);
+  }
+
+  popMinimum(): TEntry | undefined {
+    return this.#removeAt(0);
+  }
+
+  remove(entry: TEntry): void {
+    const index = entry.heapIndex;
+    if (index < 0 || this.#entries[index] !== entry) {
+      return;
+    }
+    this.#removeAt(index);
+  }
+
+  #removeAt(index: number): TEntry | undefined {
+    const removed = this.#entries[index];
+    if (removed === undefined) {
+      return undefined;
+    }
+    const replacement = this.#entries.pop();
+    removed.heapIndex = -1;
+    this.onMaintenanceOperation();
+    if (replacement === undefined || replacement === removed) {
+      return removed;
+    }
+    this.#entries[index] = replacement;
+    replacement.heapIndex = index;
+    const parentIndex = Math.floor((index - 1) / 2);
+    if (index > 0 && this.#lessThan(replacement, this.#entries[parentIndex] as TEntry)) {
+      this.#bubbleUp(index);
+    } else {
+      this.#bubbleDown(index);
+    }
+    return removed;
+  }
+
+  #bubbleUp(startIndex: number): void {
+    let index = startIndex;
+    while (index > 0) {
+      const parentIndex = Math.floor((index - 1) / 2);
+      const entry = this.#entries[index];
+      const parent = this.#entries[parentIndex];
+      if (entry === undefined || parent === undefined || !this.#lessThan(entry, parent)) {
+        return;
+      }
+      this.#swap(index, parentIndex);
+      index = parentIndex;
+    }
+  }
+
+  #bubbleDown(startIndex: number): void {
+    let index = startIndex;
+    for (;;) {
+      const leftIndex = index * 2 + 1;
+      const rightIndex = leftIndex + 1;
+      let minimumIndex = index;
+      const left = this.#entries[leftIndex];
+      const minimum = this.#entries[minimumIndex];
+      if (left !== undefined && minimum !== undefined && this.#lessThan(left, minimum)) {
+        minimumIndex = leftIndex;
+      }
+      const right = this.#entries[rightIndex];
+      const nextMinimum = this.#entries[minimumIndex];
+      if (right !== undefined && nextMinimum !== undefined && this.#lessThan(right, nextMinimum)) {
+        minimumIndex = rightIndex;
+      }
+      if (minimumIndex === index) {
+        return;
+      }
+      this.#swap(index, minimumIndex);
+      index = minimumIndex;
+    }
+  }
+
+  #lessThan(left: TEntry, right: TEntry): boolean {
+    this.onMaintenanceOperation();
+    return left.expiresAt < right.expiresAt;
+  }
+
+  #swap(leftIndex: number, rightIndex: number): void {
+    const left = this.#entries[leftIndex];
+    const right = this.#entries[rightIndex];
+    if (left === undefined || right === undefined) {
+      return;
+    }
+    this.onMaintenanceOperation();
+    this.#entries[leftIndex] = right;
+    this.#entries[rightIndex] = left;
+    right.heapIndex = leftIndex;
+    left.heapIndex = rightIndex;
   }
 }
 
@@ -217,4 +411,10 @@ function isRetainable(kind: SignedRelayEvent['message']['kind']): boolean {
 
 function escapePrometheus(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('\n', '\\n');
+}
+
+function assertPositiveSafeInteger(value: number, label: string): void {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError(`${label} must be a positive safe integer.`);
+  }
 }

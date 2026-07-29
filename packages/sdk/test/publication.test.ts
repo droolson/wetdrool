@@ -3,6 +3,7 @@ import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  PROFILE_SCHEMA_VERSION,
   buildPostPayload,
   createPayloadBuilderIdentity,
   decodeMultibaseBase64Url,
@@ -53,10 +54,26 @@ const content: PostContent = {
 const profileContent: ProfileContent = {
   displayName: 'River',
   bio: 'Building humane social infrastructure.',
-  pronouns: [{ value: 'they/them', visibility: 'public' }],
-  genderVisibility: 'private',
+  pronouns: [{ visibility: 'public', value: 'they/them' }],
   chosenFamilyLabels: [],
   links: [],
+};
+const protectedValueDigest = encodeMultibaseBase64Url(Uint8Array.from({ length: 32 }, () => 11));
+const protectedValueReference = {
+  cid: `b${'a'.repeat(30)}`,
+  digest: protectedValueDigest,
+  bytes: 128,
+  mediaType: 'application/wokesocial-encrypted-profile-value+json',
+  protection: {
+    kind: 'encrypted' as const,
+    encryptionFormat: 'wokesocial-aes-256-gcm-v1',
+    keyEnvelope: {
+      id: `wokesocialobj:v1:key-envelope:${protectedValueDigest}`,
+    },
+    accessPolicy: {
+      id: `wokesocialobj:v1:access-policy:${protectedValueDigest}`,
+    },
+  },
 };
 const fixedCreatedAt = new Date('2026-07-28T12:00:00.000Z');
 const fixedNonce = Uint8Array.from({ length: 16 }, (_, index) => index);
@@ -217,6 +234,95 @@ describe('publication pipeline', () => {
       signingKey: identity.signingKey,
       type: 'profile',
     });
+    expect(updateProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profileSchemaVersion: PROFILE_SCHEMA_VERSION,
+      }),
+    );
+  });
+
+  it('rejects protected profile plaintext before signing, storage, or anchoring', async () => {
+    const publicationStorage = storage();
+    const publish = vi.spyOn(publicationStorage, 'publish');
+    const profileSigner = vi.fn(signer);
+    const updateProfile = vi.fn();
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: publicationStorage,
+      chain: {
+        publishPost: vi.fn(),
+        updateProfile,
+        follow: vi.fn(),
+        unfollow: vi.fn(),
+      },
+    });
+    const rawPrivateProfile = {
+      ...profileContent,
+      gender: { visibility: 'private', value: 'must remain private' },
+    } as unknown as ProfileContent;
+
+    await expect(
+      pipeline.updateProfile(
+        rawPrivateProfile,
+        { permanence: 'deletion-compatible' },
+        {
+          signer: profileSigner,
+          createdAt: fixedCreatedAt,
+          nonce: fixedNonce,
+        },
+      ),
+    ).rejects.toThrow();
+
+    expect(profileSigner).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+    expect(updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for protected references until authenticated encryption is connected', async () => {
+    const publicationStorage = storage();
+    const publish = vi.spyOn(publicationStorage, 'publish');
+    const publicationSigner = vi.fn(signer);
+    const updateProfile = vi.fn();
+    const publishPost = vi.fn();
+    const pipeline = new PublicationPipeline({
+      identity,
+      storage: publicationStorage,
+      chain: {
+        publishPost,
+        updateProfile,
+        follow: vi.fn(),
+        unfollow: vi.fn(),
+      },
+    });
+    const postWithoutInlineBody = structuredClone(content);
+    delete postWithoutInlineBody.body;
+
+    await expect(
+      pipeline.updateProfile(
+        {
+          ...profileContent,
+          pronouns: [{ visibility: 'private', valueReference: protectedValueReference }],
+        },
+        { permanence: 'deletion-compatible' },
+        { signer: publicationSigner, createdAt: fixedCreatedAt, nonce: fixedNonce },
+      ),
+    ).rejects.toThrow('disabled until the official client can encrypt and verify');
+    await expect(
+      pipeline.publishPost(
+        {
+          ...postWithoutInlineBody,
+          bodyReference: protectedValueReference,
+          visibility: { kind: 'followers' },
+        },
+        { permanence: 'deletion-compatible' },
+        { signer: publicationSigner, createdAt: fixedCreatedAt, nonce: fixedNonce },
+      ),
+    ).rejects.toThrow('disabled until the official client can encrypt and verify');
+
+    expect(publicationSigner).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(publishPost).not.toHaveBeenCalled();
   });
 
   it('rejects a tampered signature before storage or chain submission', async () => {

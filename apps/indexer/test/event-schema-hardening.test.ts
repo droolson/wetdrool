@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { encodeMultibaseBase64Url } from '@wokesocial/protocol';
 
 import { GOVERNANCE_STRATEGY_HASH, protocolEventSchema } from '../src/index.js';
+import { testCid } from './cid-fixtures.js';
 
 const programId = publicKey(1);
 const otherProgramId = publicKey(2);
@@ -73,6 +74,15 @@ const fixtures = [
     identityAddress,
     rootAuthority: publicKey(11),
   }),
+  fixture('identity-deactivation', {
+    ...base(111),
+    type: 'identity-deactivated',
+    configAddress: publicKey(10),
+    identityId,
+    identityAddress,
+    rootAuthority: publicKey(11),
+    identitySequence: 1n,
+  }),
   fixture('handle', {
     ...base(12),
     type: 'handle-claimed',
@@ -130,7 +140,7 @@ const fixtures = [
     identityId,
     authority: publicKey(16),
     objectId: `wokesocialobj:v1:profile:${digest(45)}`,
-    cid: `b${'d'.repeat(20)}`,
+    cid: testCid(1),
     payloadHash: digest(46),
     sequence: 3n,
   }),
@@ -141,7 +151,7 @@ const fixtures = [
     authority: publicKey(16),
     postReference: publicKey(17),
     objectId: `wokesocialobj:v1:post:${digest(18)}`,
-    cid: `b${'a'.repeat(20)}`,
+    cid: testCid(2),
     payloadHash: digest(19),
     sequence: 3n,
   }),
@@ -170,7 +180,8 @@ const fixtures = [
     followerIdentityId: identityId,
     followedIdentityId: secondIdentityId,
     active: true,
-    sequence: 1n,
+    followerSequence: 1n,
+    edgeStateSequence: 1n,
   }),
   fixture('community', {
     ...base(152),
@@ -179,7 +190,7 @@ const fixtures = [
     creatorIdentityId: identityId,
     authority: publicKey(42),
     creatorSequence: 1n,
-    manifestCid: `b${'c'.repeat(20)}`,
+    manifestCid: testCid(3),
     manifestHash: digest(43),
     governanceVersion: 1,
     governanceStrategyHash: GOVERNANCE_STRATEGY_HASH,
@@ -496,7 +507,7 @@ const fixtures = [
 
 describe('protocol event network and key bindings', () => {
   it('accepts the valid representative from every event family', () => {
-    expect(fixtures).toHaveLength(32);
+    expect(fixtures).toHaveLength(33);
     for (const { family, event } of fixtures) {
       expect(protocolEventSchema.safeParse(event).success, family).toBe(true);
     }

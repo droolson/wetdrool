@@ -4,6 +4,7 @@ import { sha256 as multiformatsSha256 } from 'multiformats/hashes/sha2';
 
 import type { PortableObjectType } from './constants.js';
 import { canonicalizeEnvelope, canonicalizePayload } from './canonical.js';
+import { isCanonicalRawSha256Cid } from './content-cid.js';
 import { digestSha256Multibase } from './encoding.js';
 import type { PortablePayload, SignedEnvelope } from './schemas.js';
 
@@ -29,16 +30,9 @@ export async function getEnvelopeCid(envelope: SignedEnvelope): Promise<string> 
 }
 
 export async function verifyContentCid(bytes: Uint8Array, expectedCid: string): Promise<boolean> {
-  let parsed: CID;
-  try {
-    parsed = CID.parse(expectedCid);
-  } catch {
+  if (!isCanonicalRawSha256Cid(expectedCid)) {
     return false;
   }
 
-  if (parsed.version !== 1 || parsed.code !== raw.code) {
-    return false;
-  }
-
-  return (await getContentCid(bytes)) === parsed.toString();
+  return (await getContentCid(bytes)) === expectedCid;
 }

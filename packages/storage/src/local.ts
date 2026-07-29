@@ -2,9 +2,7 @@ import { access, mkdir, open, readFile, rename, rm, stat } from 'node:fs/promise
 import { dirname, join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { getContentCid, verifyContentCid } from '@wokesocial/protocol';
-import { CID } from 'multiformats/cid';
-import * as raw from 'multiformats/codecs/raw';
+import { getContentCid, isCanonicalRawSha256Cid, verifyContentCid } from '@wokesocial/protocol';
 
 import {
   type ContentAddressedStorage,
@@ -88,7 +86,7 @@ export class LocalContentAddressedStorage implements ContentAddressedStorage {
       cid,
       provider: this.name,
       providerVersion: this.version,
-      locator: `local-cas:${cid}`,
+      locator: `local://${cid}`,
       byteLength: bytes.byteLength,
       publishedAt: this.#clock().toISOString(),
       policy,
@@ -158,24 +156,14 @@ export class LocalContentAddressedStorage implements ContentAddressedStorage {
   }
 
   #objectPath(value: string): string {
-    let cid: CID;
-    try {
-      cid = CID.parse(value);
-    } catch (error) {
-      throw new StorageError('Invalid content identifier.', 'invalid-cid', {
-        cause: error,
-      });
-    }
-
-    const canonical = cid.toV1().toString();
-    if (canonical !== value || cid.code !== raw.code || !/^b[a-z2-7]+$/u.test(canonical)) {
+    if (!isCanonicalRawSha256Cid(value)) {
       throw new StorageError(
-        'Only canonical base32 CIDv1 raw identifiers are accepted.',
+        'Only canonical base32 CIDv1 raw SHA-256 identifiers are accepted.',
         'invalid-cid',
       );
     }
 
-    const path = resolve(this.#rootDirectory, 'objects', canonical.slice(1, 3), canonical);
+    const path = resolve(this.#rootDirectory, 'objects', value.slice(1, 3), value);
     const expectedPrefix = `${this.#rootDirectory}${sep}`;
     if (!path.startsWith(expectedPrefix)) {
       throw new StorageError('Content identifier escaped the storage root.', 'invalid-cid');

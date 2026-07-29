@@ -26,8 +26,9 @@ The PDA helpers implement the program's exact versioned seeds for protocol and
 payment config, identities, subscription offerings, payment receipts,
 subscription entitlements, and upgradeable-loader program data.
 
-The seven Anchor builders match the checked-in program IDL:
+The eight Anchor builders match the checked-in program IDL:
 
+- `buildDeactivateWokeIdentityInstruction`
 - `buildInitializeWokePaymentConfigInstruction`
 - `buildUpdateWokePaymentConfigInstruction`
 - `buildRotateWokePaymentAuthorityInstruction`
@@ -38,7 +39,9 @@ The seven Anchor builders match the checked-in program IDL:
 
 Builders return Solana Kit-compatible instruction objects containing the WokeSocial
 program address, exact ordered account metadata, and Anchor/Borsh instruction
-data. They do not hold keys or silently select an RPC.
+data. They do not hold keys or silently select an RPC. Identity deactivation is
+one-way protocol retirement, not content deletion; the builder deliberately
+does not collapse those separate user decisions.
 
 ## Exact transaction execution
 

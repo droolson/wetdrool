@@ -67,4 +67,26 @@ describe('IPFS HTTP boundary', () => {
       }),
     );
   });
+
+  it.each([
+    'baaaaaaaaaaaaaaaaaaaa',
+    'BAFKREIHDWDCEFGH4DQKJV67UZCMW7OJEE6XEDZDETOJUZJEVTENXQUVYKU',
+    `bafkrez${'a'.repeat(52)}`,
+    `bafkreiz${'a'.repeat(51)}`,
+    'bafkrezhdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku',
+    'bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku',
+    'bafkrgqgpqpqtk7xpxc67cvbikdlg3aah2yqoibilk4k5za7uveq5g3hjzzd5buj4lwc7fmh7qmmnfb365qxwhojrxvduc6ubuu4de6xze7nd4',
+  ])('rejects noncanonical CID %s before any provider request', async (cid) => {
+    const request = vi.fn<typeof globalThis.fetch>();
+    const storage = new IpfsHttpStorage({
+      apiUrl: 'https://api.example',
+      gateways: ['https://gateway.example'],
+      fetch: request,
+    });
+
+    await expect(storage.get(cid)).rejects.toMatchObject({ code: 'invalid-cid' });
+    await expect(storage.delete(cid)).rejects.toMatchObject({ code: 'invalid-cid' });
+    await expect(storage.has(cid)).resolves.toBe(false);
+    expect(request).not.toHaveBeenCalled();
+  });
 });

@@ -33,7 +33,7 @@ describe('payment Anchor events', () => {
     );
     const cases = paymentAnchorCases(fixture);
 
-    expect(Object.keys(SOCIAL_PROTOCOL_EVENT_LAYOUT.events)).toHaveLength(32);
+    expect(Object.keys(SOCIAL_PROTOCOL_EVENT_LAYOUT.events)).toHaveLength(33);
     for (const [index, item] of cases.entries()) {
       const decoded = decodeAnchorEventLog(item.encoded);
       expect(decoded.kind).toBe(item.kind);

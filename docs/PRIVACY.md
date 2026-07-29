@@ -19,8 +19,9 @@ application data, authentication cookies, recovery links, or an independent
 identity namespace.
 
 Most user-facing privacy controls remain **Planned**. The implemented foundation
-keeps post bodies offchain, models visibility for optional pronoun and gender
-fields, requires explicit permanent-storage consent, keeps passkey PRF output
+keeps post bodies offchain, enforces encrypted references for protected
+pronoun, gender, chosen-family-label, and location values, requires explicit
+permanent-storage consent, keeps passkey PRF output
 and signing seeds client-side, synchronizes only encrypted key wrappers,
 implements delayed guardian recovery without email/PII onchain, and provides an
 experimental pairwise encryption adapter with no server plaintext path. The
@@ -51,7 +52,7 @@ legal review.
 | Class | Examples | Default treatment |
 |---|---|---|
 | Public protocol data | Identity root, public keys, public references, content hashes, public relationships intentionally selected for protocol publication | Public and durable; minimize fields and disclose permanence |
-| Public signed content | Public profile and post manifests, author-selected media metadata | Content-addressed and verifiable; deletion-compatible storage by default |
+| Public signed content | Public profile values and post manifests, encrypted references to protected profile values, author-selected media metadata | Content-addressed and verifiable; deletion-compatible storage by default; current schema-v2 publication never places protected profile plaintext inline, while historical schema-v1 bytes remain readable |
 | Restricted signed content | Private-community, paid, limited-audience content | Encrypt before storage; public references reveal no plaintext or key |
 | End-to-end encrypted content | Direct/group messages and attachments | Ciphertext only outside authorized devices |
 | Sensitive service data | Recovery email, account-support records, abuse evidence, provider billing identifiers | Offchain, encrypted, access-controlled, purpose-limited |
@@ -96,6 +97,18 @@ Public content uses signed, versioned manifests and content hashes. Ordinary pos
 
 Gateways must verify the expected hash or CID. A gateway response is untrusted until verified.
 
+Pronouns, gender, chosen-family labels, and location may be public,
+followers-only, or private. Public values are inline. Followers-only and private
+values are encrypted client-side and represented in the signed profile only by
+a content reference with required encrypted protection metadata, a key
+envelope, and an access policy. The schema rejects protected inline plaintext
+and references missing encrypted-protection metadata, but a signed declaration
+alone cannot prove that referenced bytes are ciphertext. The official SDK
+therefore fails closed for followers-only/private profile values and restricted
+posts until its client-side encryption and authenticated-reference verifier are
+implemented. Independent clients must not present a protected reference as
+verified encryption without performing that encryption and verification.
+
 ### 5.3 Permanent storage
 
 Arweave or another intentionally permanent provider is opt-in per publication. Consent must be separate, informed, versioned, and recorded. The user must be able to publish through a deletion-compatible path instead.
@@ -127,13 +140,36 @@ An indexer database is a replaceable projection, not canonical protocol truth. I
 
 It must not silently convert private preferences, recovery data, or message content into public projections.
 
-The implemented `public-match-v1` search projection is limited to current public display
-names/bios, active handles, and verified posts whose visibility is `public`. Unlisted/restricted
-posts and tombstoned posts are excluded in both memory and PostgreSQL implementations. Anchored
-community references are also excluded until the indexer can verify a signed public-visibility
-manifest. Canonical queries contain 3–120 normalized Unicode code points. The web client warns
-that a query is transmitted to the selected indexer and retained in the URL; operators must
-disclose and bound any reverse-proxy/application query logging before public use.
+The implemented public profile projection retains only public pronouns, gender,
+chosen-family labels, and location. Protected references remain available from
+the verified source manifest to authorized clients but are not copied into the
+public indexer projection. The implemented `public-match-v1` search projection
+is limited to current public display names/bios, active handles, and verified
+posts whose visibility is `public`. Unlisted/restricted posts and tombstoned
+posts are excluded in both memory and PostgreSQL implementations. Anchored
+community references are also excluded until the indexer can verify a signed
+public-visibility manifest. Canonical queries contain 3–120 normalized Unicode
+code points. The web client warns that a query is transmitted to the selected
+indexer and retained in the URL; operators must disclose and bound any
+reverse-proxy/application query logging before public use.
+
+Historical profile compatibility is bounded by one immutable
+`INDEXER_PROFILE_V2_ACTIVATION_SLOT` per WokeNet. Before that slot, the indexer
+can read a signed schema-v1 profile only when the historical onchain event uses
+the legacy prefix without a schema commitment. Its public projection preserves
+only values for which the legacy object recorded explicit public visibility; it
+does not infer public consent for legacy chosen-family labels or location.
+Current root and delegated profile updates commit schema version 2 onchain, and
+at or after the cutoff the indexer requires that explicit commitment plus a
+schema-v2 envelope. Live ingestion and rebuild use the same cutoff and reject
+an explicit non-v2 or falsely labeled commitment at every slot.
+
+Temporary profile-manifest unavailability does not hold the global checkpoint
+behind the event. The exact raw reference remains pending and hidden until
+bounded hydration verifies it. If that hydration completes only after the
+identity has been deactivated, the verified profile may be retained as
+historical/replay evidence, but it does not reactivate the identity or restore
+the person to public search or discovery.
 
 ## 6. Identity and account privacy
 
@@ -142,7 +178,15 @@ disclose and bound any reverse-proxy/application query logging before public use
 - A human-readable handle is distinct from a wallet address.
 - Wallet addresses are not the default profile label.
 - Chosen name is independent of legal name.
-- Gender, sexuality, and pronouns are optional; visibility is explicit and enforced at the data layer.
+- Pronouns, gender, chosen-family labels, and location are optional. Public
+  values use `{visibility: "public", value}`. Followers-only and private values
+  use `{visibility, valueReference}` and the reference must be cryptographically
+  marked encrypted.
+- Raw followers-only/private profile plaintext, unencrypted protected
+  references, and the legacy `genderVisibility` shape are rejected before
+  signing or storage.
+- Sexuality remains optional and must follow the same protected-value contract
+  before it is added to the protocol schema.
 - Multiple pronoun sets and custom localized forms are supported.
 - No identity field is inferred from appearance, name, network, device, social graph, or content.
 - Public identity does not imply legal-name verification.
@@ -325,7 +369,25 @@ still sign the returned manifest and independently verify output receipts.
 
 ### 12.1 Deactivation
 
-Deactivation is reversible and suppresses the profile and content from official discovery without revoking identity keys or publishing an irreversible tombstone. The interface explains ongoing protocol visibility.
+Two different lifecycle actions must not be conflated:
+
+- reversible profile suppression is a planned client/indexer feature that hides
+  a profile and content from official discovery without retiring the protocol
+  identity; and
+- the implemented onchain `deactivate_identity` instruction is a
+  root-authorized, one-way v1 identity retirement. It advances the identity
+  sequence and clears the account's active bit without erasing chain history.
+
+The onchain event is decoded and projected into inactive identity state; public
+person discovery omits it while retained content and authorization history
+remain verifiable. This includes a previously pending profile that is verified
+only after retirement: it is historical retention, not a current discoverable
+profile. A complete user-facing retirement interface is still absent. Clients
+must never present protocol identity deactivation as reversible or as proof
+that replicated content was deleted. V1 retirement also does not release a
+handle or retire communities and subscription offerings: cleanup that requires
+an active identity must happen first, otherwise those resources remain
+reserved/frozen pending a future protocol lifecycle.
 
 ### 12.2 Account deletion flow
 
@@ -333,7 +395,8 @@ Deactivation is reversible and suppresses the profile and content from official 
 
 1. Authenticate with a current trusted method.
 2. Preview affected identities, devices, keys, content, communities, subscriptions, drafts, and provider copies.
-3. Distinguish reversible deactivation from deletion.
+3. Distinguish reversible profile suppression, one-way protocol identity
+   deactivation, and deletion.
 4. Cancel active delegated keys and sessions.
 5. Stop optional analytics and notification delivery.
 6. Delete local drafts and eligible decrypted caches.
@@ -357,6 +420,12 @@ The product must state plainly that deletion cannot guarantee removal from:
 - Previously disclosed moderation or legal evidence under a valid hold
 
 Official suppression and tombstones remain meaningful: compliant clients stop serving the material, current views respect revocation, hashes can be marked deleted, and deletion-capable providers can remove controlled copies.
+
+For an authenticated finalized onchain tombstone, optional legacy
+tombstone-object, CID, and payload-hash fields are detached audit metadata.
+Official suppression does not fetch those bytes and cannot be delayed by their
+loss or provider outage. Retaining that metadata for audit does not make it
+public profile/post content and does not authorize resurrection.
 
 ### 12.4 Restore and backup behavior
 
@@ -448,7 +517,9 @@ The privacy model remains **Planned** until all applicable checks pass.
   transaction construction in both native Firedancer and explicitly
   labeled Solana-format compatibility paths.
 - **PRIV-TST-002:** Logs, traces, analytics, and error reports contain no seeded secrets, emails, message plaintext, or private profile fields.
-- **PRIV-TST-003:** Pronoun and identity-attribute visibility is enforced by API and indexer queries.
+- **PRIV-TST-003:** Pronoun and identity-attribute schemas reject protected
+  plaintext and unencrypted references; public indexer projections retain only
+  public values.
 - **PRIV-TST-004:** Permanent publication cannot proceed without item-specific recorded consent.
 - **PRIV-TST-005:** Stories select deletion-compatible storage by default and stop official delivery at expiry.
 - **PRIV-TST-006:** Restricted and paid storage returns ciphertext to an unauthorized fetch.
@@ -464,7 +535,9 @@ The privacy model remains **Planned** until all applicable checks pass.
 
 ### 18.2 Reproducible manual acceptance
 
-- A person can understand the difference between deactivation, tombstone, provider deletion, key destruction, and impossible erasure.
+- A person can understand the difference between reversible profile
+  suppression, one-way protocol identity deactivation, tombstones, provider
+  deletion, key destruction, and impossible erasure.
 - A person can decline permanent storage and still publish through a deletion-compatible path.
 - A person can inspect and revoke each device and delegated key.
 - A person can export and migrate their identity without a proprietary API.

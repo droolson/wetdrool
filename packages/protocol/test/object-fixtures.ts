@@ -33,7 +33,7 @@ import {
   buildTombstonePayload,
   createPayloadBuilderIdentity,
   signingKeyIdFor,
-  type ContentReference,
+  type EncryptedContentReference,
   type MediaReference,
   type ObjectReference,
   type PortablePayload,
@@ -52,12 +52,18 @@ const delegatedPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => 200 - 
 const delegatedPublicKey = ed25519.getPublicKey(delegatedPrivateKey);
 
 const fakeDigest = `u${'A'.repeat(43)}`;
-const fakeCid = (character: 'a' | 'c' | 'd' | 'e') => `b${character.repeat(58)}`;
+const fixtureCids = {
+  a: 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm',
+  c: 'bafkreibopuwahkkqplrgl3hvwu2wrbnfgoj2eau5eqjzjglsmwq2ewxpyy',
+  d: 'bafkreiazadvlnqbija6xcjszt3tpkdpa2j4qpnogl6uqkjcybnfq7gcswa',
+  e: 'bafkreidsemiehpaya7tpoqfsgxvxkepmwmzfljvdovbvmmiznxuks5injm',
+} as const;
+const fakeCid = (character: keyof typeof fixtureCids) => fixtureCids[character];
 export const objectReference = (type: PortablePayloadType): ObjectReference => ({
   id: `wokesocialobj:v1:${type}:${fakeDigest}`,
 });
 
-export const encryptedContentReference: ContentReference = {
+export const encryptedContentReference: EncryptedContentReference = {
   cid: fakeCid('a'),
   digest: fakeDigest,
   bytes: 128,
@@ -87,9 +93,13 @@ export function createValidPayloads(): readonly PortablePayload[] {
       {
         displayName: 'River',
         bio: 'Building humane social infrastructure.',
-        pronouns: [{ value: 'they/them', visibility: 'public' }],
-        genderVisibility: 'private',
-        chosenFamilyLabels: [],
+        pronouns: [
+          { visibility: 'public', value: 'they/them' },
+          { visibility: 'private', valueReference: encryptedContentReference },
+        ],
+        gender: { visibility: 'followers', valueReference: encryptedContentReference },
+        chosenFamilyLabels: [{ visibility: 'public', value: 'chosen sibling' }],
+        location: { visibility: 'private', valueReference: encryptedContentReference },
         links: [],
       },
       fixedOptions,

@@ -2,22 +2,16 @@ import { strict as assert } from 'node:assert';
 import { readFile } from 'node:fs/promises';
 
 import { networkIdSchema } from '../../packages/protocol/dist/src/index.js';
-import { LocalContentAddressedStorage } from '../../packages/storage/dist/src/index.js';
 import {
-  FailoverSolanaRpc,
-  ManifestVerifier,
-  OpenIndexer,
   PostgresProjectionStore,
-  ProjectionRootKeyAuthorizer,
-  SolanaEventMaterializer,
-  SolanaSyncWorker,
+  rebuildFromDurableLedger,
 } from '../../apps/indexer/dist/src/index.js';
 
 const databaseUrl = required('DATABASE_URL');
 const contentStoragePath = required('CONTENT_STORAGE_PATH');
 const networkId = networkIdSchema.parse(required('INDEXER_NETWORK_ID'));
 const programId = required('NEXT_PUBLIC_PROGRAM_ID');
-const rpcUrl = localHttpUrl(required('WOKENET_RPC_URLS'));
+localHttpUrl(required('WOKENET_RPC_URLS'));
 const metadata = JSON.parse(await readFile(required('VERTICAL_SLICE_METADATA_PATH'), 'utf8'));
 assert.equal(metadata.networkId, networkId);
 assert.equal(metadata.programId, programId);
@@ -43,42 +37,33 @@ try {
     [],
   );
 
-  const storage = new LocalContentAddressedStorage({
-    rootDirectory: contentStoragePath,
-  });
-  const verifier = new ManifestVerifier(storage, new ProjectionRootKeyAuthorizer(projection));
-  const indexer = new OpenIndexer(projection, verifier);
   const [, , genesisHash, networkProgramId] = networkId.split(':');
   if (genesisHash === undefined || networkProgramId !== programId) {
     throw new Error('WokeNet ID is not bound to the configured program.');
   }
-  const worker = new SolanaSyncWorker({
-    rpc: FailoverSolanaRpc.fromUrls([rpcUrl], genesisHash, programId),
-    indexer,
-    projection,
-    materializer: new SolanaEventMaterializer(storage, projection),
+  const replay = await rebuildFromDurableLedger({
+    databaseUrl,
+    contentStoragePath,
     networkId,
-    programId,
-    deploymentSlot: 0n,
-    batchSize: 1_000,
-    pollIntervalMilliseconds: 100,
-    retryAttempts: 3,
-    retryBaseMilliseconds: 10,
-    retryMaximumMilliseconds: 100,
+    apply: true,
+    profileSchemaV2ActivationSlot: 0n,
   });
-  const replay = await worker.runOnce();
-  assert.equal(replay.deadLetters, 0, 'replay has no dead letters');
-  assert.equal(replay.checkpointAdvanced, true, 'replay advances finalized checkpoint');
-  assert.equal(replay.appliedEvents, 8, 'replay applies exactly every projected fixture event');
+  assert.equal(replay.mode, 'applied');
+  assert.equal(replay.eventCount, 8, 'replay validates exactly every durable fixture event');
 
   const after = await snapshot(projection, metadata);
+  assert.equal(
+    after.tombstonedPost,
+    undefined,
+    'suppression-aware rebuild does not rematerialize deleted post content',
+  );
   assert.deepEqual(
     normalize(after),
-    normalize(before),
-    'destroyed projection rebuilds to equivalent protocol state',
+    normalize({ ...before, tombstonedPost: undefined }),
+    'destroyed projection rebuilds to equivalent public protocol state',
   );
   process.stdout.write(
-    `Replayed ${replay.appliedEvents} events from ${replay.transactions} finalized transactions with no dead letters.\n`,
+    `Rebuilt ${replay.eventCount} durable events with ledger digest ${replay.ledgerSha256}.\n`,
   );
 } finally {
   await projection.close();

@@ -11,6 +11,7 @@ import {
 import {
   createIdentity,
   digest,
+  manifestUri,
   nonce,
   type IdentityFixture,
   type Phase2Context,
@@ -137,7 +138,7 @@ export async function createGovernanceCommunity(
       expectedCreatorSequence: new BN(0),
       communityNonce,
       manifestHash: digest(`governance-community-${nonceStart}`),
-      manifestUri: `local://sha256/governance-community-${nonceStart}`,
+      manifestUri: manifestUri(`governance-community-${nonceStart}`),
       governanceVersion: 1,
       governanceStrategyHash,
     })

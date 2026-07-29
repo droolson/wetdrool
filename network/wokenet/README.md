@@ -20,8 +20,10 @@ to carry production traffic:
 - upstream full Firedancer explicitly has no production release;
 - upstream labels the full validator not ready for test or production use;
 - the native RPC tile still returns `501` for transaction submission,
-  simulation, confirmation-status, transaction-history, address-history, and
-  program-account methods required by the application and indexer; and
+  simulation, confirmation-status, transaction-history, and address-history
+  methods required by the application and indexer;
+- the downstream `getProgramAccounts` implementation is a bounded native subset,
+  not unrestricted or production-complete RPC conformance; and
 - the upstream genesis creator labels itself development-only and not safe for
   production use.
 
@@ -35,10 +37,14 @@ The upstream statements and source are available from
 [Firedancer’s repository](https://github.com/firedancer-io/firedancer) and
 [operator documentation](https://docs.firedancer.io/).
 
-`NATIVE_RPC_CAPABILITIES.json` classifies its implemented-read list as source
-observation, not conformance evidence. The pinned native C RPC target directly
-covers only `getMultipleAccounts`; every required read/write method still needs
-deterministic method-level conformance testing before activation.
+`NATIVE_RPC_CAPABILITIES.json` uses a mixed evidence classification. Most
+implemented reads remain source observations, while the pinned native C targets
+directly cover `getMultipleAccounts` and the bounded downstream
+`getProgramAccounts` subset. The latter scans ownership through the native
+account database on a referenced frozen fork, supports only the documented
+filters and configurations, applies hard result/scan/data ceilings, and keeps
+`productionComplete` false. Wider deterministic method-level and connected
+conformance remains mandatory before activation.
 
 The WokeNet
 [`getSignatureStatuses` native design and test plan](firedancer/GET_SIGNATURE_STATUSES_DESIGN.md)
@@ -54,7 +60,29 @@ test work required for a correct implementation.
 `firedancer/SOURCE.lock.json` pins the exact official upstream commit and every
 downstream patch checksum. The first patch removes hidden/nondeterministic
 genesis inputs by making the timestamp, faucet balance, validator-identity
-balance, and well-known benchmark-account funding explicit.
+balance, and well-known benchmark-account funding explicit. The second patch
+adds the bounded native program-account owner scan plus direct account-database
+and RPC C tests. The third patch adds the explicit
+`consensus.wokenet_live_cluster` classification and direct config-policy tests.
+The fourth patch adds a WokeNet-only native RPC observer role. An empty
+`paths.vote_account` is accepted only when live WokeNet mode is enabled, block
+production is disabled, native RPC is enabled, and no authorized-voter path is
+configured. Every other missing-vote WokeNet role fails closed, while a supplied
+vote account always remains a voting role. The observer keeps the native tower
+for local fork choice and emits its reset/root signals, but skips its own vote
+account reconciliation and cannot construct a vote transaction. Direct unit
+evidence does not prove the tower-to-replay-to-RPC commitment path.
+The fifth patch restores the shared `fdctl` default fields made mandatory by
+the genesis patch and makes the direct tower test deterministic in
+containerized x86-64 CI: it registers the captured voters, replays the one
+additional slot needed to cross the root threshold, and uses an mmap-backed
+unit workspace instead of NUMA policy syscalls.
+Any non-local, non-development `FD_CLUSTER_UNKNOWN` configuration must enable
+that mode; omitting its one-bit switch fails closed. Local/development and
+recognized built-in clusters may retain upstream classification. Enabled mode
+requires the exact ceremony genesis hash, native-only production execution, a
+non-zero shred version, genesis validation, an identity, sandboxing,
+multiprocess isolation, and production benchmark limits.
 
 Run:
 
@@ -77,9 +105,10 @@ temporary checkout, reapplies only the pinned patch queue, clones the separately
 pinned dependency source at its exact commit, rebuilds the required static
 OpenSSL artifacts inside that checkout, and creates the object directory there.
 It never builds from pre-existing ignored source, dependency artifacts, or
-`build/` files. It builds the two native binaries and two pinned unit-test
-targets, executes the tests, parses the WokeNet localnet configuration through the
-freshly linked validator, verifies the ELF target and native symbols,
+`build/` files. It builds the two native binaries and five pinned unit-test
+targets, executes the tests, parses the WokeNet localnet configuration through
+the freshly linked `firedancer-dev mem --json` path, verifies the ELF target and
+native symbols,
 exact-matches each ELF’s downstream marker, upstream commit, and
 source-declared version, rejects identical validator/development digests and
 forbidden dynamic runtime dependencies, then records dependency/toolchain,
@@ -99,9 +128,13 @@ pnpm wokenet:materialize -- /opt/wokenet-firedancer
 cd /opt/wokenet-firedancer
 ./deps.sh
 source activate
-make -j"$(nproc)" firedancer firedancer-dev test_genesis_create test_rpc_tile
+make -j"$(nproc)" firedancer firedancer-dev test_genesis_create test_accdb test_rpc_tile test_config_parse test_tower_tile
 test_genesis_create
+test_accdb
 test_rpc_tile
+test_config_parse
+ulimit -n 200000
+test_tower_tile --page-sz normal --page-cnt 1048576
 pnpm --dir /path/to/repository wokenet:binary-check -- /opt/wokenet-firedancer
 sudo ./build/native/gcc/bin/firedancer-dev \
   --config /path/to/repository/network/wokenet/config/localnet.toml \
@@ -115,7 +148,7 @@ dedicated machine and review the upstream initialization instructions first.
 The repository’s manual `WokeNet native Firedancer` workflow repeats the
 policy and materialization checks, installs upstream dependencies, then lets
 the attestation command own the disposable tracked checkout, pinned OpenSSL
-source rebuild, isolated object directory, two direct test executables, native
+source rebuild, isolated object directory, five direct test executables, native
 TOML topology parse, ELF/symbol/hash, forbidden-process, and exact-source checks
 on a labeled Linux x64 runner. A green workflow is build evidence, not a
 production-readiness claim or a substitute for the connected and
@@ -165,10 +198,36 @@ accounts, allocations, feature set, build digest, patch digest, and ceremony
 signatures must be published together. A node must fail closed on a mismatched
 genesis hash, shred version, program ID, or snapshot source.
 
-The two production TOML files are review templates only. Their
-`REPLACE_WITH_...` values make them deliberately unlaunchable until a ceremony
-has occurred. Voting validators keep RPC and GUI disabled. RPC nodes are
-non-voting and bind RPC to loopback for a separately hardened gateway.
+The two production TOML files are review templates only. Their placeholder
+genesis hash and numeric zero shred version make them deliberately unlaunchable
+until a ceremony has occurred. Voting validators keep RPC and GUI disabled.
+The RPC template disables block production and binds RPC to loopback for a
+separately hardened gateway. The downstream source now recognizes that exact
+template shape as a non-voting observer without inventing a dummy vote account:
+it retains the tower’s virtual fork-choice/root/reset work, skips lookup of an
+own vote account, and hard-disables vote-transaction construction. Direct
+`test_config_parse` and `test_tower_tile` cases cover the role matrix, vote
+suppression, reconciliation skip, virtual-root advancement, and pre-root
+tower/ghost pruning. This is source and native C unit evidence only; no
+connected native observer boot has been demonstrated.
+
+The pinned tower code opens checkpoint/restore file descriptors but this source
+audit found no implemented tower serialization or restore path. A non-voting
+observer therefore cannot emit conflicting cluster votes after restart, but its
+local confirmed/finalized commitment continuity may rebuild or regress until it
+catches up. Restart behavior and health gating must be demonstrated on a
+connected cluster before activation. After the ceremony, replace the genesis
+placeholder and numeric zero with the published canonical base58 genesis hash
+and non-zero numeric shred version; do not disable
+`consensus.wokenet_live_cluster`. Omitting that mode on any unknown non-local,
+non-development cluster fails closed. The downstream policy rejects empty,
+malformed, noncanonical, all-zero, or built-in Solana/Pyth hashes and rejects
+the mode under `firedancer-dev`, local-cluster, Frankendancer, or Agave-backed
+execution. The same `consensus.expected_genesis_hash` is passed to the native
+genesi tile, which verifies the loaded or downloaded genesis bytes exactly.
+This safety classification closes the upstream `FD_CLUSTER_UNKNOWN` protection
+gap, but it does not approve a production genesis or override any activation
+gate below.
 
 ## Production activation gates
 
@@ -176,9 +235,11 @@ No public WokeNet genesis or production launch is authorized until all of
 these are true:
 
 1. Native Firedancer has a supported release and reproducible build provenance.
-2. Native RPC implements and passes conformance for `sendTransaction`,
-   `simulateTransaction`, `getSignatureStatuses`, `getTransaction`,
-   `getSignaturesForAddress`, and `getProgramAccounts`.
+2. Native RPC implements and passes conformance for the five still-missing
+   methods—`sendTransaction`, `simulateTransaction`, `getSignatureStatuses`,
+   `getTransaction`, and `getSignaturesForAddress`—and the bounded
+   `getProgramAccounts` subset passes the wider semantics, performance, and
+   connected-cluster gates required for production.
 3. Program deployment, upgrade authority, indexer replay, finality, snapshots,
    restart, repair, and multi-validator consensus pass on native Firedancer
    without an Agave process.

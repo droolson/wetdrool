@@ -23,6 +23,9 @@ describe('provider configuration', () => {
     expect(() => parseHttpEndpoint('https://sociallywoke.com/v1')).toThrow(
       /legacy redirect-only hostname/,
     );
+    expect(() => parseHttpEndpoint('https://SOCIALLYWOKE.COM../v1')).toThrow(
+      /legacy redirect-only hostname/,
+    );
   });
 
   it('accepts only credential-free WebSocket relay endpoints', () => {
@@ -36,6 +39,9 @@ describe('provider configuration', () => {
       'credentials',
     );
     expect(() => parseRelayEndpoint('wss://www.sociallywoke.com/v1/relay')).toThrow(
+      /legacy redirect-only hostname/,
+    );
+    expect(() => parseRelayEndpoint('wss://WWW.SOCIALLYWOKE.COM../v1/relay')).toThrow(
       /legacy redirect-only hostname/,
     );
   });

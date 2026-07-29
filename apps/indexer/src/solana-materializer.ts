@@ -1,9 +1,4 @@
-import {
-  cidSchema,
-  decodeCanonicalEnvelope,
-  encodeMultibaseBase64Url,
-  getObjectId,
-} from '@wokesocial/protocol';
+import { encodeMultibaseBase64Url, extractWokeManifestCid } from '@wokesocial/protocol';
 
 import type { DecodedAnchorEvent } from './anchor-events.js';
 import { protocolEventSchema, type ProtocolEvent } from './events.js';
@@ -54,9 +49,15 @@ export class SolanaEventMaterializationError extends Error {
 
 export class SolanaEventMaterializer {
   constructor(
-    private readonly source: ManifestSource,
+    source: ManifestSource,
     private readonly projection: ProjectionStore,
-  ) {}
+  ) {
+    // Kept in the constructor contract so callers can share one configured
+    // content source. Materialization itself is intentionally content-agnostic:
+    // a provider outage or malformed object must not prevent us from recording
+    // and sequencing the finalized on-chain mutation.
+    void source;
+  }
 
   async materialize(
     decoded: DecodedAnchorEvent,
@@ -109,6 +110,17 @@ export class SolanaEventMaterializer {
           identityAddress: decoded.identity,
           rootAuthority: decoded.rootAuthority,
         };
+      case 'identity-deactivated':
+        this.#assertSlot(decoded.deactivatedAtSlot, context.slot);
+        return this.#validatedEvent({
+          ...base,
+          type: 'identity-deactivated',
+          configAddress: decoded.config,
+          identityId: identityId(context.networkId, decoded.identity),
+          identityAddress: decoded.identity,
+          rootAuthority: decoded.rootAuthority,
+          identitySequence: decoded.identitySequence,
+        });
       case 'handle-claimed':
         this.#assertSlot(decoded.claimedAtSlot, context.slot);
         return {
@@ -135,30 +147,37 @@ export class SolanaEventMaterializer {
         };
       case 'profile-updated': {
         this.#assertSlot(decoded.updatedAtSlot, context.slot);
-        const reference = await this.#manifestReference(decoded.manifestUri, decoded.manifestHash);
+        const reference = this.#manifestReference(
+          'profile',
+          decoded.manifestUri,
+          decoded.manifestHash,
+        );
         return {
           ...base,
           type: 'profile-updated',
           identityId: identityId(context.networkId, decoded.identity),
           authority: decoded.authority,
-          objectId: reference.objectId,
-          cid: reference.cid,
-          payloadHash: reference.payloadHash,
+          ...reference,
           sequence: decoded.sequence,
+          ...(decoded.profileSchemaVersion === undefined
+            ? {}
+            : { profileSchemaVersion: decoded.profileSchemaVersion }),
         };
       }
       case 'post-published': {
         this.#assertSlot(decoded.createdAtSlot, context.slot);
-        const reference = await this.#manifestReference(decoded.manifestUri, decoded.manifestHash);
+        const reference = this.#manifestReference(
+          'post',
+          decoded.manifestUri,
+          decoded.manifestHash,
+        );
         return {
           ...base,
           type: 'post-published',
           identityId: identityId(context.networkId, decoded.authorIdentity),
           authority: decoded.authority,
           postReference: decoded.postReference,
-          objectId: reference.objectId,
-          cid: reference.cid,
-          payloadHash: reference.payloadHash,
+          ...reference,
           sequence: decoded.authorSequence,
         };
       }
@@ -170,7 +189,8 @@ export class SolanaEventMaterializer {
           followerIdentityId: identityId(context.networkId, decoded.followerIdentity),
           followedIdentityId: identityId(context.networkId, decoded.subjectIdentity),
           active: decoded.active,
-          sequence: decoded.edgeStateSequence,
+          followerSequence: decoded.followerSequence,
+          edgeStateSequence: decoded.edgeStateSequence,
         };
       case 'post-tombstoned': {
         this.#assertSlot(decoded.createdAtSlot, context.slot);
@@ -732,39 +752,24 @@ export class SolanaEventMaterializer {
     }
   }
 
-  async #manifestReference(
+  #manifestReference(
+    objectType: 'post' | 'profile',
     manifestUri: string,
     manifestHash: Uint8Array,
-  ): Promise<{
+  ): {
+    readonly cid?: string;
+    readonly manifestUri: string;
     readonly objectId: string;
-    readonly cid: string;
     readonly payloadHash: string;
-  }> {
-    const cid = manifestCid(manifestUri);
-    let bytes: Uint8Array;
-    try {
-      bytes = await this.source.get(cid);
-    } catch (error) {
-      throw new SolanaEventMaterializationError(
-        `Manifest ${cid} is not available from configured content storage.`,
-        'manifest-unavailable',
-        { cause: error },
-      );
-    }
-    try {
-      const envelope = decodeCanonicalEnvelope(bytes);
-      return {
-        objectId: getObjectId(envelope.payload),
-        cid,
-        payloadHash: encodeMultibaseBase64Url(manifestHash),
-      };
-    } catch (error) {
-      throw new SolanaEventMaterializationError(
-        `Manifest ${cid} is invalid or non-canonical.`,
-        'manifest-invalid',
-        { cause: error },
-      );
-    }
+  } {
+    const cid = optionalManifestCid(manifestUri);
+    const payloadHash = encodeMultibaseBase64Url(manifestHash);
+    return {
+      manifestUri,
+      objectId: `wokesocialobj:v1:${objectType}:${payloadHash}`,
+      ...(cid === undefined ? {} : { cid }),
+      payloadHash,
+    };
   }
 
   #assertSlot(eventSlot: bigint, transactionSlot: bigint): void {
@@ -819,24 +824,16 @@ function identityId(networkId: string, identityAddress: string): string {
 }
 
 function manifestCid(manifestUri: string): string {
-  let candidate: string | undefined;
-  try {
-    const parsed = new URL(manifestUri);
-    if (parsed.protocol === 'ipfs:') {
-      candidate = parsed.hostname || parsed.pathname.replace(/^\/+/u, '').split('/')[0];
-    } else if (parsed.protocol === 'https:') {
-      candidate = parsed.pathname.split('/').filter(Boolean).at(-1);
-    }
-  } catch {
-    candidate = undefined;
-  }
-
-  const parsed = cidSchema.safeParse(candidate);
-  if (!parsed.success) {
+  const cid = optionalManifestCid(manifestUri);
+  if (cid === undefined) {
     throw new SolanaEventMaterializationError(
       `Manifest URI ${manifestUri} does not contain a supported CIDv1 reference.`,
       'manifest-uri',
     );
   }
-  return parsed.data;
+  return cid;
+}
+
+function optionalManifestCid(manifestUri: string): string | undefined {
+  return extractWokeManifestCid(manifestUri);
 }

@@ -13,6 +13,8 @@ describe('distributable JSON Schema', () => {
     expect(schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
     expect(schema.$id).toBe('https://woke.social/protocol/schemas/signed-envelope-v1.schema.json');
     expect(schema['x-wokesocial-object-types']).toEqual(PORTABLE_OBJECT_TYPES);
+    expect(schema['x-wokesocial-schema-versions']).toEqual([1, 2]);
+    expect(schema['x-wokesocial-current-profile-schema-version']).toBe(2);
     expect(String(schema.$comment)).toContain('signature/hash verification');
 
     const serialized = JSON.stringify(schema);
@@ -21,6 +23,9 @@ describe('distributable JSON Schema', () => {
     }
     expect(serialized).toContain('^wokenet:v1:');
     expect(serialized).toContain('^wokesocialid:v1:wokenet:v1:');
+    expect(serialized).toContain('"valueReference"');
+    expect(serialized).toContain('"encryptionFormat"');
+    expect(serialized).toContain('"genderVisibility"');
     expect(serialized).not.toContain('^solana:');
     expect(serialized).not.toContain('^wokesocialid:v1:solana:');
   });

@@ -1,5 +1,7 @@
 export * from './client.js';
 export * from './config.js';
+export * from './http-key-authorizer.js';
+export * from './http-subscription-authorizer.js';
 export * from './policy.js';
 export * from './protocol.js';
 export * from './relay-server.js';

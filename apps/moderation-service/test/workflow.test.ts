@@ -259,7 +259,7 @@ describe('moderation case workflow', () => {
     });
   });
 
-  it('honors legal holds during bounded retention and emits only privacy-safe aggregates', async () => {
+  it('keeps closed ledgers intact until a separate retention executor exists', async () => {
     let now = serviceNow;
     const service = ledgerService(() => now);
     const report = await service.ingestReport(makeReport());
@@ -333,7 +333,7 @@ describe('moderation case workflow', () => {
         retentionLimit: 1,
         closedCaseRetentionMs: 365 * 86_400_000,
       }),
-    ).resolves.toMatchObject({ casesRemoved: 1 });
-    await expect(service.readCaseSnapshot(report.objectId)).resolves.toBeUndefined();
+    ).resolves.toMatchObject({ casesRemoved: 0 });
+    await expect(service.readCaseSnapshot(report.objectId)).resolves.toBeDefined();
   });
 });

@@ -7,6 +7,7 @@ import {
   WokePaymentError,
   assertWokePaymentSimulationMatches,
   buildCreateWokeSubscriptionOfferingInstruction,
+  buildDeactivateWokeIdentityInstruction,
   buildInitializeWokePaymentConfigInstruction,
   buildRetireWokeSubscriptionOfferingInstruction,
   buildRotateWokePaymentAuthorityInstruction,
@@ -50,6 +51,8 @@ const secondNonce = Uint8Array.from({ length: 16 }, (_, index) => index + 17);
 const manifestHash = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const refundHash = Uint8Array.from({ length: 32 }, (_, index) => 255 - index);
 const zeroHash = new Uint8Array(32);
+const manifestCid = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku';
+const offeringManifestUri = `ipfs://${manifestCid}`;
 
 const payerIdentity = key(4);
 const payerAuthority = key(5);
@@ -401,6 +404,38 @@ describe('WokeSocial protocol PDA derivation', () => {
 });
 
 describe('WokeSocial Anchor instruction builders', () => {
+  it('builds one-way identity deactivation with exact IDL accounts and wire data', async () => {
+    const instruction = await buildDeactivateWokeIdentityInstruction(context, {
+      identity: creatorIdentity,
+      rootAuthority: creatorDestination,
+      expectedIdentitySequence: 7n,
+    });
+
+    expect(instruction.programAddress).toBe(context.programAddress);
+    expect(instruction.accounts).toEqual([
+      { address: golden.config, role: AccountRole.READONLY },
+      { address: creatorIdentity, role: AccountRole.WRITABLE },
+      { address: creatorDestination, role: AccountRole.READONLY_SIGNER },
+    ]);
+    expect([...instruction.data.slice(0, 8)]).toEqual([58, 175, 10, 246, 145, 179, 1, 179]);
+    expect(readU64(instruction.data, 8)).toBe(7n);
+
+    await expect(
+      buildDeactivateWokeIdentityInstruction(context, {
+        identity: creatorIdentity,
+        rootAuthority: creatorDestination,
+        expectedIdentitySequence: 18_446_744_073_709_551_615n,
+      }),
+    ).rejects.toMatchObject({ code: 'amount-out-of-range' });
+    await expect(
+      buildDeactivateWokeIdentityInstruction(context, {
+        identity: creatorIdentity,
+        rootAuthority: creatorIdentity,
+        expectedIdentitySequence: 0n,
+      }),
+    ).rejects.toMatchObject({ code: 'alias' });
+  });
+
   it('builds initialize/update/rotate config instructions with exact IDL order and wire data', async () => {
     const initialized = await buildInitializeWokePaymentConfigInstruction(context, {
       upgradeAuthority,
@@ -463,7 +498,7 @@ describe('WokeSocial Anchor instruction builders', () => {
       expectedCreatorSequence: 3n,
       offeringNonce: nonce,
       manifestHash,
-      manifestUri: 'ipfs://offering',
+      manifestUri: offeringManifestUri,
       priceLamports: 101n,
       refundPolicyHash: refundHash,
       maxProtocolFeeBasisPoints: 500,
@@ -495,11 +530,12 @@ describe('WokeSocial Anchor instruction builders', () => {
     expect(readU64(created.instruction.data, 8)).toBe(3n);
     expect(created.instruction.data.slice(16, 32)).toEqual(nonce);
     expect(created.instruction.data.slice(32, 64)).toEqual(manifestHash);
-    expect(readU32(created.instruction.data, 64)).toBe(15);
-    expect(new TextDecoder().decode(created.instruction.data.slice(68, 83))).toBe(
-      'ipfs://offering',
+    expect(readU32(created.instruction.data, 64)).toBe(offeringManifestUri.length);
+    const manifestUriEnd = 68 + offeringManifestUri.length;
+    expect(new TextDecoder().decode(created.instruction.data.slice(68, manifestUriEnd))).toBe(
+      offeringManifestUri,
     );
-    expect(readU64(created.instruction.data, 83)).toBe(101n);
+    expect(readU64(created.instruction.data, manifestUriEnd)).toBe(101n);
 
     const retired = await buildRetireWokeSubscriptionOfferingInstruction(context, {
       creatorIdentity,
@@ -551,7 +587,7 @@ describe('WokeSocial Anchor instruction builders', () => {
         expectedCreatorSequence: 3n,
         offeringNonce: nonce,
         manifestHash,
-        manifestUri: 'ipfs://offering',
+        manifestUri: offeringManifestUri,
         priceLamports: 101n,
         refundPolicyHash: refundHash,
         maxProtocolFeeBasisPoints: 500,

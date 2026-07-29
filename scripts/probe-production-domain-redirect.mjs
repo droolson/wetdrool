@@ -56,9 +56,21 @@ try {
     '/settings?section=privacy',
     'https://woke.social/settings?section=privacy',
   );
+  await expectRedirect(
+    port,
+    'sociallywoke.com.',
+    '/people/trailing-dot?tab=following',
+    'https://woke.social/people/trailing-dot?tab=following',
+  );
+  await expectRedirect(
+    port,
+    'www.sociallywoke.com..:443',
+    '/settings?section=security',
+    'https://woke.social/settings?section=security',
+  );
   await expectPassThrough(port, 'woke.social');
   await expectPassThrough(port, 'sociallywoke.com.example');
-  await expectPassThrough(port, 'sociallywoke.com.');
+  await expectPassThrough(port, 'sociallywoke.com..example');
 
   process.stdout.write(
     'Production domain probe passed: exact legacy hosts redirect permanently to woke.social.\n',

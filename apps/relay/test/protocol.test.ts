@@ -120,6 +120,22 @@ describe('signed relay protocol', () => {
     });
   });
 
+  it('rechecks expiry after asynchronous key authorization', async () => {
+    let now = new Date(testNow);
+    const event = makeEvent('new-post');
+
+    await expect(
+      verifyRelayEvent(event, {
+        now: () => now,
+        authorize: async () => {
+          await Promise.resolve();
+          now = new Date(Date.parse(event.message.expiresAt));
+          return true;
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'expired' });
+  });
+
   it('binds direct and community payloads to their minimal audiences', () => {
     const base = makeEvent('typing').message;
     expect(() =>

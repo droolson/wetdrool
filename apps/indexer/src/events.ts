@@ -53,7 +53,7 @@ const recoveryGuardiansSchema = z
       context.addIssue({ code: 'custom', message: 'Recovery guardians must be distinct.' });
     }
   });
-const governanceManifestUriSchema = z
+const manifestUriSchema = z
   .string()
   .refine((value) => Buffer.byteLength(value, 'utf8') <= 200, 'Manifest URI is too long.')
   .regex(/^[\x21-\x7e]+$/u, 'Manifest URI must contain only visible ASCII characters.')
@@ -92,6 +92,18 @@ const identityCreatedEventSchema = z
     identityId: identityIdSchema,
     identityAddress: solanaPublicKeySchema,
     rootAuthority: solanaPublicKeySchema,
+  })
+  .strict();
+
+const identityDeactivatedEventSchema = z
+  .object({
+    ...common,
+    type: z.literal('identity-deactivated'),
+    configAddress: solanaPublicKeySchema,
+    identityId: identityIdSchema,
+    identityAddress: solanaPublicKeySchema,
+    rootAuthority: solanaPublicKeySchema,
+    identitySequence: positiveU64Schema,
   })
   .strict();
 
@@ -175,11 +187,14 @@ const profileUpdatedEventSchema = z
     identityId: identityIdSchema,
     authority: solanaPublicKeySchema.optional(),
     objectId: objectIdSchema,
-    cid: cidSchema,
+    cid: cidSchema.optional(),
+    manifestUri: manifestUriSchema.optional(),
     payloadHash: digestSchema,
     sequence: z.bigint().positive(),
+    profileSchemaVersion: u16Schema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine(assertManifestReference);
 
 const postPublishedEventSchema = z
   .object({
@@ -189,11 +204,13 @@ const postPublishedEventSchema = z
     authority: solanaPublicKeySchema.optional(),
     postReference: solanaPublicKeySchema.optional(),
     objectId: objectIdSchema,
-    cid: cidSchema,
+    cid: cidSchema.optional(),
+    manifestUri: manifestUriSchema.optional(),
     payloadHash: digestSchema,
     sequence: z.bigint().positive(),
   })
-  .strict();
+  .strict()
+  .superRefine(assertManifestReference);
 
 const followChangedEventSchema = z
   .object({
@@ -202,7 +219,8 @@ const followChangedEventSchema = z
     followerIdentityId: identityIdSchema,
     followedIdentityId: identityIdSchema,
     active: z.boolean(),
-    sequence: z.bigint().positive(),
+    followerSequence: positiveU64Schema,
+    edgeStateSequence: positiveU64Schema,
   })
   .strict()
   .refine(
@@ -486,7 +504,7 @@ const proposalCreatedEventSchema = z
     proposerSequence: positiveU64Schema,
     previousCommunitySequence: nonnegativeU64Schema,
     manifestHash: digestSchema,
-    manifestUri: governanceManifestUriSchema,
+    manifestUri: manifestUriSchema,
     governanceVersion: u16Schema.positive(),
     governanceStrategyHash: digestSchema,
     votingModel: z.literal('one-active-member-one-vote'),
@@ -678,7 +696,7 @@ const subscriptionOfferingCreatedEventSchema = z
     rootAuthority: solanaPublicKeySchema,
     offeringNonce: paymentNonceSchema,
     manifestHash: nonzeroDigestSchema,
-    manifestUri: governanceManifestUriSchema,
+    manifestUri: manifestUriSchema,
     priceLamports: positiveU64Schema,
     billingInterval: z.literal('week'),
     recipientSplits: z.array(paymentRecipientSplitSchema).min(1).max(3),
@@ -853,6 +871,7 @@ export const protocolEventSchema = z
   .discriminatedUnion('type', [
     protocolInitializedEventSchema,
     identityCreatedEventSchema,
+    identityDeactivatedEventSchema,
     handleClaimedEventSchema,
     handleReleasedEventSchema,
     rootAuthorityRotatedEventSchema,
@@ -888,6 +907,7 @@ export const protocolEventSchema = z
 
 export type ProtocolInitializedEvent = z.infer<typeof protocolInitializedEventSchema>;
 export type IdentityCreatedEvent = z.infer<typeof identityCreatedEventSchema>;
+export type IdentityDeactivatedEvent = z.infer<typeof identityDeactivatedEventSchema>;
 export type HandleClaimedEvent = z.infer<typeof handleClaimedEventSchema>;
 export type HandleReleasedEvent = z.infer<typeof handleReleasedEventSchema>;
 export type RootAuthorityRotatedEvent = z.infer<typeof rootAuthorityRotatedEventSchema>;
@@ -924,6 +944,56 @@ export type WokeTipSettledEvent = z.infer<typeof wokeTipSettledEventSchema>;
 export type SubscriptionSettledEvent = z.infer<typeof subscriptionSettledEventSchema>;
 export type ProtocolEvent = z.infer<typeof protocolEventSchema>;
 
+export class AmbiguousEventOrderError extends Error {
+  override readonly name = 'AmbiguousEventOrderError';
+}
+
+/**
+ * Solana transaction signatures are identifiers, not an ordering primitive.
+ * Multiple transactions in one slot therefore require the authoritative block
+ * transaction index before sequence-dependent projection or replay.
+ */
+export function assertUnambiguousEventOrder(events: readonly ProtocolEvent[]): void {
+  const transactionsBySlot = new Map<string, Map<string, number | undefined>>();
+  for (const event of events) {
+    const slot = `${event.networkId}\u0000${event.slot.toString()}`;
+    let transactions = transactionsBySlot.get(slot);
+    if (transactions === undefined) {
+      transactions = new Map();
+      transactionsBySlot.set(slot, transactions);
+    }
+    if (
+      transactions.has(event.transactionSignature) &&
+      transactions.get(event.transactionSignature) !== event.transactionIndex
+    ) {
+      throw new AmbiguousEventOrderError(
+        'Events from one transaction disagree about their authoritative transaction index.',
+      );
+    }
+    transactions.set(event.transactionSignature, event.transactionIndex);
+  }
+
+  for (const transactions of transactionsBySlot.values()) {
+    if (transactions.size <= 1) {
+      continue;
+    }
+    const usedIndexes = new Set<number>();
+    for (const transactionIndex of transactions.values()) {
+      if (transactionIndex === undefined) {
+        throw new AmbiguousEventOrderError(
+          'Multiple transactions in one slot require authoritative transaction indexes.',
+        );
+      }
+      if (usedIndexes.has(transactionIndex)) {
+        throw new AmbiguousEventOrderError(
+          'Distinct transactions in one slot cannot share a transaction index.',
+        );
+      }
+      usedIndexes.add(transactionIndex);
+    }
+  }
+}
+
 export function compareEventOrder(left: ProtocolEvent, right: ProtocolEvent): number {
   if (left.slot !== right.slot) {
     return left.slot < right.slot ? -1 : 1;
@@ -935,7 +1005,12 @@ export function compareEventOrder(left: ProtocolEvent, right: ProtocolEvent): nu
   ) {
     return left.transactionIndex - right.transactionIndex;
   }
-  const signature = left.transactionSignature.localeCompare(right.transactionSignature);
+  const signature =
+    left.transactionSignature === right.transactionSignature
+      ? 0
+      : left.transactionSignature < right.transactionSignature
+        ? -1
+        : 1;
   return signature === 0 ? left.logIndex - right.logIndex : signature;
 }
 
@@ -949,6 +1024,23 @@ function assertHandleHash(
       code: 'custom',
       path: ['handleHash'],
       message: 'Handle hash must be the SHA-256 digest of the normalized handle.',
+    });
+  }
+}
+
+function assertManifestReference(
+  event: {
+    readonly objectId: string;
+    readonly cid?: string | undefined;
+    readonly manifestUri?: string | undefined;
+  },
+  context: z.RefinementCtx,
+): void {
+  if (event.manifestUri === undefined && event.cid === undefined) {
+    context.addIssue({
+      code: 'custom',
+      path: ['manifestUri'],
+      message: 'A manifest reference requires either its raw URI or content CID.',
     });
   }
 }
@@ -1004,7 +1096,7 @@ function assertNetworkBindings(
   }
 
   if (
-    event.type === 'identity-created' &&
+    (event.type === 'identity-created' || event.type === 'identity-deactivated') &&
     typeof event['identityId'] === 'string' &&
     typeof event['identityAddress'] === 'string' &&
     event['identityId'].split(':').at(-1) !== event['identityAddress']

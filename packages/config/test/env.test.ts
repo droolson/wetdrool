@@ -22,6 +22,42 @@ function parseEnvironmentFile(source: string): Record<string, string> {
   );
 }
 
+const productionEnvironment = {
+  ALLOWED_ORIGINS: 'https://woke.social',
+  APP_ENV: 'production',
+  DATABASE_MIGRATION_URL:
+    'postgresql://migration:secret@db.woke.social/wokesocial?sslmode=verify-full',
+  DATABASE_URL: 'postgresql://application:secret@db.woke.social/wokesocial?sslmode=verify-full',
+  IPFS_API_URL: 'https://ipfs-api.woke.social',
+  IPFS_GATEWAY_URL: 'https://gateway.woke.social',
+  NEXT_PUBLIC_APP_ORIGIN: 'https://woke.social',
+  NEXT_PUBLIC_AUTH_SERVICE_URL: 'https://auth.woke.social',
+  NEXT_PUBLIC_FEED_SERVICE_URL: 'https://feed.woke.social',
+  NEXT_PUBLIC_INDEXER_URL: 'https://indexer.woke.social',
+  NEXT_PUBLIC_IPFS_GATEWAY_URL: 'https://gateway.woke.social',
+  NEXT_PUBLIC_MEDIA_WORKER_URL: 'https://media.woke.social',
+  NEXT_PUBLIC_MODERATION_SERVICE_URL: 'https://moderation.woke.social',
+  NEXT_PUBLIC_PROGRAM_ID: '11111111111111111111111111111111',
+  NEXT_PUBLIC_RELAY_URL: 'wss://relay.woke.social/v1/relay',
+  NEXT_PUBLIC_WOKENET: 'public-test',
+  NEXT_PUBLIC_WOKENET_RPC_URL: 'https://rpc.woke.social',
+  NODE_ENV: 'production',
+  REDIS_URL: 'rediss://cache:secret@redis.woke.social',
+  SESSION_SECRET: 'a-production-session-secret-with-32-characters',
+  WOKENET_COMMITMENT: 'finalized',
+  WOKENET_RPC_URLS: 'https://rpc.woke.social',
+  WOKENET_WS_URLS: 'wss://rpc.woke.social',
+} as const;
+
+const stagingEnvironment = {
+  ...productionEnvironment,
+  APP_ENV: 'staging',
+  DATABASE_MIGRATION_URL:
+    'postgresql://migration:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
+  DATABASE_URL:
+    'postgresql://application:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
+} as const;
+
 describe('environment configuration', () => {
   it('provides safe local defaults', () => {
     const environment = parseServerEnvironment({});
@@ -118,8 +154,11 @@ describe('environment configuration', () => {
 
   it.each([
     ['NEXT_PUBLIC_APP_ORIGIN', 'https://sociallywoke.com'],
+    ['NEXT_PUBLIC_APP_ORIGIN', 'https://SOCIALLYWOKE.COM..'],
     ['NEXT_PUBLIC_AUTH_SERVICE_URL', 'https://www.sociallywoke.com'],
+    ['NEXT_PUBLIC_AUTH_SERVICE_URL', 'https://www.sociallywoke.com.'],
     ['NEXT_PUBLIC_RELAY_URL', 'wss://sociallywoke.com/v1/relay'],
+    ['NEXT_PUBLIC_RELAY_URL', 'wss://sociallywoke.com../v1/relay'],
   ])('rejects the redirect-only hostname for %s', (key, value) => {
     expect(() => parsePublicEnvironment({ [key]: value })).toThrow(/legacy redirect-only hostname/);
   });
@@ -127,7 +166,7 @@ describe('environment configuration', () => {
   it('rejects the redirect-only hostname from server CORS origins', () => {
     expect(() =>
       parseServerEnvironment({
-        ALLOWED_ORIGINS: 'https://woke.social,https://sociallywoke.com',
+        ALLOWED_ORIGINS: 'https://woke.social,https://SOCIALLYWOKE.COM..',
       }),
     ).toThrow(/legacy redirect hosts/);
   });
@@ -145,17 +184,136 @@ describe('environment configuration', () => {
   });
 
   it('accepts a complete production configuration', () => {
-    const environment = parseServerEnvironment({
-      APP_ENV: 'production',
-      NEXT_PUBLIC_APP_ORIGIN: 'https://woke.social',
-      NEXT_PUBLIC_PROGRAM_ID: '11111111111111111111111111111111',
-      NEXT_PUBLIC_WOKENET: 'public-test',
-      SESSION_SECRET: 'a-production-session-secret-with-32-characters',
-    });
+    const environment = parseServerEnvironment(productionEnvironment);
 
     expect(environment.APP_ENV).toBe('production');
+    expect(environment.NODE_ENV).toBe('production');
     expect(environment.NEXT_PUBLIC_WOKENET).toBe('public-test');
   });
+
+  it.each(['DATABASE_URL', 'DATABASE_MIGRATION_URL'] as const)(
+    'requires hostname-verifying PostgreSQL TLS for production %s',
+    (variableName) => {
+      expect(() =>
+        parseServerEnvironment({
+          ...productionEnvironment,
+          [variableName]: 'postgresql://application:secret@db.woke.social/wokesocial',
+        }),
+      ).toThrow(/sslmode=verify-full/u);
+      expect(() =>
+        parseServerEnvironment({
+          ...productionEnvironment,
+          [variableName]:
+            'postgresql://application:secret@db.woke.social/wokesocial?sslmode=require',
+        }),
+      ).toThrow(/sslmode=verify-full/u);
+    },
+  );
+
+  it.each(['DATABASE_URL', 'DATABASE_MIGRATION_URL'] as const)(
+    'requires hostname-verifying PostgreSQL TLS for staging %s',
+    (variableName) => {
+      expect(() => parseServerEnvironment(stagingEnvironment)).not.toThrow();
+      expect(() =>
+        parseServerEnvironment({
+          ...stagingEnvironment,
+          [variableName]: 'postgresql://application:secret@db.staging.woke.social/wokesocial',
+        }),
+      ).toThrow(/sslmode=verify-full/u);
+    },
+  );
+
+  it('rejects the process-wide Node TLS verification bypass in TLS-required environments', () => {
+    expect(() =>
+      parseServerEnvironment({
+        ...productionEnvironment,
+        NODE_TLS_REJECT_UNAUTHORIZED: '0',
+      }),
+    ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED/u);
+    expect(() =>
+      parseServerEnvironment({
+        APP_ENV: 'staging',
+        DATABASE_URL:
+          'postgresql://application:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
+        NODE_TLS_REJECT_UNAUTHORIZED: '0',
+      }),
+    ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED/u);
+  });
+
+  it('rejects NODE_ENV production without an explicit nonlocal application mode', () => {
+    expect(() =>
+      parseServerEnvironment({
+        NODE_ENV: 'production',
+        DATABASE_URL:
+          'postgresql://application:secret@db.woke.social/wokesocial?sslmode=verify-full',
+      }),
+    ).toThrow(/APP_ENV/u);
+    expect(() =>
+      parseServerEnvironment({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://application:secret@db.woke.social/wokesocial',
+      }),
+    ).toThrow(/sslmode=verify-full/u);
+  });
+
+  it('requires production Node semantics and secure dependencies in staging', () => {
+    expect(() => parseServerEnvironment(stagingEnvironment)).not.toThrow();
+    expect(() =>
+      parseServerEnvironment({
+        ...stagingEnvironment,
+        NODE_ENV: 'development',
+      }),
+    ).toThrow(/NODE_ENV/u);
+    expect(() =>
+      parseServerEnvironment({
+        ...stagingEnvironment,
+        REDIS_URL: 'redis://cache:secret@redis.staging.woke.social',
+      }),
+    ).toThrow(/rediss/u);
+    expect(() =>
+      parseServerEnvironment({
+        ...stagingEnvironment,
+        WOKENET_RPC_URLS: 'http://rpc.staging.woke.social',
+      }),
+    ).toThrow(/non-local HTTPS endpoint/u);
+  });
+
+  it.each(['127.0.0.1', '[::1]', '[::ffff:7f00:1]', '[::]', 'app.localhost'])(
+    'rejects local or unspecified host %s across nonlocal endpoint surfaces',
+    (hostname) => {
+      const endpointOverrides = [
+        { ALLOWED_ORIGINS: `https://${hostname}` },
+        {
+          DATABASE_URL: `postgresql://application:secret@${hostname}/wokesocial?sslmode=verify-full`,
+        },
+        {
+          DATABASE_MIGRATION_URL: `postgresql://migration:secret@${hostname}/wokesocial?sslmode=verify-full`,
+        },
+        { IPFS_API_URL: `https://${hostname}` },
+        { IPFS_GATEWAY_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_APP_ORIGIN: `https://${hostname}` },
+        { NEXT_PUBLIC_AUTH_SERVICE_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_FEED_SERVICE_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_INDEXER_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_IPFS_GATEWAY_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_MEDIA_WORKER_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_MODERATION_SERVICE_URL: `https://${hostname}` },
+        { NEXT_PUBLIC_RELAY_URL: `wss://${hostname}/v1/relay` },
+        { NEXT_PUBLIC_WOKENET_RPC_URL: `https://${hostname}` },
+        { REDIS_URL: `rediss://cache:secret@${hostname}` },
+        { WOKENET_RPC_URLS: `https://${hostname}` },
+        { WOKENET_WS_URLS: `wss://${hostname}` },
+      ];
+      for (const override of endpointOverrides) {
+        expect(() =>
+          parseServerEnvironment({
+            ...productionEnvironment,
+            ...override,
+          }),
+        ).toThrow(/non-local|local or unspecified/u);
+      }
+    },
+  );
 
   it('keeps the production WokeNet selector disabled pending activation', () => {
     expect(() =>
@@ -166,28 +324,49 @@ describe('environment configuration', () => {
   });
 
   it('rejects local production origins and file-based production sponsor keys', () => {
-    const base = {
-      APP_ENV: 'production',
-      NEXT_PUBLIC_PROGRAM_ID: '11111111111111111111111111111111',
-      SESSION_SECRET: 'a-production-session-secret-with-32-characters',
-    } as const;
-
     expect(() =>
       parseServerEnvironment({
-        ...base,
+        ...productionEnvironment,
         NEXT_PUBLIC_APP_ORIGIN: 'http://localhost:3000',
       }),
     ).toThrow(/non-local HTTPS origin/);
 
     expect(() =>
       parseServerEnvironment({
-        ...base,
-        NEXT_PUBLIC_APP_ORIGIN: 'https://woke.social',
+        ...productionEnvironment,
         SPONSOR_DAILY_LAMPORT_LIMIT: '1000',
         SPONSOR_ENABLED: 'true',
         SPONSOR_SIGNER_URI: 'file:///tmp/sponsor.json',
       }),
     ).toThrow(/file-based sponsor signers/);
+  });
+
+  it('rejects development runtime mode and local/insecure production dependencies', () => {
+    expect(() =>
+      parseServerEnvironment({
+        ...productionEnvironment,
+        NODE_ENV: 'development',
+      }),
+    ).toThrow(/NODE_ENV/u);
+    expect(() =>
+      parseServerEnvironment({
+        ...productionEnvironment,
+        NEXT_PUBLIC_WOKENET: 'localnet',
+      }),
+    ).toThrow(/only currently activatable non-local network/u);
+    expect(() =>
+      parseServerEnvironment({
+        ...productionEnvironment,
+        NEXT_PUBLIC_AUTH_SERVICE_URL: 'http://localhost:4300',
+        WOKENET_RPC_URLS: 'http://127.0.0.1:8899',
+      }),
+    ).toThrow(/non-local HTTPS endpoint/u);
+    expect(() =>
+      parseServerEnvironment({
+        ...productionEnvironment,
+        REDIS_URL: 'redis://redis.woke.social',
+      }),
+    ).toThrow(/rediss/u);
   });
 
   it('never includes a rejected secret value in its error message', () => {

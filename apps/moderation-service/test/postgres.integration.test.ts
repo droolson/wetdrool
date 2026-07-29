@@ -10,35 +10,76 @@ import { actionInput, operator } from './ledger-fixtures.js';
 
 const databaseUrl =
   process.env['MODERATION_INTEGRATION_DATABASE_URL'] ??
-  process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  process.env['MODERATION_DATABASE_URL'] ??
+  'postgresql://wokesocial_moderation_runtime:local-moderation-runtime-only@127.0.0.1:5432/wokesocial';
+const migrationDatabaseUrl =
+  process.env['MODERATION_INTEGRATION_DATABASE_MIGRATION_URL'] ??
+  process.env['MODERATION_DATABASE_MIGRATION_URL'] ??
+  'postgresql://wokesocial_moderation_migration:local-moderation-migration-only@127.0.0.1:5432/wokesocial';
 const sql = postgres(databaseUrl, { max: 2, onnotice: () => undefined });
+const migrationSql = postgres(migrationDatabaseUrl, { max: 1, onnotice: () => undefined });
 const key = Uint8Array.from({ length: 32 }, (_, index) => index + 31);
 const keyRing = () => new ModerationKeyRing({ activeKeyId: 'test-v1', keys: { 'test-v1': key } });
 
 beforeAll(async () => {
-  await migrateModeration(databaseUrl);
+  await Promise.all([
+    migrateModeration(migrationDatabaseUrl),
+    migrateModeration(migrationDatabaseUrl),
+  ]);
 });
 
 afterAll(async () => {
-  await sql.end({ timeout: 5 });
+  await Promise.all([sql.end({ timeout: 5 }), migrationSql.end({ timeout: 5 })]);
 });
 
 describe('PostgreSQL moderation case ledger', () => {
+  it('fails readiness when required runtime write access is revoked', async () => {
+    const store = new PostgresModerationStore(databaseUrl, keyRing());
+    const runtimeRows = await sql<{ current_user: string }[]>`SELECT current_user`;
+    const runtimeRole = runtimeRows[0]?.current_user;
+    if (runtimeRole === undefined) throw new Error('Expected a moderation runtime role.');
+
+    try {
+      await expect(store.readiness()).resolves.toBeUndefined();
+      await migrationSql`
+        REVOKE INSERT ON moderation_restricted_objects
+        FROM ${migrationSql(runtimeRole)}
+      `;
+      await expect(store.readiness()).rejects.toMatchObject({
+        code: 'database-unavailable',
+      });
+    } finally {
+      await migrationSql`
+        GRANT INSERT ON moderation_restricted_objects
+        TO ${migrationSql(runtimeRole)}
+      `;
+      await store.close();
+    }
+  });
+
   it('replays migrations and durably separates public labels from encrypted restricted cases', async () => {
-    await migrateModeration(databaseUrl);
-    const migrationRows = await sql<{ count: string }[]>`
-      SELECT count(*)::text AS count
+    await migrateModeration(migrationDatabaseUrl);
+    const migrationRows = await sql<{ count: string; checksum_valid: boolean }[]>`
+      SELECT
+        count(*)::text AS count,
+        bool_and(checksum ~ '^[0-9a-f]{64}$') AS checksum_valid
       FROM moderation_schema_migrations
       WHERE version = '0001_moderation_case_ledger.sql'
     `;
     expect(migrationRows[0]?.count).toBe('1');
+    expect(migrationRows[0]?.checksum_valid).toBe(true);
     const retentionMigrationRows = await sql<{ count: string }[]>`
       SELECT count(*)::text AS count
       FROM moderation_schema_migrations
       WHERE version = '0002_append_only_retention.sql'
     `;
     expect(retentionMigrationRows[0]?.count).toBe('1');
+    const guardedRetentionRows = await sql<{ count: string }[]>`
+      SELECT count(*)::text AS count
+      FROM moderation_schema_migrations
+      WHERE version = '0003_guarded_retention.sql'
+    `;
+    expect(guardedRetentionRows[0]?.count).toBe('1');
 
     const store = new PostgresModerationStore(databaseUrl, keyRing());
     const service = new ModerationService({
@@ -91,6 +132,18 @@ describe('PostgreSQL moderation case ledger', () => {
         restricted_label: '0',
       });
       expect(placement[0]?.encrypted).not.toContain('sentinel-pg-private-report-summary');
+      await expect(
+        sql`
+          DELETE FROM moderation_restricted_objects
+          WHERE object_id = ${storedReportId}
+        `,
+      ).rejects.toThrow();
+      await expect(
+        sql`
+          DELETE FROM moderation_cases
+          WHERE report_id = ${storedReportId}
+        `,
+      ).rejects.toThrow();
       const publicBytes = await sql<{ canonical_bytes: Uint8Array }[]>`
         SELECT canonical_bytes
         FROM moderation_public_objects
@@ -100,23 +153,50 @@ describe('PostgreSQL moderation case ledger', () => {
       if (originalPublicBytes === undefined) {
         throw new Error('Expected stored public label bytes.');
       }
-      await sql`
-        UPDATE moderation_public_objects
-        SET canonical_bytes = set_byte(
-          canonical_bytes,
-          0,
-          (get_byte(canonical_bytes, 0) + 1) % 256
-        )
-        WHERE object_id = ${label.objectId}
-      `;
+      await expect(
+        sql`
+          UPDATE moderation_public_objects
+          SET canonical_bytes = canonical_bytes
+          WHERE object_id = ${label.objectId}
+        `,
+      ).rejects.toThrow();
+      await migrationSql.begin(async (transaction) => {
+        await transaction`
+          ALTER TABLE moderation_public_objects
+          DISABLE TRIGGER moderation_public_objects_immutable
+        `;
+        await transaction`
+          UPDATE moderation_public_objects
+          SET canonical_bytes = set_byte(
+            canonical_bytes,
+            0,
+            (get_byte(canonical_bytes, 0) + 1) % 256
+          )
+          WHERE object_id = ${label.objectId}
+        `;
+        await transaction`
+          ALTER TABLE moderation_public_objects
+          ENABLE TRIGGER moderation_public_objects_immutable
+        `;
+      });
       await expect(store.get(label.objectId)).rejects.toMatchObject({
         code: 'corrupt-storage',
       });
-      await sql`
-        UPDATE moderation_public_objects
-        SET canonical_bytes = ${originalPublicBytes}
-        WHERE object_id = ${label.objectId}
-      `;
+      await migrationSql.begin(async (transaction) => {
+        await transaction`
+          ALTER TABLE moderation_public_objects
+          DISABLE TRIGGER moderation_public_objects_immutable
+        `;
+        await transaction`
+          UPDATE moderation_public_objects
+          SET canonical_bytes = ${originalPublicBytes}
+          WHERE object_id = ${label.objectId}
+        `;
+        await transaction`
+          ALTER TABLE moderation_public_objects
+          ENABLE TRIGGER moderation_public_objects_immutable
+        `;
+      });
 
       const moderator = operator();
       const transitions = await Promise.allSettled([
@@ -207,7 +287,7 @@ describe('PostgreSQL moderation case ledger', () => {
     }
   }, 45_000);
 
-  it('persists deterministic emergency review, expiry, legal hold, and bounded retention', async () => {
+  it('persists deterministic emergency review and expiry without runtime ledger deletion', async () => {
     let now = serviceNow;
     const store = new PostgresModerationStore(databaseUrl, keyRing());
     const service = new ModerationService({
@@ -282,16 +362,15 @@ describe('PostgreSQL moderation case ledger', () => {
           retentionLimit: 1,
           closedCaseRetentionMs: 365 * 86_400_000,
         }),
-      ).resolves.toMatchObject({ casesRemoved: 1 });
-      await expect(service.readCaseSnapshot(reportId)).resolves.toBeUndefined();
-      reportId = undefined;
+      ).resolves.toMatchObject({ casesRemoved: 0 });
+      await expect(service.readCaseSnapshot(reportId)).resolves.toBeDefined();
     } finally {
       await store.close();
       if (reportId !== undefined) await cleanup([reportId], []);
     }
   }, 45_000);
 
-  it('retains then removes an appeal-reviewed case without mutating append-only rows', async () => {
+  it('retains an appeal-reviewed case and its append-only rows', async () => {
     let now = serviceNow;
     const store = new PostgresModerationStore(databaseUrl, keyRing());
     const service = new ModerationService({
@@ -346,16 +425,15 @@ describe('PostgreSQL moderation case ledger', () => {
           retentionLimit: 1,
           closedCaseRetentionMs: 365 * 86_400_000,
         }),
-      ).resolves.toMatchObject({ casesRemoved: 1 });
-      await expect(service.readCaseSnapshot(reportId)).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ casesRemoved: 0 });
+      await expect(service.readCaseSnapshot(reportId)).resolves.toBeDefined();
       if (reviewId === undefined) throw new Error('Expected an appeal review ID.');
       const reviewRows = await sql<{ count: string }[]>`
         SELECT count(*)::text AS count
         FROM moderation_reviews
         WHERE review_id = ${reviewId}
       `;
-      expect(Number(reviewRows[0]?.count ?? 0)).toBe(0);
-      reportId = undefined;
+      expect(Number(reviewRows[0]?.count ?? 0)).toBe(1);
     } finally {
       await store.close();
       if (reportId !== undefined) await cleanup([reportId], []);
@@ -364,16 +442,28 @@ describe('PostgreSQL moderation case ledger', () => {
 });
 
 async function cleanup(reportIds: readonly string[], publicIds: readonly string[]): Promise<void> {
-  if (reportIds.length > 0) {
-    await sql`DELETE FROM moderation_access_events WHERE report_id IN ${sql(reportIds)}`;
-    await sql`
-      DELETE FROM moderation_restricted_objects
-      WHERE object_type = 'appeal'
-        AND decision_id IN ${sql(reportIds)}
-    `;
-    await sql`DELETE FROM moderation_restricted_objects WHERE object_id IN ${sql(reportIds)}`;
-  }
-  if (publicIds.length > 0) {
-    await sql`DELETE FROM moderation_public_objects WHERE object_id IN ${sql(publicIds)}`;
-  }
+  await migrationSql.begin(async (transaction) => {
+    await transaction`SELECT set_config('wokesocial.retention_delete', 'on', true)`;
+    if (reportIds.length > 0) {
+      await transaction`
+        DELETE FROM moderation_access_events
+        WHERE report_id IN ${transaction(reportIds)}
+      `;
+      await transaction`
+        DELETE FROM moderation_restricted_objects
+        WHERE object_type = 'appeal'
+          AND decision_id IN ${transaction(reportIds)}
+      `;
+      await transaction`
+        DELETE FROM moderation_restricted_objects
+        WHERE object_id IN ${transaction(reportIds)}
+      `;
+    }
+    if (publicIds.length > 0) {
+      await transaction`
+        DELETE FROM moderation_public_objects
+        WHERE object_id IN ${transaction(publicIds)}
+      `;
+    }
+  });
 }

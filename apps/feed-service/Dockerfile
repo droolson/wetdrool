@@ -14,13 +14,16 @@ RUN corepack enable && corepack prepare pnpm@11.2.2 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY patches ./patches
 COPY apps/feed-service/package.json ./apps/feed-service/package.json
+COPY packages/config/package.json ./packages/config/package.json
 
 RUN --mount=type=cache,id=wokesocial-pnpm,target=/opt/pnpm/store \
-    pnpm install --frozen-lockfile --filter @wokesocial/feed-service
+    pnpm install --frozen-lockfile --filter @wokesocial/feed-service...
 
 COPY apps/feed-service ./apps/feed-service
+COPY packages/config ./packages/config
 
-RUN pnpm --filter @wokesocial/feed-service build \
+RUN pnpm --filter @wokesocial/config build \
+    && pnpm --filter @wokesocial/feed-service build \
     && pnpm --filter @wokesocial/feed-service deploy \
       --prod \
       --legacy \

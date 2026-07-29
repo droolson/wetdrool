@@ -590,24 +590,10 @@ export class MemoryModerationStore implements ModerationStore {
       }
     }
 
-    const cutoff = Date.parse(input.now) - input.closedCaseRetentionMs;
-    const retained = [...this.#cases.values()]
-      .filter(
-        (snapshot) =>
-          snapshot.state === 'closed' &&
-          snapshot.closedAt !== undefined &&
-          Date.parse(snapshot.closedAt) <= cutoff &&
-          !snapshot.legalHold,
-      )
-      .sort((left, right) => left.reportId.localeCompare(right.reportId))
-      .slice(0, input.retentionLimit);
-    for (const snapshot of retained) {
-      this.#removeCase(snapshot.reportId);
-    }
     return {
       reviewRequired,
       actionsExpired,
-      casesRemoved: retained.length,
+      casesRemoved: 0,
     };
   }
 
@@ -802,23 +788,6 @@ export class MemoryModerationStore implements ModerationStore {
 
   #withCurrentStatus(action: ModerationAction): ModerationAction {
     return structuredClone({ ...action, currentStatus: this.#currentStatus(action.actionId) });
-  }
-
-  #removeCase(reportId: string): void {
-    const appealIds = this.#appealsByDecision.get(reportId) ?? new Set<string>();
-    for (const appealId of appealIds) this.#objects.delete(appealId);
-    this.#appealsByDecision.delete(reportId);
-    this.#objects.delete(reportId);
-    this.#cases.delete(reportId);
-    this.#events.delete(reportId);
-    this.#reviews.delete(reportId);
-    this.#access.delete(reportId);
-    for (const [actionId, action] of this.#actions) {
-      if (action.reportId === reportId) {
-        this.#actions.delete(actionId);
-        this.#actionStatuses.delete(actionId);
-      }
-    }
   }
 }
 

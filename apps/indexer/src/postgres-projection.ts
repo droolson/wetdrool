@@ -1,6 +1,11 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres';
 
-import { compareEventOrder, type ProtocolEvent } from './events.js';
+import {
+  assertUnambiguousEventOrder,
+  compareEventOrder,
+  protocolEventSchema,
+  type ProtocolEvent,
+} from './events.js';
 import {
   deriveCommunityMembershipAddress,
   deriveGovernanceProposalAddress,
@@ -45,13 +50,19 @@ import type {
   SubscriptionEntitlementProjection,
   SubscriptionOfferingProjection,
 } from './models.js';
+import { projectPublicProfileContent } from './profile-privacy.js';
 import {
+  assertCanonicalAcceptedManifestSuppressions,
   ProjectionError,
   type DeadLetterInput,
   type DeadLetterRecord,
   type IngestionStateStore,
+  type ManifestDeferral,
+  type ManifestEventDisposition,
+  type PendingManifestRecord,
   type ProjectionReplayItem,
   type ProjectionStore,
+  type TerminalManifestRejection,
   type VerifiedManifest,
 } from './projection.js';
 import {
@@ -120,6 +131,200 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     }
   }
 
+  async manifestEventDisposition(
+    input: ProtocolEvent,
+  ): Promise<ManifestEventDisposition | undefined> {
+    const event = protocolEventSchema.parse(input);
+    try {
+      const rows = await this.#sql<RawManifestDispositionRow[]>`
+        SELECT manifest_pending, terminal_manifest_failure_code
+        FROM protocol_events
+        WHERE network_id = ${event.networkId}
+          AND transaction_signature = ${event.transactionSignature}
+          AND log_index = ${event.logIndex}
+          AND transaction_index IS NOT DISTINCT FROM ${event.transactionIndex ?? null}
+          AND slot = ${event.slot.toString()}
+          AND block_time = ${event.blockTime}
+          AND event_type = ${event.type}
+          AND event_body = ${this.#sql.json(serializeEvent(event))}
+      `;
+      const row = rows[0];
+      if (row === undefined) {
+        const coordinate = await this.#sql`
+          SELECT 1
+          FROM protocol_events
+          WHERE network_id = ${event.networkId}
+            AND transaction_signature = ${event.transactionSignature}
+            AND log_index = ${event.logIndex}
+        `;
+        if (coordinate.length !== 0) throw eventConflict();
+        return undefined;
+      }
+      return dispositionFromRow(row);
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
+  async duePendingManifestEvents(
+    networkId: string,
+    dueAt: string,
+    limit: number,
+  ): Promise<readonly PendingManifestRecord[]> {
+    pendingManifestDueTimestamp(dueAt);
+    assertPendingManifestLimit(limit);
+    try {
+      const rows = await this.#sql<PendingManifestRow[]>`
+        SELECT
+          event.network_id,
+          event.transaction_signature,
+          event.transaction_index,
+          event.log_index,
+          event.slot::text AS slot,
+          event.block_time,
+          event.event_type,
+          event.event_body,
+          dead_letter.event_body AS pending_event_body,
+          dead_letter.failure_detail AS pending_failure_detail,
+          dead_letter.attempts AS pending_attempts,
+          dead_letter.next_attempt_at AS pending_next_attempt_at
+        FROM protocol_events AS event
+        JOIN indexer_dead_letters AS dead_letter
+          ON event.manifest_pending
+         AND event.terminal_manifest_failure_code IS NULL
+         AND dead_letter.network_id = event.network_id
+         AND dead_letter.transaction_signature = event.transaction_signature
+         AND dead_letter.log_index = event.log_index
+         AND dead_letter.failure_code = 'manifest-unavailable'
+         AND dead_letter.next_attempt_at IS NOT NULL
+        WHERE event.network_id = ${networkId}
+          AND event.event_type IN ('profile-updated', 'post-published')
+          AND dead_letter.next_attempt_at <= ${dueAt}
+        ORDER BY
+          dead_letter.next_attempt_at ASC,
+          event.slot ASC,
+          event.transaction_index ASC NULLS LAST,
+          event.transaction_signature ASC,
+          event.log_index ASC
+        LIMIT ${limit}
+      `;
+      return rows.map(pendingManifestRecordFromRow);
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
+  async deferManifestEvent(input: ProtocolEvent, deferral: ManifestDeferral): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    try {
+      return await this.#sql.begin(async (sql) => {
+        await this.#lockNetwork(sql, event.networkId);
+        return this.#deferManifestEventInTransaction(sql, event, deferral, false);
+      });
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
+  async reschedulePendingManifestEvent(
+    input: ProtocolEvent,
+    deferral: ManifestDeferral,
+  ): Promise<DeadLetterRecord | undefined> {
+    const event = protocolEventSchema.parse(input);
+    const normalizedDeferral = normalizedManifestDeferral(deferral);
+    try {
+      return await this.#sql.begin(async (sql) => {
+        await this.#lockNetwork(sql, event.networkId);
+        const rows = await sql<{ attempts: number; next_attempt_at: Date | string }[]>`
+          UPDATE indexer_dead_letters AS dead_letter
+          SET
+            event_body = ${sql.json(toJsonValue(normalizedDeferral.eventBody))},
+            failure_code = 'manifest-unavailable',
+            failure_detail = ${normalizedDeferral.failureDetail},
+            attempts = dead_letter.attempts + 1,
+            next_attempt_at = ${normalizedDeferral.nextAttemptAt},
+            updated_at = now()
+          FROM protocol_events AS event
+          WHERE event.network_id = ${event.networkId}
+            AND event.transaction_signature = ${event.transactionSignature}
+            AND event.log_index = ${event.logIndex}
+            AND event.transaction_index IS NOT DISTINCT FROM ${event.transactionIndex ?? null}
+            AND event.slot = ${event.slot.toString()}
+            AND event.block_time = ${event.blockTime}
+            AND event.event_type = ${event.type}
+            AND event.event_body = ${sql.json(serializeEvent(event))}
+            AND event.manifest_pending
+            AND event.terminal_manifest_failure_code IS NULL
+            AND dead_letter.network_id = event.network_id
+            AND dead_letter.transaction_signature = event.transaction_signature
+            AND dead_letter.log_index = event.log_index
+            AND dead_letter.failure_code = 'manifest-unavailable'
+            AND dead_letter.next_attempt_at IS NOT NULL
+          RETURNING dead_letter.attempts, dead_letter.next_attempt_at
+        `;
+        const row = rows[0];
+        if (row !== undefined) {
+          return {
+            attempts: row.attempts,
+            nextAttemptAt: dateString(row.next_attempt_at),
+          };
+        }
+        const disposition = await this.#exactManifestDispositionInTransaction(sql, event);
+        if (disposition?.state === 'pending') {
+          throw new ProjectionError(
+            'Pending manifest state is missing its retryable dead letter.',
+            'database-error',
+          );
+        }
+        return undefined;
+      });
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
+  async promoteManifestEvent(input: ProtocolEvent, manifest: VerifiedManifest): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    try {
+      return await this.#sql.begin(async (sql) => {
+        await this.#lockNetwork(sql, event.networkId);
+        return this.#promoteManifestEventInTransaction(sql, event, manifest);
+      });
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
+  async rejectPendingManifestEvent(
+    input: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+  ): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    try {
+      return await this.#sql.begin(async (sql) => {
+        await this.#lockNetwork(sql, event.networkId);
+        return this.#rejectPendingManifestEventInTransaction(sql, event, rejection);
+      });
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
+  async quarantineManifestEvent(
+    input: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+  ): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    try {
+      return await this.#sql.begin(async (sql) => {
+        await this.#lockNetwork(sql, event.networkId);
+        return this.#quarantineManifestEventInTransaction(sql, event, rejection, false);
+      });
+    } catch (error) {
+      throw projectionError(error);
+    }
+  }
+
   async rebuildProjection(
     networkId: string,
     items: readonly ProjectionReplayItem[],
@@ -140,27 +345,131 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
           ) {
             throw eventConflict();
           }
+          if (duplicate !== undefined) {
+            throw stale('Projection rebuild contains a duplicate raw event coordinate.');
+          }
+          const dispositions = [
+            item.manifest !== undefined,
+            item.acceptedManifestSuppression !== undefined,
+            item.pendingManifest !== undefined,
+            item.terminalFailureCode !== undefined,
+          ].filter(Boolean).length;
+          if (dispositions > 1) {
+            throw eventConflict();
+          }
           supplied.set(key, item);
         }
-        const existing = await sql<{ transaction_signature: string; log_index: number }[]>`
-          SELECT transaction_signature, log_index
-          FROM protocol_events
-          WHERE network_id = ${networkId}
+        assertCanonicalAcceptedManifestSuppressions([...supplied.values()]);
+        assertUnambiguousEventOrder([...supplied.values()].map(({ event }) => event));
+        const suppliedRows = [...supplied.values()].map(
+          ({ event, pendingManifest, terminalFailureCode }) => ({
+            transaction_signature: event.transactionSignature,
+            transaction_index: event.transactionIndex ?? null,
+            log_index: event.logIndex,
+            slot: event.slot.toString(),
+            block_time: event.blockTime,
+            event_type: event.type,
+            event_body: serializeEvent(event),
+            manifest_pending: pendingManifest !== undefined,
+            terminal_manifest_failure_code: terminalFailureCode ?? null,
+          }),
+        );
+        const [ledgerComparison] = await sql<
+          {
+            exact_matches: number;
+            existing_count: number;
+            key_matches: number;
+            supplied_count: number;
+          }[]
+        >`
+          WITH supplied AS (
+            SELECT *
+            FROM jsonb_to_recordset(${sql.json(suppliedRows)}::jsonb) AS item(
+              transaction_signature text,
+              transaction_index integer,
+              log_index integer,
+              slot numeric,
+              block_time timestamptz,
+              event_type text,
+              event_body jsonb,
+              manifest_pending boolean,
+              terminal_manifest_failure_code text
+            )
+          ),
+          existing AS (
+            SELECT
+              transaction_signature,
+              transaction_index,
+              log_index,
+              slot,
+              block_time,
+              event_type,
+              event_body,
+              manifest_pending,
+              terminal_manifest_failure_code
+            FROM protocol_events
+            WHERE network_id = ${networkId}
+          )
+          SELECT
+            (SELECT count(*)::integer FROM existing) AS existing_count,
+            (SELECT count(*)::integer FROM supplied) AS supplied_count,
+            (
+              SELECT count(*)::integer
+              FROM existing
+              JOIN supplied USING (transaction_signature, log_index)
+            ) AS key_matches,
+            (
+              SELECT count(*)::integer
+              FROM existing
+              JOIN supplied USING (transaction_signature, log_index)
+              WHERE existing.transaction_index IS NOT DISTINCT FROM supplied.transaction_index
+                AND existing.slot = supplied.slot
+                AND existing.block_time = supplied.block_time
+                AND existing.event_type = supplied.event_type
+                AND existing.event_body = supplied.event_body
+                AND existing.manifest_pending = supplied.manifest_pending
+                AND existing.terminal_manifest_failure_code
+                    IS NOT DISTINCT FROM supplied.terminal_manifest_failure_code
+            ) AS exact_matches
         `;
         if (
-          existing.some(
-            (row) =>
-              !supplied.has(eventKeyParts(networkId, row.transaction_signature, row.log_index)),
-          )
+          ledgerComparison === undefined ||
+          ledgerComparison.existing_count !== ledgerComparison.supplied_count ||
+          ledgerComparison.key_matches !== ledgerComparison.existing_count
         ) {
-          throw stale('Projection rebuild must preserve the complete immutable raw event source.');
+          throw stale('Projection rebuild must exactly match the immutable raw event source.');
+        }
+        if (ledgerComparison.exact_matches !== ledgerComparison.existing_count) {
+          throw eventConflict();
         }
 
         await this.#clearMaterializedProjection(sql, networkId);
         for (const item of [...supplied.values()].sort((left, right) =>
           compareEventOrder(left.event, right.event),
         )) {
-          await this.#applyInTransaction(sql, item.event, item.manifest, true);
+          if (item.pendingManifest !== undefined) {
+            await this.#deferManifestEventInTransaction(
+              sql,
+              item.event,
+              item.pendingManifest,
+              true,
+            );
+          } else if (item.acceptedManifestSuppression !== undefined) {
+            await this.#replayAcceptedManifestSuppressionInTransaction(sql, item.event);
+          } else if (item.terminalFailureCode === undefined) {
+            await this.#applyInTransaction(sql, item.event, item.manifest, true);
+          } else {
+            await this.#quarantineManifestEventInTransaction(
+              sql,
+              item.event,
+              {
+                eventBody: {},
+                failureCode: item.terminalFailureCode,
+                failureDetail: 'Replayed from the immutable terminal manifest classification.',
+              },
+              true,
+            );
+          }
         }
       });
     } catch (error) {
@@ -168,21 +477,372 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     }
   }
 
-  async #applyInTransaction(
+  async #replayAcceptedManifestSuppressionInTransaction(
     sql: TransactionSql,
     event: ProtocolEvent,
-    manifest: VerifiedManifest | undefined,
+  ): Promise<void> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw eventConflict();
+    }
+    const exact = await sql`
+      SELECT 1
+      FROM protocol_events
+      WHERE network_id = ${event.networkId}
+        AND transaction_signature = ${event.transactionSignature}
+        AND log_index = ${event.logIndex}
+        AND transaction_index IS NOT DISTINCT FROM ${event.transactionIndex ?? null}
+        AND slot = ${event.slot.toString()}
+        AND block_time = ${event.blockTime}
+        AND event_type = ${event.type}
+        AND event_body = ${sql.json(serializeEvent(event))}
+        AND NOT manifest_pending
+        AND terminal_manifest_failure_code IS NULL
+    `;
+    if (exact.length !== 1) {
+      throw eventConflict();
+    }
+
+    const sequenceAdvance = await this.#validateIdentityLifecycle(sql, event);
+    if (sequenceAdvance === undefined) {
+      throw stale('A projection-suppressed manifest event must advance one identity sequence.');
+    }
+    if (event.type === 'profile-updated') {
+      // The later canonical pointer justifies omitting deleted historical
+      // bytes, but this pointer still superseded any earlier served profile.
+      await sql`
+        DELETE FROM profiles
+        WHERE identity_id = ${event.identityId}
+      `;
+    }
+
+    await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
+    await this.#advanceEventCheckpoint(sql, event);
+  }
+
+  async #deferManifestEventInTransaction(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+    deferral: ManifestDeferral,
     rebuilding: boolean,
   ): Promise<boolean> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw new ProjectionError(
+        'Only profile and post manifest events can be deferred.',
+        'manifest-mismatch',
+      );
+    }
+    if (deferral.failureCode !== 'manifest-unavailable') {
+      throw new ProjectionError(
+        'Only a manifest-unavailable failure can be deferred.',
+        'manifest-mismatch',
+      );
+    }
+    const normalizedDeferral = normalizedManifestDeferral(deferral);
+
     const inserted = await sql`
       INSERT INTO protocol_events (
         network_id, transaction_signature, transaction_index, log_index, slot,
-        block_time, event_type, event_body
+        block_time, event_type, event_body, manifest_pending,
+        terminal_manifest_failure_code
       ) VALUES (
         ${event.networkId}, ${event.transactionSignature},
         ${event.transactionIndex ?? null}, ${event.logIndex},
         ${event.slot.toString()}, ${event.blockTime}, ${event.type},
+        ${sql.json(serializeEvent(event))}, true, null
+      )
+      ON CONFLICT DO NOTHING
+      RETURNING event_type
+    `;
+    if (inserted.length === 0) {
+      const disposition = await this.#exactManifestDispositionInTransaction(sql, event);
+      if (disposition === undefined) throw eventConflict();
+      if (disposition.state !== 'pending') throw eventConflict();
+      if (!rebuilding) return false;
+    }
+
+    const sequenceAdvance = await this.#validateIdentityLifecycle(sql, event);
+    if (sequenceAdvance === undefined) {
+      throw stale('A deferred manifest event must advance one identity sequence.');
+    }
+
+    if (event.type === 'profile-updated') {
+      await sql`
+        DELETE FROM profiles
+        WHERE identity_id = ${event.identityId}
+      `;
+    }
+
+    await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
+    await this.#advanceEventCheckpoint(sql, event);
+
+    if (rebuilding) {
+      await sql`
+        INSERT INTO indexer_dead_letters (
+          network_id, transaction_signature, log_index, event_body,
+          failure_code, failure_detail, next_attempt_at
+        ) VALUES (
+          ${event.networkId}, ${event.transactionSignature}, ${event.logIndex},
+          ${sql.json(toJsonValue(normalizedDeferral.eventBody))},
+          ${normalizedDeferral.failureCode}, ${normalizedDeferral.failureDetail},
+          ${normalizedDeferral.nextAttemptAt}
+        )
+        ON CONFLICT (network_id, transaction_signature, log_index)
+        DO UPDATE SET
+          event_body = EXCLUDED.event_body,
+          failure_code = EXCLUDED.failure_code,
+          failure_detail = EXCLUDED.failure_detail,
+          next_attempt_at = EXCLUDED.next_attempt_at,
+          updated_at = now()
+        WHERE indexer_dead_letters.next_attempt_at IS NOT NULL
+      `;
+    } else {
+      await sql`
+        INSERT INTO indexer_dead_letters (
+          network_id, transaction_signature, log_index, event_body,
+          failure_code, failure_detail, next_attempt_at
+        ) VALUES (
+          ${event.networkId}, ${event.transactionSignature}, ${event.logIndex},
+          ${sql.json(toJsonValue(normalizedDeferral.eventBody))},
+          ${normalizedDeferral.failureCode}, ${normalizedDeferral.failureDetail},
+          ${normalizedDeferral.nextAttemptAt}
+        )
+        ON CONFLICT (network_id, transaction_signature, log_index)
+        DO UPDATE SET
+          event_body = EXCLUDED.event_body,
+          failure_code = EXCLUDED.failure_code,
+          failure_detail = EXCLUDED.failure_detail,
+          attempts = indexer_dead_letters.attempts + 1,
+          next_attempt_at = EXCLUDED.next_attempt_at,
+          updated_at = now()
+        WHERE indexer_dead_letters.next_attempt_at IS NOT NULL
+      `;
+    }
+    return true;
+  }
+
+  async #promoteManifestEventInTransaction(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+    manifest: VerifiedManifest,
+  ): Promise<boolean> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw new ProjectionError(
+        'Only profile and post manifest events can be promoted.',
+        'manifest-mismatch',
+      );
+    }
+    const disposition = await this.#exactManifestDispositionInTransaction(sql, event);
+    if (disposition === undefined) {
+      throw stale('A manifest event must be durably pending before it can be promoted.');
+    }
+    if (disposition.state === 'terminal') throw eventConflict();
+    if (disposition.state === 'accepted') return false;
+
+    if (event.type === 'profile-updated') {
+      const verified = requireManifest(event, manifest, 'profile');
+      const content = projectPublicProfileContent(verified.schemaVersion, verified.content);
+      const laterProfiles = await sql`
+        SELECT 1
+        FROM protocol_events
+        WHERE network_id = ${event.networkId}
+          AND event_type = 'profile-updated'
+          AND event_body ->> 'identityId' = ${event.identityId}
+          AND event_body ->> 'sequence' ~ '^[0-9]{1,20}$'
+          AND (event_body ->> 'sequence')::numeric > ${event.sequence.toString()}::numeric
+        LIMIT 1
+      `;
+      if (laterProfiles.length === 0) {
+        await sql`
+          INSERT INTO profiles (
+            identity_id, object_id, cid, payload_hash, display_name, bio,
+            pronouns, content, updated_slot, updated_at
+          ) VALUES (
+            ${event.identityId}, ${verified.objectId}, ${verified.cid},
+            ${verified.payloadHash}, ${content.displayName}, ${content.bio},
+            ${sql.json(content.pronouns)}, ${sql.json(content)}, ${event.slot.toString()},
+            ${event.blockTime}
+          )
+          ON CONFLICT (identity_id) DO UPDATE SET
+            object_id = EXCLUDED.object_id,
+            cid = EXCLUDED.cid,
+            payload_hash = EXCLUDED.payload_hash,
+            display_name = EXCLUDED.display_name,
+            bio = EXCLUDED.bio,
+            pronouns = EXCLUDED.pronouns,
+            content = EXCLUDED.content,
+            updated_slot = EXCLUDED.updated_slot,
+            updated_at = EXCLUDED.updated_at
+        `;
+      }
+    } else {
+      const verified = requireManifest(event, manifest, 'post');
+      const content = verified.content as PostProjection['content'];
+      const tombstones = await sql<{ block_time: Date | string }[]>`
+        SELECT block_time
+        FROM protocol_events
+        WHERE network_id = ${event.networkId}
+          AND event_type = 'tombstoned'
+          AND event_body ->> 'identityId' = ${event.identityId}
+          AND event_body ->> 'targetObjectId' = ${event.objectId}
+          AND event_body ->> 'sequence' ~ '^[0-9]{1,20}$'
+          AND (event_body ->> 'sequence')::numeric > ${event.sequence.toString()}::numeric
+        ORDER BY
+          slot DESC,
+          transaction_index DESC NULLS LAST,
+          transaction_signature DESC,
+          log_index DESC
+        LIMIT 1
+      `;
+      await sql`
+        INSERT INTO posts (
+          object_id, network_id, author_identity_id, cid, payload_hash,
+          signing_key_id, body, language, content, created_at,
+          anchored_slot, transaction_signature, verified, tombstoned_at
+        ) VALUES (
+          ${verified.objectId}, ${event.networkId}, ${event.identityId},
+          ${verified.cid}, ${verified.payloadHash}, ${verified.signingKeyId},
+          ${content.body ?? null}, ${content.language}, ${sql.json(content)},
+          ${event.blockTime}, ${event.slot.toString()},
+          ${event.transactionSignature}, true, ${tombstones[0]?.block_time ?? null}
+        )
+        ON CONFLICT (object_id) DO NOTHING
+      `;
+    }
+
+    const transitions = await sql<{ transitioned: boolean }[]>`
+      SELECT accept_pending_manifest_event(
+        ${event.networkId},
+        ${event.transactionSignature},
+        ${event.transactionIndex ?? null},
+        ${event.logIndex},
+        ${event.slot.toString()},
+        ${event.blockTime},
+        ${event.type},
         ${sql.json(serializeEvent(event))}
+      ) AS transitioned
+    `;
+    if (transitions[0]?.transitioned !== true) throw eventConflict();
+    await sql`
+      DELETE FROM indexer_dead_letters
+      WHERE network_id = ${event.networkId}
+        AND transaction_signature = ${event.transactionSignature}
+        AND log_index = ${event.logIndex}
+        AND next_attempt_at IS NOT NULL
+    `;
+    return true;
+  }
+
+  async #rejectPendingManifestEventInTransaction(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+  ): Promise<boolean> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw new ProjectionError(
+        'Only profile and post manifest events can transition from pending to terminal.',
+        'manifest-mismatch',
+      );
+    }
+    const disposition = await this.#exactManifestDispositionInTransaction(sql, event);
+    if (disposition === undefined) {
+      throw stale('A manifest event must be durably pending before it can be rejected.');
+    }
+    if (disposition.state === 'terminal') {
+      if (disposition.failureCode !== rejection.failureCode) throw eventConflict();
+      return false;
+    }
+    if (disposition.state === 'accepted') throw eventConflict();
+
+    const transitions = await sql<{ transitioned: boolean }[]>`
+      SELECT reject_pending_manifest_event(
+        ${event.networkId},
+        ${event.transactionSignature},
+        ${event.transactionIndex ?? null},
+        ${event.logIndex},
+        ${event.slot.toString()},
+        ${event.blockTime},
+        ${event.type},
+        ${sql.json(serializeEvent(event))},
+        ${rejection.failureCode}
+      ) AS transitioned
+    `;
+    if (transitions[0]?.transitioned !== true) throw eventConflict();
+    await sql`
+      INSERT INTO indexer_dead_letters (
+        network_id, transaction_signature, log_index, event_body,
+        failure_code, failure_detail, next_attempt_at
+      ) VALUES (
+        ${event.networkId}, ${event.transactionSignature}, ${event.logIndex},
+        ${sql.json(toJsonValue(rejection.eventBody))}, ${rejection.failureCode},
+        ${rejection.failureDetail}, null
+      )
+      ON CONFLICT (network_id, transaction_signature, log_index)
+      DO UPDATE SET
+        event_body = EXCLUDED.event_body,
+        failure_code = EXCLUDED.failure_code,
+        failure_detail = EXCLUDED.failure_detail,
+        next_attempt_at = null,
+        updated_at = now()
+    `;
+    return true;
+  }
+
+  async #exactManifestDispositionInTransaction(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+  ): Promise<ManifestEventDisposition | undefined> {
+    const rows = await sql<RawManifestDispositionRow[]>`
+      SELECT manifest_pending, terminal_manifest_failure_code
+      FROM protocol_events
+      WHERE network_id = ${event.networkId}
+        AND transaction_signature = ${event.transactionSignature}
+        AND log_index = ${event.logIndex}
+        AND transaction_index IS NOT DISTINCT FROM ${event.transactionIndex ?? null}
+        AND slot = ${event.slot.toString()}
+        AND block_time = ${event.blockTime}
+        AND event_type = ${event.type}
+        AND event_body = ${sql.json(serializeEvent(event))}
+    `;
+    const row = rows[0];
+    if (row !== undefined) return dispositionFromRow(row);
+    const coordinate = await sql`
+      SELECT 1
+      FROM protocol_events
+      WHERE network_id = ${event.networkId}
+        AND transaction_signature = ${event.transactionSignature}
+        AND log_index = ${event.logIndex}
+    `;
+    if (coordinate.length !== 0) throw eventConflict();
+    return undefined;
+  }
+
+  async #quarantineManifestEventInTransaction(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+    rebuilding: boolean,
+  ): Promise<boolean> {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'tombstoned'
+    ) {
+      throw new ProjectionError(
+        'Only manifest-bearing protocol events can be terminally quarantined.',
+        'manifest-mismatch',
+      );
+    }
+
+    const inserted = await sql`
+      INSERT INTO protocol_events (
+        network_id, transaction_signature, transaction_index, log_index, slot,
+        block_time, event_type, event_body, manifest_pending,
+        terminal_manifest_failure_code
+      ) VALUES (
+        ${event.networkId}, ${event.transactionSignature},
+        ${event.transactionIndex ?? null}, ${event.logIndex},
+        ${event.slot.toString()}, ${event.blockTime}, ${event.type},
+        ${sql.json(serializeEvent(event))}, false, ${rejection.failureCode}
       )
       ON CONFLICT DO NOTHING
       RETURNING event_type
@@ -199,6 +859,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
           AND block_time = ${event.blockTime}
           AND event_type = ${event.type}
           AND event_body = ${sql.json(serializeEvent(event))}
+          AND NOT manifest_pending
+          AND terminal_manifest_failure_code = ${rejection.failureCode}
       `;
       if (exact.length !== 1) {
         throw eventConflict();
@@ -207,6 +869,112 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         return false;
       }
     }
+
+    const sequenceAdvance = await this.#validateIdentityLifecycle(sql, event);
+    if (sequenceAdvance === undefined) {
+      throw stale('A quarantined manifest event must advance one identity sequence.');
+    }
+
+    if (event.type === 'profile-updated') {
+      await sql`
+        DELETE FROM profiles
+        WHERE identity_id = ${event.identityId}
+      `;
+    } else if (event.type === 'tombstoned') {
+      await sql`
+        UPDATE posts
+        SET tombstoned_at = ${event.blockTime}
+        WHERE object_id = ${event.targetObjectId}
+          AND author_identity_id = ${event.identityId}
+      `;
+    }
+
+    await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
+    await this.#advanceEventCheckpoint(sql, event);
+
+    if (rebuilding) {
+      await sql`
+        INSERT INTO indexer_dead_letters (
+          network_id, transaction_signature, log_index, event_body,
+          failure_code, failure_detail, next_attempt_at
+        ) VALUES (
+          ${event.networkId}, ${event.transactionSignature}, ${event.logIndex},
+          ${sql.json(toJsonValue(rejection.eventBody))}, ${rejection.failureCode},
+          ${rejection.failureDetail}, null
+        )
+        ON CONFLICT (network_id, transaction_signature, log_index)
+        DO UPDATE SET
+          failure_code = EXCLUDED.failure_code,
+          next_attempt_at = null,
+          updated_at = now()
+      `;
+    } else {
+      await sql`
+        INSERT INTO indexer_dead_letters (
+          network_id, transaction_signature, log_index, event_body,
+          failure_code, failure_detail, next_attempt_at
+        ) VALUES (
+          ${event.networkId}, ${event.transactionSignature}, ${event.logIndex},
+          ${sql.json(toJsonValue(rejection.eventBody))}, ${rejection.failureCode},
+          ${rejection.failureDetail}, null
+        )
+        ON CONFLICT (network_id, transaction_signature, log_index)
+        DO UPDATE SET
+          event_body = EXCLUDED.event_body,
+          failure_code = EXCLUDED.failure_code,
+          failure_detail = EXCLUDED.failure_detail,
+          attempts = indexer_dead_letters.attempts + 1,
+          next_attempt_at = null,
+          updated_at = now()
+      `;
+    }
+    return true;
+  }
+
+  async #applyInTransaction(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+    manifest: VerifiedManifest | undefined,
+    rebuilding: boolean,
+  ): Promise<boolean> {
+    const inserted = await sql`
+      INSERT INTO protocol_events (
+        network_id, transaction_signature, transaction_index, log_index, slot,
+        block_time, event_type, event_body, manifest_pending,
+        terminal_manifest_failure_code
+      ) VALUES (
+        ${event.networkId}, ${event.transactionSignature},
+        ${event.transactionIndex ?? null}, ${event.logIndex},
+        ${event.slot.toString()}, ${event.blockTime}, ${event.type},
+        ${sql.json(serializeEvent(event))}, false, null
+      )
+      ON CONFLICT DO NOTHING
+      RETURNING event_type
+    `;
+    if (inserted.length === 0) {
+      const exact = await sql`
+        SELECT 1
+        FROM protocol_events
+        WHERE network_id = ${event.networkId}
+          AND transaction_signature = ${event.transactionSignature}
+          AND log_index = ${event.logIndex}
+          AND transaction_index IS NOT DISTINCT FROM ${event.transactionIndex ?? null}
+          AND slot = ${event.slot.toString()}
+          AND block_time = ${event.blockTime}
+          AND event_type = ${event.type}
+          AND event_body = ${sql.json(serializeEvent(event))}
+          AND NOT manifest_pending
+          AND terminal_manifest_failure_code IS NULL
+      `;
+      if (exact.length !== 1) {
+        throw eventConflict();
+      }
+      if (!rebuilding) {
+        return false;
+      }
+    }
+
+    const sequenceAdvance = await this.#validateIdentityLifecycle(sql, event);
 
     switch (event.type) {
       case 'protocol-initialized': {
@@ -225,10 +993,16 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         await sql`
               INSERT INTO identities (
                 identity_id, network_id, identity_address, root_authority,
-                root_rotation_count, created_slot, created_at, updated_slot, updated_at
+                root_rotation_count, active, identity_sequence,
+                sequence_slot, sequence_transaction_index,
+                sequence_transaction_signature, sequence_log_index,
+                created_slot, created_at, updated_slot, updated_at
               ) VALUES (
                 ${event.identityId}, ${event.networkId}, ${event.identityAddress},
-                ${event.rootAuthority}, 0, ${event.slot.toString()}, ${event.blockTime},
+                ${event.rootAuthority}, 0, true, 0,
+                ${event.slot.toString()}, ${event.transactionIndex ?? null},
+                ${event.transactionSignature}, ${event.logIndex},
+                ${event.slot.toString()}, ${event.blockTime},
                 ${event.slot.toString()}, ${event.blockTime}
               )
               ON CONFLICT (identity_id) DO NOTHING
@@ -242,7 +1016,69 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 ${event.transactionIndex ?? null}, ${event.transactionSignature}, ${event.logIndex}
               )
               ON CONFLICT DO NOTHING
-            `;
+        `;
+        break;
+      }
+      case 'identity-deactivated': {
+        const configs = await sql<ProtocolConfigRow[]>`
+          SELECT *
+          FROM protocol_configs
+          WHERE network_id = ${event.networkId}
+        `;
+        const identities = await sql<IdentityRow[]>`
+          SELECT *
+          FROM identities
+          WHERE network_id = ${event.networkId}
+            AND identity_id = ${event.identityId}
+          FOR UPDATE
+        `;
+        const config = configs[0];
+        const identity = identities[0];
+        if (identity === undefined) {
+          throw new ProjectionError(
+            `Identity ${event.identityId} has not been indexed.`,
+            'missing-identity',
+          );
+        }
+        if (
+          config === undefined ||
+          config.config_address !== event.configAddress ||
+          identity.identity_address !== event.identityAddress ||
+          identity.root_authority !== event.rootAuthority ||
+          event.identitySequence !== BigInt(identity.identity_sequence) + 1n ||
+          comparePosition(eventPosition(event), identitySequencePosition(identity)) <= 0
+        ) {
+          throw stale(
+            'Identity deactivation does not exactly advance the indexed identity and protocol.',
+          );
+        }
+        if (!identity.active) {
+          throw stale('Identity is already inactive.');
+        }
+        const updated = await sql`
+          UPDATE identities
+          SET active = false,
+              identity_sequence = ${event.identitySequence.toString()},
+              sequence_slot = ${event.slot.toString()},
+              sequence_transaction_index = ${event.transactionIndex ?? null},
+              sequence_transaction_signature = ${event.transactionSignature},
+              sequence_log_index = ${event.logIndex},
+              deactivated_slot = ${event.slot.toString()},
+              deactivated_at = ${event.blockTime},
+              deactivated_transaction_index = ${event.transactionIndex ?? null},
+              deactivated_transaction_signature = ${event.transactionSignature},
+              deactivated_log_index = ${event.logIndex},
+              updated_slot = ${event.slot.toString()},
+              updated_at = ${event.blockTime}
+          WHERE identity_id = ${event.identityId}
+            AND network_id = ${event.networkId}
+            AND active
+            AND identity_sequence + 1 = ${event.identitySequence.toString()}
+          RETURNING identity_id
+        `;
+        if (updated.length !== 1) {
+          throw stale('Identity could not transition from active to inactive exactly once.');
+        }
         break;
       }
       case 'handle-claimed': {
@@ -451,15 +1287,15 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       }
       case 'profile-updated': {
         const verified = requireManifest(event, manifest, 'profile');
-        const content = verified.content as ProfileProjection['content'];
+        const content = projectPublicProfileContent(verified.schemaVersion, verified.content);
         const updated = await sql`
               INSERT INTO profiles (
                 identity_id, object_id, cid, payload_hash, display_name, bio,
-                pronouns, updated_slot, updated_at
+                pronouns, content, updated_slot, updated_at
               ) VALUES (
                 ${event.identityId}, ${verified.objectId}, ${verified.cid},
                 ${verified.payloadHash}, ${content.displayName}, ${content.bio},
-                ${sql.json(content.pronouns)}, ${event.slot.toString()},
+                ${sql.json(content.pronouns)}, ${sql.json(content)}, ${event.slot.toString()},
                 ${event.blockTime}
               )
               ON CONFLICT (identity_id) DO UPDATE SET
@@ -469,14 +1305,15 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 display_name = EXCLUDED.display_name,
                 bio = EXCLUDED.bio,
                 pronouns = EXCLUDED.pronouns,
+                content = EXCLUDED.content,
                 updated_slot = EXCLUDED.updated_slot,
                 updated_at = EXCLUDED.updated_at
-              WHERE profiles.updated_slot < EXCLUDED.updated_slot
               RETURNING identity_id
             `;
-        if (updated.length !== 1) {
-          throw stale('Profile event is older than the current projection.');
-        }
+        // The identity row was locked and the exact next sequence plus event
+        // position was validated before this upsert. That ordering permits
+        // valid same-slot transactions while rejecting stale or skipped state.
+        if (updated.length !== 1) throw stale('Profile projection could not be updated.');
         break;
       }
       case 'post-published': {
@@ -491,7 +1328,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 ${verified.objectId}, ${event.networkId}, ${event.identityId},
                 ${verified.cid}, ${verified.payloadHash}, ${verified.signingKeyId},
                 ${content.body ?? null}, ${content.language}, ${sql.json(content)},
-                ${verified.createdAt}, ${event.slot.toString()},
+                ${event.blockTime}, ${event.slot.toString()},
                 ${event.transactionSignature}, true
               )
               ON CONFLICT (object_id) DO NOTHING
@@ -505,7 +1342,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 state_sequence, updated_slot, updated_at
               ) VALUES (
                 ${event.followerIdentityId}, ${event.followedIdentityId},
-                ${event.active}, ${event.sequence.toString()},
+                ${event.active}, ${event.edgeStateSequence.toString()},
                 ${event.slot.toString()}, ${event.blockTime}
               )
               ON CONFLICT (follower_identity_id, followed_identity_id)
@@ -552,9 +1389,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         break;
       }
       case 'tombstoned':
-        if (event.cid !== undefined) {
-          requireManifest(event, manifest, 'tombstone');
-        }
+        // Optional legacy tombstone manifest fields are detached audit metadata.
+        // The authenticated on-chain target is the canonical suppression signal.
         await sql`
               UPDATE posts
               SET tombstoned_at = ${event.blockTime}
@@ -2111,6 +2947,40 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       }
     }
 
+    if (sequenceAdvance !== undefined && event.type !== 'identity-deactivated') {
+      await this.#advanceIdentitySequence(sql, event, sequenceAdvance);
+    }
+
+    await this.#advanceEventCheckpoint(sql, event);
+    return true;
+  }
+
+  async #advanceIdentitySequence(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+    sequenceAdvance: IdentitySequenceAdvance,
+  ): Promise<void> {
+    const updated = await sql`
+      UPDATE identities
+      SET identity_sequence = ${sequenceAdvance.sequence.toString()},
+          sequence_slot = ${event.slot.toString()},
+          sequence_transaction_index = ${event.transactionIndex ?? null},
+          sequence_transaction_signature = ${event.transactionSignature},
+          sequence_log_index = ${event.logIndex},
+          updated_slot = ${event.slot.toString()},
+          updated_at = ${event.blockTime}
+      WHERE network_id = ${event.networkId}
+        AND identity_id = ${sequenceAdvance.identityId}
+        AND active
+        AND identity_sequence + 1 = ${sequenceAdvance.sequence.toString()}
+      RETURNING identity_id
+    `;
+    if (updated.length !== 1) {
+      throw stale('Identity sequence could not advance exactly once.');
+    }
+  }
+
+  async #advanceEventCheckpoint(sql: TransactionSql, event: ProtocolEvent): Promise<void> {
     await sql`
       INSERT INTO indexer_checkpoints (
         network_id, finalized_slot, transaction_signature, log_index
@@ -2125,7 +2995,58 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         updated_at = now()
       WHERE indexer_checkpoints.finalized_slot <= EXCLUDED.finalized_slot
     `;
-    return true;
+  }
+
+  async #validateIdentityLifecycle(
+    sql: TransactionSql,
+    event: ProtocolEvent,
+  ): Promise<IdentitySequenceAdvance | undefined> {
+    if (event.type === 'identity-deactivated') {
+      return undefined;
+    }
+    const identities = new Map<string, IdentityRow>();
+    for (const identityId of [...activeIdentityIds(event)].sort()) {
+      const rows = await sql<IdentityRow[]>`
+        SELECT *
+        FROM identities
+        WHERE network_id = ${event.networkId}
+          AND identity_id = ${identityId}
+        FOR UPDATE
+      `;
+      const identity = rows[0];
+      if (identity === undefined) {
+        throw new ProjectionError(
+          `Identity ${identityId} has not been indexed.`,
+          'missing-identity',
+        );
+      }
+      if (!identity.active) {
+        throw stale('Protocol mutation references an inactive identity.');
+      }
+      identities.set(identityId, identity);
+    }
+
+    const snapshot = identitySequenceSnapshot(event);
+    if (
+      snapshot !== undefined &&
+      BigInt(identities.get(snapshot.identityId)?.identity_sequence ?? '-1') !== snapshot.sequence
+    ) {
+      throw stale('Identity sequence snapshot does not match current indexed state.');
+    }
+
+    const advance = identitySequenceAdvance(event);
+    if (advance === undefined) {
+      return undefined;
+    }
+    const identity = identities.get(advance.identityId);
+    if (
+      identity === undefined ||
+      advance.sequence !== BigInt(identity.identity_sequence) + 1n ||
+      comparePosition(eventPosition(event), identitySequencePosition(identity)) <= 0
+    ) {
+      throw stale('Identity mutation does not exactly advance sequence and event order.');
+    }
+    return advance;
   }
 
   async advanceCheckpoint(
@@ -2237,12 +3158,27 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
   }
 
   async authorizeSigningKey(query: SigningKeyAuthorizationQuery): Promise<boolean> {
-    const history = await this.#sql<RootHistoryRow[]>`
-      SELECT *
-      FROM root_authority_history
-      WHERE identity_id = ${query.identityId}
-    `;
+    const [identityRows, history] = await Promise.all([
+      this.#sql<IdentityRow[]>`
+        SELECT *
+        FROM identities
+        WHERE identity_id = ${query.identityId}
+      `,
+      this.#sql<RootHistoryRow[]>`
+        SELECT *
+        FROM root_authority_history
+        WHERE identity_id = ${query.identityId}
+      `,
+    ]);
     const queryPosition = positionFor(query);
+    const identity = identityRows[0];
+    if (identity === undefined) {
+      return false;
+    }
+    const deactivated = identityDeactivationPosition(identity);
+    if (deactivated !== undefined && comparePosition(queryPosition, deactivated) >= 0) {
+      return false;
+    }
     const root = history
       .filter((row) => comparePosition(rootPosition(row), queryPosition) <= 0)
       .sort((left, right) => comparePosition(rootPosition(right), rootPosition(left)))[0];
@@ -2595,6 +3531,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
                 ORDER BY hc.handle COLLATE "C"
                 LIMIT 1
               ) h ON TRUE
+              WHERE i.active
               ORDER BY
                 CASE
                   WHEN i.search_identity_id = ${term} THEN 1000
@@ -2620,13 +3557,15 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
             sql<FeedRow[]>`
               SELECT
                 p.*,
-                i.identity_address, i.root_authority, i.root_rotation_count, i.created_slot,
+                i.identity_address, i.root_authority, i.root_rotation_count,
+                i.active AS identity_active, i.identity_sequence,
+                i.deactivated_slot, i.deactivated_at, i.created_slot,
                 i.created_at AS identity_created_at,
                 i.updated_slot AS identity_updated_slot,
                 i.updated_at AS identity_updated_at,
                 pr.object_id AS profile_object_id, pr.cid AS profile_cid,
                 pr.payload_hash AS profile_payload_hash,
-                pr.display_name, pr.bio, pr.pronouns,
+                pr.display_name, pr.bio, pr.content AS profile_content,
                 pr.updated_slot, pr.updated_at
               FROM posts p
               JOIN identities i ON i.identity_id = p.author_identity_id
@@ -2689,7 +3628,8 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
   }
 
   async getFeed(query: FeedQuery): Promise<readonly FeedEntry[]> {
-    const before = query.before ?? '9999-12-31T23:59:59.999Z';
+    const beforeCreatedAt = query.before?.createdAt ?? null;
+    const beforeObjectId = query.before?.objectId ?? null;
     let rows: FeedRow[];
     if (query.mode === 'following') {
       if (query.viewerIdentityId === undefined) {
@@ -2698,13 +3638,15 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       rows = await this.#sql<FeedRow[]>`
             SELECT
               p.*,
-              i.identity_address, i.root_authority, i.root_rotation_count, i.created_slot,
+              i.identity_address, i.root_authority, i.root_rotation_count,
+              i.active AS identity_active, i.identity_sequence,
+              i.deactivated_slot, i.deactivated_at, i.created_slot,
               i.created_at AS identity_created_at,
               i.updated_slot AS identity_updated_slot,
               i.updated_at AS identity_updated_at,
               pr.object_id AS profile_object_id, pr.cid AS profile_cid,
               pr.payload_hash AS profile_payload_hash,
-              pr.display_name, pr.bio, pr.pronouns,
+              pr.display_name, pr.bio, pr.content AS profile_content,
               pr.updated_slot, pr.updated_at
             FROM posts p
             JOIN follows f
@@ -2715,29 +3657,47 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
             LEFT JOIN profiles pr ON pr.identity_id = p.author_identity_id
             WHERE p.network_id = ${query.networkId}
               AND p.tombstoned_at IS NULL
-              AND p.created_at < ${before}
-            ORDER BY p.created_at DESC, p.object_id DESC
+              AND p.content -> 'visibility' ->> 'kind' = 'public'
+              AND (
+                ${beforeCreatedAt}::timestamptz IS NULL
+                OR p.created_at < ${beforeCreatedAt}::timestamptz
+                OR (
+                  p.created_at = ${beforeCreatedAt}::timestamptz
+                  AND p.object_id COLLATE "C" < ${beforeObjectId}::text COLLATE "C"
+                )
+              )
+            ORDER BY p.created_at DESC, p.object_id COLLATE "C" DESC
             LIMIT ${query.limit}
           `;
     } else {
       rows = await this.#sql<FeedRow[]>`
             SELECT
               p.*,
-              i.identity_address, i.root_authority, i.root_rotation_count, i.created_slot,
+              i.identity_address, i.root_authority, i.root_rotation_count,
+              i.active AS identity_active, i.identity_sequence,
+              i.deactivated_slot, i.deactivated_at, i.created_slot,
               i.created_at AS identity_created_at,
               i.updated_slot AS identity_updated_slot,
               i.updated_at AS identity_updated_at,
               pr.object_id AS profile_object_id, pr.cid AS profile_cid,
               pr.payload_hash AS profile_payload_hash,
-              pr.display_name, pr.bio, pr.pronouns,
+              pr.display_name, pr.bio, pr.content AS profile_content,
               pr.updated_slot, pr.updated_at
             FROM posts p
             JOIN identities i ON i.identity_id = p.author_identity_id
             LEFT JOIN profiles pr ON pr.identity_id = p.author_identity_id
             WHERE p.network_id = ${query.networkId}
               AND p.tombstoned_at IS NULL
-              AND p.created_at < ${before}
-            ORDER BY p.created_at DESC, p.object_id DESC
+              AND p.content -> 'visibility' ->> 'kind' = 'public'
+              AND (
+                ${beforeCreatedAt}::timestamptz IS NULL
+                OR p.created_at < ${beforeCreatedAt}::timestamptz
+                OR (
+                  p.created_at = ${beforeCreatedAt}::timestamptz
+                  AND p.object_id COLLATE "C" < ${beforeObjectId}::text COLLATE "C"
+                )
+              )
+            ORDER BY p.created_at DESC, p.object_id COLLATE "C" DESC
             LIMIT ${query.limit}
           `;
     }
@@ -2749,8 +3709,6 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     await this.#sql.begin(async (sql) => {
       await this.#lockNetwork(sql, networkId);
       await this.#clearMaterializedProjection(sql, networkId);
-      await sql`DELETE FROM protocol_events WHERE network_id = ${networkId}`;
-      await sql`DELETE FROM indexer_dead_letters WHERE network_id = ${networkId}`;
     });
   }
 
@@ -2795,13 +3753,105 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     return rows[0] === undefined ? undefined : BigInt(rows[0].finalized_slot);
   }
 
+  async readiness(): Promise<void> {
+    const rows = await this.#sql<{ ready: boolean }[]>`
+      WITH required_tables(name) AS (
+        VALUES
+          ('blocks'),
+          ('communities'),
+          ('community_governance_history'),
+          ('community_memberships'),
+          ('delegations'),
+          ('follows'),
+          ('governance_proposals'),
+          ('governance_votes'),
+          ('handle_claims'),
+          ('identities'),
+          ('indexer_checkpoints'),
+          ('indexer_dead_letters'),
+          ('payment_configs'),
+          ('payment_receipt_allocations'),
+          ('payment_receipts'),
+          ('posts'),
+          ('profiles'),
+          ('protocol_configs'),
+          ('protocol_events'),
+          ('reactions'),
+          ('recovery_policies'),
+          ('recovery_requests'),
+          ('root_authority_history'),
+          ('subscription_entitlements'),
+          ('subscription_offering_splits'),
+          ('subscription_offerings')
+      ),
+      mutable_table_privileges(name) AS (
+        VALUES ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE')
+      )
+      SELECT
+        (
+          SELECT count(*) = 16
+            AND bool_and(checksum ~ '^[0-9a-f]{64}$')
+            AND bool_or(version = '0016_manifest_ingestion_state.sql')
+          FROM schema_migrations
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM required_tables
+          CROSS JOIN mutable_table_privileges
+          WHERE required_tables.name <> 'protocol_events'
+            AND NOT has_table_privilege(
+              current_user,
+              required_tables.name,
+              mutable_table_privileges.name
+            )
+        )
+        AND has_table_privilege(current_user, 'protocol_events', 'SELECT')
+        AND has_table_privilege(current_user, 'protocol_events', 'INSERT')
+        AND NOT has_table_privilege(current_user, 'protocol_events', 'UPDATE')
+        AND NOT has_table_privilege(current_user, 'protocol_events', 'DELETE')
+        AND (
+          SELECT count(*) = 2
+            AND bool_and(has_function_privilege(current_user, procedure.oid, 'EXECUTE'))
+          FROM pg_proc AS procedure
+          JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+          WHERE namespace.nspname = current_schema()
+            AND procedure.proname IN (
+              'accept_pending_manifest_event',
+              'reject_pending_manifest_event'
+            )
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM required_tables
+          WHERE NOT has_table_privilege(
+            current_user,
+            required_tables.name,
+            'SELECT'
+          )
+        )
+        AND has_table_privilege(current_user, 'schema_migrations', 'SELECT')
+        AND NOT has_table_privilege(current_user, 'schema_migrations', 'INSERT')
+        AND NOT has_table_privilege(current_user, 'schema_migrations', 'UPDATE')
+        AND NOT has_table_privilege(current_user, 'schema_migrations', 'DELETE')
+        AS ready
+    `;
+    if (rows[0]?.ready !== true) {
+      throw new ProjectionError(
+        'Indexer migrations or runtime privileges are incomplete.',
+        'database-error',
+      );
+    }
+  }
+
   async deadLetter(
     networkId: string,
     transactionSignature: string,
     logIndex: number,
   ): Promise<DeadLetterRecord | undefined> {
-    const rows = await this.#sql<{ attempts: number; next_attempt_at: Date | string | null }[]>`
-      SELECT attempts, next_attempt_at
+    const rows = await this.#sql<
+      { attempts: number; failure_code: string; next_attempt_at: Date | string | null }[]
+    >`
+      SELECT attempts, failure_code, next_attempt_at
       FROM indexer_dead_letters
       WHERE network_id = ${networkId}
         AND transaction_signature = ${transactionSignature}
@@ -2813,7 +3863,13 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     }
     return {
       attempts: row.attempts,
-      ...(row.next_attempt_at === null ? {} : { nextAttemptAt: dateString(row.next_attempt_at) }),
+      ...(row.next_attempt_at === null
+        ? {
+            terminalFailureCode: row.failure_code as NonNullable<
+              DeadLetterRecord['terminalFailureCode']
+            >,
+          }
+        : { nextAttemptAt: dateString(row.next_attempt_at) }),
     };
   }
 
@@ -2835,10 +3891,19 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
         attempts = indexer_dead_letters.attempts + 1,
         next_attempt_at = EXCLUDED.next_attempt_at,
         updated_at = now()
+      WHERE indexer_dead_letters.next_attempt_at IS NOT NULL
       RETURNING attempts, next_attempt_at
     `;
     const row = rows[0];
     if (row === undefined) {
+      const terminal = await this.deadLetter(
+        input.networkId,
+        input.transactionSignature,
+        input.logIndex,
+      );
+      if (terminal?.terminalFailureCode !== undefined) {
+        return terminal;
+      }
       throw new ProjectionError('Dead-letter write returned no record.', 'database-error');
     }
     return {
@@ -2857,6 +3922,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       WHERE network_id = ${networkId}
         AND transaction_signature = ${transactionSignature}
         AND log_index = ${logIndex}
+        AND next_attempt_at IS NOT NULL
     `;
   }
 
@@ -3116,10 +4182,21 @@ interface IdentityRow {
   identity_address: string;
   root_authority: string;
   root_rotation_count: string;
+  active: boolean;
+  identity_sequence: string;
+  sequence_slot: string;
+  sequence_transaction_index: number | null;
+  sequence_transaction_signature: string;
+  sequence_log_index: number;
   created_slot: string;
   created_at: Date | string;
   updated_slot: string;
   updated_at: Date | string;
+  deactivated_slot: string | null;
+  deactivated_at: Date | string | null;
+  deactivated_transaction_index: number | null;
+  deactivated_transaction_signature: string | null;
+  deactivated_log_index: number | null;
 }
 
 interface ProtocolConfigRow {
@@ -3295,6 +4372,26 @@ interface ProtocolEventRow {
   log_index: number;
 }
 
+interface RawManifestDispositionRow {
+  manifest_pending: boolean;
+  terminal_manifest_failure_code: string | null;
+}
+
+interface PendingManifestRow {
+  network_id: string;
+  transaction_signature: string;
+  transaction_index: number | null;
+  log_index: number;
+  slot: string;
+  block_time: Date | string;
+  event_type: string;
+  event_body: unknown;
+  pending_event_body: unknown;
+  pending_failure_detail: string;
+  pending_attempts: number;
+  pending_next_attempt_at: Date | string;
+}
+
 interface GovernanceProposalRow {
   proposal_address: string;
   network_id: string;
@@ -3461,7 +4558,7 @@ interface ProfileRow {
   payload_hash: string;
   display_name: string;
   bio: string;
-  pronouns: ProfileProjection['content']['pronouns'];
+  content: ProfileProjection['content'];
   updated_slot: string;
   updated_at: Date | string;
 }
@@ -3495,6 +4592,10 @@ interface FeedRow extends PostRow {
   identity_address: string;
   root_authority: string;
   root_rotation_count: string;
+  identity_active: boolean;
+  identity_sequence: string;
+  deactivated_slot: string | null;
+  deactivated_at: Date | string | null;
   created_slot: string;
   identity_created_at: Date | string;
   identity_updated_slot: string;
@@ -3504,7 +4605,7 @@ interface FeedRow extends PostRow {
   profile_payload_hash: string | null;
   display_name: string | null;
   bio: string | null;
-  pronouns: ProfileProjection['content']['pronouns'] | null;
+  profile_content: ProfileProjection['content'] | null;
   updated_slot: string | null;
   updated_at: Date | string | null;
 }
@@ -3516,10 +4617,18 @@ function identityFromRow(row: IdentityRow): IdentityProjection {
     identityAddress: row.identity_address,
     rootAuthority: row.root_authority,
     rootRotationCount: BigInt(row.root_rotation_count),
+    active: row.active,
+    identitySequence: BigInt(row.identity_sequence),
     createdSlot: BigInt(row.created_slot),
     createdAt: dateString(row.created_at),
     updatedSlot: BigInt(row.updated_slot),
     updatedAt: dateString(row.updated_at),
+    ...(row.deactivated_slot === null
+      ? {}
+      : {
+          deactivatedSlot: BigInt(row.deactivated_slot),
+          deactivatedAt: dateString(row.deactivated_at as Date | string),
+        }),
   };
 }
 
@@ -3894,14 +5003,7 @@ function profileFromRow(row: ProfileRow): ProfileProjection {
     objectId: row.object_id,
     cid: row.cid,
     payloadHash: row.payload_hash,
-    content: {
-      displayName: row.display_name,
-      bio: row.bio,
-      pronouns: row.pronouns,
-      genderVisibility: 'private',
-      chosenFamilyLabels: [],
-      links: [],
-    },
+    content: row.content,
     updatedSlot: BigInt(row.updated_slot),
     updatedAt: dateString(row.updated_at),
   };
@@ -3935,10 +5037,18 @@ function feedEntryFromRow(row: FeedRow, mode: FeedQuery['mode']): FeedEntry {
       identityAddress: row.identity_address,
       rootAuthority: row.root_authority,
       rootRotationCount: BigInt(row.root_rotation_count),
+      active: row.identity_active,
+      identitySequence: BigInt(row.identity_sequence),
       createdSlot: BigInt(row.created_slot),
       createdAt: dateString(row.identity_created_at),
       updatedSlot: BigInt(row.identity_updated_slot),
       updatedAt: dateString(row.identity_updated_at),
+      ...(row.deactivated_slot === null
+        ? {}
+        : {
+            deactivatedSlot: BigInt(row.deactivated_slot),
+            deactivatedAt: dateString(row.deactivated_at as Date | string),
+          }),
     },
     reason:
       mode === 'following'
@@ -3955,7 +5065,7 @@ function feedEntryFromRow(row: FeedRow, mode: FeedQuery['mode']): FeedEntry {
     row.profile_payload_hash === null ||
     row.display_name === null ||
     row.bio === null ||
-    row.pronouns === null ||
+    row.profile_content === null ||
     row.updated_slot === null ||
     row.updated_at === null
   ) {
@@ -3969,14 +5079,7 @@ function feedEntryFromRow(row: FeedRow, mode: FeedQuery['mode']): FeedEntry {
       objectId: row.profile_object_id,
       cid: row.profile_cid,
       payloadHash: row.profile_payload_hash,
-      content: {
-        displayName: row.display_name,
-        bio: row.bio,
-        pronouns: row.pronouns,
-        genderVisibility: 'private',
-        chosenFamilyLabels: [],
-        links: [],
-      },
+      content: row.profile_content,
       updatedSlot: BigInt(row.updated_slot),
       updatedAt: dateString(row.updated_at),
     },
@@ -3985,6 +5088,115 @@ function feedEntryFromRow(row: FeedRow, mode: FeedQuery['mode']): FeedEntry {
 
 function dateString(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function dispositionFromRow(row: RawManifestDispositionRow): ManifestEventDisposition {
+  if (row.terminal_manifest_failure_code !== null) {
+    return {
+      state: 'terminal',
+      failureCode: row.terminal_manifest_failure_code as Extract<
+        ManifestEventDisposition,
+        { readonly state: 'terminal' }
+      >['failureCode'],
+    };
+  }
+  return { state: row.manifest_pending ? 'pending' : 'accepted' };
+}
+
+function pendingManifestRecordFromRow(row: PendingManifestRow): PendingManifestRecord {
+  if (
+    typeof row.event_body !== 'object' ||
+    row.event_body === null ||
+    Array.isArray(row.event_body)
+  ) {
+    throw new ProjectionError('Stored pending manifest event body is invalid.', 'database-error');
+  }
+  const serializedEvent = row.event_body as Readonly<Record<string, unknown>>;
+  const event = protocolEventSchema.parse({
+    ...serializedEvent,
+    slot: storedPendingManifestBigInt(serializedEvent['slot'], 'slot'),
+    sequence: storedPendingManifestBigInt(serializedEvent['sequence'], 'sequence'),
+  });
+  const blockTime = dateString(row.block_time);
+  if (
+    (event.type !== 'profile-updated' && event.type !== 'post-published') ||
+    event.networkId !== row.network_id ||
+    event.transactionSignature !== row.transaction_signature ||
+    (event.transactionIndex ?? null) !== row.transaction_index ||
+    event.logIndex !== row.log_index ||
+    event.slot !== storedPendingManifestBigInt(row.slot, 'slot') ||
+    event.blockTime !== blockTime ||
+    event.type !== row.event_type
+  ) {
+    throw new ProjectionError(
+      'Stored pending manifest metadata does not exactly match its raw event body.',
+      'database-error',
+    );
+  }
+  if (
+    typeof row.pending_event_body !== 'object' ||
+    row.pending_event_body === null ||
+    Array.isArray(row.pending_event_body) ||
+    !Number.isSafeInteger(row.pending_attempts) ||
+    row.pending_attempts <= 0
+  ) {
+    throw new ProjectionError(
+      'Stored pending manifest retry metadata is invalid.',
+      'database-error',
+    );
+  }
+  const nextAttemptAt = dateString(row.pending_next_attempt_at);
+  pendingManifestDueTimestamp(nextAttemptAt);
+  return {
+    event,
+    attempts: row.pending_attempts,
+    eventBody: structuredClone(row.pending_event_body as Readonly<Record<string, unknown>>),
+    failureDetail: row.pending_failure_detail,
+    nextAttemptAt,
+  };
+}
+
+function storedPendingManifestBigInt(value: unknown, field: string): bigint {
+  if (typeof value !== 'string' || !/^(?:0|[1-9]\d*)$/u.test(value)) {
+    throw new ProjectionError(
+      `Stored pending manifest ${field} must be a canonical unsigned integer.`,
+      'database-error',
+    );
+  }
+  return BigInt(value);
+}
+
+function normalizedManifestDeferral(deferral: ManifestDeferral): ManifestDeferral {
+  if (
+    deferral.failureCode !== 'manifest-unavailable' ||
+    typeof deferral.failureDetail !== 'string' ||
+    typeof deferral.eventBody !== 'object' ||
+    deferral.eventBody === null ||
+    Array.isArray(deferral.eventBody)
+  ) {
+    throw new ProjectionError('Pending manifest retry metadata is invalid.', 'manifest-mismatch');
+  }
+  pendingManifestDueTimestamp(deferral.nextAttemptAt);
+  return {
+    eventBody: structuredClone(deferral.eventBody),
+    failureCode: 'manifest-unavailable',
+    failureDetail: deferral.failureDetail,
+    nextAttemptAt: deferral.nextAttemptAt,
+  };
+}
+
+function pendingManifestDueTimestamp(value: string): number {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== value) {
+    throw new RangeError('Pending manifest due time must be a canonical ISO timestamp.');
+  }
+  return timestamp;
+}
+
+function assertPendingManifestLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+    throw new RangeError('Pending manifest query limit must be between 1 and 1,000.');
+  }
 }
 
 function serializeEvent(event: ProtocolEvent): postgres.JSONValue {
@@ -4023,6 +5235,168 @@ interface EventPosition {
   readonly transactionIndex?: number;
   readonly transactionSignature: string;
   readonly logIndex: number;
+}
+
+interface IdentitySequenceAdvance {
+  readonly identityId: string;
+  readonly sequence: bigint;
+}
+
+function identitySequenceAdvance(event: ProtocolEvent): IdentitySequenceAdvance | undefined {
+  switch (event.type) {
+    case 'identity-deactivated':
+    case 'handle-claimed':
+    case 'handle-released':
+    case 'root-authority-rotated':
+    case 'delegation-created':
+    case 'delegation-revoked':
+    case 'recovery-policy-configured':
+    case 'recovery-policy-disabled':
+    case 'recovery-cancelled':
+      return { identityId: event.identityId, sequence: event.identitySequence };
+    case 'profile-updated':
+    case 'post-published':
+    case 'tombstoned':
+      return { identityId: event.identityId, sequence: event.sequence };
+    case 'follow-changed':
+      return {
+        identityId: event.followerIdentityId,
+        sequence: event.followerSequence,
+      };
+    case 'block-changed':
+      return { identityId: event.blockerIdentityId, sequence: event.blockerSequence };
+    case 'community-created':
+    case 'community-governance-updated':
+      return { identityId: event.creatorIdentityId, sequence: event.creatorSequence };
+    case 'community-membership-changed':
+      return { identityId: event.assignedByIdentityId, sequence: event.authoritySequence };
+    case 'reaction-changed':
+      return { identityId: event.reactorIdentityId, sequence: event.reactorSequence };
+    case 'proposal-created':
+      return { identityId: event.proposerIdentityId, sequence: event.proposerSequence };
+    case 'vote-cast':
+      return { identityId: event.voterIdentityId, sequence: event.voterSequence };
+    case 'subscription-offering-created':
+    case 'subscription-offering-retired':
+      return { identityId: event.creatorIdentityId, sequence: event.creatorSequence };
+    default:
+      return undefined;
+  }
+}
+
+function identitySequenceSnapshot(event: ProtocolEvent): IdentitySequenceAdvance | undefined {
+  switch (event.type) {
+    case 'recovery-requested':
+    case 'recovery-executed':
+      return { identityId: event.identityId, sequence: event.identitySequence };
+    default:
+      return undefined;
+  }
+}
+
+function activeIdentityIds(event: ProtocolEvent): readonly string[] {
+  let identities: readonly string[];
+  switch (event.type) {
+    case 'identity-deactivated':
+    case 'handle-claimed':
+    case 'handle-released':
+    case 'root-authority-rotated':
+    case 'delegation-created':
+    case 'delegation-revoked':
+    case 'profile-updated':
+    case 'post-published':
+    case 'tombstoned':
+    case 'recovery-policy-configured':
+    case 'recovery-policy-disabled':
+    case 'recovery-requested':
+    case 'recovery-approved':
+    case 'recovery-cancelled':
+    case 'recovery-executed':
+      identities = [event.identityId];
+      break;
+    case 'follow-changed':
+      identities = [event.followerIdentityId, ...(event.active ? [event.followedIdentityId] : [])];
+      break;
+    case 'block-changed':
+      identities = [event.blockerIdentityId, event.subjectIdentityId];
+      break;
+    case 'community-created':
+    case 'community-governance-updated':
+      identities = [event.creatorIdentityId];
+      break;
+    case 'community-membership-changed':
+      identities = [event.assignedByIdentityId, event.memberIdentityId];
+      break;
+    case 'reaction-changed':
+      identities = [event.reactorIdentityId];
+      break;
+    case 'proposal-created':
+      identities = [event.proposerIdentityId];
+      break;
+    case 'vote-cast':
+      identities = [event.voterIdentityId];
+      break;
+    case 'subscription-offering-created':
+      identities = [
+        event.creatorIdentityId,
+        ...event.recipientSplits.map((split) => split.recipientIdentityId),
+      ];
+      break;
+    case 'subscription-offering-retired':
+      identities = [event.creatorIdentityId];
+      break;
+    case 'woke-tip-settled':
+      identities = [event.payerIdentityId, event.recipientIdentityId];
+      break;
+    case 'subscription-settled':
+      identities = [
+        event.creatorIdentityId,
+        event.payerIdentityId,
+        ...event.recipientSplits.map((split) => split.recipientIdentityId),
+      ];
+      break;
+    default:
+      identities = [];
+  }
+  return [...new Set(identities)];
+}
+
+function eventPosition(event: ProtocolEvent): EventPosition {
+  return {
+    slot: event.slot,
+    ...(event.transactionIndex === undefined ? {} : { transactionIndex: event.transactionIndex }),
+    transactionSignature: event.transactionSignature,
+    logIndex: event.logIndex,
+  };
+}
+
+function identitySequencePosition(identity: IdentityRow): EventPosition {
+  return {
+    slot: BigInt(identity.sequence_slot),
+    ...(identity.sequence_transaction_index === null
+      ? {}
+      : { transactionIndex: identity.sequence_transaction_index }),
+    transactionSignature: identity.sequence_transaction_signature,
+    logIndex: identity.sequence_log_index,
+  };
+}
+
+function identityDeactivationPosition(identity: IdentityRow): EventPosition | undefined {
+  if (
+    identity.deactivated_slot === null ||
+    identity.deactivated_transaction_signature === null ||
+    identity.deactivated_log_index === null
+  ) {
+    return undefined;
+  }
+  return {
+    slot: BigInt(identity.deactivated_slot),
+    ...(identity.deactivated_transaction_index === null
+      ? {}
+      : { transactionIndex: identity.deactivated_transaction_index }),
+    transactionSignature: identity.deactivated_transaction_signature,
+    logIndex: identity.deactivated_log_index,
+  };
 }
 
 function positionFor(value: SigningKeyAuthorizationQuery): EventPosition {
@@ -4083,7 +5457,12 @@ function comparePosition(left: EventPosition, right: EventPosition): number {
   ) {
     return left.transactionIndex - right.transactionIndex;
   }
-  const signature = left.transactionSignature.localeCompare(right.transactionSignature);
+  const signature =
+    left.transactionSignature === right.transactionSignature
+      ? 0
+      : left.transactionSignature < right.transactionSignature
+        ? -1
+        : 1;
   return signature === 0 ? left.logIndex - right.logIndex : signature;
 }
 

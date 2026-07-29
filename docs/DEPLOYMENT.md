@@ -27,8 +27,8 @@ artifact-promotion, or provider deployment.
   fresh compatibility validator using development program ID
   `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`.
 - `pnpm wokenet:check` verifies the fail-closed native-Firedancer source,
-  exact patch checksum, parsed TOML/genesis allocation, currency, native-only
-  build declarations, and RPC capability policy.
+  exact patch-queue checksums, parsed TOML/genesis allocation, currency,
+  native-only build declarations, and RPC capability policy.
 - `pnpm wokenet:materialize -- /absolute/path` has been exercised against
   the exact pinned official Firedancer commit and exact checked patch-queue
   diff. The manual Linux workflow additionally clones a disposable tracked
@@ -65,7 +65,8 @@ artifact-promotion, or provider deployment.
 - Rollback, backup, provider evacuation, and degraded mode are designed before
   launch.
 - Every release records source revision, dependency lockfiles, image digests,
-  schema versions, program binary hash, program IDs, and configuration version.
+  schema versions, program binary hash, program IDs, configuration version, and
+  the immutable profile-v2 activation slot for each WokeNet.
 
 ## Target topology
 
@@ -124,7 +125,7 @@ semantics.
 | Environment | Network runtime | Funds and data | Purpose | Deployment authority |
 | --- | --- | --- | --- | --- |
 | Compatibility local/CI | Ephemeral Agave validator, explicitly not WokeNet | Generated test keys and fixtures only | Anchor/Solana-wire compatibility and connected application proof | Developer or restricted CI identity |
-| Native localnet | `firedancer-dev` on dedicated Linux | Disposable WOKE fixtures and synthetic data only | Native runtime development after required RPC methods exist | Network developer |
+| Native localnet | `firedancer-dev` on dedicated Linux | Disposable WOKE fixtures and synthetic data only | Native runtime development after the remaining required RPC methods and program-account conformance gates pass | Network developer |
 | Public test network | Native `firedancer`, independently operated | Valueless test WOKE and synthetic/non-sensitive data | Interoperability, consensus, failover, and deployment rehearsal | Test-network multisig |
 | Staging | Separate native Firedancer genesis | Synthetic data; staging-specific secrets only | Production-like release, recovery, and provider validation | Protected staging quorum |
 | Production | Native Firedancer, only after the activation and genesis gates | Real WOKE and minimum necessary private service data | Live WokeNet | Hardware-backed production quorums |
@@ -133,6 +134,15 @@ Every environment has a distinct genesis, keys, program IDs, databases,
 buckets, DNS names, API tokens, telemetry projects, and authority set. A visible
 network indicator and exact `wokenet:v1:<genesis>:<program>` verification are
 required in operator and end-user flows.
+
+Root production configuration now fails closed unless `APP_ENV` and `NODE_ENV`
+both select production, the active selector is the non-local public test
+network, commitment is finalized, browser/service/RPC/gateway endpoints use
+non-loopback HTTPS or WSS, Redis uses `rediss://`, database/cache endpoints are
+not loopback, and the program ID plus session secret are explicit. This is a
+configuration safety boundary, not deployment evidence or permission to launch
+a production WokeNet. Relay/auth/moderation unsafe memory or unverified modes
+also reject production; the public local media token is rejected.
 
 ## Toolchain and bootstrap contract
 
@@ -190,6 +200,7 @@ corepack enable
 pnpm install --frozen-lockfile
 pnpm setup
 pnpm infra:ps
+pnpm dev
 ```
 
 `pnpm setup` is limited to local/test resources: it installs project-local
@@ -199,6 +210,14 @@ validator and deterministic development wallet are prepared on demand by
 `pnpm test:programs`; setup does not leave a validator running. Neither command
 contacts a public WokeNet, publishes permanent content, changes DNS, or
 spends real funds.
+
+`pnpm dev` is also local/test-only. It loads the selected local environment,
+starts and waits for the base dependencies and private media profile, reapplies
+idempotent service migrations, and launches the non-media workspace processes.
+It refuses production mode and non-loopback service bindings before enabling
+process-local advisory relay/moderation overrides. Standalone services remain
+locked by default. The media worker stays containerized so ClamAV port 3310 is
+never published to the host.
 
 This sequence has been verified in the current development environment. A clean
 supported-machine CI/bootstrap artifact with recorded versions is still required
@@ -266,11 +285,11 @@ Expected configuration groups include:
 | Public web | `NEXT_PUBLIC_APP_ORIGIN`, `NEXT_PUBLIC_WOKENET`, `NEXT_PUBLIC_WOKENET_RPC_URL`, `NEXT_PUBLIC_PROGRAM_ID` | Values are public; validate origin, explicit environment, genesis-bound network, and program consistency |
 | RPC | `WOKENET_RPC_URLS`, `WOKENET_WS_URLS`, `WOKENET_COMMITMENT` | Ordered list with health scoring, native capability evidence, and failover; credentials redacted; retired `SOLANA_*` runtime variables are rejected |
 | Native network | Expected genesis hash, shred version, source/patch/build digests, validator/snapshot allowlists | Exact ceremony values; no arbitrary snapshot provider or Agave fallback |
-| Indexer | `INDEXER_DEPLOYMENT_SLOT`, `INDEXER_CONFIRMATION_DEPTH`, `INDEXER_BATCH_SIZE` | Validate ranges; deployment slot is immutable per program deployment |
-| Database | `DATABASE_URL`, `DATABASE_MIGRATION_URL` | Separate runtime and migration roles; TLS in nonlocal environments |
+| Indexer | `INDEXER_DEPLOYMENT_SLOT`, `INDEXER_PROFILE_V2_ACTIVATION_SLOT`, `INDEXER_BATCH_SIZE`, `INDEXER_POLL_INTERVAL_MS`, `INDEXER_RETRY_*`, `INDEXER_SYNC_STALE_AFTER_MS`, `CONTENT_STORAGE_PATH` | Validate ranges; deployment and profile-v2 activation slots are immutable per network/program deployment; only a pre-activation legacy event without the appended commitment may reference v1, while current root/delegated events and every event at/after activation commit v2; every poll drains a checkpoint-independent, batch-bounded due-hydration queue; rebuild must reuse the cutoff, preserve accepted/pending/terminal raw disposition, and suppress provider I/O only for durably accepted obsolete post/profile manifests proven by the complete ordered ledger; readiness requires current finalized polling; mount durable referenced content read-only beside the event ledger |
+| Database | `DATABASE_URL` / `DATABASE_MIGRATION_URL`, `AUTH_DATABASE_URL` / `AUTH_DATABASE_MIGRATION_URL`, `MODERATION_DATABASE_URL` / `MODERATION_DATABASE_MIGRATION_URL` | Run schema changes as explicit advisory-locked one-shot jobs; never grant DDL or a migration URL to a long-running runtime; require verified TLS in nonlocal environments |
 | Redis | `REDIS_URL`, queue and rate-limit namespaces | Noncanonical; environment-specific; TLS/auth outside local |
 | Storage | gateway lists, pinning endpoints, Arweave adapter settings, local root | Multiple providers supported; write credentials server-only |
-| Relay | public relay URLs and server credentials | Multiple endpoints; short-lived service auth |
+| Relay | public relay URLs; `RELAY_KEY_AUTHORIZER_*` and `RELAY_SUBSCRIPTION_AUTHORIZER_*` endpoint, readiness, credential, and timeout settings | Multiple client endpoints; independently deployed finalized key and opaque-topic policy/membership authorities; HTTPS in production; short-lived nonce/network/checkpoint-bound decisions |
 | Media | `MEDIA_WORKER_*` listener/origins, byte/type limits, private roots, strong bearer secret, private `CLAMD_*` endpoint, scan/database-age limits | No cloud metadata or unrelated secrets in workers; clamd TCP never public; UTC required for bounded database timestamp checks |
 | Authentication | RP ID/origins, session issuer/audience, recovery settings | Production origins exact; secrets separately injected |
 | Sponsorship | enable flag, network, budgets, signer reference | Disabled by default; key not stored as plaintext env where signing service is available |
@@ -296,6 +315,10 @@ Each long-running service MUST have:
 - A termination grace period long enough to checkpoint work.
 
 No service may require a provider-specific runtime API for protocol correctness.
+The current HTTP and relay rate limiters are process-local. Affected services
+MUST remain single-replica behind an independently enforced edge limit until a
+fail-closed shared limiter has passed two-instance tests; multiplying limits by
+adding replicas is not an acceptable production configuration.
 
 ### PostgreSQL
 
@@ -303,12 +326,32 @@ No service may require a provider-specific runtime API for protocol correctness.
   identity or social truth.
 - Use encrypted connections, private networking, service-specific roles, and a
   separate migration role.
-- Migrations are ordered, checksummed, forward-tested, and accompanied by a
-  rollback or roll-forward procedure.
+- Staging and production URLs MUST contain exactly one
+  `sslmode=verify-full`. When the database uses a private CA, mount the CA
+  bundle read-only and set `NODE_EXTRA_CA_CERTS` before the Node.js process
+  starts. Use a DNS hostname whose certificate SAN matches exactly; IP-literal
+  database URLs are rejected because the current PostgreSQL driver does not
+  verify their identity. Multi-host PostgreSQL URLs are also rejected; use a
+  single DNS endpoint backed by an operator-controlled failover mechanism. The
+  URL must name its database role and database explicitly so ambient `PGHOST`,
+  `PGUSER`, or `PGDATABASE` values cannot redirect the audited configuration.
+  Never use `NODE_TLS_REJECT_UNAUTHORIZED=0`, including as a troubleshooting
+  workaround.
+- The current indexer schema has sixteen ordered, checksummed migrations.
+  Migrations are forward-tested and accompanied by a rollback or roll-forward
+  procedure.
 - Destructive migrations require a backup/restore rehearsal and a compatibility
   window for old and new application versions.
 - A fresh database MUST be rebuildable from the deployment slot, WokeNet data,
-  signed manifests, and portable operator configuration.
+  signed manifests, and portable operator configuration. The rebuild MUST reuse
+  the network's recorded `INDEXER_PROFILE_V2_ACTIVATION_SLOT`; changing it
+  reinterprets immutable profile history and is not a deployment rollback.
+  Pending and terminal manifest dispositions replay without provider I/O.
+  Accepted manifest I/O may be omitted only for obsolete posts followed by a
+  tombstone or profiles followed by a later canonical pointer, when both the
+  durable accepted disposition and complete event order prove that
+  suppression; raw accepted state, sequence/reference effects, and checkpoint
+  remain intact. Every other accepted manifest must be retrieved and verified.
 
 ### Redis
 
@@ -323,6 +366,10 @@ No service may require a provider-specific runtime API for protocol correctness.
 - Local filesystem storage is for development and tests.
 - Production supports at least two independently configurable publication or
   replication paths and multiple read gateways.
+- Public manifest references use canonical CIDv1 base32-lowercase identifiers
+  with the `raw` multicodec and a 32-byte SHA-256 multihash. Only the shared
+  IPFS, local, Arweave-transaction/CID, and credential-free HTTPS/CID locator
+  grammar is accepted; invalid locators fail before any provider request.
 - Every retrieved object is locally hash-verified.
 - Provider health records replication and deletion-request status without
   claiming permanence or erasure that cannot be proven.
@@ -339,15 +386,52 @@ No service may require a provider-specific runtime API for protocol correctness.
 - A provider change requires no protocol migration.
 - A process or endpoint backed by Frankendancer or Agave cannot be advertised as
   a WokeNet RPC.
-- Submission, simulation, status, transaction-history, address-history, and
-  program-account reads fail closed until the native Firedancer implementation
-  and conformance evidence exist.
+- The downstream native `getProgramAccounts` subset scans account ownership on a
+  referenced frozen fork and has direct account-database/RPC C unit tests. It
+  supports bounded `dataSize` and byte-comparison filters and binary,
+  base58/base64/base64+zstd response encodings, but rejects
+  `tokenAccountState` and `jsonParsed`. Four filters, 1,024 results, 4,000,000
+  scan work units, 64 MiB of owner-matched data read during scanning, and 32 MiB
+  of filter-matched pre-slice data are hard ceilings. Its capability remains
+  `productionComplete: false`.
+- `getSignaturesForAddress`, `getSignatureStatuses`, `getTransaction`,
+  `sendTransaction`, and `simulateTransaction` fail closed until native
+  implementations and conformance evidence exist. Requests outside the bounded
+  program-account subset also fail closed.
+
+### Trusted ingress and client-address limits
+
+`TRUSTED_PROXY_CIDRS` is empty by default, so HTTP and relay processes ignore
+all forwarded client-address headers and key connection/rate limits to the
+transport peer. Behind a TLS ingress, set it to a bounded comma-separated list
+of that ingress's exact IP addresses or narrow CIDRs (no broader than IPv4
+`/24` or IPv6 `/64`). Symbolic ranges, duplicates, and broader ranges are
+rejected at startup. Application ports must be private to those
+proxies; the edge must discard inbound `X-Forwarded-*` values and construct a
+fresh chain. Internal proxies may append only when their own upstream is
+trusted. Never use `trustProxy=true`, hop counts, or broad private-network
+aliases.
 
 ## Database migration procedure
 
+The indexer, authentication service, and moderation service each ship a
+dedicated migration command. Their long-running server entrypoints neither run
+DDL nor read the corresponding migration URL. Orchestration must wait for the
+one-shot job to succeed before it starts or rolls forward the runtime.
+
+Give each service a distinct schema, DML-only runtime role, and schema-owning
+migration role. Runtime roles must not create, alter, or drop objects; read
+another service schema; or insert, update, or delete migration-ledger rows.
+Provision `pg_trgm` and `btree_gin` into the indexer schema before its
+least-privilege migration job. Applied migrations must be an exact ordered
+prefix of packaged SQL with matching lowercase SHA-256 values; never
+automatically backfill a legacy checksum or continue past an integrity
+mismatch.
+
 The planned nonlocal procedure is:
 
-1. Record release, current schema version, row-count invariants, replica health,
+1. Record release, current schema version, the network's immutable
+   `INDEXER_PROFILE_V2_ACTIVATION_SLOT`, row-count invariants, replica health,
    and a recovery point.
 2. Back up required operator data and verify the backup is readable.
 3. Confirm application compatibility with both old and new schemas.
@@ -453,12 +537,14 @@ operators time to upgrade.
 
 ## Health and post-deployment verification
 
-Required health surfaces:
+The implemented service convention is:
 
-- `/health/live`: process can serve; no dependency traversal.
-- `/health/ready`: instance can safely receive work.
-- `/health/dependencies`: authenticated or private diagnostic detail.
-- `/metrics`: private or authenticated metrics in a standard format.
+- `/healthz`: process liveness without dependency traversal.
+- `/readyz`: whether the instance can safely receive its implemented work.
+
+An authenticated dependency-detail surface and standard metrics endpoint remain
+required before production for services that do not yet provide them. Relay
+currently provides `/metrics`; a uniform metrics contract is not complete.
 
 Post-deployment checks MUST verify:
 

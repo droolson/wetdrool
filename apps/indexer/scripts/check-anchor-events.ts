@@ -140,6 +140,14 @@ const expectedFields = {
     ['identity_nonce', '{"array":["u8",16]}'],
     ['created_at_slot', '"u64"'],
   ],
+  IdentityDeactivated: [
+    ['event_version', '"u16"'],
+    ['config', '"pubkey"'],
+    ['identity', '"pubkey"'],
+    ['root_authority', '"pubkey"'],
+    ['identity_sequence', '"u64"'],
+    ['deactivated_at_slot', '"u64"'],
+  ],
   PaymentAuthorityRotated: [
     ['event_version', '"u16"'],
     ['config', '"pubkey"'],
@@ -250,6 +258,7 @@ const expectedFields = {
     ['manifest_hash', '{"array":["u8",32]}'],
     ['manifest_uri', '"string"'],
     ['updated_at_slot', '"u64"'],
+    ['profile_schema_version', '"u16"'],
   ],
   ProtocolInitialized: [
     ['event_version', '"u16"'],
@@ -473,8 +482,8 @@ const idlUrl = new URL('../../../target/idl/social_protocol.json', import.meta.u
 const idl = JSON.parse(await readFile(idlUrl, 'utf8')) as Idl;
 
 assertEqual('program ID', idl.address, SOCIAL_PROTOCOL_EVENT_LAYOUT.programId);
-assertEqual('event count', idl.events.length, 32);
-assertEqual('decoder event count', Object.keys(SOCIAL_PROTOCOL_EVENT_LAYOUT.events).length, 32);
+assertEqual('event count', idl.events.length, 33);
+assertEqual('decoder event count', Object.keys(SOCIAL_PROTOCOL_EVENT_LAYOUT.events).length, 33);
 assertEqual(
   'event name set',
   JSON.stringify(idl.events.map((event) => event.name).sort()),

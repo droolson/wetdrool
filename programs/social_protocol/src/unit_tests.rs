@@ -2,10 +2,11 @@ use anchor_lang::prelude::*;
 
 use crate::{
     constants::{
-        BLOCK_SEED, COMMUNITY_ROLE_ADMIN, COMMUNITY_ROLE_MEMBER, COMMUNITY_SEED, CONFIG_SEED,
-        DELEGATION_SEED, FOLLOW_SEED, GOVERNANCE_APPROVAL_BPS, GOVERNANCE_QUORUM_BPS, HANDLE_SEED,
-        IDENTITY_SEED, MAX_GOVERNANCE_START_DELAY_SLOTS, MAX_GOVERNANCE_VOTING_SLOTS,
-        MAX_HANDLE_BYTES, MAX_MANIFEST_URI_BYTES, MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS,
+        ACCOUNT_VERSION, BLOCK_SEED, COMMUNITY_ROLE_ADMIN, COMMUNITY_ROLE_MEMBER, COMMUNITY_SEED,
+        CONFIG_SEED, CURRENT_PROFILE_SCHEMA_VERSION, DELEGATION_SEED, FOLLOW_SEED,
+        GOVERNANCE_APPROVAL_BPS, GOVERNANCE_QUORUM_BPS, HANDLE_SEED, IDENTITY_SEED,
+        MAX_GOVERNANCE_START_DELAY_SLOTS, MAX_GOVERNANCE_VOTING_SLOTS, MAX_HANDLE_BYTES,
+        MAX_MANIFEST_URI_BYTES, MAX_ONCHAIN_PAYMENT_SPLITS, MAX_PROTOCOL_FEE_BPS,
         MAX_RECOVERY_DELAY_SLOTS, MAX_RECOVERY_GUARDIANS, MAX_SUBSCRIPTION_PREPAY_WEEKS,
         MEMBERSHIP_SEED, MIN_GOVERNANCE_VOTING_SLOTS, MIN_RECOVERY_DELAY_SLOTS,
         ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH, PAYMENT_CONFIG_SEED, PAYMENT_RECEIPT_SEED,
@@ -31,23 +32,24 @@ use crate::{
         validate_delegation_scopes, validate_governance_commitment, validate_handle,
         validate_handle_hash, validate_manifest, validate_manifest_uri,
         validate_membership_snapshot, validate_payment_aliases, validate_payment_config_snapshot,
-        validate_payment_nonce, validate_payment_split_shape, validate_proposal_window,
-        validate_protocol_fee, validate_reaction_kind, validate_recovery_approval_invariant,
-        validate_recovery_policy, validate_recovery_request_current, validate_recovery_target,
-        validate_subscription_splits,
+        validate_payment_nonce, validate_payment_split_shape, validate_profile_schema_version,
+        validate_proposal_window, validate_protocol_fee, validate_reaction_kind,
+        validate_recovery_approval_invariant, validate_recovery_policy,
+        validate_recovery_request_current, validate_recovery_target, validate_subscription_splits,
     },
 };
+
+const TEST_MANIFEST_CID: &str = "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
 
 fn serialized_len<T: AnchorSerialize>(value: &T) -> usize {
     value.try_to_vec().expect("test value must serialize").len()
 }
 
 fn max_length_uri() -> String {
-    let prefix = "local://";
-    format!(
-        "{prefix}{}",
-        "a".repeat(MAX_MANIFEST_URI_BYTES - prefix.len())
-    )
+    let prefix = "https://example.test/";
+    let cid = TEST_MANIFEST_CID;
+    let directory = "a".repeat(MAX_MANIFEST_URI_BYTES - prefix.len() - cid.len() - 1);
+    format!("{prefix}{directory}/{cid}")
 }
 
 fn assert_discriminator<T: anchor_lang::Discriminator>(expected: [u8; 8]) {
@@ -458,19 +460,115 @@ fn handle_validation_is_normalized_bounded_and_hash_bound() {
 #[test]
 fn manifest_validation_enforces_hash_scheme_and_byte_bounds() {
     let valid_hash = [7_u8; 32];
-    assert!(validate_manifest(&valid_hash, "ipfs://bafy-test").is_ok());
-    assert!(validate_manifest(&valid_hash, "ar://transaction-id").is_ok());
-    assert!(validate_manifest(&valid_hash, "https://example.test/object").is_ok());
-    assert!(validate_manifest(&valid_hash, "local://sha256/digest").is_ok());
+    let cid = TEST_MANIFEST_CID;
+    let transaction_id = "A".repeat(43);
+    for valid_uri in [
+        format!("ipfs://{cid}"),
+        format!("local://{cid}"),
+        format!("ar://{transaction_id}/{cid}"),
+        format!("https://example.test/{cid}"),
+        format!("https://cdn.example.test:443/manifests/{cid}"),
+    ] {
+        assert!(
+            validate_manifest(&valid_hash, &valid_uri).is_ok(),
+            "{valid_uri} should be valid"
+        );
+    }
 
-    assert!(validate_manifest(&[0_u8; 32], "ipfs://bafy-test").is_err());
-    assert!(validate_manifest_uri("").is_err());
-    assert!(validate_manifest_uri("ftp://example.test/object").is_err());
-    assert!(validate_manifest_uri("https://").is_err());
-    assert!(validate_manifest_uri("https://example.test/bad path").is_err());
-    assert!(validate_manifest_uri("https://example.test/<script>").is_err());
+    assert!(validate_manifest(&[0_u8; 32], &format!("ipfs://{cid}")).is_err());
+    for invalid_uri in [
+        "".to_owned(),
+        "ftp://example.test/object".to_owned(),
+        "ipfs://opaque".to_owned(),
+        format!("ipfs://{cid}/extra"),
+        format!("local://{cid}?download=1"),
+        format!("ar://{transaction_id}"),
+        format!("ar://short/{cid}"),
+        format!("ar://{transaction_id}/{cid}/extra"),
+        format!("https:///{cid}"),
+        format!("https://user@example.test/{cid}"),
+        format!("https://example.test/{cid}?download=1"),
+        format!("https://example.test/{cid}#fragment"),
+        format!("https://example.test//{cid}"),
+        "https://example.test/bad path".to_owned(),
+        "https://example.test/<script>".to_owned(),
+        "ipfs://baaaaaaaaaaaaaaaaaaaa".to_owned(),
+        format!("ipfs://bafkrez{}", "a".repeat(52)),
+        format!("ipfs://bafkreiz{}", "a".repeat(51)),
+        format!("local://{}", cid.to_ascii_uppercase()),
+        format!("local://{}z{}", &cid[..6], &cid[7..]),
+        "local://bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+            .to_owned(),
+        "local://bafkrgqgpqpqtk7xpxc67cvbikdlg3aah2yqoibilk4k5za7uveq5g3hjzzd5buj4lwc7fmh7qmmnfb365qxwhojrxvduc6ubuu4de6xze7nd4"
+            .to_owned(),
+        format!("local://{}", &cid[..cid.len() - 1]),
+        format!("local://{}b", &cid[..cid.len() - 1]),
+    ] {
+        assert!(
+            validate_manifest_uri(&invalid_uri).is_err(),
+            "{invalid_uri} should be invalid"
+        );
+    }
     assert!(validate_manifest_uri(&max_length_uri()).is_ok());
     assert!(validate_manifest_uri(&format!("{}a", max_length_uri())).is_err());
+}
+
+#[test]
+fn profile_schema_validation_accepts_only_the_current_protected_schema() {
+    assert!(validate_profile_schema_version(CURRENT_PROFILE_SCHEMA_VERSION).is_ok());
+    for unsupported in [0, 1, CURRENT_PROFILE_SCHEMA_VERSION + 1, u16::MAX] {
+        assert_eq!(
+            validate_profile_schema_version(unsupported)
+                .expect_err("non-current profile schema must fail"),
+            error!(SocialProtocolError::UnsupportedProfileSchemaVersion)
+        );
+    }
+}
+
+#[test]
+fn profile_update_instruction_and_event_abis_carry_the_schema_version() {
+    let manifest_uri = format!("local://{TEST_MANIFEST_CID}");
+    let manifest_hash = [7_u8; 32];
+    let root_args = crate::instructions::UpdateProfileArgs {
+        expected_sequence: 41,
+        profile_schema_version: CURRENT_PROFILE_SCHEMA_VERSION,
+        manifest_hash,
+        manifest_uri: manifest_uri.clone(),
+    };
+    let delegated_args = crate::instructions::UpdateProfileDelegatedArgs {
+        expected_sequence: 41,
+        profile_schema_version: CURRENT_PROFILE_SCHEMA_VERSION,
+        manifest_hash,
+        manifest_uri: manifest_uri.clone(),
+    };
+    let root_bytes = root_args.try_to_vec().expect("root args serialize");
+    let delegated_bytes = delegated_args
+        .try_to_vec()
+        .expect("delegated args serialize");
+    assert_eq!(root_bytes, delegated_bytes);
+    assert_eq!(
+        &root_bytes[8..10],
+        &CURRENT_PROFILE_SCHEMA_VERSION.to_le_bytes()
+    );
+
+    let key = Pubkey::new_unique();
+    let event = crate::events::ProfileReferenceUpdated {
+        event_version: crate::constants::PROTOCOL_VERSION,
+        config: key,
+        identity: key,
+        authority: key,
+        sequence: 42,
+        previous_manifest_hash: [6; 32],
+        manifest_hash,
+        manifest_uri,
+        updated_at_slot: 43,
+        profile_schema_version: CURRENT_PROFILE_SCHEMA_VERSION,
+    };
+    let event_bytes = event.try_to_vec().expect("profile event serializes");
+    assert_eq!(
+        &event_bytes[event_bytes.len() - 2..],
+        &CURRENT_PROFILE_SCHEMA_VERSION.to_le_bytes()
+    );
 }
 
 #[test]
@@ -542,6 +640,20 @@ fn delegated_authorization_rejects_scope_expiry_revocation_and_substitution() {
         bump: 1,
     };
 
+    identity.version = ACCOUNT_VERSION + 1;
+    assert_eq!(
+        authorize_identity_action(identity_key, &identity, root, None, SCOPE_POST, 100)
+            .expect_err("an unsupported identity account version must fail"),
+        error!(SocialProtocolError::UnsupportedProtocolVersion)
+    );
+    identity.version = ACCOUNT_VERSION;
+    identity.active = false;
+    assert_eq!(
+        authorize_identity_action(identity_key, &identity, root, None, SCOPE_POST, 100)
+            .expect_err("an inactive identity must fail"),
+        error!(SocialProtocolError::IdentityInactive)
+    );
+    identity.active = true;
     assert!(
         authorize_identity_action(identity_key, &identity, root, None, SCOPE_POST, 100).is_ok()
     );
@@ -644,7 +756,7 @@ fn governance_delegation_accepts_either_social_or_community_scope() {
     let identity_key = Pubkey::new_unique();
     let root = Pubkey::new_unique();
     let delegate = Pubkey::new_unique();
-    let identity = Identity {
+    let mut identity = Identity {
         version: 1,
         config,
         identity_nonce: [1; 16],
@@ -678,6 +790,20 @@ fn governance_delegation_accepts_either_social_or_community_scope() {
         bump: 1,
     };
 
+    identity.version = ACCOUNT_VERSION + 1;
+    assert_eq!(
+        authorize_identity_action_any_scope(
+            identity_key,
+            &identity,
+            delegate,
+            Some(&delegation),
+            SCOPE_SOCIAL | SCOPE_COMMUNITY,
+            20,
+        )
+        .expect_err("an unsupported identity account version must fail"),
+        error!(SocialProtocolError::UnsupportedProtocolVersion)
+    );
+    identity.version = ACCOUNT_VERSION;
     assert!(authorize_identity_action_any_scope(
         identity_key,
         &identity,
@@ -1087,6 +1213,14 @@ fn legacy_v1_instruction_event_and_account_discriminators_are_frozen() {
     assert_discriminator::<ProtocolConfig>([207, 91, 250, 28, 152, 179, 215, 209]);
     assert_discriminator::<ReactionReference>([198, 105, 167, 88, 184, 113, 83, 2]);
     assert_discriminator::<Tombstone>([45, 187, 252, 155, 232, 114, 36, 22]);
+}
+
+#[test]
+fn identity_deactivation_discriminators_are_frozen() {
+    assert_discriminator::<crate::instruction::DeactivateIdentity>([
+        58, 175, 10, 246, 145, 179, 1, 179,
+    ]);
+    assert_discriminator::<crate::events::IdentityDeactivated>([19, 21, 51, 7, 82, 100, 132, 255]);
 }
 
 #[test]

@@ -4,6 +4,8 @@ import { identityIdSchema, objectIdSchema, type ModerationSubject } from '@wokes
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
+import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+
 import { ModerationServiceError } from './errors.js';
 import { operatorAssertionSchema, type OperatorAssertion } from './models.js';
 import { moderationOpenApiDocument } from './openapi.js';
@@ -49,9 +51,11 @@ export interface ModerationAppOptions {
     input: ModerationOperatorAccess,
   ) => OperatorAssertion | false | Promise<OperatorAssertion | false>;
   readonly transparencyMinimumCellSize?: number;
+  readonly trustedProxyCidrs?: readonly string[];
 }
 
 export async function buildModerationApp(options: ModerationAppOptions): Promise<FastifyInstance> {
+  const clientIpPolicy = createTrustedProxyPolicy(options.trustedProxyCidrs ?? []);
   const app = Fastify({
     logger:
       options.logger === false
@@ -74,6 +78,7 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
     keepAliveTimeout: 5_000,
     requestTimeout: 10_000,
     requestIdHeader: 'x-request-id',
+    trustProxy: clientIpPolicy.trustProxy,
   });
 
   await app.register(cors, {
@@ -81,6 +86,7 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
     methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
   });
   await app.register(rateLimit, {
+    keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 30,
     timeWindow: '1 minute',
   });

@@ -16,6 +16,8 @@ pub enum SocialProtocolError {
     ArithmeticOverflow,
     #[msg("A manifest hash cannot be all zeroes")]
     InvalidManifestHash,
+    #[msg("The profile manifest schema version is unsupported")]
+    UnsupportedProfileSchemaVersion,
     #[msg("A manifest URI cannot be empty")]
     EmptyManifestUri,
     #[msg("The manifest URI exceeds the onchain byte limit")]

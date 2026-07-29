@@ -8,6 +8,8 @@ import {
   type Instruction,
 } from '@solana/kit';
 
+import { extractWokeManifestCid } from './manifest-uri.js';
+
 const BASIS_POINTS_DENOMINATOR = 10_000n;
 const MAX_PROTOCOL_FEE_BPS = 1_000;
 const U64_MAX = 18_446_744_073_709_551_615n;
@@ -20,7 +22,6 @@ const ACCOUNT_VERSION = 1;
 const PROTOCOL_VERSION = 1;
 const NONCE_BYTES = 16;
 const HASH_BYTES = 32;
-const MAX_MANIFEST_URI_BYTES = 200;
 
 const PDA_PREFIX = ascii('wokesocial');
 const PDA_VERSION = Uint8Array.of(ACCOUNT_VERSION);
@@ -63,6 +64,7 @@ const RETIRE_SUBSCRIPTION_OFFERING_DISCRIMINATOR = Uint8Array.of(
 );
 const SEND_WOKE_TIP_DISCRIMINATOR = Uint8Array.of(45, 180, 20, 31, 17, 4, 214, 17);
 const SETTLE_SUBSCRIPTION_DISCRIMINATOR = Uint8Array.of(140, 212, 22, 211, 219, 187, 4, 131);
+const DEACTIVATE_IDENTITY_DISCRIMINATOR = Uint8Array.of(58, 175, 10, 246, 145, 179, 1, 179);
 
 export type WokePaymentErrorCode =
   | 'account-not-found'
@@ -383,6 +385,46 @@ export async function deriveWokeProgramDataAddress(context: WokeNetContext): Pro
 export interface WokeInstruction extends Instruction {
   readonly accounts: readonly AccountMeta[];
   readonly data: Uint8Array;
+}
+
+export interface DeactivateWokeIdentityInput {
+  readonly identity: string;
+  readonly rootAuthority: string;
+  readonly expectedIdentitySequence: bigint;
+}
+
+/**
+ * Builds the root-authorized, one-way WokeSocial identity-retirement
+ * instruction. This builder does not submit the transaction or imply content
+ * deletion; callers must present that irreversible distinction to the user.
+ */
+export async function buildDeactivateWokeIdentityInstruction(
+  contextInput: WokeNetContext,
+  input: DeactivateWokeIdentityInput,
+): Promise<WokeInstruction> {
+  const context = createWokeNetContext(contextInput);
+  const identity = parseAddress(input.identity, 'identity');
+  const rootAuthority = parseAddress(input.rootAuthority, 'identity root authority');
+  const expectedIdentitySequence = parseIncrementableU64(
+    input.expectedIdentitySequence,
+    'expected identity sequence',
+  );
+  const config = await deriveWokeProtocolConfigAddress(context);
+  if (new Set([config, identity, rootAuthority]).size !== 3) {
+    throw new WokePaymentError(
+      'alias',
+      'Protocol config, identity, and root-authority accounts must be distinct.',
+    );
+  }
+  return instruction(
+    context,
+    [
+      meta(config, AccountRole.READONLY),
+      meta(identity, AccountRole.WRITABLE),
+      meta(rootAuthority, AccountRole.READONLY_SIGNER),
+    ],
+    new BorshWriter(DEACTIVATE_IDENTITY_DISCRIMINATOR).u64(expectedIdentitySequence).finish(),
+  );
 }
 
 export interface InitializeWokePaymentConfigInput {
@@ -1780,17 +1822,7 @@ function parseNonzeroHash(value: Uint8Array, label: string): Uint8Array {
 }
 
 function parseManifestUri(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  if (
-    bytes.length < 1 ||
-    bytes.length > MAX_MANIFEST_URI_BYTES ||
-    !bytes.every(
-      (byte) => byte >= 0x21 && byte <= 0x7e && ![0x22, 0x27, 0x3c, 0x3e, 0x5c].includes(byte),
-    ) ||
-    !['ipfs://', 'ar://', 'https://', 'local://'].some(
-      (prefix) => value.startsWith(prefix) && value.length > prefix.length,
-    )
-  ) {
+  if (extractWokeManifestCid(value) === undefined) {
     throw new WokePaymentError(
       'invalid-wire-value',
       'The manifest URI does not satisfy the WokeSocial protocol URI policy.',

@@ -1,4 +1,4 @@
-import { getContentCid, verifyContentCid } from '@wokesocial/protocol';
+import { getContentCid, isCanonicalRawSha256Cid, verifyContentCid } from '@wokesocial/protocol';
 
 import {
   type ContentAddressedStorage,
@@ -107,6 +107,7 @@ export class IpfsHttpStorage implements ContentAddressedStorage {
   }
 
   async get(cid: string): Promise<Uint8Array> {
+    requireCanonicalCid(cid);
     const failures: string[] = [];
     for (const gateway of this.#gateways) {
       const endpoint = new URL(`ipfs/${encodeURIComponent(cid)}`, gateway);
@@ -144,6 +145,7 @@ export class IpfsHttpStorage implements ContentAddressedStorage {
   }
 
   async delete(cid: string): Promise<boolean> {
+    requireCanonicalCid(cid);
     const endpoint = new URL('api/v0/pin/rm', this.#apiUrl);
     endpoint.searchParams.set('arg', cid);
     try {
@@ -197,6 +199,15 @@ export class IpfsHttpStorage implements ContentAddressedStorage {
       redirect: 'error',
       signal: AbortSignal.timeout(this.#timeout),
     });
+  }
+}
+
+function requireCanonicalCid(value: string): void {
+  if (!isCanonicalRawSha256Cid(value)) {
+    throw new StorageError(
+      'Only canonical base32 CIDv1 raw SHA-256 identifiers are accepted.',
+      'invalid-cid',
+    );
   }
 }
 

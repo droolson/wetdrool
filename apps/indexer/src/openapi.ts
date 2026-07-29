@@ -58,10 +58,10 @@ export const openApiDocument = {
     },
     '/readyz': {
       get: {
-        summary: 'Projection readiness',
+        summary: 'Projection and finalized-sync readiness',
         responses: {
-          '200': { description: 'Projection dependencies are ready' },
-          '503': { description: 'A dependency is unavailable' },
+          '200': { description: 'Projection dependencies and configured sync are current' },
+          '503': { description: 'A dependency is unavailable or configured sync is stale' },
         },
       },
     },
@@ -69,7 +69,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the configured network’s chronological home feed',
         description:
-          'Returns only posts whose manifest signature, content hash, and finalized WokeNet anchor were verified during ingestion.',
+          'Returns only public posts whose manifest signature, content hash, and finalized WokeNet anchor were verified during ingestion. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
         parameters: [
           {
             name: 'limit',
@@ -90,7 +90,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read a chronological or following projection',
         description:
-          'Low-level replaceable projection endpoint. The network is always explicit and responses are not canonical protocol state.',
+          'Low-level replaceable projection endpoint. The network is always explicit and responses are not canonical protocol state. Both modes return public posts only; following mode is a public convenience filter and does not claim viewer authorization. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
         parameters: [
           networkParameter,
           {
@@ -104,11 +104,23 @@ export const openApiDocument = {
             in: 'query',
             schema: { type: 'integer', minimum: 1, maximum: 100 },
           },
-          { name: 'before', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          {
+            name: 'before',
+            in: 'query',
+            description:
+              'Opaque bounded cursor returned as nextCursor. It binds both finalized event time and the post-ID tie-break; clients must not construct or edit it.',
+            schema: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 512,
+              pattern: '^[A-Za-z0-9_-]+$',
+            },
+          },
         ],
         responses: {
           '200': {
-            description: 'Verified, non-tombstoned projected posts',
+            description:
+              'Verified, public, non-tombstoned projected posts plus an opaque composite nextCursor',
           },
           '400': { description: 'Invalid query' },
         },
@@ -118,7 +130,7 @@ export const openApiDocument = {
       get: {
         summary: 'Search the configured network’s public projection',
         description:
-          'Searches current public profile fields, canonical active handles, and verified non-tombstoned public posts. Communities remain excluded until a signed public manifest is verified. Private fields are never indexed.',
+          'Searches current public profile fields, canonical active handles, and verified non-tombstoned public posts. Retired identities are excluded from new person discovery, while their historical signed public posts remain searchable. Communities remain excluded until a signed public manifest is verified. Private fields are never indexed.',
         parameters: searchParameters,
         responses: {
           '200': {
@@ -138,7 +150,7 @@ export const openApiDocument = {
       get: {
         summary: 'Search one explicit WokeNet public projection',
         description:
-          'Low-level replaceable search endpoint. The index is rebuildable and is not canonical protocol state.',
+          'Low-level replaceable search endpoint. Retired identities are suppressed as people without erasing historical signed public posts. The index is rebuildable and is not canonical protocol state.',
         parameters: [networkParameter, ...searchParameters],
         responses: {
           '200': {
@@ -176,7 +188,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read projected root-rotation and delegation state',
         description:
-          'Returns current projected security state. Historical authorization is evaluated at each event position during ingestion.',
+          'Returns current projected security and identity-active state. Identity retirement is not erasure: historical authorization is evaluated at each event position, while authorization at or after deactivation fails closed.',
         parameters: [
           {
             name: 'identityId',
@@ -196,7 +208,7 @@ export const openApiDocument = {
       get: {
         summary: 'Resolve an active normalized global handle',
         description:
-          'Returns the current finalized handle projection for one explicit WokeNet identifier. This convenience projection is rebuildable and is not canonical protocol state.',
+          'Returns the current finalized handle-claim projection for one explicit WokeNet identifier. An irreversible identity retirement does not erase that historical active claim; callers can inspect identity security state separately. This convenience projection is rebuildable and is not canonical protocol state.',
         parameters: [
           {
             name: 'handle',

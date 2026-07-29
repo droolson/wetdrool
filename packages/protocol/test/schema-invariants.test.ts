@@ -2,9 +2,11 @@ import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
 import {
+  currentPortablePayloadSchema,
   identityIdSchema,
   networkIdSchema,
   portablePayloadSchema,
+  signPayload,
   signingKeyIdSchema,
   tokenAmountSchema,
   transactionSignatureSchema,
@@ -12,7 +14,7 @@ import {
   type PortablePayloadType,
   unsigned64Schema,
 } from '../src/index.js';
-import { author, network } from './fixtures.js';
+import { author, network, privateKey } from './fixtures.js';
 import {
   createValidPayloads,
   encryptedContentReference,
@@ -29,6 +31,51 @@ function payloadOf<Type extends PortablePayloadType>(type: Type): PayloadForType
 }
 
 describe('object-specific validation invariants', () => {
+  it('keeps profile v1 read-only while requiring profile v2 for current creation', () => {
+    const current = payloadOf('profile');
+    const legacy = {
+      ...current,
+      schemaVersion: 1,
+      content: {
+        displayName: current.content.displayName,
+        bio: current.content.bio,
+        pronouns: [{ value: 'they/them', visibility: 'followers' }],
+        gender: 'nonbinary',
+        genderVisibility: 'private',
+        chosenFamilyLabels: ['chosen sibling'],
+        location: 'Legacy plaintext location',
+        links: [],
+      },
+    };
+
+    expect(current.schemaVersion).toBe(2);
+    expect(portablePayloadSchema.parse(legacy)).toMatchObject({
+      schemaVersion: 1,
+      type: 'profile',
+    });
+    expect(() => currentPortablePayloadSchema.parse(legacy)).toThrow();
+    expect(() => signPayload(portablePayloadSchema.parse(legacy), privateKey)).toThrow();
+
+    expect(() =>
+      portablePayloadSchema.parse({
+        ...legacy,
+        schemaVersion: 2,
+      }),
+    ).toThrow();
+    expect(() =>
+      portablePayloadSchema.parse({
+        ...current,
+        schemaVersion: 1,
+      }),
+    ).toThrow();
+    expect(() =>
+      portablePayloadSchema.parse({
+        ...current,
+        schemaVersion: 3,
+      }),
+    ).toThrow();
+  });
+
   it('rejects self-directed follow and block edges', () => {
     for (const type of ['follow-edge', 'block-edge'] as const) {
       const payload = payloadOf(type);
@@ -118,6 +165,75 @@ describe('object-specific validation invariants', () => {
         },
       }),
     ).toThrow(/must use encrypted references/u);
+  });
+
+  it('rejects follower and private profile identity attributes with inline plaintext', () => {
+    const profile = payloadOf('profile');
+    const rawProtectedAttributes = [
+      {
+        ...profile.content,
+        pronouns: [{ visibility: 'private', value: 'secret pronouns' }],
+      },
+      {
+        ...profile.content,
+        gender: { visibility: 'followers', value: 'secret gender' },
+      },
+      {
+        ...profile.content,
+        chosenFamilyLabels: [{ visibility: 'private', value: 'secret family label' }],
+      },
+      {
+        ...profile.content,
+        location: { visibility: 'followers', value: 'secret location' },
+      },
+      {
+        ...profile.content,
+        gender: undefined,
+        genderVisibility: 'private',
+      },
+    ];
+
+    for (const content of rawProtectedAttributes) {
+      expect(portablePayloadSchema.safeParse({ ...profile, content }).success).toBe(false);
+    }
+  });
+
+  it('requires encrypted content references for follower and private profile attributes', () => {
+    const profile = payloadOf('profile');
+    const publicReference = {
+      ...encryptedContentReference,
+      protection: { kind: 'public' },
+    };
+    const referenceWithoutProtection = {
+      cid: encryptedContentReference.cid,
+      digest: encryptedContentReference.digest,
+      bytes: encryptedContentReference.bytes,
+      mediaType: encryptedContentReference.mediaType,
+    };
+    const unencryptedProtectedAttributes = [
+      {
+        ...profile.content,
+        pronouns: [{ visibility: 'followers', valueReference: publicReference }],
+      },
+      {
+        ...profile.content,
+        gender: { visibility: 'private', valueReference: referenceWithoutProtection },
+      },
+      {
+        ...profile.content,
+        chosenFamilyLabels: [
+          { visibility: 'followers', valueReference: referenceWithoutProtection },
+        ],
+      },
+      {
+        ...profile.content,
+        location: { visibility: 'private', valueReference: publicReference },
+      },
+    ];
+
+    for (const content of unencryptedProtectedAttributes) {
+      expect(portablePayloadSchema.safeParse({ ...profile, content }).success).toBe(false);
+    }
   });
 
   it('rejects duplicate media content identifiers', () => {

@@ -1,3 +1,7 @@
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { inspect } from 'node:util';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -101,6 +105,37 @@ describe('moderation restricted-data encryption', () => {
           ),
         }),
     ).toThrow(/between 1 and 16/u);
+  });
+
+  it('redacts malformed key material from deep errors and server stderr', () => {
+    const sentinel = 'moderation-data-key-SENTINEL';
+    const malformed = `{"activeKeyId":"v1","keys":{"v1":"${sentinel}`;
+    let thrown: unknown;
+    try {
+      parseModerationKeyRingJson(malformed);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(inspect(thrown, { depth: Number.POSITIVE_INFINITY })).toContain(
+      'MODERATION_DATA_KEYS must be valid JSON',
+    );
+    expect(inspect(thrown, { depth: Number.POSITIVE_INFINITY })).not.toContain(sentinel);
+
+    const result = spawnSync(process.execPath, ['--import', 'tsx', 'src/server.ts'], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        APP_ENV: 'development',
+        MODERATION_DATABASE_URL: 'postgresql://moderation_runtime@localhost/wokesocial',
+        MODERATION_DATA_KEYS: malformed,
+        MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: '0',
+        NODE_ENV: 'development',
+      },
+    });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('MODERATION_DATA_KEYS must be valid JSON');
+    expect(result.stderr).not.toContain(sentinel);
   });
 });
 

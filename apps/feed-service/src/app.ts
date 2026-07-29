@@ -3,6 +3,8 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+
 import { FeedCursorError, publicFeedPolicy, rankFeed } from './engine.js';
 import { openApiDocument } from './openapi.js';
 import { FEED_POLICY, FEED_POLICY_VERSION } from './policy.js';
@@ -13,11 +15,13 @@ export interface FeedServiceAppOptions {
   readonly allowedOrigins?: readonly string[];
   readonly rateLimitMax?: number;
   readonly readinessCheck?: () => Promise<void>;
+  readonly trustedProxyCidrs?: readonly string[];
 }
 
 export async function buildFeedServiceApp(
   options: FeedServiceAppOptions = {},
 ): Promise<FastifyInstance> {
+  const clientIpPolicy = createTrustedProxyPolicy(options.trustedProxyCidrs ?? []);
   const app = Fastify({
     logger:
       options.logger === false
@@ -42,6 +46,7 @@ export async function buildFeedServiceApp(
       maxParamLength: 256,
     },
     requestIdHeader: 'x-request-id',
+    trustProxy: clientIpPolicy.trustProxy,
   });
 
   await app.register(cors, {
@@ -49,6 +54,7 @@ export async function buildFeedServiceApp(
     methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
   });
   await app.register(rateLimit, {
+    keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 60,
     timeWindow: '1 minute',
   });

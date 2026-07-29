@@ -10,6 +10,7 @@ import {
   createDelegation,
   createIdentity,
   digest,
+  manifestUri,
   measureAndSend,
   nonce,
   type IdentityFixture,
@@ -22,6 +23,7 @@ const { Keypair, PublicKey, SystemProgram } = web3;
 
 const PDA_PREFIX = Buffer.from("wokesocial");
 const PDA_VERSION = Buffer.from([1]);
+const PROFILE_SCHEMA_VERSION = 2;
 const RECOVERY_POLICY_SEED = Buffer.from("recovery_policy");
 const RECOVERY_REQUEST_SEED = Buffer.from("recovery_request");
 
@@ -528,8 +530,9 @@ export function registerRecoveryTests(context: Phase2Context): void {
         program.methods
           .updateProfileDelegated({
             expectedSequence: new BN(3),
+            profileSchemaVersion: PROFILE_SCHEMA_VERSION,
             manifestHash: digest("recovery-old-delegation-rejected"),
-            manifestUri: "local://sha256/recovery-old-delegation-rejected",
+            manifestUri: manifestUri("recovery-old-delegation-rejected"),
           })
           .accountsStrict({
             config,

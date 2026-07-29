@@ -24,6 +24,22 @@
       {
         "path": "patches/0001-explicit-sovereign-genesis-allocations.patch",
         "sha256": "7d1f6419c7325cdfbe777df740a0f5708f1de510d3b4e650a4e9483982767806"
+      },
+      {
+        "path": "patches/0002-native-get-program-accounts.patch",
+        "sha256": "5027ea430dc2022847ed4fd9efbf5dfaddcc28f9b4cfc31a7a1854307b35d274"
+      },
+      {
+        "path": "patches/0003-wokenet-live-cluster-safety.patch",
+        "sha256": "77df8b7ab1a48674093c0935e3915c20eeaa1cbe956dee9226cd9a1960a9e454"
+      },
+      {
+        "path": "patches/0004-native-non-voting-rpc-observer.patch",
+        "sha256": "1504fb4c382bd181a253edb807400b8824e7ee339f0f3b0c1d13cae18ba808b6"
+      },
+      {
+        "path": "patches/0005-native-c-test-execution-fixes.patch",
+        "sha256": "aea19cf90e32eaddfa95ed4fda0a0add68c818216308717ab327ca89015356ca"
       }
     ]
   }

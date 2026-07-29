@@ -191,6 +191,71 @@ describe('feed-service HTTP contract', () => {
       await app.close();
     }
   });
+
+  it('partitions rate limits only through an allowlisted proxy peer', async () => {
+    const payload = rankRequest({ items: [feedItem('proxied')] });
+    const trusted = await buildFeedServiceApp({
+      logger: false,
+      rateLimitMax: 1,
+      trustedProxyCidrs: ['127.0.0.1/32'],
+    });
+    try {
+      const firstClient = await trusted.inject({
+        method: 'POST',
+        url: '/v1/rank',
+        remoteAddress: '127.0.0.1',
+        headers: { 'x-forwarded-for': '203.0.113.1' },
+        payload,
+      });
+      const sameClient = await trusted.inject({
+        method: 'POST',
+        url: '/v1/rank',
+        remoteAddress: '127.0.0.1',
+        headers: { 'x-forwarded-for': '203.0.113.1' },
+        payload,
+      });
+      const secondClient = await trusted.inject({
+        method: 'POST',
+        url: '/v1/rank',
+        remoteAddress: '127.0.0.1',
+        headers: { 'x-forwarded-for': '203.0.113.2' },
+        payload,
+      });
+
+      expect(firstClient.statusCode).toBe(200);
+      expect(sameClient.statusCode).toBe(429);
+      expect(secondClient.statusCode).toBe(200);
+    } finally {
+      await trusted.close();
+    }
+
+    const untrusted = await buildFeedServiceApp({
+      logger: false,
+      rateLimitMax: 1,
+      trustedProxyCidrs: ['10.42.0.0/24'],
+    });
+    try {
+      const first = await untrusted.inject({
+        method: 'POST',
+        url: '/v1/rank',
+        remoteAddress: '127.0.0.1',
+        headers: { 'x-forwarded-for': '203.0.113.3' },
+        payload,
+      });
+      const spoofed = await untrusted.inject({
+        method: 'POST',
+        url: '/v1/rank',
+        remoteAddress: '127.0.0.1',
+        headers: { 'x-forwarded-for': '203.0.113.4' },
+        payload,
+      });
+
+      expect(first.statusCode).toBe(200);
+      expect(spoofed.statusCode).toBe(429);
+    } finally {
+      await untrusted.close();
+    }
+  });
 });
 
 describe('feed-service origin configuration', () => {
@@ -205,5 +270,37 @@ describe('feed-service origin configuration', () => {
         FEED_SERVICE_CORS_ORIGINS: 'https://sociallywoke.com',
       }),
     ).toThrow(/legacy redirect host/);
+    expect(() =>
+      parseFeedServiceConfig({
+        FEED_SERVICE_CORS_ORIGINS: 'https://SOCIALLYWOKE.COM..',
+      }),
+    ).toThrow(/legacy redirect host/);
+    expect(
+      parseFeedServiceConfig({
+        TRUSTED_PROXY_CIDRS: '127.0.0.1/32,10.42.0.0/24',
+      }).trustedProxyCidrs,
+    ).toEqual(['127.0.0.1/32', '10.42.0.0/24']);
+  });
+
+  it.each(['127.0.0.1', '[::1]', '[::ffff:7f00:1]', '[::]', 'app.localhost'])(
+    'rejects local or unspecified HTTPS origin %s outside local development',
+    (hostname) => {
+      expect(() =>
+        parseFeedServiceConfig({
+          APP_ENV: 'staging',
+          FEED_SERVICE_CORS_ORIGINS: `https://${hostname}`,
+        }),
+      ).toThrow(/non-local HTTPS/u);
+    },
+  );
+
+  it('rejects every database credential from the long-running process', () => {
+    for (const variableName of ['AUTH_DATABASE_MIGRATION_URL', 'AUTH_DATABASE_URL']) {
+      expect(() =>
+        parseFeedServiceConfig({
+          [variableName]: 'postgresql://unrelated:secret@database.test/wokesocial',
+        }),
+      ).toThrow(/must not be injected/u);
+    }
   });
 });

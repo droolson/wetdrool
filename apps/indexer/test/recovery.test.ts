@@ -50,7 +50,7 @@ const secondRecoveryRequestAddress = await deriveRecoveryRequestAddress(
 
 describe('recovery Anchor events', () => {
   it('strictly decodes and materializes all six recovery IDL layouts', async () => {
-    expect(Object.keys(SOCIAL_PROTOCOL_EVENT_LAYOUT.events)).toHaveLength(32);
+    expect(Object.keys(SOCIAL_PROTOCOL_EVENT_LAYOUT.events)).toHaveLength(33);
     const projection = new MemoryProjectionStore();
     const materializer = new SolanaEventMaterializer(
       new MemoryContentAddressedStorage(),

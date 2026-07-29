@@ -4,6 +4,7 @@ import { parseFeedServiceConfig } from './config.js';
 const config = parseFeedServiceConfig(process.env);
 const app = await buildFeedServiceApp({
   allowedOrigins: config.allowedOrigins,
+  trustedProxyCidrs: config.trustedProxyCidrs,
 });
 
 const shutdown = async (signal: NodeJS.Signals) => {

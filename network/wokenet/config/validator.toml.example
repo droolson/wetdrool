@@ -28,7 +28,9 @@ telemetry = false
 
 [consensus]
     expected_genesis_hash = "REPLACE_WITH_CEREMONY_GENESIS_HASH"
-    expected_shred_version = "REPLACE_WITH_CEREMONY_SHRED_VERSION"
+    # Invalid fail-closed placeholder; replace with the ceremony's non-zero numeric value.
+    expected_shred_version = 0
+    wokenet_live_cluster = true
     wait_for_vote_to_start_leader = true
 
 [tiles.gui]
@@ -38,13 +40,15 @@ telemetry = false
     enabled = false
 
 [development]
+    sandbox = true
+    no_clone = false
     no_agave = true
 
     [development.gossip]
         allow_private_address = false
 
     [development.genesis]
-        validate_genesis_hash = false
+        validate_genesis_hash = true
         creation_time_unix_seconds = 1785196800
         faucet_balance_lamports = 1
         identity_balance_lamports = 1
@@ -55,3 +59,9 @@ telemetry = false
         fund_initial_amount_lamports = 0
         vote_account_stake_lamports = 1
         warmup_epochs = false
+
+    [development.bench]
+        larger_max_cost_per_block = false
+        larger_shred_limits_per_block = false
+        disable_blockstore_from_slot = 0
+        disable_status_cache = false

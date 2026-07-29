@@ -330,7 +330,11 @@ export class RelayProtocolError extends Error {
 }
 
 export interface VerifyRelayOptions {
-  readonly now?: Date;
+  /**
+   * A clock callback is required when verification can await external policy
+   * I/O. A fixed Date remains supported for deterministic callers and tests.
+   */
+  readonly now?: Date | (() => Date);
   readonly authorize?: RelayKeyAuthorizer;
 }
 
@@ -462,7 +466,7 @@ async function verifyMessage(
       'invalid-signature',
     );
   }
-  validateTimes(message.issuedAt, message.expiresAt, options.now ?? new Date());
+  assertRelayMessageCurrent(message, resolveRelayNow(options.now));
   const payloadHash = digestSha256Multibase(canonicalBytesOf(message));
   if (payloadHash !== proof.payloadHash) {
     throw new RelayProtocolError(
@@ -485,17 +489,35 @@ async function verifyMessage(
   if (!valid) {
     throw new RelayProtocolError('Relay signature is invalid.', 'invalid-signature');
   }
-  if (
-    options.authorize !== undefined &&
-    !(await options.authorize({
+  if (options.authorize !== undefined) {
+    const authorized = await options.authorize({
       identityId: message.identity,
       keyId: message.keyId,
       purpose,
       issuedAt: message.issuedAt,
-    }))
-  ) {
-    throw new RelayProtocolError('Relay signing key is not authorized.', 'key-not-authorized');
+    });
+    // External authorization must not extend a signed envelope's lifetime.
+    assertRelayMessageCurrent(message, resolveRelayNow(options.now));
+    if (!authorized) {
+      throw new RelayProtocolError('Relay signing key is not authorized.', 'key-not-authorized');
+    }
   }
+}
+
+/**
+ * Rechecks the signed wall-clock bounds after an asynchronous authorization
+ * dependency returns. Signature verification at frame-arrival time does not
+ * make an envelope live indefinitely while policy I/O is in flight.
+ */
+export function assertRelayMessageCurrent(
+  message: Readonly<{ issuedAt: string; expiresAt: string }>,
+  now: Date = new Date(),
+): void {
+  validateTimes(message.issuedAt, message.expiresAt, now);
+}
+
+function resolveRelayNow(now: VerifyRelayOptions['now']): Date {
+  return typeof now === 'function' ? now() : (now ?? new Date());
 }
 
 function signatureDescriptor(keyId: string, payloadHash: string): Uint8Array {

@@ -21,7 +21,8 @@ Every payload carries:
 
 - `protocol: "wokesocial"`
 - `protocolVersion: "1.0"`
-- `schemaVersion: 1`
+- `schemaVersion: 1` for all non-profile families and historical profiles;
+  current profiles use `schemaVersion: 2`
 - a canonical WokeNet ID,
   `wokenet:v1:<genesis-hash-base58-32>:<program-id-base58-32>`
 - an author identity bound to that network
@@ -39,9 +40,10 @@ wokesocialobj:v1:<type>:<multibase-base64url-sha256(canonical-payload)>
 
 The signature covers a canonical, domain-separated proof descriptor containing the protocol signature domain, proof version, algorithm, key ID, network, object type, and payload hash. The envelope CID is the CIDv1/raw SHA-256 CID of the canonical envelope bytes.
 
-The `profile`, `post`, and `tombstone` schemas, builders, and type names remain
-stable. The canonical WokeNet namespace has a newly pinned v1 post golden
-vector; objects produced with the pre-migration `solana:` namespace are
+The `post` and `tombstone` schemas, builders, and type names remain stable.
+Profile reads are explicitly versioned, while its builder emits only the
+current protected shape. The canonical WokeNet namespace has a pinned v1 post
+golden vector; objects produced with the pre-migration `solana:` namespace are
 intentionally incompatible and rejected.
 
 ## Object catalog
@@ -141,8 +143,35 @@ Notable representation limits include:
 - no floating-point protocol numbers;
 - body text: 10,000 UTF-8 bytes;
 - profile bio: 2,000 UTF-8 bytes;
+- public pronoun, gender, chosen-family-label, and location values are inline;
+  followers-only/private values require encrypted content references and never
+  permit inline plaintext;
 - media per post: 10;
 - extension entries: 32.
+
+Profile schema compatibility is versioned within protocol version `1.0`:
+
+- `schemaVersion: 1` is the frozen historical profile shape. The read and
+  verification APIs continue to accept it so existing signed objects retain
+  their canonical bytes, IDs, and signatures.
+- `schemaVersion: 2` is the current profile shape. Public identity attributes
+  may remain inline, while followers-only/private pronouns, gender,
+  chosen-family labels, and location require encrypted content references.
+- `buildProfilePayload`, `buildPortablePayload`, and `signPayload` enforce the
+  current creation surface. `portablePayloadSchema`, `signedEnvelopeSchema`,
+  `decodeCanonicalEnvelope`, and `verifyEnvelope` provide the versioned read
+  path. Code that validates new-object submissions directly should use
+  `currentPortablePayloadSchema` or `currentSignedEnvelopeSchema`.
+
+The protocol package intentionally does not infer network activation from an
+object's self-declared version. The open indexer fixes one immutable
+`INDEXER_PROFILE_V2_ACTIVATION_SLOT` per WokeNet: a historical profile-update
+event without the appended commitment may reference readable legacy v1 only
+before that slot. Current root and delegated WokeSocial instructions accept
+only schema version 2 and append it to the onchain event. Explicit commitments
+must be v2 at every slot; at or after activation the commitment is mandatory and
+the referenced envelope must also be v2. Live verification and exact-source
+rebuild apply the same gate.
 
 Adding a field to a v1 strict object is a breaking schema change. New optional semantics belong in a noncritical extension or a new schema/protocol version. A consumer must refuse an unrecognized critical extension rather than silently interpreting the rest of the object.
 

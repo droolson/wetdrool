@@ -3,6 +3,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 
+import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
 import {
   handleSchema,
   identityIdSchema,
@@ -11,10 +12,12 @@ import {
   solanaPublicKeySchema,
 } from '@wokesocial/protocol';
 
+import { decodeFeedCursor, encodeFeedCursor, MAX_FEED_CURSOR_LENGTH } from './feed-cursor.js';
 import type { FeedEntry, PostProjection, PublicSearchResult } from './models.js';
 import { ProjectionError, type ProjectionStore } from './projection.js';
 import { openApiDocument } from './openapi.js';
 import { normalizePublicSearchTerm } from './public-search.js';
+import type { IndexerRuntimeReadiness } from './runtime-readiness.js';
 
 const feedQuerySchema = z
   .object({
@@ -22,7 +25,7 @@ const feedQuerySchema = z
     mode: z.enum(['chronological', 'following']).default('chronological'),
     viewer: identityIdSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(30),
-    before: z.string().datetime({ offset: true }).optional(),
+    before: z.string().min(1).max(MAX_FEED_CURSOR_LENGTH).optional(),
   })
   .strict()
   .refine(
@@ -107,6 +110,8 @@ export interface IndexerAppOptions {
   readonly logger?: boolean;
   readonly allowedOrigins?: readonly string[];
   readonly defaultNetworkId?: string;
+  readonly runtimeReadiness?: IndexerRuntimeReadiness;
+  readonly trustedProxyCidrs?: readonly string[];
 }
 
 export async function buildIndexerApp(options: IndexerAppOptions): Promise<FastifyInstance> {
@@ -114,18 +119,27 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     options.defaultNetworkId === undefined
       ? undefined
       : networkIdSchema.parse(options.defaultNetworkId);
+  const clientIpPolicy = createTrustedProxyPolicy(options.trustedProxyCidrs ?? []);
   const app = Fastify({
     logger: options.logger ?? true,
     bodyLimit: 1_000_000,
+    connectionTimeout: 10_000,
+    keepAliveTimeout: 5_000,
+    maxRequestsPerSocket: 1_000,
+    requestTimeout: 15_000,
     routerOptions: { maxParamLength: 512 },
     requestIdHeader: 'x-request-id',
+    trustProxy: clientIpPolicy.trustProxy,
   });
+  app.server.headersTimeout = 10_000;
+  app.server.maxHeadersCount = 64;
 
   await app.register(cors, {
     origin: options.allowedOrigins === undefined ? false : [...options.allowedOrigins],
     methods: ['GET', 'HEAD', 'OPTIONS'],
   });
   await app.register(rateLimit, {
+    keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: 120,
     timeWindow: '1 minute',
   });
@@ -140,8 +154,17 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
 
   app.get('/healthz', async () => ({ ok: true }));
   app.get('/readyz', async (_request, reply) => {
+    const runtimeStatus = options.runtimeReadiness?.status();
+    if (runtimeStatus !== undefined && !runtimeStatus.ok) {
+      void reply.code(503);
+      return runtimeStatus;
+    }
     try {
-      await options.projection.checkpoint('__readiness__');
+      if (options.projection.readiness === undefined) {
+        await options.projection.checkpoint('__readiness__');
+      } else {
+        await options.projection.readiness();
+      }
       return { ok: true };
     } catch {
       void reply.code(503);
@@ -240,19 +263,32 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       return invalidQuery(parsed.error);
     }
 
+    let before;
+    try {
+      before = parsed.data.before === undefined ? undefined : decodeFeedCursor(parsed.data.before);
+    } catch {
+      void reply.code(400);
+      return {
+        error: {
+          code: 'invalid-feed-cursor',
+          message: 'The feed cursor is invalid or unsupported.',
+        },
+      };
+    }
     const feedQuery = {
       networkId: parsed.data.network,
       mode: parsed.data.mode,
       limit: parsed.data.limit,
       ...(parsed.data.viewer === undefined ? {} : { viewerIdentityId: parsed.data.viewer }),
-      ...(parsed.data.before === undefined ? {} : { before: parsed.data.before }),
+      ...(before === undefined ? {} : { before }),
     };
     const entries = await options.projection.getFeed(feedQuery);
+    const lastEntry = entries.at(-1);
     return {
       canonical: false,
       projection: 'wokenet-open-indexer',
       entries: entries.map(serializeFeedEntry),
-      nextCursor: entries.at(-1)?.post.createdAt,
+      nextCursor: lastEntry === undefined ? undefined : encodeFeedCursor(lastEntry.post),
     };
   });
 
@@ -317,7 +353,11 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
           identityId: identity.identityId,
           rootAuthority: identity.rootAuthority,
           rootRotationCount: identity.rootRotationCount.toString(),
+          active: identity.active,
+          identitySequence: identity.identitySequence.toString(),
           updatedSlot: identity.updatedSlot.toString(),
+          deactivatedSlot: identity.deactivatedSlot?.toString(),
+          deactivatedAt: identity.deactivatedAt,
         },
         delegations: delegations.map((delegation) => ({
           ...delegation,
@@ -853,17 +893,8 @@ function paymentQueryError(message: string) {
 function serializeFeedEntry(entry: FeedEntry) {
   return {
     post: serializePost(entry.post),
-    author: {
-      ...entry.author,
-      createdSlot: entry.author.createdSlot.toString(),
-    },
-    profile:
-      entry.profile === undefined
-        ? undefined
-        : {
-            ...entry.profile,
-            updatedSlot: entry.profile.updatedSlot.toString(),
-          },
+    author: serializeBigInts(entry.author),
+    profile: entry.profile === undefined ? undefined : serializeBigInts(entry.profile),
     reason: entry.reason,
   };
 }
@@ -878,6 +909,7 @@ function serializePost(post: PostProjection) {
 function serializeConsumerPost(entry: FeedEntry) {
   return {
     author: {
+      active: entry.author.active,
       displayName: entry.profile?.content.displayName || 'Unnamed member',
       handle: null,
       identityId: entry.author.identityId,

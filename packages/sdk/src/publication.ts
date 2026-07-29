@@ -1,4 +1,5 @@
 import {
+  PROFILE_SCHEMA_VERSION,
   buildPostPayload,
   buildProfilePayload,
   canonicalizePayload,
@@ -96,6 +97,12 @@ export class PublicationPipeline {
     options: PublicationOperationOptions<PostPayload>,
   ): Promise<PublicationResult> {
     this.#progress('validating', 'Validating the post manifest.');
+    if (!['public', 'unlisted'].includes(content.visibility.kind)) {
+      throw new PublicationError(
+        'Restricted post publication is disabled until the official client can encrypt and verify every referenced payload before upload.',
+        'validating',
+      );
+    }
     const payload = buildPostPayload(this.#identity, content, options);
     return this.#publish(payload, options.signer, policy, (anchor) =>
       this.#chain.publishPost(anchor),
@@ -108,9 +115,18 @@ export class PublicationPipeline {
     options: PublicationOperationOptions<ProfilePayload>,
   ): Promise<PublicationResult> {
     this.#progress('validating', 'Validating the profile manifest.');
+    if (hasProtectedProfileReferences(content)) {
+      throw new PublicationError(
+        'Protected profile publication is disabled until the official client can encrypt and verify every referenced value before upload.',
+        'validating',
+      );
+    }
     const payload = buildProfilePayload(this.#identity, content, options);
     return this.#publish(payload, options.signer, policy, (anchor) =>
-      this.#chain.updateProfile(anchor),
+      this.#chain.updateProfile({
+        ...anchor,
+        profileSchemaVersion: PROFILE_SCHEMA_VERSION,
+      }),
     );
   }
 
@@ -196,4 +212,13 @@ export class PublicationPipeline {
 
 function equalBytes(left: Uint8Array, right: Uint8Array): boolean {
   return left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
+}
+
+function hasProtectedProfileReferences(content: ProfileContent): boolean {
+  return [
+    ...content.pronouns,
+    ...content.chosenFamilyLabels,
+    ...(content.gender === undefined ? [] : [content.gender]),
+    ...(content.location === undefined ? [] : [content.location]),
+  ].some((value) => value.visibility !== 'public');
 }

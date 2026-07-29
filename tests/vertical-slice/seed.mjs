@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 import anchor from '@coral-xyz/anchor';
 import {
+  PROFILE_SCHEMA_VERSION,
   buildPostPayload,
   buildProfilePayload,
   canonicalizeEnvelope,
@@ -110,8 +111,7 @@ const profile = await publishEnvelope(
       {
         displayName: AUTHOR_DISPLAY_NAME,
         bio: 'Building a joyful, user-owned social web.',
-        pronouns: [{ value: 'they/them', visibility: 'public' }],
-        genderVisibility: 'private',
+        pronouns: [{ visibility: 'public', value: 'they/them' }],
         chosenFamilyLabels: [],
         links: [],
       },
@@ -212,6 +212,7 @@ transactionSignatures.push(
   await program.methods
     .updateProfile({
       expectedSequence: new BN(0),
+      profileSchemaVersion: PROFILE_SCHEMA_VERSION,
       manifestHash: digestBytes(profile.envelope.proof.payloadHash),
       manifestUri: `ipfs://${profile.cid}`,
     })

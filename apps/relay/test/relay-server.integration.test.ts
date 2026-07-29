@@ -1,13 +1,22 @@
-import WebSocket, { type RawData } from 'ws';
-import { afterEach, describe, expect, it } from 'vitest';
+import { connect as connectTcp, type Socket } from 'node:net';
 
-import { RelayServer } from '../src/relay-server.js';
+import WebSocket, { type RawData } from 'ws';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { combineRelayReadinessChecks } from '../src/http-authorizer-client.js';
+import { HttpRelaySubscriptionAuthorizer } from '../src/http-subscription-authorizer.js';
+import { RELAY_POLICY } from '../src/policy.js';
+import { signSubscription, unsignedSubscriptionSchema } from '../src/protocol.js';
+import { RelayServer, type RelayLogger } from '../src/relay-server.js';
+import { privacyHash } from '../src/state.js';
 import { relayServerFrameSchema, type RelayServerFrame } from '../src/wire.js';
 import {
   alice,
   aliceImpersonator,
+  alternateTopic,
   bob,
   carol,
+  freshFixtureNonce,
   makeEvent,
   makeSubscription,
   publicTopic,
@@ -16,9 +25,11 @@ import {
 
 const servers: RelayServer[] = [];
 const sockets: LoopbackSocket[] = [];
+const transportSockets: Socket[] = [];
 
 afterEach(async () => {
   await Promise.all(sockets.splice(0).map((socket) => socket.close()));
+  await Promise.all(transportSockets.splice(0).map(closeTransportSocket));
   await Promise.all(servers.splice(0).map((server) => server.stop()));
 });
 
@@ -44,7 +55,19 @@ describe('relay server over loopback WebSockets', () => {
       keyAuthorization: 'unverified-local',
     });
     const policy = await (await fetch(`${address.httpUrl}/v1/policy`)).json();
-    expect(policy).toMatchObject({ advisory: true, canonical: false });
+    expect(policy).toMatchObject({
+      advisory: true,
+      canonical: false,
+      connection: {
+        connectionsCheckingIntervalMilliseconds: 250,
+        headersTimeoutMilliseconds: 5_000,
+        keepAliveTimeoutMilliseconds: 5_000,
+        maximumHeaderBytes: 16 * 1_024,
+        maximumHeadersCount: 64,
+        maximumTransportSockets: 128,
+        requestTimeoutMilliseconds: 10_000,
+      },
+    });
     const metrics = await (await fetch(`${address.httpUrl}/metrics`)).text();
     expect(metrics).toContain('wokesocial_relay_active_connections');
     expect(metrics).not.toContain(alice.identityId);
@@ -52,6 +75,84 @@ describe('relay server over loopback WebSockets', () => {
       activeConnections: 0,
       acceptedConnections: 0,
     });
+  });
+
+  it(
+    'closes an incomplete HTTP upgrade within the explicit header deadline',
+    async () => {
+      const { address } = await startRelay();
+      const socket = await openTransportSocket(address.port);
+      socket.write('GET /v1/relay HTTP/1.1\r\nHost: relay.test\r\nX-Incomplete:');
+      const startedAt = Date.now();
+
+      await waitForTransportClose(
+        socket,
+        RELAY_POLICY.connection.headersTimeoutMilliseconds +
+          RELAY_POLICY.connection.connectionsCheckingIntervalMilliseconds +
+          1_500,
+      );
+
+      expect(Date.now() - startedAt).toBeLessThanOrEqual(
+        RELAY_POLICY.connection.headersTimeoutMilliseconds +
+          RELAY_POLICY.connection.connectionsCheckingIntervalMilliseconds +
+          1_000,
+      );
+    },
+    RELAY_POLICY.connection.headersTimeoutMilliseconds + 3_000,
+  );
+
+  it('rejects upgrades when incomplete transports consume the global socket budget', async () => {
+    const { server, address } = await startRelay();
+    const held = await Promise.all(
+      Array.from({ length: RELAY_POLICY.connection.maximumTransportSockets }, async () => {
+        const socket = await openTransportSocket(address.port);
+        socket.write('GET /v1/relay HTTP/1.1\r\nHost: relay.test\r\nX-Incomplete:');
+        return socket;
+      }),
+    );
+    await waitUntil(
+      () => server.transportSocketCount() === RELAY_POLICY.connection.maximumTransportSockets,
+    );
+
+    await expectUpgradeTransportRejection(address.webSocketUrl);
+
+    const released = held.pop();
+    expect(released).toBeDefined();
+    if (released !== undefined) {
+      await closeTransportSocket(released);
+    }
+    await waitUntil(
+      () => server.transportSocketCount() === RELAY_POLICY.connection.maximumTransportSockets - 1,
+    );
+    await connect(address.webSocketUrl);
+  });
+
+  it('omits stable identity-derived values from routine acceptance logs', async () => {
+    const contexts: Readonly<Record<string, unknown>>[] = [];
+    const logger: RelayLogger = {
+      info: (context) => contexts.push(context),
+      warn: (context) => contexts.push(context),
+      error: (context) => contexts.push(context),
+    };
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'privacy-safe-logs',
+      logger,
+      now: () => testNow,
+      dangerouslyAllowUnverifiedLocalMode: true,
+    });
+    servers.push(server);
+    const address = await server.start();
+    const socket = await connect(address.webSocketUrl);
+    await authenticate(socket, makeSubscription(alice));
+    socket.send({ op: 'publish', envelope: makeEvent('new-post') });
+    await socket.waitFor((frame) => frame.op === 'published');
+
+    const serialized = JSON.stringify(contexts);
+    expect(serialized).not.toContain(alice.identityId);
+    expect(serialized).not.toContain(privacyHash(alice.identityId));
+    expect(contexts.every((context) => !('identityHash' in context))).toBe(true);
   });
 
   it('authenticates subscriptions and routes a signed direct event only to its audience', async () => {
@@ -169,12 +270,137 @@ describe('relay server over loopback WebSockets', () => {
     ).toBe(false);
   });
 
+  it('rejects a subscription that expires while asynchronous authorization is in flight', async () => {
+    let now = new Date(testNow);
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'authorization-time-recheck',
+      logger: false,
+      now: () => now,
+      authorizeKey: () => true,
+      authorizeSubscription: ({ identityId }) => {
+        if (identityId === bob.identityId) {
+          now = new Date(testNow.getTime() + 5 * 60_000);
+        }
+        return true;
+      },
+    });
+    servers.push(server);
+    const address = await server.start();
+    const publisher = await connect(address.webSocketUrl, 'verified');
+    await authenticate(publisher, makeSubscription(alice));
+    publisher.send({ op: 'publish', envelope: makeEvent('new-post') });
+    await publisher.waitFor((frame) => frame.op === 'published');
+
+    const late = await connect(address.webSocketUrl, 'verified');
+    late.send({
+      op: 'subscribe',
+      authorization: makeSubscription(bob, { sinceSequence: 0 }),
+    });
+    expect(await late.waitFor((frame) => frame.op === 'error')).toMatchObject({
+      message: 'Relay message has expired.',
+    });
+    await delay(50);
+    expect(late.frames().some((frame) => frame.op === 'subscribed' || frame.op === 'event')).toBe(
+      false,
+    );
+  });
+
+  it('rejects the whole subscription when an early topic grant expires during later checks', async () => {
+    let now = new Date(testNow);
+    let bobAuthorizationCount = 0;
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'topic-grant-time-recheck',
+      logger: false,
+      now: () => now,
+      authorizeKey: () => true,
+      authorizeSubscription: ({ identityId }) => {
+        if (identityId !== bob.identityId) {
+          return true;
+        }
+        bobAuthorizationCount += 1;
+        if (bobAuthorizationCount === 1) {
+          return { authorized: true, expiresAt: testNow.getTime() + 1_000 };
+        }
+        now = new Date(testNow.getTime() + 1_001);
+        return { authorized: true, expiresAt: testNow.getTime() + 10_000 };
+      },
+    });
+    servers.push(server);
+    const address = await server.start();
+    const publisher = await connect(address.webSocketUrl, 'verified');
+    await authenticate(publisher, makeSubscription(alice));
+    publisher.send({ op: 'publish', envelope: makeEvent('community-update') });
+    await publisher.waitFor((frame) => frame.op === 'published');
+
+    const template = makeSubscription(bob);
+    const authorization = signSubscription(
+      unsignedSubscriptionSchema.parse({
+        ...template.message,
+        nonce: freshFixtureNonce(),
+        subscriptions: [
+          {
+            topic: publicTopic,
+            kinds: ['community-update'],
+            sinceSequence: 0,
+          },
+          {
+            topic: alternateTopic,
+            kinds: ['new-post'],
+            sinceSequence: 0,
+          },
+        ],
+      }),
+      bob.privateKey,
+    );
+    const late = await connect(address.webSocketUrl, 'verified');
+    late.send({ op: 'subscribe', authorization });
+    expect(await late.waitFor((frame) => frame.op === 'error')).toMatchObject({
+      code: 'forbidden',
+      message: 'A requested subscription authorization expired before installation.',
+    });
+    await delay(50);
+    expect(late.frames().some((frame) => frame.op === 'subscribed' || frame.op === 'event')).toBe(
+      false,
+    );
+  });
+
   it('uses real WebSocket max-payload enforcement for oversized frames', async () => {
     const { address } = await startRelay();
     const socket = await connect(address.webSocketUrl);
     socket.raw.send('x'.repeat(70 * 1_024));
     const code = await socket.waitForClose();
     expect([1009, 1006]).toContain(code);
+  });
+
+  it('applies connection caps to canonical clients behind an allowlisted ingress', async () => {
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'trusted-ingress-rate-limit',
+      logger: false,
+      now: () => testNow,
+      dangerouslyAllowUnverifiedLocalMode: true,
+      trustedProxyCidrs: ['127.0.0.1/32'],
+    });
+    servers.push(server);
+    const address = await server.start();
+    const firstClientHeaders = { 'x-forwarded-for': '203.0.113.10' };
+
+    await Promise.all(
+      Array.from({ length: RELAY_POLICY.connection.maximumConnectionsPerIp }, () =>
+        connect(address.webSocketUrl, 'unverified-local', firstClientHeaders),
+      ),
+    );
+    expect(await rejectedUpgradeStatus(address.webSocketUrl, firstClientHeaders)).toBe(429);
+    await expect(
+      connect(address.webSocketUrl, 'unverified-local', {
+        'x-forwarded-for': '203.0.113.11',
+      }),
+    ).resolves.toBeInstanceOf(LoopbackSocket);
   });
 
   it('supports deployment authorization callbacks without claiming on-chain authority', async () => {
@@ -207,6 +433,242 @@ describe('relay server over loopback WebSockets', () => {
     expect(await socket.waitFor((frame) => frame.op === 'subscribed')).toMatchObject({
       topicCount: 1,
     });
+  });
+
+  it('expires finalized HTTP community grants without regressing public delivery', async () => {
+    let now = new Date(testNow);
+    let keyReady = true;
+    let subscriptionReady = true;
+    const networkId = alice.identityId.split(':').slice(2, -1).join(':');
+    const authorizerFetch = vi.fn<typeof globalThis.fetch>(async (_input, init) => {
+      if (init?.method === 'GET') {
+        return new Response(JSON.stringify({ ok: subscriptionReady }), {
+          status: subscriptionReady ? 200 : 503,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      const request = JSON.parse(String(init?.body)) as {
+        requestId: string;
+      };
+      return new Response(
+        JSON.stringify({
+          version: 'wokesocial-relay-subscription-authorization-v1',
+          requestId: request.requestId,
+          authorized: true,
+          finalized: true,
+          networkId,
+          checkpointSlot: '42',
+          evaluatedAt: now.toISOString(),
+          expiresAt: new Date(now.getTime() + 10_000).toISOString(),
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      );
+    });
+    const subscriptionAuthorizer = new HttpRelaySubscriptionAuthorizer({
+      endpoint: 'https://authorizer.example/v1/authorize-relay-subscription',
+      readinessEndpoint: 'https://authorizer.example/readyz',
+      bearerToken: 'S'.repeat(32),
+      timeoutMilliseconds: 1_000,
+      fetch: authorizerFetch,
+      now: () => now,
+    });
+    const keyReadiness = vi.fn(async () => {
+      if (!keyReady) {
+        throw new Error('key projection unavailable');
+      }
+    });
+    const readinessCheck = combineRelayReadinessChecks([
+      keyReadiness,
+      subscriptionAuthorizer.readinessCheck,
+    ]);
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'finalized-community-grants',
+      logger: false,
+      now: () => now,
+      authorizeKey: () => true,
+      authorizeSubscription: subscriptionAuthorizer.authorize,
+      ...(readinessCheck === undefined ? {} : { readinessCheck }),
+    });
+    servers.push(server);
+    const address = await server.start();
+
+    let ready = await fetch(`${address.httpUrl}/readyz`);
+    expect(ready.status).toBe(200);
+    expect(keyReadiness).toHaveBeenCalledOnce();
+    keyReady = false;
+    ready = await fetch(`${address.httpUrl}/readyz`);
+    expect(ready.status).toBe(503);
+    keyReady = true;
+    subscriptionReady = false;
+    ready = await fetch(`${address.httpUrl}/readyz`);
+    expect(ready.status).toBe(503);
+    subscriptionReady = true;
+
+    const publisher = await connect(address.webSocketUrl, 'verified');
+    const observer = await connect(address.webSocketUrl, 'verified');
+    await authenticate(publisher, makeSubscription(alice));
+    await authenticate(observer, makeSubscription(bob));
+
+    publisher.send({ op: 'publish', envelope: makeEvent('community-update') });
+    await publisher.waitFor((frame) => frame.op === 'published');
+    await observer.waitFor(
+      (frame) => frame.op === 'event' && frame.envelope.message.kind === 'community-update',
+    );
+    const communityDeliveries = observer
+      .frames()
+      .filter(
+        (frame) => frame.op === 'event' && frame.envelope.message.kind === 'community-update',
+      ).length;
+
+    now = new Date(testNow.getTime() + 10_001);
+    publisher.send({
+      op: 'publish',
+      envelope: makeEvent('community-update', { now }),
+    });
+    await publisher.waitFor((frame) => frame.op === 'published', 2_000, 2);
+    await delay(50);
+    expect(
+      observer
+        .frames()
+        .filter(
+          (frame) => frame.op === 'event' && frame.envelope.message.kind === 'community-update',
+        ),
+    ).toHaveLength(communityDeliveries);
+
+    publisher.send({ op: 'publish', envelope: makeEvent('new-post', { now }) });
+    await observer.waitFor(
+      (frame) => frame.op === 'event' && frame.envelope.message.kind === 'new-post',
+    );
+    publisher.send({ op: 'publish', envelope: makeEvent('encrypted-message', { now }) });
+    await observer.waitFor(
+      (frame) => frame.op === 'event' && frame.envelope.message.kind === 'encrypted-message',
+    );
+  });
+
+  it('rejects malformed time-bounded subscription grants', async () => {
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'malformed-community-grant',
+      logger: false,
+      now: () => testNow,
+      authorizeKey: () => true,
+      authorizeSubscription: () => ({ authorized: true, expiresAt: Number.NaN }),
+    });
+    servers.push(server);
+    const address = await server.start();
+    const socket = await connect(address.webSocketUrl, 'verified');
+
+    socket.send({ op: 'subscribe', authorization: makeSubscription(alice) });
+    expect(await socket.waitFor((frame) => frame.op === 'error')).toMatchObject({
+      code: 'forbidden',
+    });
+  });
+
+  it('serializes asynchronous frame authorization per connection', async () => {
+    const releases: (() => void)[] = [];
+    let activeAuthorizations = 0;
+    let authorizationCalls = 0;
+    let maximumActiveAuthorizations = 0;
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'serialized-authorizer',
+      logger: false,
+      now: () => testNow,
+      authorizeKey: ({ purpose }) => {
+        if (purpose === 'subscribe') {
+          return true;
+        }
+        authorizationCalls += 1;
+        activeAuthorizations += 1;
+        maximumActiveAuthorizations = Math.max(maximumActiveAuthorizations, activeAuthorizations);
+        return new Promise<boolean>((resolve) => {
+          releases.push(() => {
+            activeAuthorizations -= 1;
+            resolve(true);
+          });
+        });
+      },
+    });
+    servers.push(server);
+    const address = await server.start();
+    const socket = await connect(address.webSocketUrl, 'verified');
+    await authenticate(socket, makeSubscription(alice));
+
+    socket.send({ op: 'publish', envelope: makeEvent('new-post') });
+    socket.send({ op: 'publish', envelope: makeEvent('new-post') });
+    socket.send({ op: 'publish', envelope: makeEvent('new-post') });
+
+    await waitUntil(() => authorizationCalls === 1);
+    await delay(20);
+    expect(authorizationCalls).toBe(1);
+    releases.shift()?.();
+    await waitUntil(() => authorizationCalls === 2);
+    releases.shift()?.();
+    await waitUntil(() => authorizationCalls === 3);
+    releases.shift()?.();
+    await socket.waitFor((frame) => frame.op === 'published', 2_000, 3);
+
+    expect(maximumActiveAuthorizations).toBe(1);
+    expect(server.metrics().acceptedEvents).toBe(3);
+  });
+
+  it('disconnects an overflowing inbound queue and performs no post-close publish', async () => {
+    let authorizationCalls = 0;
+    let releaseAuthorization: (() => void) | undefined;
+    const server = new RelayServer({
+      host: '127.0.0.1',
+      port: 0,
+      relayId: 'bounded-inbound-queue',
+      logger: false,
+      now: () => testNow,
+      authorizeKey: ({ purpose }) => {
+        if (purpose === 'subscribe') {
+          return true;
+        }
+        authorizationCalls += 1;
+        return new Promise<boolean>((resolve) => {
+          releaseAuthorization = () => resolve(true);
+        });
+      },
+    });
+    servers.push(server);
+    const address = await server.start();
+    const socket = await connect(address.webSocketUrl, 'verified');
+    await authenticate(socket, makeSubscription(alice));
+
+    socket.send({ op: 'publish', envelope: makeEvent('new-post') });
+    for (let index = 0; index < RELAY_POLICY.connection.maximumPendingFrames + 1; index += 1) {
+      socket.send({ op: 'publish', envelope: makeEvent('new-post') });
+    }
+
+    expect(await socket.waitFor((frame) => frame.op === 'error')).toMatchObject({
+      code: 'backpressure',
+      retryable: true,
+    });
+    expect(await socket.waitForClose()).toBe(4008);
+    expect(authorizationCalls).toBe(1);
+    releaseAuthorization?.();
+    await delay(20);
+
+    expect(authorizationCalls).toBe(1);
+    expect(server.metrics()).toMatchObject({
+      acceptedEvents: 0,
+      backpressureDisconnects: 1,
+    });
+  });
+
+  it('does not combine dangerous unverified keys with a subscription authorizer', () => {
+    expect(
+      () =>
+        new RelayServer({
+          dangerouslyAllowUnverifiedLocalMode: true,
+          authorizeSubscription: () => true,
+        }),
+    ).toThrow(/never both/u);
   });
 
   it('is locked and not ready by default when no real key authorizer exists', async () => {
@@ -248,11 +710,93 @@ async function startRelay() {
   return { server, address: await server.start() };
 }
 
+async function openTransportSocket(port: number): Promise<Socket> {
+  const socket = connectTcp({ host: '127.0.0.1', port });
+  transportSockets.push(socket);
+  await new Promise<void>((resolve, reject) => {
+    const onConnect = () => {
+      socket.off('error', onError);
+      resolve();
+    };
+    const onError = (error: Error) => {
+      socket.off('connect', onConnect);
+      reject(error);
+    };
+    socket.once('connect', onConnect);
+    socket.once('error', onError);
+  });
+  socket.on('error', () => undefined);
+  return socket;
+}
+
+async function closeTransportSocket(socket: Socket): Promise<void> {
+  if (socket.destroyed) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    socket.once('close', () => resolve());
+    socket.destroy();
+  });
+}
+
+async function waitForTransportClose(socket: Socket, timeoutMilliseconds: number): Promise<void> {
+  if (socket.destroyed) {
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.destroy();
+      reject(new Error('Timed out waiting for the relay to close an incomplete transport.'));
+    }, timeoutMilliseconds);
+    socket.once('close', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
+async function expectUpgradeTransportRejection(url: string): Promise<void> {
+  const socket = new WebSocket(url, { perMessageDeflate: false });
+  socket.on('error', () => undefined);
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finish = (error?: Error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      if (socket.readyState !== WebSocket.CLOSED) {
+        socket.terminate();
+      }
+      if (error === undefined) {
+        resolve();
+      } else {
+        reject(error);
+      }
+    };
+    const timer = setTimeout(
+      () => finish(new Error('Timed out waiting for the saturated relay to reject an upgrade.')),
+      2_000,
+    );
+    socket.once('open', () =>
+      finish(new Error('Relay accepted an upgrade beyond its global transport capacity.')),
+    );
+    socket.once('error', () => finish());
+    socket.once('unexpected-response', (_request, response) => {
+      response.destroy();
+      finish();
+    });
+    socket.once('close', () => finish());
+  });
+}
+
 async function connect(
   url: string,
   keyAuthorization: 'unverified-local' | 'verified' = 'unverified-local',
+  headers?: Readonly<Record<string, string>>,
 ): Promise<LoopbackSocket> {
-  const socket = new LoopbackSocket(url);
+  const socket = new LoopbackSocket(url, headers);
   sockets.push(socket);
   await socket.open();
   expect(await socket.waitFor((frame) => frame.op === 'hello')).toMatchObject({
@@ -263,8 +807,11 @@ async function connect(
   return socket;
 }
 
-async function rejectedUpgradeStatus(url: string): Promise<number> {
-  const socket = new WebSocket(url);
+async function rejectedUpgradeStatus(
+  url: string,
+  headers?: Readonly<Record<string, string>>,
+): Promise<number> {
+  const socket = new WebSocket(url, { ...(headers === undefined ? {} : { headers }) });
   socket.on('error', () => undefined);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -299,8 +846,11 @@ class LoopbackSocket {
   readonly #frames: RelayServerFrame[] = [];
   readonly #waiters = new Set<() => void>();
 
-  constructor(url: string) {
-    this.raw = new WebSocket(url, { perMessageDeflate: false });
+  constructor(url: string, headers?: Readonly<Record<string, string>>) {
+    this.raw = new WebSocket(url, {
+      perMessageDeflate: false,
+      ...(headers === undefined ? {} : { headers }),
+    });
     this.raw.on('message', (data, isBinary) => this.#onMessage(data, isBinary));
   }
 
@@ -402,4 +952,14 @@ function rawDataBytes(data: RawData): Uint8Array {
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function waitUntil(predicate: () => boolean, timeoutMilliseconds = 2_000): Promise<void> {
+  const deadline = Date.now() + timeoutMilliseconds;
+  while (!predicate()) {
+    if (Date.now() >= deadline) {
+      throw new Error('Timed out waiting for relay test condition.');
+    }
+    await delay(5);
+  }
 }

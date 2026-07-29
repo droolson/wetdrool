@@ -34,12 +34,14 @@ describe('authentication service security primitives', () => {
     expect(
       parseAuthConfig({
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
+        TRUSTED_PROXY_CIDRS: '127.0.0.1/32',
       }),
     ).toMatchObject({
       port: 4300,
       rpId: 'localhost',
       origin: 'http://localhost:4300',
       cleanupIntervalMs: 60_000,
+      trustedProxyCidrs: ['127.0.0.1/32'],
       retention: {
         pendingAccountRetentionMs: 3_600_000,
         ceremonyRetentionMs: 86_400_000,
@@ -47,6 +49,66 @@ describe('authentication service security primitives', () => {
         batchSize: 500,
       },
     });
+    expect(() =>
+      parseAuthConfig({
+        NODE_ENV: 'production',
+        AUTH_RP_ID: 'woke.social',
+        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
+      }),
+    ).toThrow(/restricted to loopback development/u);
+    expect(() =>
+      parseAuthConfig({
+        APP_ENV: 'staging',
+        AUTH_RP_ID: 'woke.social',
+        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
+      }),
+    ).toThrow(/restricted to loopback development/u);
+    expect(() =>
+      parseAuthConfig({
+        APP_ENV: 'production',
+        NODE_ENV: 'development',
+        AUTH_RP_ID: 'woke.social',
+        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
+      }),
+    ).toThrow(/restricted to loopback development/u);
+    expect(() =>
+      parseAuthConfig({
+        AUTH_HOST: '0.0.0.0',
+        AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
+      }),
+    ).toThrow(/restricted to loopback development/u);
+  });
+
+  it('requires a nonlocal HTTPS RP and origin in staging and production', () => {
+    for (const appEnvironment of ['staging', 'production'] as const) {
+      expect(() =>
+        parseAuthConfig({
+          APP_ENV: appEnvironment,
+          AUTH_DATABASE_URL:
+            'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+        }),
+      ).toThrow(/nonlocal HTTPS endpoint/u);
+      for (const [origin, rpId] of [
+        ['https://localhost', 'localhost'],
+        ['https://auth.localhost', 'localhost'],
+        ['https://127.0.0.9', '127.0.0.9'],
+        ['https://[::ffff:127.0.0.1]', 'localhost'],
+        ['https://0.0.0.0', '0.0.0.0'],
+      ]) {
+        expect(() =>
+          parseAuthConfig({
+            APP_ENV: appEnvironment,
+            AUTH_DATABASE_URL:
+              'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+            AUTH_ORIGIN: origin,
+            AUTH_RP_ID: rpId,
+          }),
+        ).toThrow(/nonlocal/u);
+      }
+    }
   });
 
   it('rejects insecure remote origins, RP mismatches, and non-PostgreSQL stores', () => {
@@ -63,11 +125,18 @@ describe('authentication service security primitives', () => {
         AUTH_ORIGIN: 'https://sociallywoke.com',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
-    ).toThrow('AUTH_ORIGIN hostname');
+    ).toThrow('legacy redirect hostname');
     expect(() =>
       parseAuthConfig({
         AUTH_RP_ID: 'sociallywoke.com',
         AUTH_ORIGIN: 'https://sociallywoke.com',
+        AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
+      }),
+    ).toThrow('legacy redirect hostname');
+    expect(() =>
+      parseAuthConfig({
+        AUTH_RP_ID: 'com',
+        AUTH_ORIGIN: 'https://WWW.SOCIALLYWOKE.COM..',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
     ).toThrow('legacy redirect hostname');
@@ -104,6 +173,84 @@ describe('authentication service security primitives', () => {
         AUTH_CLEANUP_BATCH_SIZE: '5001',
       }),
     ).toThrow();
+  });
+
+  it('requires hostname-verifying PostgreSQL TLS for remote production databases', () => {
+    expect(
+      parseAuthConfig({
+        NODE_ENV: 'production',
+        AUTH_RP_ID: 'woke.social',
+        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_DATABASE_URL:
+          'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+      }),
+    ).toMatchObject({
+      databaseUrl: 'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+    });
+
+    for (const databaseUrl of [
+      'postgresql://authentication:secret@db.woke.social/auth',
+      'postgresql://authentication:secret@db.woke.social/auth?sslmode=require',
+      'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-ca',
+      'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full&sslmode=disable',
+      'postgresql://authentication:secret@127.0.0.1:5432/auth',
+    ]) {
+      expect(() =>
+        parseAuthConfig({
+          NODE_ENV: 'production',
+          AUTH_RP_ID: 'woke.social',
+          AUTH_ORIGIN: 'https://auth.woke.social',
+          AUTH_DATABASE_URL: databaseUrl,
+        }),
+      ).toThrow(/exactly one sslmode=verify-full/u);
+    }
+    for (const databaseUrl of [
+      'postgresql://authentication:secret@db.staging.woke.social/auth',
+      'postgresql://authentication:secret@localhost:5432/auth',
+    ]) {
+      expect(() =>
+        parseAuthConfig({
+          APP_ENV: 'staging',
+          AUTH_RP_ID: 'woke.social',
+          AUTH_ORIGIN: 'https://auth.woke.social',
+          AUTH_DATABASE_URL: databaseUrl,
+        }),
+      ).toThrow(/exactly one sslmode=verify-full/u);
+    }
+    for (const appEnvironment of ['staging', 'production'] as const) {
+      expect(() =>
+        parseAuthConfig({
+          APP_ENV: appEnvironment,
+          AUTH_DATABASE_URL:
+            'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+          NODE_TLS_REJECT_UNAUTHORIZED: '0',
+        }),
+      ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED must not be 0/u);
+    }
+
+    expect(
+      parseAuthConfig({
+        NODE_ENV: 'test',
+        AUTH_DATABASE_URL:
+          'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial',
+        NODE_TLS_REJECT_UNAUTHORIZED: '0',
+      }),
+    ).toMatchObject({
+      databaseUrl: 'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial',
+    });
+  });
+
+  it.each([
+    'AUTH_DATABASE_MIGRATION_URL',
+    'MODERATION_DATABASE_MIGRATION_URL',
+    'MODERATION_DATABASE_URL',
+  ])('rejects %s credentials from the long-running runtime', (variableName) => {
+    expect(() =>
+      parseAuthConfig({
+        AUTH_DATABASE_URL: 'postgresql://auth_runtime:secret@localhost/wokesocial',
+        [variableName]: 'postgresql://unrelated_migration:migration-secret@localhost/wokesocial',
+      }),
+    ).toThrow('Privileged database credentials must not be injected');
   });
 
   it('uses one canonical 1023-byte credential-ID bound across every layer', () => {

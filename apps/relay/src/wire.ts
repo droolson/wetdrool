@@ -162,6 +162,7 @@ export type RelaySubscriptionView = Readonly<{
     Readonly<{
       kinds: ReadonlySet<RelayEventKind>;
       sinceSequence?: number;
+      authorizationExpiresAt?: number;
     }>
   >;
 }>;

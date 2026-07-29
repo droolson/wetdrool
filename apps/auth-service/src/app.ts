@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
+import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
 
 import { installAuthErrorHandler } from './http-errors.js';
 import {
@@ -39,9 +40,11 @@ export interface AuthAppOptions {
   readonly service: AuthService;
   readonly logger?: boolean;
   readonly rateLimitMax?: number;
+  readonly trustedProxyCidrs?: readonly string[];
 }
 
 export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInstance> {
+  const clientIpPolicy = createTrustedProxyPolicy(options.trustedProxyCidrs ?? []);
   const app = Fastify({
     logger:
       options.logger === false
@@ -66,6 +69,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
     keepAliveTimeout: 5_000,
     requestTimeout: 15_000,
     requestIdHeader: 'x-request-id',
+    trustProxy: clientIpPolicy.trustProxy,
   });
 
   await app.register(cookie);
@@ -76,6 +80,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
     allowedHeaders: ['content-type', 'x-csrf-token', 'x-request-id'],
   });
   await app.register(rateLimit, {
+    keyGenerator: (request) => clientIpPolicy.clientIp(request.raw),
     max: options.rateLimitMax ?? 30,
     timeWindow: '1 minute',
   });

@@ -173,7 +173,7 @@ describe('memory handle projection', () => {
       handleClaimAddress,
       identityId,
       authority: rootAuthority,
-      identitySequence: 4n,
+      identitySequence: 2n,
       handleHash,
       handle,
     };
@@ -215,14 +215,14 @@ describe('memory handle projection', () => {
         handle: otherHandle,
         handleHash: digestFor(otherHandle),
       }),
-    ).rejects.toThrow('already active');
+    ).rejects.toThrow('exactly advance');
     await expect(
       indexer.ingest({
         ...release,
         transactionSignature: signature(22),
         identitySequence: 1n,
       }),
-    ).rejects.toThrow('exactly match');
+    ).rejects.toThrow('exactly advance');
     await expect(
       indexer.ingest({
         ...release,
@@ -230,14 +230,14 @@ describe('memory handle projection', () => {
         identityId: secondIdentityId,
         authority: secondRootAuthority,
       }),
-    ).rejects.toThrow('exactly match');
+    ).rejects.toThrow('exactly advance');
     await expect(
       indexer.ingest({
         ...release,
         ...base(2n, 24),
         identitySequence: 5n,
       }),
-    ).rejects.toThrow('exactly match');
+    ).rejects.toThrow('exactly advance');
     await expect(projection.checkpoint(networkId)).resolves.toBe(3n);
 
     await expect(indexer.ingest(release)).resolves.toMatchObject({ applied: true });
@@ -249,7 +249,7 @@ describe('memory handle projection', () => {
         ...base(5n, 25),
         identitySequence: release.identitySequence,
       }),
-    ).rejects.toThrow('does not advance');
+    ).rejects.toThrow('exactly advance');
     await expect(projection.checkpoint(networkId)).resolves.toBe(4n);
 
     await expect(indexer.ingest(reclaim)).resolves.toMatchObject({ applied: true });

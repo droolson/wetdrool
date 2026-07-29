@@ -1,10 +1,15 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { randomBytes } from '@noble/hashes/utils.js';
 
-import { PROTOCOL_NAME, PROTOCOL_VERSION, SCHEMA_VERSION } from './constants.js';
+import {
+  PROFILE_SCHEMA_VERSION,
+  PROTOCOL_NAME,
+  PROTOCOL_VERSION,
+  SCHEMA_VERSION,
+} from './constants.js';
 import { encodeMultibaseBase64Url } from './encoding.js';
 import {
-  portablePayloadSchema,
+  currentPortablePayloadSchema,
   type AppealContent,
   type AppealPayload,
   type BlockEdgeContent,
@@ -111,10 +116,11 @@ function commonFields(
   identity: PayloadBuilderIdentity,
   createdAt: Date,
   nonce: Uint8Array,
+  schemaVersion: typeof SCHEMA_VERSION | typeof PROFILE_SCHEMA_VERSION,
 ): {
   readonly protocol: typeof PROTOCOL_NAME;
   readonly protocolVersion: typeof PROTOCOL_VERSION;
-  readonly schemaVersion: typeof SCHEMA_VERSION;
+  readonly schemaVersion: typeof SCHEMA_VERSION | typeof PROFILE_SCHEMA_VERSION;
   readonly network: NetworkId;
   readonly author: string;
   readonly signingKey: string;
@@ -129,7 +135,7 @@ function commonFields(
   return {
     protocol: PROTOCOL_NAME,
     protocolVersion: PROTOCOL_VERSION,
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion,
     network: identity.network,
     author: identity.author,
     signingKey: identity.signingKey,
@@ -147,11 +153,16 @@ export function buildPortablePayload<Type extends PortablePayloadType>(
   options: PayloadBuildOptions = {},
 ): PayloadForType<Type> {
   const candidate = {
-    ...commonFields(identity, options.createdAt ?? new Date(), options.nonce ?? randomBytes(16)),
+    ...commonFields(
+      identity,
+      options.createdAt ?? new Date(),
+      options.nonce ?? randomBytes(16),
+      type === 'profile' ? PROFILE_SCHEMA_VERSION : SCHEMA_VERSION,
+    ),
     type,
     content,
   };
-  return portablePayloadSchema.parse(candidate) as PayloadForType<Type>;
+  return currentPortablePayloadSchema.parse(candidate) as PayloadForType<Type>;
 }
 
 export function buildPostPayload(

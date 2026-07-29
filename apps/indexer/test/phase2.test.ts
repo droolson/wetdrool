@@ -23,6 +23,7 @@ import {
   SOCIAL_PROTOCOL_EVENT_LAYOUT,
   type ProtocolEvent,
 } from '../src/index.js';
+import { TEST_CID } from './cid-fixtures.js';
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
 const genesisHash = publicKey(70);
@@ -488,6 +489,9 @@ describe('Phase-2 projection and authorization', () => {
       expiresAtSlot: 20n,
     };
 
+    for (const event of [identity, rotation, delegation]) {
+      await expect(indexer.ingest(event)).resolves.toMatchObject({ applied: true });
+    }
     await expect(
       indexer.rebuild(networkId, [delegation, rotation, identity]),
     ).resolves.toHaveLength(3);
@@ -558,7 +562,7 @@ function digest(seed: number): string {
 }
 
 function fakeCid(): string {
-  return `b${'a'.repeat(58)}`;
+  return TEST_CID;
 }
 
 function eventData(discriminator: readonly number[], ...fields: readonly Uint8Array[]): string {

@@ -25,15 +25,18 @@ const newCredentialBytes = bytes(191, 32);
 const newCredentialId = encodeBase64Url(newCredentialBytes);
 
 describe('browser passkey authentication boundary', () => {
-  it('rejects the legacy redirect host as an authentication-service origin', () => {
-    expect(
-      () =>
-        new BrowserAuthClient({
-          baseUrl: 'https://sociallywoke.com',
-          tokenStorage: new MemoryStorage(),
-        }),
-    ).toThrow('not a permitted secure origin');
-  });
+  it.each(['https://sociallywoke.com', 'https://WWW.SOCIALLYWOKE.COM..'])(
+    'rejects the legacy redirect host %s as an authentication-service origin',
+    (baseUrl) => {
+      expect(
+        () =>
+          new BrowserAuthClient({
+            baseUrl,
+            tokenStorage: new MemoryStorage(),
+          }),
+      ).toThrow('not a permitted secure origin');
+    },
+  );
 
   it('registers with an atomic ciphertext bundle while clearing client key buffers', async () => {
     const recorder = registrationApi();

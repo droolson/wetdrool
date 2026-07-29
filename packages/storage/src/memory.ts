@@ -1,4 +1,4 @@
-import { getContentCid, verifyContentCid } from '@wokesocial/protocol';
+import { getContentCid, isCanonicalRawSha256Cid, verifyContentCid } from '@wokesocial/protocol';
 
 import {
   type ContentAddressedStorage,
@@ -38,6 +38,7 @@ export class MemoryContentAddressedStorage implements ContentAddressedStorage {
   }
 
   async get(cid: string): Promise<Uint8Array> {
+    requireCanonicalCid(cid);
     const bytes = this.#objects.get(cid);
     if (bytes === undefined) {
       throw new StorageError(`Content ${cid} was not found.`, 'not-found');
@@ -49,11 +50,13 @@ export class MemoryContentAddressedStorage implements ContentAddressedStorage {
   }
 
   async has(cid: string): Promise<boolean> {
+    requireCanonicalCid(cid);
     const bytes = this.#objects.get(cid);
     return bytes !== undefined && verifyContentCid(bytes, cid);
   }
 
   async delete(cid: string): Promise<boolean> {
+    requireCanonicalCid(cid);
     return this.#objects.delete(cid);
   }
 
@@ -63,5 +66,14 @@ export class MemoryContentAddressedStorage implements ContentAddressedStorage {
       ok: true,
       checkedAt: this.clock().toISOString(),
     };
+  }
+}
+
+function requireCanonicalCid(value: string): void {
+  if (!isCanonicalRawSha256Cid(value)) {
+    throw new StorageError(
+      'Only canonical base32 CIDv1 raw SHA-256 identifiers are accepted.',
+      'invalid-cid',
+    );
   }
 }

@@ -776,53 +776,10 @@ export class PostgresModerationStore implements ModerationStore {
           }
         }
 
-        const cutoff = new Date(Date.parse(input.now) - input.closedCaseRetentionMs).toISOString();
-        const retained = await sql<{ report_id: string }[]>`
-          SELECT report_id
-          FROM moderation_cases
-          WHERE state = 'closed'
-            AND closed_at <= ${cutoff}
-            AND legal_hold = false
-          ORDER BY closed_at, report_id
-          LIMIT ${input.retentionLimit}
-          FOR UPDATE
-        `;
-        const reportIds = retained.map((row) => row.report_id);
-        if (reportIds.length > 0) {
-          await sql`
-            DELETE FROM moderation_access_events
-            WHERE report_id IN ${sql(reportIds)}
-          `;
-          await sql`
-            DELETE FROM moderation_restricted_objects
-            WHERE object_type = 'appeal'
-              AND decision_id IN ${sql(reportIds)}
-          `;
-          await sql`
-            DELETE FROM moderation_restricted_objects
-            WHERE object_id IN ${sql(reportIds)}
-          `;
-        }
-        const unlinkedAccess = await sql<{ access_id: string }[]>`
-          SELECT access_id
-          FROM moderation_access_events
-          WHERE report_id IS NULL
-            AND created_at <= ${cutoff}
-          ORDER BY created_at, access_id
-          LIMIT ${input.retentionLimit}
-          FOR UPDATE
-        `;
-        const unlinkedAccessIds = unlinkedAccess.map((row) => row.access_id);
-        if (unlinkedAccessIds.length > 0) {
-          await sql`
-            DELETE FROM moderation_access_events
-            WHERE access_id IN ${sql(unlinkedAccessIds)}
-          `;
-        }
         return {
           reviewRequired,
           actionsExpired,
-          casesRemoved: reportIds.length,
+          casesRemoved: 0,
         };
       });
     } catch (error) {
@@ -948,7 +905,83 @@ export class PostgresModerationStore implements ModerationStore {
 
   async readiness(): Promise<void> {
     try {
-      await this.#sql`SELECT 1`;
+      const readinessRows = await this.#sql<{ ready: boolean }[]>`
+        WITH required_tables(name) AS (
+          VALUES
+            ('moderation_access_events'),
+            ('moderation_action_status_events'),
+            ('moderation_actions'),
+            ('moderation_case_events'),
+            ('moderation_cases'),
+            ('moderation_legal_hold_events'),
+            ('moderation_public_objects'),
+            ('moderation_restricted_objects'),
+            ('moderation_reviews')
+        ),
+        update_tables(name) AS (
+          VALUES
+            ('moderation_actions'),
+            ('moderation_cases'),
+            ('moderation_public_objects'),
+            ('moderation_restricted_objects')
+        )
+        SELECT
+          (
+            SELECT count(*) = 3
+              AND bool_and(checksum ~ '^[0-9a-f]{64}$')
+              AND bool_or(version = '0003_guarded_retention.sql')
+            FROM moderation_schema_migrations
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM required_tables
+            CROSS JOIN (
+              VALUES ('SELECT'), ('INSERT')
+            ) AS required_privileges(name)
+            WHERE NOT has_table_privilege(
+              current_user,
+              required_tables.name,
+              required_privileges.name
+            )
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM update_tables
+            WHERE NOT has_table_privilege(current_user, update_tables.name, 'UPDATE')
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM required_tables
+            WHERE has_table_privilege(current_user, required_tables.name, 'DELETE')
+              OR (
+                required_tables.name NOT IN (SELECT name FROM update_tables)
+                AND has_table_privilege(current_user, required_tables.name, 'UPDATE')
+              )
+          )
+          AND has_table_privilege(current_user, 'moderation_schema_migrations', 'SELECT')
+          AND NOT has_table_privilege(
+            current_user,
+            'moderation_schema_migrations',
+            'INSERT'
+          )
+          AND NOT has_table_privilege(
+            current_user,
+            'moderation_schema_migrations',
+            'UPDATE'
+          )
+          AND NOT has_table_privilege(
+            current_user,
+            'moderation_schema_migrations',
+            'DELETE'
+          )
+          AS ready
+      `;
+      if (readinessRows[0]?.ready !== true) {
+        throw new ModerationServiceError(
+          'Moderation migrations or runtime privileges are incomplete.',
+          'database-unavailable',
+        );
+      }
       const encryptedRows = await this.#sql<RestrictedObjectRow[]>`
         SELECT DISTINCT ON (encrypted_payload->>'keyId')
           object_id, object_type, cid, received_at, decision_id, encrypted_payload

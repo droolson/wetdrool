@@ -26,6 +26,16 @@ pub struct IdentityCreated {
 }
 
 #[event]
+pub struct IdentityDeactivated {
+    pub event_version: u16,
+    pub config: Pubkey,
+    pub identity: Pubkey,
+    pub root_authority: Pubkey,
+    pub identity_sequence: u64,
+    pub deactivated_at_slot: u64,
+}
+
+#[event]
 pub struct HandleClaimed {
     pub event_version: u16,
     pub config: Pubkey,
@@ -62,6 +72,7 @@ pub struct ProfileReferenceUpdated {
     pub manifest_hash: [u8; MANIFEST_HASH_BYTES],
     pub manifest_uri: String,
     pub updated_at_slot: u64,
+    pub profile_schema_version: u16,
 }
 
 #[event]

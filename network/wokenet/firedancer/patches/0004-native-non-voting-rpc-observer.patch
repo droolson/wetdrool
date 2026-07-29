@@ -1,0 +1,440 @@
+diff --git a/src/app/firedancer/topology.c b/src/app/firedancer/topology.c
+index 21815fe3232f4607f2963a01509c1fbff9d3d361..55f643e05b7eda523376de1f8b1789fe273f5b89 100644
+--- a/src/app/firedancer/topology.c
++++ b/src/app/firedancer/topology.c
+@@ -1389,6 +1389,12 @@ fd_topo_configure_tile( fd_topo_tile_t * tile,
+     tile->tower.hard_fork_fatal    = config->firedancer.development.hard_fork_fatal;
+     tile->tower.wait_for_supermajority = !!strcmp( config->firedancer.consensus.wait_for_supermajority_with_bank_hash, "" );
+     tile->tower.max_live_slots     = config->firedancer.runtime.max_live_slots;
++    tile->tower.is_voting          = !!config->paths.vote_account[ 0 ];
++    tile->tower.vote_observer      = config->consensus.wokenet_live_cluster &&
++                                     !config->firedancer.layout.enable_block_production &&
++                                     config->tiles.rpc.enabled &&
++                                     !tile->tower.is_voting &&
++                                     !config->firedancer.paths.authorized_voter_paths_cnt;
+     fd_cstr_ncpy( tile->tower.identity_key, config->paths.identity_key, sizeof(tile->tower.identity_key) );
+     fd_cstr_ncpy( tile->tower.vote_account, config->paths.vote_account, sizeof(tile->tower.vote_account) );
+     fd_cstr_ncpy( tile->tower.base_path, config->paths.base, sizeof(tile->tower.base_path) );
+diff --git a/src/app/shared/fd_config.c b/src/app/shared/fd_config.c
+index 577e7d1675000f329b7dfbf2301281549828b8dd..7ead72a3a03d0bd780b2ecf00308801b613e8a32 100644
+--- a/src/app/shared/fd_config.c
++++ b/src/app/shared/fd_config.c
+@@ -321,6 +321,13 @@ fd_config_wokenet_live_policy_check( fd_config_t const * config,
+   if( FD_UNLIKELY( config->development.bench.disable_status_cache ) )
+     return FD_CONFIG_WOKENET_LIVE_ERR_STATUS_CACHE_REQUIRED;
+ 
++  if( FD_UNLIKELY( !config->paths.vote_account[ 0 ] ) ) {
++    if( FD_UNLIKELY( config->firedancer.layout.enable_block_production || !config->tiles.rpc.enabled ) )
++      return FD_CONFIG_WOKENET_LIVE_ERR_VOTE_ACCOUNT_REQUIRED;
++    if( FD_UNLIKELY( config->firedancer.paths.authorized_voter_paths_cnt ) )
++      return FD_CONFIG_WOKENET_LIVE_ERR_OBSERVER_VOTERS_FORBIDDEN;
++  }
++
+   return FD_CONFIG_WOKENET_LIVE_OK;
+ }
+ 
+@@ -386,6 +393,12 @@ fd_config_classify_cluster( fd_config_t * config,
+     case FD_CONFIG_WOKENET_LIVE_ERR_MODE_REQUIRED:
+       FD_LOG_ERR(( "unknown non-local production clusters must explicitly enable [consensus.wokenet_live_cluster]" ));
+       break;
++    case FD_CONFIG_WOKENET_LIVE_ERR_VOTE_ACCOUNT_REQUIRED:
++      FD_LOG_ERR(( "[consensus.wokenet_live_cluster] requires [paths.vote_account] unless block production is disabled and native RPC is enabled" ));
++      break;
++    case FD_CONFIG_WOKENET_LIVE_ERR_OBSERVER_VOTERS_FORBIDDEN:
++      FD_LOG_ERR(( "a non-voting WokeNet RPC observer cannot configure [paths.authorized_voter_paths]" ));
++      break;
+     default:
+       FD_LOG_ERR(( "invalid [consensus.wokenet_live_cluster] policy result" ));
+       break;
+diff --git a/src/app/shared/fd_config_private.h b/src/app/shared/fd_config_private.h
+index 69c1a82ff6e50829fe2af478c46b878b3da2b7a0..276b55e59b5e79c4aba164de06636f33e00d2898 100644
+--- a/src/app/shared/fd_config_private.h
++++ b/src/app/shared/fd_config_private.h
+@@ -23,6 +23,8 @@ FD_PROTOTYPES_BEGIN
+ #define FD_CONFIG_WOKENET_LIVE_ERR_BLOCKSTORE_BYPASS_FORBIDDEN (15)
+ #define FD_CONFIG_WOKENET_LIVE_ERR_STATUS_CACHE_REQUIRED       (16)
+ #define FD_CONFIG_WOKENET_LIVE_ERR_MODE_REQUIRED               (17)
++#define FD_CONFIG_WOKENET_LIVE_ERR_VOTE_ACCOUNT_REQUIRED       (18)
++#define FD_CONFIG_WOKENET_LIVE_ERR_OBSERVER_VOTERS_FORBIDDEN   (19)
+ 
+ /* fd_config_wokenet_live_policy_check() evaluates the downstream,
+    mandatory WokeNet production classification without mutating config.
+diff --git a/src/app/shared/test_config_parse.c b/src/app/shared/test_config_parse.c
+index 30edd9ef95638e11bbd4b5e33114faa96335ea7a..fd05df35cd93d296833fd4f353043dfb112045d2 100644
+--- a/src/app/shared/test_config_parse.c
++++ b/src/app/shared/test_config_parse.c
+@@ -28,9 +28,41 @@ init_wokenet_live_config( config_t * config ) {
+   config->consensus.expected_shred_version = 1;
+   config->firedancer.development.genesis.validate_genesis_hash = 1;
+   strcpy( config->paths.identity_key, "/run/wokenet-secrets/identity.json" );
++  strcpy( config->paths.vote_account, "/run/wokenet-secrets/vote-account.json" );
+   strcpy( config->consensus.expected_genesis_hash, "SysvarC1ock11111111111111111111111111111111" );
+ }
+ 
++static void
++test_wokenet_live_vote_roles( config_t * config ) {
++  init_wokenet_live_config( config );
++
++  /* A supplied vote account always keeps the node in voting mode,
++     including an RPC-only topology. */
++
++  config->firedancer.layout.enable_block_production = 0;
++  config->tiles.rpc.enabled = 1;
++  config->firedancer.paths.authorized_voter_paths_cnt = 1UL;
++  FD_TEST( fd_config_wokenet_live_policy_check( config, 0, 0 )==FD_CONFIG_WOKENET_LIVE_OK );
++
++  /* An empty vote account is accepted only for the exact non-voting
++     native RPC observer role. */
++
++  config->paths.vote_account[ 0 ] = '\0';
++  config->firedancer.paths.authorized_voter_paths_cnt = 0UL;
++  FD_TEST( fd_config_wokenet_live_policy_check( config, 0, 0 )==FD_CONFIG_WOKENET_LIVE_OK );
++
++  config->firedancer.layout.enable_block_production = 1;
++  FD_TEST( fd_config_wokenet_live_policy_check( config, 0, 0 )==FD_CONFIG_WOKENET_LIVE_ERR_VOTE_ACCOUNT_REQUIRED );
++  config->firedancer.layout.enable_block_production = 0;
++
++  config->tiles.rpc.enabled = 0;
++  FD_TEST( fd_config_wokenet_live_policy_check( config, 0, 0 )==FD_CONFIG_WOKENET_LIVE_ERR_VOTE_ACCOUNT_REQUIRED );
++  config->tiles.rpc.enabled = 1;
++
++  config->firedancer.paths.authorized_voter_paths_cnt = 1UL;
++  FD_TEST( fd_config_wokenet_live_policy_check( config, 0, 0 )==FD_CONFIG_WOKENET_LIVE_ERR_OBSERVER_VOTERS_FORBIDDEN );
++}
++
+ static void
+ test_wokenet_live_policy( config_t * config ) {
+   init_wokenet_live_config( config );
+@@ -167,6 +199,7 @@ main( int     argc,
+   FD_TEST( !strcmp( config->consensus.expected_genesis_hash, "SysvarC1ock11111111111111111111111111111111" ) );
+ 
+   test_wokenet_live_policy( config );
++  test_wokenet_live_vote_roles( config );
+ 
+   FD_LOG_NOTICE(( "pass" ));
+   fd_halt();
+diff --git a/src/disco/topo/fd_topo.h b/src/disco/topo/fd_topo.h
+index e34e735adac65d406e1954cdf7fb59121e8191f3..03ba96eabff21fe7a37b45d35b31910d8396bafd 100644
+--- a/src/disco/topo/fd_topo.h
++++ b/src/disco/topo/fd_topo.h
+@@ -567,6 +567,8 @@ struct fd_topo_tile {
+       int   hard_fork_fatal;
+       int   wait_for_supermajority;
+       ulong max_live_slots;
++      int   is_voting;
++      int   vote_observer;
+       char  identity_key[ PATH_MAX ];
+       char  vote_account[ PATH_MAX ];
+       char  base_path[PATH_MAX];
+diff --git a/src/discof/tower/fd_tower_tile.c b/src/discof/tower/fd_tower_tile.c
+index 158849283415ed2d674a83286227d2ea987fe364..709ad3029b870b58ac4f57a672ce821fbb999484 100644
+--- a/src/discof/tower/fd_tower_tile.c
++++ b/src/discof/tower/fd_tower_tile.c
+@@ -231,6 +231,8 @@ struct fd_tower_tile {
+   ulong            seed; /* map seed */
+   int              checkpt_fd;
+   int              restore_fd;
++  int              is_voting;
++  int              vote_observer;
+   fd_pubkey_t      identity_key[1];
+   fd_pubkey_t      vote_account[1];
+   ulong            auth_vtr_path_cnt;  /* number of authorized voter paths passed to tile */
+@@ -720,7 +722,7 @@ publish_slot_done( fd_tower_tile_t *            ctx,
+   fd_pubkey_t authority[1];
+   fd_pubkey_t identity[1];
+   /* Refuse to vote if we don't have a matching vote authority key */
+-  int found_authority  = found && vote_account_config( ctx, ctx->our_vote_acct, ctx->our_vote_acct_sz, slot_completed->epoch, authority, &authority_idx, identity );
++  int found_authority  = ctx->is_voting && found && vote_account_config( ctx, ctx->our_vote_acct, ctx->our_vote_acct_sz, slot_completed->epoch, authority, &authority_idx, identity );
+   /* Refuse to vote if our node identity does not match the one
+      specified in the vote account (hot spare check) */
+   int identity_matches = found_authority && fd_pubkey_eq( identity, ctx->identity_key );
+@@ -845,6 +847,43 @@ count_vote_acc( fd_tower_tile_t *            ctx,
+   ctx->vtr_cnt++;
+ }
+ 
++static void
++reconcile_our_vote_account( fd_tower_tile_t *            ctx,
++                            fd_bank_t *                  bank,
++                            fd_replay_slot_completed_t * slot_completed,
++                            int *                        found_our_vote_acct,
++                            ulong *                      our_vote_acct_bal ) {
++  *our_vote_acct_bal    = ULONG_MAX;
++  *found_our_vote_acct  = 0;
++
++  /* A WokeNet RPC observer still maintains a virtual tower for local
++     fork choice, resets, and roots, but it has no on-chain vote account
++     to read or reconcile. */
++
++  if( FD_UNLIKELY( !ctx->is_voting ) ) {
++    ctx->our_vote_acct_sz = 0UL;
++    return;
++  }
++
++  fd_acc_t reconcile_ro = fd_accdb_read_one( ctx->accdb, bank->accdb_fork_id, ctx->vote_account->uc );
++  if( FD_LIKELY( reconcile_ro.lamports ) ) {
++    *found_our_vote_acct = 1;
++    ctx->our_vote_acct_sz = fd_ulong_min( reconcile_ro.data_len, FD_VOTE_STATE_DATA_MAX );
++    *our_vote_acct_bal = reconcile_ro.lamports;
++    fd_memcpy( ctx->our_vote_acct, reconcile_ro.data, ctx->our_vote_acct_sz );
++    int skip_reconcile = !ctx->init && ctx->wfs;
++    if( FD_LIKELY( !skip_reconcile ) ) {
++      ulong root;
++      fd_tower_vote_remove_all( ctx->scratch_tower );
++      fd_tower_from_vote_acc( ctx->scratch_tower, &root, ctx->our_vote_acct, ctx->our_vote_acct_sz );
++      fd_tower_reconcile( ctx->tower, ctx->scratch_tower, root );
++    } else {
++      FD_LOG_NOTICE(( "wait_for_supermajority: skipping tower reconcile on init slot %lu", slot_completed->slot ));
++    }
++  }
++  fd_accdb_unread_one( ctx->accdb, &reconcile_ro );
++}
++
+ /* Query all the relevant towers for running Tower rules on this slot:
+ 
+    1. staked voter set from banks
+@@ -909,25 +948,7 @@ query_towers( fd_tower_tile_t *            ctx,
+      failures (slot <= last_vote_slot) and threshold_check failures
+      (deep stale tower with no voter support) */
+ 
+-  *our_vote_acct_bal   = ULONG_MAX;
+-  *found_our_vote_acct = 0;
+-  fd_acc_t reconcile_ro = fd_accdb_read_one( ctx->accdb, bank->accdb_fork_id, ctx->vote_account->uc );
+-  if( FD_LIKELY( reconcile_ro.lamports ) ) {
+-    *found_our_vote_acct = 1;
+-    ctx->our_vote_acct_sz = fd_ulong_min( reconcile_ro.data_len, FD_VOTE_STATE_DATA_MAX );
+-    *our_vote_acct_bal = reconcile_ro.lamports;
+-    fd_memcpy( ctx->our_vote_acct, reconcile_ro.data, ctx->our_vote_acct_sz );
+-    int skip_reconcile = !ctx->init && ctx->wfs;
+-    if( FD_LIKELY( !skip_reconcile ) ) {
+-      ulong root;
+-      fd_tower_vote_remove_all( ctx->scratch_tower );
+-      fd_tower_from_vote_acc( ctx->scratch_tower, &root, ctx->our_vote_acct, ctx->our_vote_acct_sz );
+-      fd_tower_reconcile( ctx->tower, ctx->scratch_tower, root );
+-    } else {
+-      FD_LOG_NOTICE(( "wait_for_supermajority: skipping tower reconcile on init slot %lu", slot_completed->slot ));
+-    }
+-  }
+-  fd_accdb_unread_one( ctx->accdb, &reconcile_ro );
++  reconcile_our_vote_account( ctx, bank, slot_completed, found_our_vote_acct, our_vote_acct_bal );
+ 
+   return total_stake;
+ }
+@@ -1656,6 +1677,9 @@ init_choreo( void                 * scratch,
+   ctx->halt_signing    = 0;
+   ctx->hard_fork_fatal = tile->tower.hard_fork_fatal;
+   ctx->wfs             = tile->tower.wait_for_supermajority;
++  ctx->is_voting       = tile->tower.is_voting;
++  ctx->vote_observer   = tile->tower.vote_observer;
++  FD_TEST( ctx->is_voting!=ctx->vote_observer );
+   ctx->shred_version   = 0;
+   ctx->init            = 0;
+   ctx->root_epoch      = ULONG_MAX;
+@@ -1888,16 +1912,27 @@ privileged_init( fd_topo_t const *      topo,
+ 
+   FD_TEST( fd_rng_secure( &ctx->seed, sizeof(ctx->seed) ) );
+ 
++  ctx->is_voting     = tile->tower.is_voting;
++  ctx->vote_observer = tile->tower.vote_observer;
++  if( FD_UNLIKELY( !ctx->is_voting && !ctx->vote_observer ) ) FD_LOG_ERR(( "missing [paths.vote_account]" ));
++  if( FD_UNLIKELY( ctx->is_voting && ctx->vote_observer ) ) FD_LOG_ERR(( "invalid tower voting role" ));
++
+   if( FD_UNLIKELY( !strcmp( tile->tower.identity_key, "" ) ) ) FD_LOG_ERR(( "missing [paths.identity_key]" ));
+   ctx->identity_key[ 0 ] = *(fd_pubkey_t const *)fd_type_pun_const( fd_keyload_load( tile->tower.identity_key, /* pubkey only: */ 1 ) );
+ 
+   /* The vote key can be specified either directly as a base58 encoded
+      pubkey, or as a file path.  We first try to decode as a pubkey. */
+ 
+-  uchar * vote_key = fd_base58_decode_32( tile->tower.vote_account, ctx->vote_account->uc );
+-  if( FD_UNLIKELY( !vote_key ) ) {
+-    if( FD_UNLIKELY( !strcmp( tile->tower.vote_account, "" ) ) ) FD_LOG_ERR(( "missing [paths.vote_account]" ));
+-    ctx->vote_account[ 0 ] = *(fd_pubkey_t const *)fd_type_pun_const( fd_keyload_load( tile->tower.vote_account, /* pubkey only: */ 1 ) );
++  if( FD_LIKELY( ctx->is_voting ) ) {
++    uchar * vote_key = fd_base58_decode_32( tile->tower.vote_account, ctx->vote_account->uc );
++    if( FD_UNLIKELY( !vote_key ) ) {
++      if( FD_UNLIKELY( !strcmp( tile->tower.vote_account, "" ) ) ) FD_LOG_ERR(( "missing [paths.vote_account]" ));
++      ctx->vote_account[ 0 ] = *(fd_pubkey_t const *)fd_type_pun_const( fd_keyload_load( tile->tower.vote_account, /* pubkey only: */ 1 ) );
++    }
++  } else {
++    if( FD_UNLIKELY( strcmp( tile->tower.vote_account, "" ) ) ) FD_LOG_ERR(( "non-voting RPC observer cannot configure [paths.vote_account]" ));
++    if( FD_UNLIKELY( tile->tower.authorized_voter_paths_cnt ) ) FD_LOG_ERR(( "non-voting RPC observer cannot configure [paths.authorized_voter_paths]" ));
++    fd_memset( ctx->vote_account, 0, sizeof(fd_pubkey_t) );
+   }
+ 
+   ulong node_info_obj_id = fd_pod_query_ulong( topo->props, "node_info", ULONG_MAX ); FD_TEST( node_info_obj_id!=ULONG_MAX );
+@@ -1981,9 +2016,13 @@ unprivileged_init( fd_topo_t const *      topo,
+   ctx->out_chunk  = ctx->out_chunk0;
+   ctx->out_seq    = 0UL;
+ 
+-  FD_BASE58_ENCODE_32_BYTES( ctx->vote_account->uc, vote_account_b58 );
+   FD_BASE58_ENCODE_32_BYTES( ctx->identity_key->uc, identity_key_b58 );
+-  FD_LOG_INFO(( "my vote account: %s", vote_account_b58 ));
++  if( FD_LIKELY( ctx->is_voting ) ) {
++    FD_BASE58_ENCODE_32_BYTES( ctx->vote_account->uc, vote_account_b58 );
++    FD_LOG_INFO(( "my vote account: %s", vote_account_b58 ));
++  } else {
++    FD_LOG_INFO(( "non-voting WokeNet RPC observer: virtual tower enabled, vote transactions disabled" ));
++  }
+   FD_LOG_INFO(( "my identity key: %s", identity_key_b58 ));
+ }
+ 
+diff --git a/src/discof/tower/test_tower_tile.c b/src/discof/tower/test_tower_tile.c
+index 22f3009f2ba15ffee9363efcc770db3bc0eeaeef..69ef9cccb0004278e31d8b5fe620a6c57fda9fa9 100644
+--- a/src/discof/tower/test_tower_tile.c
++++ b/src/discof/tower/test_tower_tile.c
+@@ -87,6 +87,7 @@ test_publish_slot_done_identity_mismatch( void ) {
+   static uchar publishes_mem[ 65536 ] __attribute__((aligned(128)));
+ 
+   memset( ctx, 0, sizeof(*ctx) );
++  ctx->is_voting = 1;
+   memset( ctx->identity_key, 0x11, sizeof(fd_pubkey_t) );
+   memset( ctx->vote_account, 0x22, sizeof(fd_pubkey_t) );
+ 
+@@ -155,12 +156,45 @@ test_publish_slot_done_identity_mismatch( void ) {
+   FD_TEST( pub->sig==FD_TOWER_SIG_SLOT_DONE );
+   FD_TEST( pub->msg.slot_done.has_vote_txn==0 );
+   FD_TEST( pub->msg.slot_done.is_voting==0 );
++  publishes_pop_head_nocopy( ctx->publishes );
++
++  /* An observer cannot construct a vote even if account lookup
++     unexpectedly reports a valid matching vote account and authority. */
++  ctx->is_voting = 0;
++  ctx->our_vote_acct_sz = mock_vote_account( ctx->identity_key, ctx->identity_key, ctx->our_vote_acct );
++  publish_slot_done( ctx, &sc, &out, 1, 100UL, 0UL, NULL );
++  pub = publishes_peek_head( ctx->publishes );
++  FD_TEST( pub );
++  FD_TEST( pub->sig==FD_TOWER_SIG_SLOT_DONE );
++  FD_TEST( pub->msg.slot_done.has_vote_txn==0 );
++  FD_TEST( pub->msg.slot_done.is_voting==0 );
+ 
+   fd_wksp_delete( fd_wksp_leave( wksp ) );
+ 
+   FD_LOG_NOTICE(( "pass: test_publish_slot_done_identity_mismatch" ));
+ }
+ 
++static void
++test_observer_skips_vote_account_reconcile( void ) {
++  fd_tower_tile_t ctx[1];
++  memset( ctx, 0, sizeof(*ctx) );
++  ctx->is_voting        = 0;
++  ctx->vote_observer    = 1;
++  ctx->our_vote_acct_sz = 123UL;
++
++  int   found_our_vote_acct = 1;
++  ulong our_vote_acct_bal   = 0UL;
++
++  /* NULL bank/slot pointers make this a direct assertion that the
++     observer path returns before touching accountsDB or vote state. */
++  reconcile_our_vote_account( ctx, NULL, NULL, &found_our_vote_acct, &our_vote_acct_bal );
++  FD_TEST( !found_our_vote_acct );
++  FD_TEST( our_vote_acct_bal==ULONG_MAX );
++  FD_TEST( !ctx->our_vote_acct_sz );
++
++  FD_LOG_NOTICE(( "pass: test_observer_skips_vote_account_reconcile" ));
++}
++
+ static void
+ test_count_vote_txn( void ) {
+ 
+@@ -493,6 +527,7 @@ test_fixture_replay( fd_wksp_t * wksp ) {
+   static fd_topo_tile_t tile[1];
+   memset( tile, 0, sizeof(*tile) );
+   tile->tower.max_live_slots = MOCK_SLOT_MAX;
++  tile->tower.vote_observer  = 1;
+ 
+   static fd_topo_t topo[1];
+   mock_topo_with_accdb( wksp, topo, tile );
+@@ -512,6 +547,8 @@ test_fixture_replay( fd_wksp_t * wksp ) {
+   ((fd_tower_tile_t *)scratch)->seed = 42UL;
+   fd_tower_tile_t * ctx = init_choreo( scratch, topo, tile );
+   FD_TEST( ctx );
++  FD_TEST( !ctx->is_voting );
++  FD_TEST( ctx->vote_observer );
+ 
+   /* Set fields normally handled by privileged_init. */
+ 
+@@ -546,6 +583,30 @@ test_fixture_replay( fd_wksp_t * wksp ) {
+     replay_slot_completed( ctx, &sc, 0UL, NULL );
+   }
+ 
++  /* Every observer completion still publishes a reset decision.  The
++     virtual tower votes and eventually advances a local root, but none
++     of those local decisions can become a vote transaction. */
++
++  ulong slot_done_cnt    = 0UL;
++  ulong virtual_vote_cnt = 0UL;
++  ulong new_root_cnt     = 0UL;
++  for( publishes_iter_t iter = publishes_iter_init( ctx->publishes );
++       !publishes_iter_done( ctx->publishes, iter );
++       iter = publishes_iter_next( ctx->publishes, iter ) ) {
++    publish_t const * pub = publishes_iter_ele_const( ctx->publishes, iter );
++    if( pub->sig!=FD_TOWER_SIG_SLOT_DONE ) continue;
++    fd_tower_slot_done_t const * msg = &pub->msg.slot_done;
++    slot_done_cnt++;
++    FD_TEST( msg->reset_slot!=ULONG_MAX );
++    FD_TEST( !msg->is_voting );
++    FD_TEST( !msg->has_vote_txn );
++    virtual_vote_cnt += msg->vote_slot!=ULONG_MAX;
++    new_root_cnt     += msg->root_slot!=ULONG_MAX;
++  }
++  FD_TEST( slot_done_cnt==num_slots );
++  FD_TEST( virtual_vote_cnt );
++  FD_TEST( new_root_cnt );
++
+   /* Verify: init flag set after first slot. */
+ 
+   FD_TEST( ctx->init==1 );
+@@ -554,23 +615,31 @@ test_fixture_replay( fd_wksp_t * wksp ) {
+ 
+   FD_TEST( fd_ghost_root( ctx->ghost ) );
+ 
+-  /* Verify: tower has blocks for all replayed slots. */
++  /* Verify: root advancement pruned tower history before the new root
++     and retained the root-through-tip working set. */
+ 
+   for( ulong slot = start_slot; slot < start_slot + num_slots; slot++ ) {
+     fd_tower_blk_t * blk = fd_tower_blocks_query( ctx->tower, slot );
+-    FD_TEST( blk );
+-    FD_TEST( blk->replayed==1 );
++    if( slot<ctx->tower->root ) {
++      FD_TEST( !blk );
++    } else {
++      FD_TEST( blk );
++      FD_TEST( blk->replayed==1 );
++    }
+   }
+ 
+-  /* Verify: tower root set. */
++  /* Verify: the virtual tower advanced and published the same root as
++     ghost, exercising the normal root/pruning path. */
+ 
+-  FD_TEST( ctx->tower->root!=ULONG_MAX );
++  FD_TEST( ctx->tower->root>start_slot );
++  FD_TEST( fd_ghost_root( ctx->ghost )->slot==ctx->tower->root );
+ 
+-  /* Verify: ghost has entries for all replayed slots. */
++  /* Verify: ghost applied the same pruning boundary. */
+ 
+   for( ulong slot = start_slot; slot < start_slot + num_slots; slot++ ) {
+     fd_hash_t bid = { .ul = { slot } };
+-    FD_TEST( fd_ghost_query( ctx->ghost, &bid ) );
++    fd_ghost_blk_t * blk = fd_ghost_query( ctx->ghost, &bid );
++    FD_TEST( !!blk==(slot>=ctx->tower->root) );
+   }
+ 
+   FD_LOG_NOTICE(( "pass: test_fixture_replay" ));
+@@ -618,6 +687,7 @@ eqvoc_setup( fd_wksp_t * wksp ) {
+   static fd_topo_tile_t tile[1];
+   memset( tile, 0, sizeof(*tile) );
+   tile->tower.max_live_slots = MOCK_SLOT_MAX;
++  tile->tower.vote_observer  = 1;
+ 
+   static fd_topo_t topo[1];
+   memset( topo, 0, sizeof(*topo) );
+@@ -882,6 +952,7 @@ main( int     argc,
+   fd_boot( &argc, &argv );
+ 
+   test_publish_slot_done_identity_mismatch();
++  test_observer_skips_vote_account_reconcile();
+   test_count_vote_txn();
+   test_parent_vote_txn_recent_blockhash();
+ 

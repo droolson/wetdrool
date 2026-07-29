@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist coverage",
-    "dev": "tsx watch src/server.ts",
+    "dev": "node ../../scripts/run-scoped-runtime.mjs -- tsx watch src/server.ts",
     "lint": "eslint src test",
     "start": "node dist/src/server.js",
     "test": "vitest run --exclude 'dist/**'",
@@ -17,6 +17,7 @@
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/rate-limit": "11.1.0",
+    "@wokesocial/config": "workspace:*",
     "fastify": "5.10.0",
     "zod": "4.4.3"
   },

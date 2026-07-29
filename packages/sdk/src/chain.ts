@@ -1,8 +1,14 @@
+import type { ProfilePayload } from '@wokesocial/protocol';
+
 export interface AnchorManifestInput {
   readonly identity: string;
   readonly objectId: string;
   readonly cid: string;
   readonly payloadHash: Uint8Array;
+}
+
+export interface AnchorProfileInput extends AnchorManifestInput {
+  readonly profileSchemaVersion: ProfilePayload['schemaVersion'];
 }
 
 export interface ChainConfirmation {
@@ -12,7 +18,7 @@ export interface ChainConfirmation {
 }
 
 export interface ProtocolChainWriter {
-  updateProfile(input: AnchorManifestInput): Promise<ChainConfirmation>;
+  updateProfile(input: AnchorProfileInput): Promise<ChainConfirmation>;
   publishPost(input: AnchorManifestInput): Promise<ChainConfirmation>;
   follow(input: {
     readonly followerIdentity: string;

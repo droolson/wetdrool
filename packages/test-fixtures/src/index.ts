@@ -5,7 +5,9 @@ import {
   canonicalizeEnvelope,
   createPayloadBuilderIdentity,
   getObjectId,
+  legacyProfilePayloadSchema,
   signPayload,
+  signedEnvelopeSchema,
   type NetworkId,
   type PayloadBuilderIdentity,
   type SignedEnvelope,
@@ -64,6 +66,8 @@ export interface ProtocolFixtureSet {
     readonly bob: FixtureParticipant;
   };
   readonly manifests: {
+    /** Frozen, previously published schema-version-1 profile vector. */
+    readonly aliceProfileV1: CanonicalManifestFixture;
     readonly aliceProfile: CanonicalManifestFixture;
     readonly bobProfile: CanonicalManifestFixture;
     readonly alicePost: CanonicalManifestFixture;
@@ -101,6 +105,42 @@ function canonicalManifest(envelope: SignedEnvelope): CanonicalManifestFixture {
   };
 }
 
+function legacyAliceProfileV1(): CanonicalManifestFixture {
+  const signingKey = `${ALICE_AUTHOR}#delegation/9C6hybhQ6Aycep9jaUnP6uL9ZYvDjUp1aSkFWPUFJtpj`;
+  return canonicalManifest(
+    signedEnvelopeSchema.parse({
+      payload: legacyProfilePayloadSchema.parse({
+        protocol: 'wokesocial',
+        protocolVersion: '1.0',
+        schemaVersion: 1,
+        network: FIXTURE_NETWORK,
+        author: ALICE_AUTHOR,
+        signingKey,
+        createdAt: FIXTURE_CREATED_AT,
+        nonce: 'uAQIDBAUGBwgJCgsMDQ4PEA',
+        critical: [],
+        extensions: {},
+        type: 'profile',
+        content: {
+          displayName: 'Alice Example',
+          bio: 'Building kinder, user-owned social spaces.',
+          pronouns: [{ value: 'she/her', visibility: 'public' }],
+          genderVisibility: 'private',
+          chosenFamilyLabels: [],
+          links: [{ label: 'Protocol notes', url: 'https://example.com/alice/protocol' }],
+        },
+      }),
+      proof: {
+        algorithm: 'Ed25519',
+        keyId: signingKey,
+        payloadHash: 'uXkdJJqsNndfcFsSA9vg-NFqZgNm-xi5E3Pf0wdgvhVY',
+        signature:
+          'umdvdTfB6_danFf7Eu8A_K8TJAWPu_9dQHe0QyDQBbecSgE4kxX6NfHP70AtGkRSVKfbry6KQXbPDNyg9JW-dDQ',
+      },
+    }),
+  );
+}
+
 /**
  * Builds fresh fixture objects so mutation in one test cannot contaminate
  * another. All timestamps, nonces, identities, and signing seeds are fixed.
@@ -117,8 +157,7 @@ export function createProtocolFixtureSet(): ProtocolFixtureSet {
         {
           displayName: 'Alice Example',
           bio: 'Building kinder, user-owned social spaces.',
-          pronouns: [{ value: 'she/her', visibility: 'public' }],
-          genderVisibility: 'private',
+          pronouns: [{ visibility: 'public', value: 'she/her' }],
           chosenFamilyLabels: [],
           links: [{ label: 'Protocol notes', url: 'https://example.com/alice/protocol' }],
         },
@@ -134,8 +173,7 @@ export function createProtocolFixtureSet(): ProtocolFixtureSet {
         {
           displayName: 'Bob Example',
           bio: 'Testing portable conversations.',
-          pronouns: [{ value: 'they/them', visibility: 'public' }],
-          genderVisibility: 'private',
+          pronouns: [{ visibility: 'public', value: 'they/them' }],
           chosenFamilyLabels: [],
           links: [],
         },
@@ -214,6 +252,7 @@ export function createProtocolFixtureSet(): ProtocolFixtureSet {
     warning: TEST_FIXTURE_WARNING,
     participants: { alice, bob },
     manifests: {
+      aliceProfileV1: legacyAliceProfileV1(),
       aliceProfile,
       bobProfile,
       alicePost,

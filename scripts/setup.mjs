@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadEnvFile } from 'node:process';
 
+import { assertSafeLocalDevelopmentEnvironment } from './local-dev-plan.mjs';
 import { readWorkspacePackages, repositoryRoot } from './workspaces.mjs';
 
 function run(command, args) {
@@ -35,6 +36,7 @@ const environmentFile = existsSync(join(repositoryRoot, '.env'))
   ? join(repositoryRoot, '.env')
   : join(repositoryRoot, '.env.example');
 loadEnvFile(environmentFile);
+assertSafeLocalDevelopmentEnvironment(process.env);
 
 run(process.execPath, ['scripts/infra.mjs', 'up']);
 run('pnpm', ['--filter', '@wokesocial/config', 'env:check']);

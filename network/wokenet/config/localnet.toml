@@ -21,6 +21,7 @@ telemetry = false
 [consensus]
     expected_genesis_hash = ""
     expected_shred_version = 0
+    wokenet_live_cluster = false
     wait_for_vote_to_start_leader = false
 
 [tiles.gui]

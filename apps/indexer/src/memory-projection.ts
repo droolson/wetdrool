@@ -1,4 +1,9 @@
-import { compareEventOrder, type ProtocolEvent } from './events.js';
+import {
+  assertUnambiguousEventOrder,
+  compareEventOrder,
+  protocolEventSchema,
+  type ProtocolEvent,
+} from './events.js';
 import {
   deriveCommunityMembershipAddress,
   deriveGovernanceProposalAddress,
@@ -44,13 +49,20 @@ import type {
   SubscriptionEntitlementProjection,
   SubscriptionOfferingProjection,
 } from './models.js';
+import { projectPublicProfileContent } from './profile-privacy.js';
 import {
+  assertCanonicalAcceptedManifestSuppressions,
   ProjectionError,
   type DeadLetterInput,
   type DeadLetterRecord,
   type IngestionStateStore,
+  type ManifestDeferral,
+  type ManifestEventDisposition,
+  type PendingManifestRecord,
   type ProjectionReplayItem,
   type ProjectionStore,
+  type TerminalManifestFailureCode,
+  type TerminalManifestRejection,
   type VerifiedManifest,
 } from './projection.js';
 import {
@@ -97,6 +109,8 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
   readonly #events = new Map<string, ProtocolEvent>();
   readonly #configs = new Map<string, ProtocolConfigProjection>();
   readonly #identities = new Map<string, IdentityProjection>();
+  readonly #identitySequencePositions = new Map<string, EventPosition>();
+  readonly #deactivationPositions = new Map<string, EventPosition>();
   readonly #handlesByAddress = new Map<string, StoredHandle>();
   readonly #handleAddressesByName = new Map<string, string>();
   readonly #rootHistory = new Map<string, RootHistory[]>();
@@ -122,10 +136,453 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
   readonly #subscriptionEntitlements = new Map<string, SubscriptionEntitlementProjection>();
   readonly #checkpoints = new Map<string, bigint>();
   readonly #deadLetters = new Map<string, DeadLetterRecord>();
+  readonly #pendingManifestEvents = new Set<string>();
+  readonly #pendingManifestDeferrals = new Map<string, ManifestDeferral>();
+  readonly #terminalManifestFailures = new Map<string, TerminalManifestFailureCode>();
+  readonly #latestProfileManifestEvents = new Map<string, string>();
   readonly #networkMutexes = new Map<string, NetworkMutexState>();
 
   async apply(event: ProtocolEvent, manifest?: VerifiedManifest): Promise<boolean> {
     return this.#withNetworkLock(event.networkId, () => this.#applyUnlocked(event, manifest));
+  }
+
+  async manifestEventDisposition(
+    input: ProtocolEvent,
+  ): Promise<ManifestEventDisposition | undefined> {
+    const event = protocolEventSchema.parse(input);
+    return this.#withNetworkLock<ManifestEventDisposition | undefined>(event.networkId, () => {
+      const eventKey = keyForEvent(event);
+      const existingEvent = this.#events.get(eventKey);
+      if (existingEvent === undefined) return Promise.resolve(undefined);
+      if (eventFingerprint(existingEvent) !== eventFingerprint(event)) {
+        throw eventConflict();
+      }
+      const terminalFailureCode = this.#terminalManifestFailures.get(eventKey);
+      if (terminalFailureCode !== undefined) {
+        return Promise.resolve({
+          state: 'terminal' as const,
+          failureCode: terminalFailureCode,
+        });
+      }
+      return Promise.resolve({
+        state: this.#pendingManifestEvents.has(eventKey)
+          ? ('pending' as const)
+          : ('accepted' as const),
+      });
+    });
+  }
+
+  async duePendingManifestEvents(
+    networkId: string,
+    dueAt: string,
+    limit: number,
+  ): Promise<readonly PendingManifestRecord[]> {
+    const dueTimestamp = pendingManifestDueTimestamp(dueAt);
+    assertPendingManifestLimit(limit);
+    return this.#withNetworkLock(networkId, () => {
+      const records: PendingManifestRecord[] = [];
+      for (const eventKey of this.#pendingManifestEvents) {
+        const event = this.#events.get(eventKey);
+        if (event?.networkId !== networkId) continue;
+        const deferral = this.#pendingManifestDeferrals.get(eventKey);
+        const deadLetter = this.#deadLetters.get(
+          deadLetterKey(event.networkId, event.transactionSignature, event.logIndex),
+        );
+        if (
+          deferral === undefined ||
+          deadLetter?.nextAttemptAt === undefined ||
+          deadLetter.terminalFailureCode !== undefined ||
+          deadLetter.nextAttemptAt !== deferral.nextAttemptAt ||
+          !Number.isSafeInteger(deadLetter.attempts) ||
+          deadLetter.attempts <= 0
+        ) {
+          throw new ProjectionError(
+            'Pending manifest state is missing its exact retry metadata.',
+            'database-error',
+          );
+        }
+        if (pendingManifestDueTimestamp(deferral.nextAttemptAt) > dueTimestamp) continue;
+        records.push({
+          event: protocolEventSchema.parse(event),
+          attempts: deadLetter.attempts,
+          eventBody: structuredClone(deferral.eventBody),
+          failureDetail: deferral.failureDetail,
+          nextAttemptAt: deferral.nextAttemptAt,
+        });
+      }
+      records.sort((left, right) => {
+        const dueOrder = left.nextAttemptAt.localeCompare(right.nextAttemptAt);
+        return dueOrder === 0 ? compareEventOrder(left.event, right.event) : dueOrder;
+      });
+      return Promise.resolve(records.slice(0, limit));
+    });
+  }
+
+  async deferManifestEvent(input: ProtocolEvent, deferral: ManifestDeferral): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    return this.#withNetworkLock(event.networkId, () =>
+      this.#deferManifestEventUnlocked(event, deferral),
+    );
+  }
+
+  async #deferManifestEventUnlocked(
+    event: ProtocolEvent,
+    deferral: ManifestDeferral,
+  ): Promise<boolean> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw new ProjectionError(
+        'Only profile and post manifest events can be deferred.',
+        'manifest-mismatch',
+      );
+    }
+    if (deferral.failureCode !== 'manifest-unavailable') {
+      throw new ProjectionError(
+        'Only a manifest-unavailable failure can be deferred.',
+        'manifest-mismatch',
+      );
+    }
+    const normalizedDeferral = normalizedManifestDeferral(deferral);
+
+    const eventKey = keyForEvent(event);
+    const existingEvent = this.#events.get(eventKey);
+    if (existingEvent !== undefined) {
+      if (eventFingerprint(existingEvent) !== eventFingerprint(event)) {
+        throw eventConflict();
+      }
+      if (
+        this.#pendingManifestEvents.has(eventKey) &&
+        !this.#terminalManifestFailures.has(eventKey)
+      ) {
+        return false;
+      }
+      throw eventConflict();
+    }
+
+    const operationalKey = deadLetterKey(
+      event.networkId,
+      event.transactionSignature,
+      event.logIndex,
+    );
+    if (this.#deadLetters.get(operationalKey)?.terminalFailureCode !== undefined) {
+      throw eventConflict();
+    }
+
+    const position = positionFor(event);
+    const sequenceAdvance = this.#validateIdentityLifecycle(event, position);
+    if (sequenceAdvance === undefined) {
+      throw stale('A deferred manifest event must advance one identity sequence.');
+    }
+    const identity = this.#requireIdentity(sequenceAdvance.identityId);
+
+    if (event.type === 'profile-updated') {
+      // A finalized new pointer supersedes the currently served profile even
+      // while its off-chain bytes are temporarily unavailable.
+      this.#profiles.delete(event.identityId);
+      this.#latestProfileManifestEvents.set(event.identityId, eventKey);
+    } else if (event.postReference !== undefined) {
+      // Preserve the on-chain reference so later lifecycle events can resolve
+      // it without exposing unverified post content.
+      this.#postReferences.set(
+        postReferenceKey(event.networkId, event.postReference),
+        event.objectId,
+      );
+    }
+
+    this.#identities.set(sequenceAdvance.identityId, {
+      ...identity,
+      identitySequence: sequenceAdvance.sequence,
+      updatedSlot: event.slot,
+      updatedAt: event.blockTime,
+    });
+    this.#identitySequencePositions.set(sequenceAdvance.identityId, position);
+    this.#events.set(eventKey, event);
+    this.#pendingManifestEvents.add(eventKey);
+    this.#pendingManifestDeferrals.set(eventKey, normalizedDeferral);
+    const currentCheckpoint = this.#checkpoints.get(event.networkId) ?? -1n;
+    if (event.slot > currentCheckpoint) {
+      this.#checkpoints.set(event.networkId, event.slot);
+    }
+    const previous = this.#deadLetters.get(operationalKey);
+    this.#deadLetters.set(operationalKey, {
+      attempts: (previous?.attempts ?? 0) + 1,
+      nextAttemptAt: normalizedDeferral.nextAttemptAt,
+    });
+    return true;
+  }
+
+  async reschedulePendingManifestEvent(
+    input: ProtocolEvent,
+    deferral: ManifestDeferral,
+  ): Promise<DeadLetterRecord | undefined> {
+    const event = protocolEventSchema.parse(input);
+    const normalizedDeferral = normalizedManifestDeferral(deferral);
+    return this.#withNetworkLock(event.networkId, () => {
+      const eventKey = keyForEvent(event);
+      const existingEvent = this.#events.get(eventKey);
+      if (existingEvent === undefined) {
+        throw stale('A manifest event must be durably pending before it can be rescheduled.');
+      }
+      if (eventFingerprint(existingEvent) !== eventFingerprint(event)) {
+        throw eventConflict();
+      }
+      if (
+        this.#terminalManifestFailures.has(eventKey) ||
+        !this.#pendingManifestEvents.has(eventKey)
+      ) {
+        return Promise.resolve(undefined);
+      }
+      const operationalKey = deadLetterKey(
+        event.networkId,
+        event.transactionSignature,
+        event.logIndex,
+      );
+      const previous = this.#deadLetters.get(operationalKey);
+      if (
+        previous?.nextAttemptAt === undefined ||
+        previous.terminalFailureCode !== undefined ||
+        !Number.isSafeInteger(previous.attempts) ||
+        previous.attempts <= 0
+      ) {
+        throw new ProjectionError(
+          'Pending manifest state is missing its retryable dead letter.',
+          'database-error',
+        );
+      }
+      const record: DeadLetterRecord = {
+        attempts: previous.attempts + 1,
+        nextAttemptAt: normalizedDeferral.nextAttemptAt,
+      };
+      this.#deadLetters.set(operationalKey, record);
+      this.#pendingManifestDeferrals.set(eventKey, normalizedDeferral);
+      return Promise.resolve(record);
+    });
+  }
+
+  async promoteManifestEvent(input: ProtocolEvent, manifest: VerifiedManifest): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    return this.#withNetworkLock(event.networkId, () =>
+      this.#promoteManifestEventUnlocked(event, manifest),
+    );
+  }
+
+  async #promoteManifestEventUnlocked(
+    event: ProtocolEvent,
+    manifest: VerifiedManifest,
+  ): Promise<boolean> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw new ProjectionError(
+        'Only profile and post manifest events can be promoted.',
+        'manifest-mismatch',
+      );
+    }
+    const eventKey = keyForEvent(event);
+    const existingEvent = this.#events.get(eventKey);
+    if (existingEvent === undefined) {
+      throw stale('A manifest event must be durably pending before it can be promoted.');
+    }
+    if (eventFingerprint(existingEvent) !== eventFingerprint(event)) {
+      throw eventConflict();
+    }
+    if (this.#terminalManifestFailures.has(eventKey)) {
+      throw eventConflict();
+    }
+    if (!this.#pendingManifestEvents.has(eventKey)) {
+      return false;
+    }
+
+    if (event.type === 'profile-updated') {
+      const verified = requireManifest(event, manifest, 'profile');
+      const content = projectPublicProfileContent(verified.schemaVersion, verified.content);
+      this.#requireIdentity(event.identityId);
+      // Deactivation disables future mutations and public discovery; it is not
+      // retroactive erasure. Match PostgreSQL by retaining late-arriving bytes
+      // for the last finalized pre-deactivation profile pointer.
+      if (this.#latestProfileManifestEvents.get(event.identityId) === eventKey) {
+        this.#profiles.set(event.identityId, {
+          identityId: event.identityId,
+          objectId: verified.objectId,
+          cid: verified.cid,
+          payloadHash: verified.payloadHash,
+          content,
+          updatedSlot: event.slot,
+          updatedAt: event.blockTime,
+        });
+      }
+    } else {
+      const verified = requireManifest(event, manifest, 'post');
+      const tombstonedAt = this.#laterTombstoneAt(event);
+      this.#posts.set(verified.objectId, {
+        objectId: verified.objectId,
+        networkId: event.networkId,
+        authorIdentityId: event.identityId,
+        cid: verified.cid,
+        payloadHash: verified.payloadHash,
+        signingKeyId: verified.signingKeyId,
+        content: verified.content as PostProjection['content'],
+        createdAt: event.blockTime,
+        anchoredSlot: event.slot,
+        transactionSignature: event.transactionSignature,
+        verified: true,
+        ...(tombstonedAt === undefined ? {} : { tombstonedAt }),
+      });
+    }
+
+    this.#pendingManifestEvents.delete(eventKey);
+    this.#pendingManifestDeferrals.delete(eventKey);
+    const operationalKey = deadLetterKey(
+      event.networkId,
+      event.transactionSignature,
+      event.logIndex,
+    );
+    if (this.#deadLetters.get(operationalKey)?.terminalFailureCode === undefined) {
+      this.#deadLetters.delete(operationalKey);
+    }
+    return true;
+  }
+
+  async rejectPendingManifestEvent(
+    input: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+  ): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    return this.#withNetworkLock(event.networkId, () =>
+      this.#rejectPendingManifestEventUnlocked(event, rejection),
+    );
+  }
+
+  async #rejectPendingManifestEventUnlocked(
+    event: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+  ): Promise<boolean> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw new ProjectionError(
+        'Only profile and post manifest events can transition from pending to terminal.',
+        'manifest-mismatch',
+      );
+    }
+    const eventKey = keyForEvent(event);
+    const existingEvent = this.#events.get(eventKey);
+    if (existingEvent === undefined) {
+      throw stale('A manifest event must be durably pending before it can be rejected.');
+    }
+    if (eventFingerprint(existingEvent) !== eventFingerprint(event)) {
+      throw eventConflict();
+    }
+    const existingTerminalCode = this.#terminalManifestFailures.get(eventKey);
+    if (existingTerminalCode !== undefined) {
+      if (existingTerminalCode !== rejection.failureCode) throw eventConflict();
+      return false;
+    }
+    if (!this.#pendingManifestEvents.has(eventKey)) {
+      throw eventConflict();
+    }
+
+    this.#pendingManifestEvents.delete(eventKey);
+    this.#pendingManifestDeferrals.delete(eventKey);
+    this.#terminalManifestFailures.set(eventKey, rejection.failureCode);
+    const operationalKey = deadLetterKey(
+      event.networkId,
+      event.transactionSignature,
+      event.logIndex,
+    );
+    const previous = this.#deadLetters.get(operationalKey);
+    this.#deadLetters.set(operationalKey, {
+      attempts: previous?.attempts ?? 1,
+      terminalFailureCode: rejection.failureCode,
+    });
+    return true;
+  }
+
+  async quarantineManifestEvent(
+    input: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+  ): Promise<boolean> {
+    const event = protocolEventSchema.parse(input);
+    return this.#withNetworkLock(event.networkId, () =>
+      this.#quarantineManifestEventUnlocked(event, rejection),
+    );
+  }
+
+  async #quarantineManifestEventUnlocked(
+    event: ProtocolEvent,
+    rejection: TerminalManifestRejection,
+  ): Promise<boolean> {
+    if (
+      event.type !== 'profile-updated' &&
+      event.type !== 'post-published' &&
+      event.type !== 'tombstoned'
+    ) {
+      throw new ProjectionError(
+        'Only manifest-bearing protocol events can be terminally quarantined.',
+        'manifest-mismatch',
+      );
+    }
+
+    const eventKey = keyForEvent(event);
+    const existingEvent = this.#events.get(eventKey);
+    const deadLetterKeyValue = deadLetterKey(
+      event.networkId,
+      event.transactionSignature,
+      event.logIndex,
+    );
+    if (existingEvent !== undefined) {
+      if (eventFingerprint(existingEvent) !== eventFingerprint(event)) {
+        throw eventConflict();
+      }
+      if (this.#terminalManifestFailures.get(eventKey) !== rejection.failureCode) {
+        throw eventConflict();
+      }
+      return false;
+    }
+
+    const position = positionFor(event);
+    const sequenceAdvance = this.#validateIdentityLifecycle(event, position);
+    if (sequenceAdvance === undefined) {
+      throw stale('A quarantined manifest event must advance one identity sequence.');
+    }
+
+    if (event.type === 'profile-updated') {
+      // The finalized chain pointer is now invalid. Do not continue serving the
+      // superseded profile as though it were the identity's current profile.
+      this.#profiles.delete(event.identityId);
+      this.#latestProfileManifestEvents.set(event.identityId, eventKey);
+    } else if (event.type === 'post-published' && event.postReference !== undefined) {
+      // Raw references remain resolvable for later on-chain lifecycle events,
+      // but no public post projection is created.
+      this.#postReferences.set(
+        postReferenceKey(event.networkId, event.postReference),
+        event.objectId,
+      );
+    } else if (event.type === 'tombstoned') {
+      const post = this.#posts.get(event.targetObjectId);
+      if (post?.authorIdentityId === event.identityId) {
+        this.#posts.set(post.objectId, {
+          ...post,
+          tombstonedAt: event.blockTime,
+        });
+      }
+    }
+
+    const identity = this.#requireIdentity(sequenceAdvance.identityId);
+    this.#identities.set(sequenceAdvance.identityId, {
+      ...identity,
+      identitySequence: sequenceAdvance.sequence,
+      updatedSlot: event.slot,
+      updatedAt: event.blockTime,
+    });
+    this.#identitySequencePositions.set(sequenceAdvance.identityId, position);
+    this.#events.set(eventKey, event);
+    this.#terminalManifestFailures.set(eventKey, rejection.failureCode);
+    const currentCheckpoint = this.#checkpoints.get(event.networkId) ?? -1n;
+    if (event.slot > currentCheckpoint) {
+      this.#checkpoints.set(event.networkId, event.slot);
+    }
+    const previous = this.#deadLetters.get(deadLetterKeyValue);
+    this.#deadLetters.set(deadLetterKeyValue, {
+      attempts: (previous?.attempts ?? 0) + 1,
+      terminalFailureCode: rejection.failureCode,
+    });
+    return true;
   }
 
   async #applyUnlocked(event: ProtocolEvent, manifest?: VerifiedManifest): Promise<boolean> {
@@ -135,9 +592,16 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       if (eventFingerprint(existingEvent) !== eventFingerprint(event)) {
         throw eventConflict();
       }
+      if (
+        this.#pendingManifestEvents.has(eventKey) ||
+        this.#terminalManifestFailures.has(eventKey)
+      ) {
+        throw eventConflict();
+      }
       return false;
     }
     const position = positionFor(event);
+    const sequenceAdvance = this.#validateIdentityLifecycle(event, position);
 
     switch (event.type) {
       case 'protocol-initialized':
@@ -155,12 +619,15 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           identityAddress: event.identityAddress,
           rootAuthority: event.rootAuthority,
           rootRotationCount: 0n,
+          active: true,
+          identitySequence: 0n,
           createdSlot: event.slot,
           createdAt: event.blockTime,
           updatedSlot: event.slot,
           updatedAt: event.blockTime,
         };
         this.#identities.set(event.identityId, identity);
+        this.#identitySequencePositions.set(event.identityId, position);
         this.#rootHistory.set(event.identityId, [
           {
             identityId: event.identityId,
@@ -171,6 +638,40 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
             position,
           },
         ]);
+        break;
+      }
+      case 'identity-deactivated': {
+        const config = this.#configs.get(event.networkId);
+        const identity = this.#requireIdentity(event.identityId);
+        const currentPosition = this.#identitySequencePositions.get(event.identityId);
+        if (
+          config === undefined ||
+          config.configAddress !== event.configAddress ||
+          identity.networkId !== event.networkId ||
+          identity.identityAddress !== event.identityAddress ||
+          identity.rootAuthority !== event.rootAuthority ||
+          event.identitySequence !== identity.identitySequence + 1n ||
+          currentPosition === undefined ||
+          comparePosition(position, currentPosition) <= 0
+        ) {
+          throw stale(
+            'Identity deactivation does not exactly advance the indexed identity and protocol.',
+          );
+        }
+        if (!identity.active) {
+          throw stale('Identity is already inactive.');
+        }
+        this.#identities.set(event.identityId, {
+          ...identity,
+          active: false,
+          identitySequence: event.identitySequence,
+          updatedSlot: event.slot,
+          updatedAt: event.blockTime,
+          deactivatedSlot: event.slot,
+          deactivatedAt: event.blockTime,
+        });
+        this.#identitySequencePositions.set(event.identityId, position);
+        this.#deactivationPositions.set(event.identityId, position);
         break;
       }
       case 'handle-claimed': {
@@ -585,20 +1086,21 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       }
       case 'profile-updated': {
         const verified = requireManifest(event, manifest, 'profile');
+        const content = projectPublicProfileContent(verified.schemaVersion, verified.content);
         this.#requireIdentity(event.identityId);
-        const current = this.#profiles.get(event.identityId);
-        if (current !== undefined && current.updatedSlot >= event.slot) {
-          throw stale('Profile event is older than the current projection.');
-        }
+        // Identity lifecycle validation above already requires the exact next
+        // identity sequence and a strictly later event position. Slots alone
+        // cannot order two valid transactions finalized in the same slot.
         this.#profiles.set(event.identityId, {
           identityId: event.identityId,
           objectId: verified.objectId,
           cid: verified.cid,
           payloadHash: verified.payloadHash,
-          content: verified.content as ProfileProjection['content'],
+          content,
           updatedSlot: event.slot,
           updatedAt: event.blockTime,
         });
+        this.#latestProfileManifestEvents.set(event.identityId, eventKey);
         break;
       }
       case 'post-published': {
@@ -612,7 +1114,9 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           payloadHash: verified.payloadHash,
           signingKeyId: verified.signingKeyId,
           content: verified.content as PostProjection['content'],
-          createdAt: verified.createdAt,
+          // Public chronology is anchored to finalized chain time. The signed
+          // manifest timestamp is author-controlled metadata and cannot rank.
+          createdAt: event.blockTime,
           anchoredSlot: event.slot,
           transactionSignature: event.transactionSignature,
           verified: true,
@@ -630,7 +1134,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         this.#requireIdentity(event.followedIdentityId);
         const key = edgeKey(event.followerIdentityId, event.followedIdentityId);
         const current = this.#follows.get(key);
-        if (current !== undefined && event.sequence <= current.sequence) {
+        if (current !== undefined && event.edgeStateSequence <= current.sequence) {
           throw stale('Follow event does not advance its state sequence.');
         }
         this.#follows.set(key, {
@@ -639,7 +1143,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
           active: event.active,
           updatedSlot: event.slot,
           updatedAt: event.blockTime,
-          sequence: event.sequence,
+          sequence: event.edgeStateSequence,
         });
         break;
       }
@@ -665,9 +1169,8 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         break;
       }
       case 'tombstoned': {
-        if (event.cid !== undefined) {
-          requireManifest(event, manifest, 'tombstone');
-        }
+        // Optional legacy tombstone manifest fields are detached audit metadata.
+        // The authenticated on-chain target is the canonical suppression signal.
         const post = this.#posts.get(event.targetObjectId);
         if (post !== undefined) {
           this.#posts.set(post.objectId, {
@@ -1473,6 +1976,17 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       }
     }
 
+    if (sequenceAdvance !== undefined && event.type !== 'identity-deactivated') {
+      const identity = this.#requireIdentity(sequenceAdvance.identityId);
+      this.#identities.set(sequenceAdvance.identityId, {
+        ...identity,
+        identitySequence: sequenceAdvance.sequence,
+        updatedSlot: event.slot,
+        updatedAt: event.blockTime,
+      });
+      this.#identitySequencePositions.set(sequenceAdvance.identityId, position);
+    }
+
     this.#events.set(eventKey, event);
     const currentCheckpoint = this.#checkpoints.get(event.networkId) ?? -1n;
     if (event.slot > currentCheckpoint) {
@@ -1505,30 +2019,134 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       ) {
         throw eventConflict();
       }
+      if (duplicate !== undefined) {
+        throw stale('Projection rebuild contains a duplicate raw event coordinate.');
+      }
+      const dispositions = [
+        item.manifest !== undefined,
+        item.acceptedManifestSuppression !== undefined,
+        item.pendingManifest !== undefined,
+        item.terminalFailureCode !== undefined,
+      ].filter(Boolean).length;
+      if (dispositions > 1) {
+        throw eventConflict();
+      }
       supplied.set(key, item);
     }
-    for (const [key, event] of this.#events) {
-      if (event.networkId !== networkId) continue;
+    assertCanonicalAcceptedManifestSuppressions([...supplied.values()]);
+    const existing = [...this.#events.entries()].filter(
+      ([, event]) => event.networkId === networkId,
+    );
+    if (existing.length !== supplied.size) {
+      throw stale('Projection rebuild must exactly match the immutable raw event source.');
+    }
+    for (const [key, event] of existing) {
       const item = supplied.get(key);
       if (item === undefined) {
-        throw stale('Projection rebuild must preserve the complete immutable raw event source.');
+        throw stale('Projection rebuild must exactly match the immutable raw event source.');
       }
       if (eventFingerprint(item.event) !== eventFingerprint(event)) {
         throw eventConflict();
       }
+      const terminalFailureCode = this.#terminalManifestFailures.get(key);
+      if (terminalFailureCode !== item.terminalFailureCode) {
+        throw eventConflict();
+      }
+      if (this.#pendingManifestEvents.has(key) !== (item.pendingManifest !== undefined)) {
+        throw eventConflict();
+      }
     }
+    assertUnambiguousEventOrder([...supplied.values()].map(({ event }) => event));
 
     const replacement = new MemoryProjectionStore();
     for (const item of [...supplied.values()].sort((left, right) =>
       compareEventOrder(left.event, right.event),
     )) {
-      await replacement.apply(item.event, item.manifest);
+      if (item.pendingManifest !== undefined) {
+        await replacement.deferManifestEvent(item.event, item.pendingManifest);
+      } else if (item.acceptedManifestSuppression !== undefined) {
+        await replacement.#applyAcceptedManifestSuppressionUnlocked(item.event);
+      } else if (item.terminalFailureCode === undefined) {
+        await replacement.apply(item.event, item.manifest);
+      } else {
+        await replacement.quarantineManifestEvent(item.event, {
+          eventBody: {},
+          failureCode: item.terminalFailureCode,
+          failureDetail: 'Replayed from the immutable terminal manifest classification.',
+        });
+      }
     }
 
     this.#replaceNetworkState(networkId, replacement);
     for (const [key, item] of supplied) {
       this.#events.set(key, item.event);
+      if (item.terminalFailureCode !== undefined) {
+        const operationalKey = deadLetterKey(
+          item.event.networkId,
+          item.event.transactionSignature,
+          item.event.logIndex,
+        );
+        this.#deadLetters.set(operationalKey, {
+          attempts: this.#deadLetters.get(operationalKey)?.attempts ?? 1,
+          terminalFailureCode: item.terminalFailureCode,
+        });
+      } else if (item.pendingManifest !== undefined) {
+        const operationalKey = deadLetterKey(
+          item.event.networkId,
+          item.event.transactionSignature,
+          item.event.logIndex,
+        );
+        const existingRecord = this.#deadLetters.get(operationalKey);
+        this.#deadLetters.set(operationalKey, {
+          attempts: existingRecord?.attempts ?? 1,
+          nextAttemptAt: existingRecord?.nextAttemptAt ?? item.pendingManifest.nextAttemptAt,
+        });
+      }
     }
+  }
+
+  async #applyAcceptedManifestSuppressionUnlocked(event: ProtocolEvent): Promise<boolean> {
+    if (event.type !== 'profile-updated' && event.type !== 'post-published') {
+      throw eventConflict();
+    }
+    const eventKey = keyForEvent(event);
+    if (this.#events.has(eventKey)) {
+      throw eventConflict();
+    }
+    const position = positionFor(event);
+    const sequenceAdvance = this.#validateIdentityLifecycle(event, position);
+    if (sequenceAdvance === undefined) {
+      throw stale('A projection-suppressed manifest event must advance one identity sequence.');
+    }
+    const identity = this.#requireIdentity(sequenceAdvance.identityId);
+
+    if (event.type === 'profile-updated') {
+      // A later canonical profile pointer makes these accepted historical
+      // bytes unnecessary, but this pointer still superseded prior content.
+      this.#profiles.delete(event.identityId);
+      this.#latestProfileManifestEvents.set(event.identityId, eventKey);
+    } else if (event.postReference !== undefined) {
+      // Reference state is on-chain state and survives deletion of the
+      // obsolete off-chain manifest.
+      this.#postReferences.set(
+        postReferenceKey(event.networkId, event.postReference),
+        event.objectId,
+      );
+    }
+
+    this.#identities.set(sequenceAdvance.identityId, {
+      ...identity,
+      identitySequence: sequenceAdvance.sequence,
+      updatedSlot: event.slot,
+      updatedAt: event.blockTime,
+    });
+    this.#identitySequencePositions.set(sequenceAdvance.identityId, position);
+    this.#events.set(eventKey, event);
+    const currentCheckpoint = this.#checkpoints.get(event.networkId) ?? -1n;
+    if (event.slot > currentCheckpoint) {
+      this.#checkpoints.set(event.networkId, event.slot);
+    }
+    return true;
   }
 
   async advanceCheckpoint(networkId: string, finalizedSlot: bigint): Promise<void> {
@@ -1599,6 +2217,10 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       return false;
     }
     const queryPosition = positionFor(query);
+    const deactivated = this.#deactivationPositions.get(query.identityId);
+    if (deactivated !== undefined && comparePosition(queryPosition, deactivated) >= 0) {
+      return false;
+    }
     const root = [...history]
       .filter((item) => comparePosition(item.position, queryPosition) <= 0)
       .sort((left, right) => comparePosition(right.position, left.position))[0];
@@ -1791,7 +2413,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     const candidates: PublicSearchCandidate[] = [];
 
     for (const identity of this.#identities.values()) {
-      if (identity.networkId !== query.networkId) continue;
+      if (identity.networkId !== query.networkId || !identity.active) continue;
       const profile = this.#profiles.get(identity.identityId);
       const handle = [...this.#handlesByAddress.values()]
         .filter(
@@ -1859,12 +2481,20 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
         (post) =>
           post.networkId === query.networkId &&
           post.tombstonedAt === undefined &&
+          // No viewer authentication or community policy is evaluated here.
+          // Both public and following convenience feeds therefore fail closed
+          // to public content only.
+          post.content.visibility.kind === 'public' &&
           (followed === undefined || followed.has(post.authorIdentityId)) &&
-          (query.before === undefined || post.createdAt < query.before),
+          (query.before === undefined ||
+            post.createdAt < query.before.createdAt ||
+            (post.createdAt === query.before.createdAt && post.objectId < query.before.objectId)),
       )
       .sort((left, right) => {
         const time = right.createdAt.localeCompare(left.createdAt);
-        return time === 0 ? right.objectId.localeCompare(left.objectId) : time;
+        if (time !== 0) return time;
+        if (left.objectId === right.objectId) return 0;
+        return left.objectId > right.objectId ? -1 : 1;
       })
       .slice(0, query.limit)
       .map((post) => {
@@ -1898,13 +2528,21 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
   async #clearProjectionUnlocked(networkId: string): Promise<void> {
     this.#configs.delete(networkId);
     for (const [key, event] of this.#events) {
-      if (event.networkId === networkId) this.#events.delete(key);
+      if (event.networkId === networkId) {
+        this.#events.delete(key);
+        this.#pendingManifestEvents.delete(key);
+        this.#pendingManifestDeferrals.delete(key);
+        this.#terminalManifestFailures.delete(key);
+      }
     }
     for (const [key, identity] of this.#identities) {
       if (identity.networkId === networkId) {
         this.#identities.delete(key);
+        this.#identitySequencePositions.delete(key);
+        this.#deactivationPositions.delete(key);
         this.#rootHistory.delete(key);
         this.#profiles.delete(key);
+        this.#latestProfileManifestEvents.delete(key);
       }
     }
     for (const [key, handle] of this.#handlesByAddress) {
@@ -1986,6 +2624,9 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     for (const [key, entitlement] of this.#subscriptionEntitlements) {
       if (entitlement.networkId === networkId) this.#subscriptionEntitlements.delete(key);
     }
+    for (const key of this.#deadLetters.keys()) {
+      if (key.startsWith(`${networkId}\u0000`)) this.#deadLetters.delete(key);
+    }
     this.#checkpoints.delete(networkId);
   }
 
@@ -2002,14 +2643,25 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
   }
 
   async recordDeadLetter(input: DeadLetterInput): Promise<DeadLetterRecord> {
-    const key = deadLetterKey(input.networkId, input.transactionSignature, input.logIndex);
-    const previous = this.#deadLetters.get(key);
-    const record: DeadLetterRecord = {
-      attempts: (previous?.attempts ?? 0) + 1,
-      ...(input.nextAttemptAt === undefined ? {} : { nextAttemptAt: input.nextAttemptAt }),
-    };
-    this.#deadLetters.set(key, record);
-    return record;
+    return this.#withNetworkLock(input.networkId, () => {
+      const key = deadLetterKey(input.networkId, input.transactionSignature, input.logIndex);
+      if (this.#pendingManifestEvents.has(key)) {
+        throw new ProjectionError(
+          'Pending manifest retries require an exact conditional reschedule.',
+          'event-conflict',
+        );
+      }
+      const previous = this.#deadLetters.get(key);
+      if (previous?.terminalFailureCode !== undefined) {
+        return Promise.resolve(previous);
+      }
+      const record: DeadLetterRecord = {
+        attempts: (previous?.attempts ?? 0) + 1,
+        ...(input.nextAttemptAt === undefined ? {} : { nextAttemptAt: input.nextAttemptAt }),
+      };
+      this.#deadLetters.set(key, record);
+      return Promise.resolve(record);
+    });
   }
 
   async resolveDeadLetter(
@@ -2017,7 +2669,16 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     transactionSignature: string,
     logIndex: number,
   ): Promise<void> {
-    this.#deadLetters.delete(deadLetterKey(networkId, transactionSignature, logIndex));
+    await this.#withNetworkLock(networkId, () => {
+      const key = deadLetterKey(networkId, transactionSignature, logIndex);
+      if (
+        !this.#pendingManifestEvents.has(key) &&
+        this.#deadLetters.get(key)?.terminalFailureCode === undefined
+      ) {
+        this.#deadLetters.delete(key);
+      }
+      return Promise.resolve();
+    });
   }
 
   close(): Promise<void> {
@@ -2028,6 +2689,75 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     return [...this.#events.values()]
       .filter((event) => event.networkId === networkId)
       .sort(compareEventOrder);
+  }
+
+  #validateIdentityLifecycle(
+    event: ProtocolEvent,
+    position: EventPosition,
+  ): IdentitySequenceAdvance | undefined {
+    if (event.type === 'identity-deactivated') {
+      return undefined;
+    }
+    for (const identityId of activeIdentityIds(event)) {
+      const identity = this.#requireIdentity(identityId);
+      if (identity.networkId !== event.networkId || !identity.active) {
+        throw stale('Protocol mutation references an inactive or cross-network identity.');
+      }
+    }
+
+    const snapshot = identitySequenceSnapshot(event);
+    if (
+      snapshot !== undefined &&
+      this.#requireIdentity(snapshot.identityId).identitySequence !== snapshot.sequence
+    ) {
+      throw stale('Identity sequence snapshot does not match current indexed state.');
+    }
+
+    const advance = identitySequenceAdvance(event);
+    if (advance === undefined) {
+      return undefined;
+    }
+    const identity = this.#requireIdentity(advance.identityId);
+    const currentPosition = this.#identitySequencePositions.get(advance.identityId);
+    if (
+      advance.sequence !== identity.identitySequence + 1n ||
+      currentPosition === undefined ||
+      comparePosition(position, currentPosition) <= 0
+    ) {
+      throw stale('Identity mutation does not exactly advance sequence and event order.');
+    }
+    return advance;
+  }
+
+  #laterTombstoneAt(
+    event: Extract<ProtocolEvent, { readonly type: 'post-published' }>,
+  ): string | undefined {
+    let latest:
+      | {
+          readonly position: EventPosition;
+          readonly blockTime: string;
+        }
+      | undefined;
+    const publishedPosition = positionFor(event);
+    for (const candidate of this.#events.values()) {
+      if (
+        candidate.type !== 'tombstoned' ||
+        candidate.networkId !== event.networkId ||
+        candidate.identityId !== event.identityId ||
+        candidate.targetObjectId !== event.objectId
+      ) {
+        continue;
+      }
+      const candidatePosition = positionFor(candidate);
+      if (comparePosition(candidatePosition, publishedPosition) <= 0) continue;
+      if (latest === undefined || comparePosition(candidatePosition, latest.position) > 0) {
+        latest = {
+          position: candidatePosition,
+          blockTime: candidate.blockTime,
+        };
+      }
+    }
+    return latest?.blockTime;
   }
 
   #requireIdentity(identityId: string): IdentityProjection {
@@ -2171,8 +2901,11 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     for (const [key, identity] of this.#identities) {
       if (identity.networkId === networkId) {
         this.#identities.delete(key);
+        this.#identitySequencePositions.delete(key);
+        this.#deactivationPositions.delete(key);
         this.#rootHistory.delete(key);
         this.#profiles.delete(key);
+        this.#latestProfileManifestEvents.delete(key);
       }
     }
     for (const [key, handle] of this.#handlesByAddress) {
@@ -2253,11 +2986,14 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
 
     copyMap(this.#configs, replacement.#configs);
     copyMap(this.#identities, replacement.#identities);
+    copyMap(this.#identitySequencePositions, replacement.#identitySequencePositions);
+    copyMap(this.#deactivationPositions, replacement.#deactivationPositions);
     copyMap(this.#rootHistory, replacement.#rootHistory);
     copyMap(this.#handlesByAddress, replacement.#handlesByAddress);
     copyMap(this.#handleAddressesByName, replacement.#handleAddressesByName);
     copyMap(this.#delegations, replacement.#delegations);
     copyMap(this.#profiles, replacement.#profiles);
+    copyMap(this.#latestProfileManifestEvents, replacement.#latestProfileManifestEvents);
     copyMap(this.#posts, replacement.#posts);
     copyMap(this.#postReferences, replacement.#postReferences);
     copyMap(this.#follows, replacement.#follows);
@@ -2452,6 +3188,130 @@ function deadLetterKey(networkId: string, signature: string, logIndex: number): 
   return `${networkId}\u0000${signature}\u0000${logIndex}`;
 }
 
+interface IdentitySequenceAdvance {
+  readonly identityId: string;
+  readonly sequence: bigint;
+}
+
+function identitySequenceAdvance(event: ProtocolEvent): IdentitySequenceAdvance | undefined {
+  switch (event.type) {
+    case 'identity-deactivated':
+    case 'handle-claimed':
+    case 'handle-released':
+    case 'root-authority-rotated':
+    case 'delegation-created':
+    case 'delegation-revoked':
+    case 'recovery-policy-configured':
+    case 'recovery-policy-disabled':
+    case 'recovery-cancelled':
+      return { identityId: event.identityId, sequence: event.identitySequence };
+    case 'profile-updated':
+    case 'post-published':
+    case 'tombstoned':
+      return { identityId: event.identityId, sequence: event.sequence };
+    case 'follow-changed':
+      return {
+        identityId: event.followerIdentityId,
+        sequence: event.followerSequence,
+      };
+    case 'block-changed':
+      return { identityId: event.blockerIdentityId, sequence: event.blockerSequence };
+    case 'community-created':
+    case 'community-governance-updated':
+      return { identityId: event.creatorIdentityId, sequence: event.creatorSequence };
+    case 'community-membership-changed':
+      return { identityId: event.assignedByIdentityId, sequence: event.authoritySequence };
+    case 'reaction-changed':
+      return { identityId: event.reactorIdentityId, sequence: event.reactorSequence };
+    case 'proposal-created':
+      return { identityId: event.proposerIdentityId, sequence: event.proposerSequence };
+    case 'vote-cast':
+      return { identityId: event.voterIdentityId, sequence: event.voterSequence };
+    case 'subscription-offering-created':
+    case 'subscription-offering-retired':
+      return { identityId: event.creatorIdentityId, sequence: event.creatorSequence };
+    default:
+      return undefined;
+  }
+}
+
+function identitySequenceSnapshot(event: ProtocolEvent): IdentitySequenceAdvance | undefined {
+  switch (event.type) {
+    case 'recovery-requested':
+    case 'recovery-executed':
+      return { identityId: event.identityId, sequence: event.identitySequence };
+    default:
+      return undefined;
+  }
+}
+
+function activeIdentityIds(event: ProtocolEvent): readonly string[] {
+  let identities: readonly string[];
+  switch (event.type) {
+    case 'identity-deactivated':
+    case 'handle-claimed':
+    case 'handle-released':
+    case 'root-authority-rotated':
+    case 'delegation-created':
+    case 'delegation-revoked':
+    case 'profile-updated':
+    case 'post-published':
+    case 'tombstoned':
+    case 'recovery-policy-configured':
+    case 'recovery-policy-disabled':
+    case 'recovery-requested':
+    case 'recovery-approved':
+    case 'recovery-cancelled':
+    case 'recovery-executed':
+      identities = [event.identityId];
+      break;
+    case 'follow-changed':
+      identities = [event.followerIdentityId, ...(event.active ? [event.followedIdentityId] : [])];
+      break;
+    case 'block-changed':
+      identities = [event.blockerIdentityId, event.subjectIdentityId];
+      break;
+    case 'community-created':
+    case 'community-governance-updated':
+      identities = [event.creatorIdentityId];
+      break;
+    case 'community-membership-changed':
+      identities = [event.assignedByIdentityId, event.memberIdentityId];
+      break;
+    case 'reaction-changed':
+      identities = [event.reactorIdentityId];
+      break;
+    case 'proposal-created':
+      identities = [event.proposerIdentityId];
+      break;
+    case 'vote-cast':
+      identities = [event.voterIdentityId];
+      break;
+    case 'subscription-offering-created':
+      identities = [
+        event.creatorIdentityId,
+        ...event.recipientSplits.map((split) => split.recipientIdentityId),
+      ];
+      break;
+    case 'subscription-offering-retired':
+      identities = [event.creatorIdentityId];
+      break;
+    case 'woke-tip-settled':
+      identities = [event.payerIdentityId, event.recipientIdentityId];
+      break;
+    case 'subscription-settled':
+      identities = [
+        event.creatorIdentityId,
+        event.payerIdentityId,
+        ...event.recipientSplits.map((split) => split.recipientIdentityId),
+      ];
+      break;
+    default:
+      identities = [];
+  }
+  return [...new Set(identities)];
+}
+
 function positionFor(value: {
   readonly slot: bigint;
   readonly transactionIndex?: number | undefined;
@@ -2475,7 +3335,12 @@ function comparePosition(left: EventPosition, right: EventPosition): number {
   ) {
     return left.transactionIndex - right.transactionIndex;
   }
-  const signature = left.transactionSignature.localeCompare(right.transactionSignature);
+  const signature =
+    left.transactionSignature === right.transactionSignature
+      ? 0
+      : left.transactionSignature < right.transactionSignature
+        ? -1
+        : 1;
   return signature === 0 ? left.logIndex - right.logIndex : signature;
 }
 
@@ -2514,6 +3379,39 @@ function publicHandle(handle: StoredHandle): HandleProjection {
     claimedSlot: handle.claimedSlot,
     claimedAt: handle.claimedAt,
   };
+}
+
+function normalizedManifestDeferral(deferral: ManifestDeferral): ManifestDeferral {
+  if (
+    deferral.failureCode !== 'manifest-unavailable' ||
+    typeof deferral.failureDetail !== 'string' ||
+    typeof deferral.eventBody !== 'object' ||
+    deferral.eventBody === null ||
+    Array.isArray(deferral.eventBody)
+  ) {
+    throw new ProjectionError('Pending manifest retry metadata is invalid.', 'manifest-mismatch');
+  }
+  pendingManifestDueTimestamp(deferral.nextAttemptAt);
+  return {
+    eventBody: structuredClone(deferral.eventBody),
+    failureCode: 'manifest-unavailable',
+    failureDetail: deferral.failureDetail,
+    nextAttemptAt: deferral.nextAttemptAt,
+  };
+}
+
+function pendingManifestDueTimestamp(value: string): number {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== value) {
+    throw new RangeError('Pending manifest due time must be a canonical ISO timestamp.');
+  }
+  return timestamp;
+}
+
+function assertPendingManifestLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+    throw new RangeError('Pending manifest query limit must be between 1 and 1,000.');
+  }
 }
 
 function stale(message: string): ProjectionError {

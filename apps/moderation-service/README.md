@@ -49,10 +49,11 @@ Reports and appeals are deliberately separate from public-label storage. Intake
 responses never echo their CID, envelope, evidence, or summary. PostgreSQL is an
 operator record, not canonical protocol state.
 
-Ledger tables reject `UPDATE` through database triggers. Authorized lifecycle
-changes append events and update only the current case snapshot. `DELETE` remains
-possible for the bounded retention path; this is an auditable operational
-ledger, not an immutable or tamper-proof blockchain log.
+Ledger tables reject both `UPDATE` and `DELETE` through database triggers.
+Authorized lifecycle changes append events and update only the current case
+snapshot. The runtime role has no table-delete privilege and can update only
+that snapshot; this is an auditable operational ledger, not an immutable or
+tamper-proof blockchain log.
 
 ### Encryption
 
@@ -182,17 +183,18 @@ All responses identify this provider as `advisory: true` and
 ## Retention, legal holds, and transparency
 
 The default maintenance interval is five minutes. Each pass bounds due-action
-and retention work to configured batch sizes. Closed cases become eligible for
-deletion after the configured retention period (365 days by default). Active
-legal holds prevent case deletion. Releasing a hold requires another scoped,
+review and expiry work. Releasing a legal hold requires another scoped,
 reasoned, version-checked event.
 
-Case retention removes the report, appeals, action/review history, access
-history, and encrypted ledger details together. Old unlinked denied-access
-records use the same cutoff and a bounded cleanup batch. A production operator
-must select retention values with security, privacy, evidence-preservation, and
-qualified legal review; the defaults are technical safeguards, not a legal
-conclusion.
+Destructive retention is deliberately disabled in the long-running runtime.
+`MODERATION_CLOSED_CASE_RETENTION_MS` and `MODERATION_RETENTION_BATCH_SIZE`
+remain policy inputs for a future separate executor, but maintenance currently
+reports `casesRemoved: 0`. Before production, that executor must use a distinct
+credential and reviewed authorization/evidence-preservation workflow, enforce
+the approved minimum age and legal holds inside its trust boundary, and prove
+bounded deletion without granting the web runtime `DELETE`. Until then,
+operators must treat closed moderation records as retained and must not claim
+automated deletion compliance.
 
 Transparency windows must use exact UTC millisecond timestamps, have positive
 length, and span at most 366 days. Categories smaller than the configured cell
@@ -204,22 +206,27 @@ evidence, note, or object identifier is returned.
 
 | Variable | Default | Constraint |
 | --- | --- | --- |
+| `APP_ENV` | unset | `development`, `test`, `staging`, or `production` |
 | `NODE_ENV` | `development` | `development`, `test`, or `production` |
 | `MODERATION_HOST` | `127.0.0.1` | Listen host |
 | `MODERATION_PORT` | `4400` | 1–65535 |
 | `MODERATION_ALLOWED_ORIGINS` | empty | Comma-separated credential-free HTTP(S) origins |
-| `MODERATION_DATABASE_URL` | unset | PostgreSQL URL; must be paired with data keys |
+| `MODERATION_DATABASE_URL` | unset | DML-only runtime PostgreSQL URL; must be paired with data keys |
+| `MODERATION_DATABASE_MIGRATION_URL` | unset | Dedicated DDL URL used only by the migration command |
 | `MODERATION_DATA_KEYS` | unset | Strict key-ring JSON; must be paired with PostgreSQL |
-| `MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE` | `0` | `1` forbidden in production |
+| `MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE` | `0` | `1` forbidden in staging and production |
 | `MODERATION_MAINTENANCE_INTERVAL_MS` | `300000` | 60 seconds–24 hours |
 | `MODERATION_DUE_ACTION_BATCH_SIZE` | `500` | 1–5000 |
 | `MODERATION_RETENTION_BATCH_SIZE` | `100` | 1–5000 |
 | `MODERATION_CLOSED_CASE_RETENTION_MS` | `31536000000` | 1 day–10 years |
 | `MODERATION_TRANSPARENCY_MINIMUM_CELL_SIZE` | `5` | 3–100 |
 
-Production remote origins must use HTTPS. `https://woke.social` is the canonical
-web origin. Both legacy redirect-only hostnames are explicitly rejected as
-application origins.
+Staging and production remote origins must use HTTPS. `https://woke.social` is
+the canonical web origin. Both legacy redirect-only hostnames are explicitly
+rejected as application origins. Staging and production database URLs must
+contain exactly one `sslmode=verify-full`, and process-wide TLS verification
+cannot be disabled. Missing durable persistence selects the locked store in
+both nonlocal tiers; only the local deployment policy may use memory.
 
 ## Local operation
 
@@ -227,6 +234,7 @@ Start local PostgreSQL using the repository infrastructure, configure a local
 database URL and a throwaway 32-byte key, then run:
 
 ```sh
+MODERATION_DATABASE_MIGRATION_URL='postgresql://moderation_migration@localhost/wokesocial' \
 pnpm --filter @wokesocial/moderation-service migrate
 MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE=1 \
   pnpm --filter @wokesocial/moderation-service dev
@@ -235,13 +243,28 @@ MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE=1 \
 The migration runner:
 
 - discovers numbered SQL files in order;
-- takes a transaction-scoped PostgreSQL advisory lock;
+- requires `MODERATION_DATABASE_MIGRATION_URL` and never falls back to the runtime URL;
+- takes one session-scoped PostgreSQL advisory lock before creating its ledger;
 - applies each migration transactionally; and
-- records it once in `moderation_schema_migrations`.
+- records its lowercase SQL SHA-256 once in `moderation_schema_migrations`.
+
+The applied ledger must be an exact ordered prefix of the nonempty packaged
+migration set. Missing checksums, unknown versions, gaps, reordering, or changed
+SQL fail closed; legacy rows are not automatically backfilled. The runner
+revokes runtime ledger writes before integrity validation, including on a
+failed migration. Follow the verified legacy procedure in
+`docs/OPERATIONS.md` rather than guessing a checksum.
+
+The long-running moderation server never runs DDL and does not read the
+migration URL. Grant schema privileges only to the one-shot migration role and
+grant its runtime role only the DML privileges it needs.
 
 `0001_moderation_case_ledger.sql` creates the separated stores and ledger.
 `0002_append_only_retention.sql` makes retention cascade-compatible without
 mutating append-only rows and adds the unlinked-access retention index.
+`0003_guarded_retention.sql` rejects ledger/root deletion, removes any
+pre-release runtime retention function, and narrows the runtime to
+`SELECT`/`INSERT` plus `UPDATE` only on the current case snapshot.
 
 There are deliberately no destructive automatic down migrations. Before a
 production migration, take and verify a database backup. Roll back application

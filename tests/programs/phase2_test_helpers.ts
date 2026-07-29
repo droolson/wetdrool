@@ -23,6 +23,8 @@ export const REACTION_LIKE = 1;
 export const SCOPE_PROFILE = 1;
 export const SCOPE_POST = 1 << 1;
 export const SCOPE_SOCIAL = 1 << 2;
+export const TEST_MANIFEST_CID =
+  "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
 
 export interface Phase2Context {
   config: web3.PublicKey;
@@ -51,6 +53,34 @@ export interface TransactionMeasurement {
 
 export function digest(value: string): number[] {
   return Array.from(createHash("sha256").update(value).digest());
+}
+
+export function manifestUri(value: string): string {
+  const digest = createHash("sha256").update(value).digest();
+  const cidBytes = Buffer.concat([
+    Buffer.from([0x01, 0x55, 0x12, 0x20]),
+    digest,
+  ]);
+  return `local://b${encodeBase32(cidBytes)}`;
+}
+
+function encodeBase32(bytes: Uint8Array): string {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz234567";
+  let bits = 0;
+  let value = 0;
+  let encoded = "";
+  for (const byte of bytes) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      encoded += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    encoded += alphabet[(value << (5 - bits)) & 31];
+  }
+  return encoded;
 }
 
 export function nonce(value: number): number[] {

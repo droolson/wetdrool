@@ -26,6 +26,7 @@ import {
   type SolanaEventMaterializationError,
   type VoteCastEvent,
 } from '../src/index.js';
+import { testCid } from './cid-fixtures.js';
 
 const strategyBytes = Uint8Array.from([
   194, 111, 47, 125, 12, 76, 238, 214, 100, 126, 189, 3, 102, 193, 39, 21, 92, 90, 225, 152, 44, 32,
@@ -877,7 +878,7 @@ function bytes(length: number, seed: number): Uint8Array {
 }
 
 function fakeCid(): string {
-  return `b${'a'.repeat(58)}`;
+  return testCid(0);
 }
 
 function stableJson(value: unknown): string {
