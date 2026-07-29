@@ -1,4 +1,4 @@
-# WokeSocial
+# WokeSocial Protocol
 
 **An inclusive, portable social platform with verifiable protocol state on
 Solana.**
