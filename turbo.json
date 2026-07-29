@@ -42,7 +42,7 @@
       "outputs": ["playwright-report/**", "test-results/**"]
     },
     "typecheck": {
-      "dependsOn": ["^build", "^typecheck"],
+      "dependsOn": ["build", "^build", "^typecheck"],
       "outputs": []
     }
   }

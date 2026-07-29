@@ -9,6 +9,7 @@ const permittedLocalReference = /^(?:workspace:|file:|link:|catalog:)/;
 const errors = [];
 
 const rootManifest = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8'));
+const turbo = JSON.parse(await readFile(join(repositoryRoot, 'turbo.json'), 'utf8'));
 const workspaces = await readWorkspacePackages();
 const manifests = [{ manifest: rootManifest, manifestPath: 'package.json' }, ...workspaces];
 const names = new Map();
@@ -47,6 +48,18 @@ if (rootManifest.packageManager !== 'pnpm@11.2.2') {
 
 if (rootManifest.engines?.node !== '22.23.1' || rootManifest.engines?.pnpm !== '11.2.2') {
   errors.push('package.json: Node and pnpm engine pins do not match the supported toolchain.');
+}
+
+const typecheckDependencies = turbo.tasks?.typecheck?.dependsOn;
+if (
+  !Array.isArray(typecheckDependencies) ||
+  !['build', '^build', '^typecheck'].every((dependency) =>
+    typecheckDependencies.includes(dependency),
+  )
+) {
+  errors.push(
+    'turbo.json: typecheck must depend on its own build plus dependency builds/typechecks so a clean checkout cannot consume missing dist declarations.',
+  );
 }
 
 if (errors.length > 0) {
