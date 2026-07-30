@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "dev": "node ../../scripts/run-scoped-runtime.mjs -- next dev --hostname 127.0.0.1",
     "build": "next build",

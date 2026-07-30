@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-license = "MIT"
+license-file = "LICENSE"
 # Agave 2.3's SBF compiler is Rust 1.84.1-dev. Developers use the newer
 # pinned host toolchain, while deployable program crates retain this MSRV.
 rust-version = "1.84.0"

@@ -2,7 +2,7 @@
 
 **An open, portable social platform with verifiable protocol state on Solana.**
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-6f42c1.svg)](LICENSE)
+[![License: Source-Available Dual](https://img.shields.io/badge/license-Source--Available%20Dual-6f42c1.svg)](LICENSE)
 ![Status: pre-release](https://img.shields.io/badge/status-pre--release-f59e0b.svg)
 ![Network: Solana dapp](https://img.shields.io/badge/network-Solana%20dapp-14f195.svg)
 
@@ -413,8 +413,26 @@ before a public launch.
 
 ## Licensing
 
-WokeSocial and WokeNet first-party source and documentation are licensed under
-the [MIT License](LICENSE), unless a file or package says otherwise.
+**Source-available dual license — not OSI open source.**
+
+| Track | Rights | Cost |
+| --- | --- | --- |
+| **Section A** | Read, audit, test, benchmark, non-commercial evaluation, security research | Free |
+| **Section B** | Production, SaaS, commercial redistribution, government operational use | **Paid** |
+
+- Full legal text: [`LICENSE`](LICENSE)
+- How to buy production rights: [`COMMERCIAL_LICENSE.md`](COMMERCIAL_LICENSE.md)
+- Short banner: [`NOTICE`](NOTICE)
+
+Transparency and validation are free. Running this as a product, SaaS, or
+government production system requires a written Section B license from the
+copyright holder. Historical MIT snapshots remain under MIT for recipients who
+obtained them while MIT applied; **current default-branch code is dual-licensed.**
+
 Third-party dependencies retain their own copyright and license terms. For
 example, the messaging adapter's Matrix crypto dependency is documented in its
 [third-party notices](packages/messaging/THIRD_PARTY_NOTICES.md).
+
+By contributing, you accept the CLA terms in [`LICENSE`](LICENSE) (copyright
+assignment / exclusive commercializable license). Contributing does **not**
+grant free production rights.

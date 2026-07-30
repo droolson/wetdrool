@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "description": "Dependency-free WebCrypto primitives with WokeSocial domain separation",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",

@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "description": "Canonical WokeSocial protocol schemas, identifiers, hashing, and signatures",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",

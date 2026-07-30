@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Public WokeSocial marketing launch site (static)",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "build": "node ./scripts/verify-static.mjs",
     "dev": "node ./scripts/dev-server.mjs",

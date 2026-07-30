@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Open, rebuildable WokeNet social-protocol indexer",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-static.mjs",
     "check:anchor-events": "tsx scripts/check-anchor-events.ts",

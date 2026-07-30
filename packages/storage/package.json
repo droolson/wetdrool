@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "description": "Replaceable content-addressed storage adapters for WokeSocial",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",

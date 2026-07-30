@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "description": "Fail-closed distributed rate limiting for WokeSocial services",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",

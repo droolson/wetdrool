@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "WokeSocial Android client for Solana Mobile and Seeker",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "main": "./index.js",
   "scripts": {
     "android": "expo run:android",

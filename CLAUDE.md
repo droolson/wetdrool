@@ -47,7 +47,7 @@ label local-validator evidence as local.
 | PostgreSQL / Redis / Kubo / ClamAV | 18.4 / 8.8.1 / 0.42.0 / 1.5.3 | digest-pinned containers in `infra/compose.yaml`                    |
 
 External dependencies use **exact versions**; internal packages use
-`workspace:` references; every manifest needs `"license": "MIT"` — all
+`workspace:` references; every manifest needs `"license": "SEE LICENSE IN LICENSE"` — all
 enforced by `pnpm workspace:check`.
 
 ## Setup and everyday commands

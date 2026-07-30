@@ -214,11 +214,25 @@ permanent harmful test content.
 
 ## Licensing
 
-By contributing, you agree that your contribution is licensed under the
-repository's [MIT License](LICENSE). Third-party code and assets must be
-compatible with the project, retain all required notices, and be clearly
+This repository uses a **source-available dual license** (see [LICENSE](LICENSE)
+and [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)):
+
+- **Section A (free):** evaluation, audit, tests, benchmarks, non-commercial research
+- **Section B (paid):** production, SaaS, commercial redistribution, government operational use
+
+By contributing, you agree to the contribution terms in [LICENSE](LICENSE):
+copyright assignment to the copyright holder (or an exclusive commercializable
+license if assignment is unavailable). That keeps the dual-license model
+enforceable. **Contributing does not grant you a free Section B production
+license.**
+
+Third-party code and assets must retain required notices and be clearly
 identified. Do not copy code, visuals, datasets, or other material unless its
-provenance and license permit the intended use.
+provenance and license permit the intended use under this dual-license model.
+
+For commercial or government production licensing, open an issue titled
+`Commercial / Government License Request` — do not use a normal contribution PR
+for that.
 
 Thank you for helping build WokeSocial with care, rigor, and respect for the
 people who will depend on it.

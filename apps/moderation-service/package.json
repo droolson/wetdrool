@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Replaceable, non-authoritative WokeSocial moderation label, report, and appeal service",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-static.mjs",
     "clean": "rm -rf dist coverage",
