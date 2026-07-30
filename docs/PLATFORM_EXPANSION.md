@@ -167,8 +167,12 @@ signature; the disclosure is cached only against the exact account, key, and
 deployment binding, is discarded on any change, and signing fails closed if
 the fresh passkey key does not match the disclosed destination. No payment
 surface exists yet, so payment-destination confirmation remains a design
-requirement rather than an implemented control. Public-cluster execution and
-consistent cross-surface name rendering remain required.
+requirement rather than an implemented control. The open indexer now
+serializes each author's canonical active handle into feed, post-detail, and
+post-search projections—null for deactivated identities, matching fail-closed
+resolution—and the web and Seeker read surfaces render `handle.woke` with an
+honest no-active-name state. Profile-surface rendering, share surfaces, and
+public-cluster execution remain required.
 
 ### 4.3 Custom-name eligibility
 

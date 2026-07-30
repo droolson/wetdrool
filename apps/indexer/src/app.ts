@@ -321,9 +321,12 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       mode: 'chronological',
       limit: parsed.data.limit,
     });
+    const authorHandles = await canonicalAuthorHandles(options.projection, snapshot.entries);
     return {
       meta: responseMetaForCheckpoint(snapshot.checkpoint),
-      posts: snapshot.entries.map(serializeConsumerPost),
+      posts: snapshot.entries.map((entry) =>
+        serializeConsumerPost(entry, authorHandles.get(entry.author.identityId) ?? null),
+      ),
     };
   });
 
@@ -413,6 +416,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     const snapshot = await options.projection.getFeedSnapshot(feedQuery);
     const page = snapshot.entries.slice(0, parsed.data.limit);
     const lastEntry = page.at(-1);
+    const authorHandles = await canonicalAuthorHandles(options.projection, page);
     return {
       canonical: false,
       projection: 'wokenet-open-indexer',
@@ -420,7 +424,9 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       mode: parsed.data.mode,
       network: networkId,
       meta: responseMetaForCheckpoint(snapshot.checkpoint),
-      entries: page.map(serializeFeedEntry),
+      entries: page.map((entry) =>
+        serializeFeedEntry(entry, authorHandles.get(entry.author.identityId) ?? null),
+      ),
       viewer: cursorScope.viewerIdentityId,
       nextCursor:
         snapshot.entries.length > parsed.data.limit && lastEntry !== undefined
@@ -459,14 +465,16 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       };
     }
     const profile = await options.projection.getProfile(post.authorIdentityId);
+    const entry: FeedEntry = {
+      post,
+      author,
+      ...(profile === undefined ? {} : { profile }),
+      reason: { kind: 'chronological' },
+    };
+    const authorHandles = await canonicalAuthorHandles(options.projection, [entry]);
     return {
       meta: await responseMeta(options.projection, post.networkId),
-      post: serializeConsumerPost({
-        post,
-        author,
-        ...(profile === undefined ? {} : { profile }),
-        reason: { kind: 'chronological' },
-      }),
+      post: serializeConsumerPost(entry, authorHandles.get(author.identityId) ?? null),
     };
   });
 
@@ -1170,6 +1178,10 @@ async function publicSearchResponse(
     term: query,
     limit,
   });
+  const authorHandles = await canonicalAuthorHandles(
+    projection,
+    snapshot.results.flatMap((result) => (result.kind === 'post' ? [result.entry] : [])),
+  );
   return {
     canonical: false,
     network: networkId,
@@ -1180,11 +1192,14 @@ async function publicSearchResponse(
       version: 'public-match-v2',
     },
     scope: 'public-finalized-projection',
-    results: snapshot.results.map(serializePublicSearchResult),
+    results: snapshot.results.map((result) => serializePublicSearchResult(result, authorHandles)),
   };
 }
 
-function serializePublicSearchResult(result: PublicSearchResult) {
+function serializePublicSearchResult(
+  result: PublicSearchResult,
+  authorHandles: ReadonlyMap<string, string | null>,
+) {
   switch (result.kind) {
     case 'community':
       return {
@@ -1207,7 +1222,10 @@ function serializePublicSearchResult(result: PublicSearchResult) {
         kind: result.kind,
         matchedBy: result.matchedBy,
         post: {
-          ...serializeConsumerPost(result.entry),
+          ...serializeConsumerPost(
+            result.entry,
+            authorHandles.get(result.entry.author.identityId) ?? null,
+          ),
           visibility: 'public' as const,
         },
       };
@@ -1248,13 +1266,38 @@ function paymentQueryError(message: string) {
   return { error: { code: 'invalid-payment-query', message } };
 }
 
-function serializeFeedEntry(entry: FeedEntry) {
+function serializeFeedEntry(entry: FeedEntry, authorHandle: string | null) {
   return {
     post: serializePost(entry.post),
     author: serializeBigInts(entry.author),
+    authorHandle,
     profile: entry.profile === undefined ? undefined : serializeBigInts(entry.profile),
     reason: entry.reason,
   };
+}
+
+/**
+ * Resolves each active author's canonical active handle — the lexically first
+ * active claim, matching the person-search convention — once per response. A
+ * deactivated identity intentionally resolves to no handle so this projection
+ * agrees with fail-closed `.woke` resolution and person discovery.
+ */
+async function canonicalAuthorHandles(
+  projection: ProjectionStore,
+  entries: readonly FeedEntry[],
+): Promise<ReadonlyMap<string, string | null>> {
+  const handles = new Map<string, string | null>();
+  for (const entry of entries) {
+    const identityId = entry.author.identityId;
+    if (handles.has(identityId)) continue;
+    if (!entry.author.active) {
+      handles.set(identityId, null);
+      continue;
+    }
+    const claims = await projection.getHandlesByIdentity(identityId);
+    handles.set(identityId, claims[0]?.handle ?? null);
+  }
+  return handles;
 }
 
 function serializePost(post: PostProjection) {
@@ -1264,12 +1307,12 @@ function serializePost(post: PostProjection) {
   };
 }
 
-function serializeConsumerPost(entry: FeedEntry) {
+function serializeConsumerPost(entry: FeedEntry, authorHandle: string | null) {
   return {
     author: {
       active: entry.author.active,
       displayName: entry.profile?.content.displayName || 'Unnamed member',
-      handle: null,
+      handle: authorHandle,
       identityId: entry.author.identityId,
     },
     body: entry.post.content.body ?? null,

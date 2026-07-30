@@ -1,4 +1,5 @@
 import {
+  canonicalizeWokeName,
   cidSchema,
   digestSchema,
   identityIdSchema,
@@ -192,6 +193,28 @@ function identityBelongsToNetwork(identityId: string, network: string): boolean 
   return identityId.startsWith(`wokesocialid:v1:${network}:`);
 }
 
+/**
+ * A projected author handle is a convenience field, not a `.woke` proof. It is
+ * accepted only as an absent field, an explicit null, or one exactly canonical
+ * handle serialization; anything else is a payload error rather than a
+ * silently repaired value.
+ */
+function parseAuthorHandle(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string') {
+    throw new IndexerPayloadError('feed entry.authorHandle is not a string.');
+  }
+  try {
+    if (canonicalizeWokeName(value).handle !== value) {
+      throw new IndexerPayloadError('feed entry.authorHandle is not a canonical handle.');
+    }
+  } catch (error) {
+    if (error instanceof IndexerPayloadError) throw error;
+    throw new IndexerPayloadError('feed entry.authorHandle is not a canonical handle.');
+  }
+  return value;
+}
+
 function parseProjectedFeedEntry(
   value: unknown,
   mode: ProjectedFeedMode,
@@ -288,7 +311,11 @@ function parseProjectedFeedEntry(
       ? null
       : boundedString(content.body, 'feed entry.post.content.body', 100_000);
   const post = parseIndexedPost({
-    author: { displayName, handle: null, identityId: authorIdentityId },
+    author: {
+      displayName,
+      handle: parseAuthorHandle(entry.authorHandle),
+      identityId: authorIdentityId,
+    },
     body,
     bodyReference: content.bodyReference ?? null,
     createdAt,

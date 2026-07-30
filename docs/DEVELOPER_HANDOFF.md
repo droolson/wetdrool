@@ -633,6 +633,15 @@ Continue in this order:
       economics, refunds, and appeals before purchase or transfer.
 - [ ] Render finalized names consistently in profile, composer, feed, search,
       share, and Seeker surfaces.
+  - Partial: the indexer now serializes each author's canonical active
+    handle—the lexically first active claim, matching person search, and
+    always null for a deactivated identity—into `/v1/feed`, `/v1/feed/home`,
+    `/v1/posts/{objectId}`, and post-kind search results; the strict
+    projected-feed client parses it fail-closed; and the web post
+    card/search results plus the Seeker read-only feed render `handle.woke`
+    with an honest no-active-name state. The profile route remains a
+    placeholder with no data path, and share surfaces and public-cluster
+    rendering remain open.
 - [ ] Implement issue #15’s non-transferable reputation ledger and separately
       accounted spendable points only after abuse simulations and audit rules.
 - [ ] Keep points, AI credits, future redemption claims, and any future `$WOKE`

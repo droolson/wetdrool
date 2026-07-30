@@ -778,8 +778,19 @@ tracked by [GitHub epic #12](https://github.com/wokesocial/wokesocial/issues/12)
     onboarding renders the exact (untruncated) Solana destination for the
     derived candidate. Verified by `pnpm --filter @wokesocial/web test`
     (20 files / 260 cases) and `pnpm verify` on 2026-07-29. No payment
-    surface exists yet; profile/feed/search rendering and public-cluster
-    surfaces remain open.
+    surface exists yet.
+  - Partial evidence (feed, post-detail, search, and Seeker-feed rendering):
+    the open indexer serializes each author's canonical active handle—the
+    lexically first active claim, matching person search, and always null
+    for a deactivated identity—into `/v1/feed` (`authorHandle`),
+    `/v1/feed/home`, `/v1/posts/{objectId}`, and post-kind search results,
+    with handle release proven to drop the field; the strict projected-feed
+    client accepts only an exactly canonical handle serialization; and the
+    web post card, search results, and Seeker read-only feed render
+    `handle.woke` with an honest no-active-name state. Verified by the
+    indexer (209), indexer-client (59), web (260), and mobile (12) unit
+    suites on 2026-07-29. Profile-surface rendering, share surfaces, and
+    public-cluster surfaces remain open.
 - [ ] Specify and implement custom-name eligibility, reservation,
   commit/reveal, expiry/grace/cooldown, recovery, transfer, reserved-name,
   impersonation/trademark, appeal, refund, and anti-squatting policy.

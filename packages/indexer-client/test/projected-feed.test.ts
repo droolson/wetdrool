@@ -147,6 +147,32 @@ describe('strict projected-feed parsing', () => {
     );
   });
 
+  it('accepts only an exactly canonical projected author handle', () => {
+    const withoutHandle = parseProjectedFeedResponse(feedResponse(), { mode: 'chronological' });
+    expect(withoutHandle.entries[0]?.post.author.handle).toBeNull();
+
+    const explicitNull = parseProjectedFeedResponse(
+      feedResponse({ entries: [{ ...projectedEntry(), authorHandle: null }] }),
+      { mode: 'chronological' },
+    );
+    expect(explicitNull.entries[0]?.post.author.handle).toBeNull();
+
+    const claimed = parseProjectedFeedResponse(
+      feedResponse({ entries: [{ ...projectedEntry(), authorHandle: 'anon_7n044tsjxrfm5e23' }] }),
+      { mode: 'chronological' },
+    );
+    expect(claimed.entries[0]?.post.author.handle).toBe('anon_7n044tsjxrfm5e23');
+
+    for (const authorHandle of [5, 'River', 'a__b', 'ab', 'anon_7n044tsjxrfm5e23.woke']) {
+      expect(() =>
+        parseProjectedFeedResponse(
+          feedResponse({ entries: [{ ...projectedEntry(), authorHandle }] }),
+          { mode: 'chronological' },
+        ),
+      ).toThrowError(IndexerPayloadError);
+    }
+  });
+
   it('enforces descending finalized-time and object-ID order without duplicates', () => {
     expect(() =>
       parseProjectedFeedResponse(

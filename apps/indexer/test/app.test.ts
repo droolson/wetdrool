@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { ed25519 } from '@noble/curves/ed25519.js';
 import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,6 +12,7 @@ import {
   canonicalizeEnvelope,
   communityGovernanceStrategyCommitment,
   createPayloadBuilderIdentity,
+  encodeMultibaseBase64Url,
   getObjectId,
   signPayload,
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
@@ -510,6 +513,93 @@ describe('indexer HTTP contract', () => {
         url: '/v1/posts/not-an-object-id',
       });
       expect(invalidObjectId.statusCode).toBe(400);
+    } finally {
+      await app.close();
+      await fixture.projection.close();
+    }
+  });
+
+  it('carries the canonical active handle on every post surface and drops it on release', async () => {
+    const fixture = await indexedFixture();
+    const handle = 'river_chen';
+    const handleHash = encodeMultibaseBase64Url(
+      createHash('sha256').update(handle, 'utf8').digest(),
+    );
+    const handleClaimAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 27));
+    await fixture.indexer.ingest({
+      ...eventBase(4n, 4, '2026-07-28T14:04:00.000Z'),
+      type: 'handle-claimed',
+      handleClaimAddress,
+      identityId,
+      authority: bs58.encode(publicKey),
+      identitySequence: 3n,
+      handleHash,
+      handle,
+    });
+    const app = await buildIndexerApp({
+      projection: fixture.projection,
+      defaultNetworkId: networkId,
+      logger: false,
+    });
+
+    try {
+      const homeFeed = await app.inject({ method: 'GET', url: '/v1/feed/home?limit=20' });
+      expect(homeFeed.statusCode).toBe(200);
+      expect(homeFeed.json()).toMatchObject({
+        posts: [{ author: { handle, identityId } }],
+      });
+
+      const projectedFeed = await app.inject({
+        method: 'GET',
+        url: `/v1/feed?network=${encodeURIComponent(networkId)}&limit=20`,
+      });
+      expect(projectedFeed.statusCode).toBe(200);
+      expect(projectedFeed.json()).toMatchObject({
+        entries: [{ authorHandle: handle, author: { identityId } }],
+      });
+
+      const postDetail = await app.inject({
+        method: 'GET',
+        url: `/v1/posts/${encodeURIComponent(fixture.post.objectId)}`,
+      });
+      expect(postDetail.statusCode).toBe(200);
+      expect(postDetail.json()).toMatchObject({
+        post: { author: { handle, identityId } },
+      });
+
+      const postSearch = await app.inject({
+        method: 'GET',
+        url: '/v1/search/public?q=finalized&limit=10',
+      });
+      expect(postSearch.statusCode).toBe(200);
+      expect(postSearch.json()).toMatchObject({
+        results: [{ kind: 'post', post: { author: { handle, identityId } } }],
+      });
+
+      await fixture.indexer.ingest({
+        ...eventBase(5n, 5, '2026-07-28T14:05:00.000Z'),
+        type: 'handle-released',
+        handleClaimAddress,
+        identityId,
+        authority: bs58.encode(publicKey),
+        identitySequence: 4n,
+        handleHash,
+        handle,
+      });
+
+      const releasedFeed = await app.inject({ method: 'GET', url: '/v1/feed/home?limit=20' });
+      expect(releasedFeed.statusCode).toBe(200);
+      expect(releasedFeed.json()).toMatchObject({
+        posts: [{ author: { handle: null, identityId } }],
+      });
+      const releasedProjectedFeed = await app.inject({
+        method: 'GET',
+        url: `/v1/feed?network=${encodeURIComponent(networkId)}&limit=20`,
+      });
+      expect(releasedProjectedFeed.statusCode).toBe(200);
+      expect(releasedProjectedFeed.json()).toMatchObject({
+        entries: [{ authorHandle: null }],
+      });
     } finally {
       await app.close();
       await fixture.projection.close();

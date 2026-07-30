@@ -37,7 +37,9 @@ function PostCard({ post }: { readonly post: IndexedPost }): React.JSX.Element {
             {post.author.displayName}
           </Text>
           <Text numberOfLines={1} style={styles.authorMeta}>
-            {post.author.handle ?? compactIdentity(post.author.identityId)}
+            {post.author.handle === null
+              ? compactIdentity(post.author.identityId)
+              : `${post.author.handle}.woke`}
           </Text>
         </View>
         <Text style={styles.time}>

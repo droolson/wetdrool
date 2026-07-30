@@ -62,7 +62,7 @@ function SearchResultCard({ result }: { result: SearchItem }) {
         <StatusBadge tone="neutral">{matchLabel(result)}</StatusBadge>
         <h3>{result.displayName}</h3>
         <p className="search-result-card__handle">
-          {result.handle === null ? 'No active handle' : `@${result.handle}`}
+          {result.handle === null ? 'No active .woke name' : `${result.handle}.woke`}
         </p>
       </div>
       {result.bio ? <p>{result.bio}</p> : <p>No public bio is present in this projection.</p>}

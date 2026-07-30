@@ -33,7 +33,7 @@ export function PostCard({ post, prominent = false }: PostCardProps) {
           <div>
             <p className="post-card__name">{post.author.displayName}</p>
             <p className="post-card__handle">
-              {post.author.handle === null ? 'Handle not claimed' : `@${post.author.handle}`}
+              {post.author.handle === null ? 'No active .woke name' : `${post.author.handle}.woke`}
             </p>
           </div>
         </div>

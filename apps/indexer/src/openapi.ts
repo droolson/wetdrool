@@ -76,7 +76,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the configured network’s chronological home feed',
         description:
-          'Returns only public posts whose manifest signature, content hash, and finalized WokeSocial program anchor on Solana were verified during ingestion. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
+          'Returns only public posts whose manifest signature, content hash, and finalized WokeSocial program anchor on Solana were verified during ingestion. Ordering uses finalized event time, never the author-controlled manifest timestamp. Each author carries its canonical active handle—the lexically first active claim, matching person search—or null; a deactivated identity always carries null so this convenience field agrees with fail-closed .woke resolution.',
         parameters: [
           {
             name: 'limit',
@@ -97,7 +97,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read a chronological or following projection',
         description:
-          'Replaceable projection endpoint. The network may be explicit or resolve to the operator-configured default, and the resolved identifier is returned in every successful response. Responses are not canonical protocol state. The response names the versioned projection recipe used to compute the page; it does not assert an authenticated provider identity. Both modes return public posts only; following mode is a public convenience filter and does not claim viewer authorization. Ordering uses finalized event time, never the author-controlled manifest timestamp.',
+          'Replaceable projection endpoint. The network may be explicit or resolve to the operator-configured default, and the resolved identifier is returned in every successful response. Responses are not canonical protocol state. The response names the versioned projection recipe used to compute the page; it does not assert an authenticated provider identity. Both modes return public posts only; following mode is a public convenience filter and does not claim viewer authorization. Ordering uses finalized event time, never the author-controlled manifest timestamp. Each entry carries authorHandle—the canonical active handle or null, with deactivated identities always null; clients needing proof must use the strict /v1/woke-names resolution.',
         parameters: [
           optionalNetworkParameter,
           {
@@ -194,7 +194,7 @@ export const openApiDocument = {
         responses: {
           '200': {
             description:
-              'Consumer-safe post summary with signature, content-hash, finalized-anchor, and checkpoint metadata',
+              'Consumer-safe post summary with signature, content-hash, finalized-anchor, and checkpoint metadata. The author carries its canonical active handle or null; deactivated identities always carry null.',
           },
           '400': { description: 'Invalid protocol object identifier' },
           '404': { description: 'Post not found or tombstoned' },
