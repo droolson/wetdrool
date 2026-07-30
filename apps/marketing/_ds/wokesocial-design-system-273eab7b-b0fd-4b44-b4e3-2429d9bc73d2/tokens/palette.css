@@ -1,0 +1,75 @@
+/* Primitive palette. Never reference these directly in product code —
+   use the semantic tokens in themes.css. */
+:root {
+  /* ── Mint. The brand core. #cff0ec is the exact colour of the $WOKE mark. ── */
+  --woke-mint-50: #f4fcfa;
+  --woke-mint-100: #e4f8f4;
+  --woke-mint-200: #cff0ec;
+  --woke-mint-300: #a9e3dc;
+  --woke-mint-400: #7fd0c7;
+  --woke-mint-500: #52b6ac;
+  --woke-mint-600: #35948b;
+  --woke-mint-700: #23736c;
+  --woke-mint-800: #17544f;
+  --woke-mint-900: #0e3936;
+
+  /* ── Slate. Cool near-neutral foundation: paper at the top, ink at the bottom. ── */
+  --woke-slate-0: #ffffff;
+  --woke-slate-25: #fafbfb;
+  --woke-slate-50: #f3f6f6;
+  --woke-slate-100: #e7ecec;
+  --woke-slate-200: #d2d9da;
+  --woke-slate-300: #aeb8ba;
+  --woke-slate-400: #828d90;
+  --woke-slate-500: #616c6f;
+  --woke-slate-600: #495356;
+  --woke-slate-700: #353e40;
+  --woke-slate-800: #232a2c;
+  --woke-slate-900: #171d1f;
+  --woke-slate-950: #0e1315;
+  --woke-slate-1000: #080b0c;
+
+  /* ── Violet. Left half of the signal gradient. ── */
+  --woke-violet-100: #eee5ff;
+  --woke-violet-200: #d9c6ff;
+  --woke-violet-300: #c0a1ff;
+  --woke-violet-400: #a87eff;
+  --woke-violet-500: #8c52ff;
+  --woke-violet-600: #7534f0;
+  --woke-violet-700: #6023cd;
+  --woke-violet-800: #4a1aa1;
+  --woke-violet-900: #331273;
+
+  /* ── Ember. Right half of the signal gradient. ── */
+  --woke-ember-100: #ffece0;
+  --woke-ember-200: #ffd4b8;
+  --woke-ember-300: #ffb587;
+  --woke-ember-400: #ff914d;
+  --woke-ember-500: #f57322;
+  --woke-ember-600: #d6580c;
+  --woke-ember-700: #ab4409;
+  --woke-ember-800: #7d330b;
+
+  /* ── Semantic hues. Each has a light-surface value and a dark-surface value. ── */
+  --woke-green-300: #7ce3b7;
+  --woke-green-400: #58d3a3;
+  --woke-green-600: #14805a;
+  --woke-green-700: #0f6448;
+  --woke-amber-300: #ffd68f;
+  --woke-amber-400: #ffc46b;
+  --woke-amber-600: #8a5300;
+  --woke-amber-700: #6d4200;
+  --woke-red-300: #ffaeb4;
+  --woke-red-400: #ff8e97;
+  --woke-red-600: #c22834;
+  --woke-red-700: #9c1f29;
+  --woke-sky-300: #9adcf7;
+  --woke-sky-400: #6cc9ef;
+  --woke-sky-600: #0b6ea8;
+  --woke-sky-700: #08557f;
+
+  /* ── The signal gradient. One gradient, one angle, one job. ── */
+  --woke-gradient-signal: linear-gradient(90deg, #8c52ff 0%, #ff914d 100%); /* @kind other */
+  --woke-gradient-signal-diagonal: linear-gradient(135deg, #8c52ff 0%, #ff914d 100%); /* @kind other */
+  --woke-gradient-signal-soft: linear-gradient(90deg, rgba(140, 82, 255, 0.18) 0%, rgba(255, 145, 77, 0.18) 100%); /* @kind other */
+}

@@ -1,0 +1,39 @@
+/* WokeSocial webfonts.
+   SUBSTITUTION NOTE: the wokenet codebase specifies the licensed desktop faces
+   'Avenir Next' (UI) and 'Iowan Old Style' (display). Neither ships webfont
+   binaries in the repo, so this system substitutes the closest open variable
+   equivalents from Google Fonts. Replace these @import lines with self-hosted
+   @font-face rules once licensed WOFF2 files are available. */
+@import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&family=JetBrains+Mono:wght@400..700&family=Comic+Neue:wght@400;700&display=swap");
+
+/* Brand face. Self-hosted from the client's uploaded file (fonts/ComicSansMS3.ttf),
+   with local() first so an installed copy is used without a download. */
+@font-face {
+  font-family: "Comic Sans MS";
+  src: local("Comic Sans MS"), local("ComicSansMS"), url("../fonts/ComicSansMS3.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Comic Sans MS";
+  src: local("Comic Sans MS Bold"), local("ComicSansMS-Bold"), url("../fonts/ComicSansMS3.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  /* Nunito Sans — substitute for Avenir Next. Geometric-humanist, tall x-height,
+     variable 200–1000 so the codebase's 650/720/780/820 weights survive. */
+  --ws-font-sans: "Nunito Sans", "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* Source Serif 4 — substitute for Iowan Old Style. Sturdy oldstyle, optical
+     sizes, true italic, wide language coverage. */
+  --ws-font-display: "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Baskerville, Georgia, serif;
+  /* Intentional addition: no mono was declared in the codebase, but provenance,
+     content hashes and developer surfaces need one. */
+  --ws-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Brand text only — the header wordmark and the $WOKE lockup. Comic Sans MS is
+     the face the supplied artwork is drawn from. Comic Neue is the fallback for
+     Linux/Android, where Comic Sans MS is not installed. NEVER use this family
+     for UI, body, headings or long-form text. */
+  --ws-font-brand: "Comic Sans MS", "Comic Neue", "Chalkboard SE", cursive;
+}

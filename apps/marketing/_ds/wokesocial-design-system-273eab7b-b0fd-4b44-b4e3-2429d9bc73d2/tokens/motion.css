@@ -1,0 +1,46 @@
+/* Motion. Short and functional: 120–240ms for anything the user triggered.
+   Longer durations are reserved for narrative transitions the user is watching
+   on purpose (story advance, publish celebration). */
+:root {
+  --ws-duration-instant: 80ms; /* @kind other */ /* press / release, ripple-free state flips */
+  --ws-duration-fast: 140ms; /* @kind other */ /* hover, focus, chip toggle, icon swap */
+  --ws-duration-base: 220ms; /* @kind other */ /* sheets, menus, toasts, tab change */
+  --ws-duration-slow: 320ms; /* @kind other */ /* full-screen navigation, drawer */
+  --ws-duration-narrative: 480ms; /* @kind other */ /* story advance, publish confirmation */
+
+  --ws-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1); /* @kind other */
+  --ws-ease-entrance: cubic-bezier(0.05, 0.7, 0.1, 1); /* @kind other */
+  --ws-ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15); /* @kind other */
+  --ws-ease-emphasized: cubic-bezier(0.2, 0, 0, 1); /* @kind other */
+  --ws-ease-linear: linear; /* @kind other */
+
+  /* Composite transitions used across components. */
+  --ws-transition-control: color var(--ws-duration-fast) var(--ws-ease-standard),
+    background-color var(--ws-duration-fast) var(--ws-ease-standard),
+    border-color var(--ws-duration-fast) var(--ws-ease-standard),
+    box-shadow var(--ws-duration-fast) var(--ws-ease-standard);
+  --ws-transition-surface: opacity var(--ws-duration-base) var(--ws-ease-entrance),
+    transform var(--ws-duration-base) var(--ws-ease-entrance);
+
+  /* Press feedback. WokeSocial presses shrink; they never bounce. */
+  --ws-press-scale: 0.975; /* @kind other */
+  --ws-lift-distance: -2px; /* @kind other */
+
+  /* Haptics (Android / Seeker), mapped to HapticFeedbackConstants. */
+  --ws-haptic-select: "CONTEXT_CLICK"; /* @kind other */ /* chip, tab, toggle */
+  --ws-haptic-confirm: "CONFIRM"; /* @kind other */ /* post published, request approved */
+  --ws-haptic-reject: "REJECT"; /* @kind other */ /* transaction declined, validation fail */
+  --ws-haptic-long-press: "LONG_PRESS"; /* @kind other */ /* reaction tray, context menu */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ws-duration-instant: 1ms; /* @kind other */
+    --ws-duration-fast: 1ms; /* @kind other */
+    --ws-duration-base: 1ms; /* @kind other */
+    --ws-duration-slow: 1ms; /* @kind other */
+    --ws-duration-narrative: 1ms; /* @kind other */
+    --ws-press-scale: 1; /* @kind other */
+    --ws-lift-distance: 0px; /* @kind other */
+  }
+}

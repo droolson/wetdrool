@@ -1,0 +1,45 @@
+/* Layout. Window size classes follow the Android/Material adaptive model so the
+   web and Seeker builds describe the same four states. */
+:root {
+  --ws-breakpoint-compact: 37.5rem; /* @kind other */ /* 600px  — 1 pane, bottom nav */
+  --ws-breakpoint-medium: 56.5rem; /* @kind other */ /* 904px  — 1 pane + rail */
+  --ws-breakpoint-expanded: 77.5rem; /* @kind other */ /* 1240px — 2 panes + rail */
+  --ws-breakpoint-large: 100rem; /* @kind other */ /* 1600px — 3 panes + expanded sidebar */
+
+  /* Content widths */
+  --ws-width-feed: 40rem;      /* 640px — the post column, everywhere */
+  --ws-width-prose: 45rem;     /* 720px — long-form policy/safety reading */
+  --ws-width-shell: 76rem;     /* 1216px — app shell max */
+  --ws-width-shell-wide: 90rem;/* 1440px — marketing max */
+  --ws-width-rail: 5.5rem;     /* 88px — icon-only navigation rail */
+  --ws-width-sidebar: 17rem;   /* 272px — labelled navigation sidebar */
+  --ws-width-aside: 21rem;     /* 336px — trends / community context pane */
+  --ws-width-sheet: 32rem;     /* 512px — bottom sheet / side sheet max */
+
+  /* Gutters by size class */
+  --ws-gutter-compact: 1rem;
+  --ws-gutter-medium: 1.5rem;
+  --ws-gutter-expanded: 2rem;
+
+  /* Safe areas. Always add these to fixed chrome; never assume zero. */
+  --ws-safe-top: env(safe-area-inset-top, 0px); /* @kind other */
+  --ws-safe-bottom: env(safe-area-inset-bottom, 0px); /* @kind other */
+  --ws-safe-left: env(safe-area-inset-left, 0px); /* @kind other */
+  --ws-safe-right: env(safe-area-inset-right, 0px); /* @kind other */
+
+  /* Fixed chrome heights, used to offset scroll padding so focus is never
+     hidden behind a sticky bar (WCAG 2.2 focus-not-obscured). */
+  --ws-appbar-height: 3.5rem;
+  --ws-bottomnav-height: 3.75rem;
+  --ws-scroll-padding-top: calc(var(--ws-appbar-height) + var(--ws-space-3));
+
+  /* Z-index ladder. Nothing invents its own number. */
+  --ws-z-base: 0; /* @kind other */
+  --ws-z-sticky: 10; /* @kind other */
+  --ws-z-nav: 50; /* @kind other */
+  --ws-z-scrim: 90; /* @kind other */
+  --ws-z-sheet: 100; /* @kind other */
+  --ws-z-dialog: 110; /* @kind other */
+  --ws-z-toast: 120; /* @kind other */
+  --ws-z-skip-link: 200; /* @kind other */
+}

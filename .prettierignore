@@ -18,3 +18,7 @@ docs/
 
 # Cargo formatting owns Rust sources.
 programs/
+
+# Design-canvas and static launch-site artifacts; reformatting x-dc templates
+# or the synced design-system bundle would break canvas round-tripping.
+apps/marketing/

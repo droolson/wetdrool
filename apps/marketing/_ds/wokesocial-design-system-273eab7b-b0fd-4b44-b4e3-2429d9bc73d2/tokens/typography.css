@@ -1,0 +1,109 @@
+/* Type scale. Every step is a size / line-height / weight / tracking triple —
+   never set a font-size without its line-height partner.
+   Root is 16px. Values are stated in px for spec fidelity and rem for output. */
+:root {
+  /* Display — Source Serif 4. Marketing heroes, page titles, empty-state headlines. */
+  --ws-display-xl-size: clamp(3rem, 6vw, 4.75rem);
+  --ws-display-xl-line: 0.94; /* @kind other */
+  --ws-display-xl-weight: 650; /* @kind other */
+  --ws-display-xl-tracking: -0.055em; /* @kind other */
+  --ws-display-lg-size: clamp(2.5rem, 5vw, 3.5rem);
+  --ws-display-lg-line: 0.96; /* @kind other */
+  --ws-display-lg-weight: 650; /* @kind other */
+  --ws-display-lg-tracking: -0.05em; /* @kind other */
+  --ws-display-md-size: 2.5rem;
+  --ws-display-md-line: 1; /* @kind other */
+  --ws-display-md-weight: 650; /* @kind other */
+  --ws-display-md-tracking: -0.045em; /* @kind other */
+  --ws-display-sm-size: 2rem;
+  --ws-display-sm-line: 1.05; /* @kind other */
+  --ws-display-sm-weight: 650; /* @kind other */
+  --ws-display-sm-tracking: -0.04em; /* @kind other */
+
+  /* Title — Source Serif 4. Card, sheet, panel and section titles. */
+  --ws-title-lg-size: 1.75rem;
+  --ws-title-lg-line: 1.15; /* @kind other */
+  --ws-title-lg-weight: 650; /* @kind other */
+  --ws-title-lg-tracking: -0.03em; /* @kind other */
+  --ws-title-md-size: 1.375rem;
+  --ws-title-md-line: 1.2; /* @kind other */
+  --ws-title-md-weight: 650; /* @kind other */
+  --ws-title-md-tracking: -0.025em; /* @kind other */
+  --ws-title-sm-size: 1.125rem;
+  --ws-title-sm-line: 1.3; /* @kind other */
+  --ws-title-sm-weight: 650; /* @kind other */
+  --ws-title-sm-tracking: -0.02em; /* @kind other */
+
+  /* Heading — Nunito Sans. In-product hierarchy inside dense surfaces. */
+  --ws-heading-lg-size: 1.25rem;
+  --ws-heading-lg-line: 1.3; /* @kind other */
+  --ws-heading-lg-weight: 750; /* @kind other */
+  --ws-heading-lg-tracking: -0.015em; /* @kind other */
+  --ws-heading-md-size: 1.0625rem;
+  --ws-heading-md-line: 1.35; /* @kind other */
+  --ws-heading-md-weight: 750; /* @kind other */
+  --ws-heading-md-tracking: -0.01em; /* @kind other */
+  --ws-heading-sm-size: 0.9375rem;
+  --ws-heading-sm-line: 1.4; /* @kind other */
+  --ws-heading-sm-weight: 780; /* @kind other */
+  --ws-heading-sm-tracking: -0.005em; /* @kind other */
+
+  /* Body — Nunito Sans. */
+  --ws-body-lg-size: 1.125rem;
+  --ws-body-lg-line: 1.6; /* @kind other */
+  --ws-body-lg-weight: 400; /* @kind other */
+  --ws-body-md-size: 1rem;
+  --ws-body-md-line: 1.6; /* @kind other */
+  --ws-body-md-weight: 400; /* @kind other */
+  --ws-body-sm-size: 0.875rem;
+  --ws-body-sm-line: 1.55; /* @kind other */
+  --ws-body-sm-weight: 400; /* @kind other */
+
+  /* Post — Source Serif 4. The reading voice of the feed. Serif is the single
+     biggest reason a WokeSocial feed does not look like every other timeline. */
+  --ws-post-size: 1.1875rem;
+  --ws-post-line: 1.5; /* @kind other */
+  --ws-post-weight: 400; /* @kind other */
+  --ws-post-tracking: -0.005em; /* @kind other */
+  --ws-post-lead-size: clamp(1.5rem, 4vw, 2.25rem);
+  --ws-post-lead-line: 1.32; /* @kind other */
+
+  /* Label — Nunito Sans. Buttons, tabs, chips, form labels. */
+  --ws-label-lg-size: 0.9375rem;
+  --ws-label-lg-line: 1.2; /* @kind other */
+  --ws-label-lg-weight: 720; /* @kind other */
+  --ws-label-lg-tracking: -0.01em; /* @kind other */
+  --ws-label-md-size: 0.875rem;
+  --ws-label-md-line: 1.2; /* @kind other */
+  --ws-label-md-weight: 720; /* @kind other */
+  --ws-label-md-tracking: -0.005em; /* @kind other */
+  --ws-label-sm-size: 0.8125rem;
+  --ws-label-sm-line: 1.2; /* @kind other */
+  --ws-label-sm-weight: 750; /* @kind other */
+  --ws-label-sm-tracking: 0; /* @kind other */
+
+  /* Metadata & caption — timestamps, counts, helper text. Never below 13px. */
+  --ws-meta-size: 0.8125rem;
+  --ws-meta-line: 1.45; /* @kind other */
+  --ws-meta-weight: 500; /* @kind other */
+  --ws-caption-size: 0.75rem;
+  --ws-caption-line: 1.45; /* @kind other */
+  --ws-caption-weight: 500; /* @kind other */
+  --ws-caption-tracking: 0.01em; /* @kind other */
+
+  /* Eyebrow — the one uppercase style in the system. */
+  --ws-eyebrow-size: 0.75rem;
+  --ws-eyebrow-line: 1.35; /* @kind other */
+  --ws-eyebrow-weight: 800; /* @kind other */
+  --ws-eyebrow-tracking: 0.12em; /* @kind other */
+
+  /* Code — provenance, hashes, developer surfaces. */
+  --ws-code-size: 0.8125rem;
+  --ws-code-line: 1.5; /* @kind other */
+  --ws-code-weight: 500; /* @kind other */
+
+  /* Measure. Reading columns never exceed these. */
+  --ws-measure-post: 46ch; /* @kind other */
+  --ws-measure-prose: 68ch; /* @kind other */
+  --ws-measure-lede: 56ch; /* @kind other */
+}

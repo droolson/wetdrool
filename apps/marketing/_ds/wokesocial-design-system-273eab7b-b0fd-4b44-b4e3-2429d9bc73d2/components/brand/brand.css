@@ -1,0 +1,18 @@
+.ws-brand{display:inline-flex;align-items:center;gap:.6rem;color:var(--ws-brand-mint);text-decoration:none}
+:root[data-theme="light"] .ws-brand{color:var(--ws-text-primary)}
+.ws-brand__mark{display:block;flex:0 0 auto;height:2rem;width:2rem}
+.ws-brand__mark--ink,.ws-brand__mark--white{display:none}
+:root[data-theme="light"] .ws-brand__mark--mint{display:none}
+:root[data-theme="light"] .ws-brand__mark--ink{display:block}
+:root[data-theme="contrast"] .ws-brand__mark--mint{display:none}
+:root[data-theme="contrast"] .ws-brand__mark--white{display:block}
+.ws-brand__word{display:flex;align-items:baseline;gap:.18rem;font-family:var(--ws-font-brand);font-size:1.125rem;font-weight:700;letter-spacing:-0.02em;line-height:1}
+.ws-brand__word em{font-family:var(--ws-font-brand);font-style:normal;font-weight:700;font-size:1em;letter-spacing:-0.02em;color:inherit}
+.ws-brand--lg .ws-brand__mark{height:2.75rem;width:2.75rem}
+.ws-brand--lg .ws-brand__word{font-size:1.5rem}
+.ws-brand--sm .ws-brand__mark{height:1.5rem;width:1.5rem}
+.ws-brand--sm .ws-brand__word{font-size:.95rem}
+.ws-eyebrow{display:block;margin:0;color:var(--ws-accent-ember);font-family:var(--ws-font-sans);font-size:var(--ws-eyebrow-size);font-weight:var(--ws-eyebrow-weight);letter-spacing:var(--ws-eyebrow-tracking);line-height:var(--ws-eyebrow-line);text-transform:uppercase}
+.ws-eyebrow--violet{color:var(--ws-accent-violet)}
+.ws-eyebrow--mint{color:var(--ws-brand-on-subtle)}
+.ws-eyebrow--muted{color:var(--ws-text-muted)}

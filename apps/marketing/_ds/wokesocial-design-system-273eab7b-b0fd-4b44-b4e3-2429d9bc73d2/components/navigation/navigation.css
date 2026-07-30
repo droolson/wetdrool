@@ -1,0 +1,25 @@
+.ws-tabs{display:flex;gap:.25rem;overflow-x:auto;border-block-end:1px solid var(--ws-divider);scrollbar-width:thin}
+.ws-tabs__tab{display:inline-flex;align-items:center;gap:.4rem;min-height:var(--ws-target-min);padding-inline:1rem;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ws-text-muted);font-family:var(--ws-font-sans);font-size:var(--ws-label-md-size);font-weight:750;white-space:nowrap;text-decoration:none;cursor:pointer;transition:var(--ws-transition-control)}
+.ws-tabs__tab:hover{color:var(--ws-text-primary)}
+.ws-tabs__tab[aria-selected=true],.ws-tabs__tab[aria-current=page]{color:var(--ws-text-primary);border-bottom-color:var(--ws-brand-primary)}
+.ws-tabs--pill{border:0;padding-block:.4rem}
+.ws-tabs--pill .ws-tabs__tab{border:1px solid transparent;border-radius:var(--ws-radius-pill)}
+.ws-tabs--pill .ws-tabs__tab[aria-selected=true],.ws-tabs--pill .ws-tabs__tab[aria-current=page]{color:var(--ws-brand-on-primary);background:var(--ws-brand-primary);border-color:transparent}
+.ws-segmented{display:inline-flex;padding:.2rem;border:1px solid var(--ws-border-default);border-radius:var(--ws-radius-pill);background:var(--ws-surface-raised)}
+.ws-segmented button{min-height:2.25rem;padding:.4rem .75rem;border:0;border-radius:var(--ws-radius-pill);background:transparent;color:var(--ws-text-muted);font-family:var(--ws-font-sans);font-size:var(--ws-label-sm-size);font-weight:730;cursor:pointer;transition:var(--ws-transition-control)}
+.ws-segmented button[aria-pressed=true]{color:var(--ws-text-primary);background:var(--ws-state-selected-surface);box-shadow:inset 0 0 0 1px var(--ws-state-selected-border)}
+.ws-dock{position:sticky;bottom:0;z-index:var(--ws-z-nav);display:flex;padding-block-end:var(--ws-safe-bottom);border-block-start:1px solid var(--ws-divider);background:var(--ws-surface-nav);backdrop-filter:var(--ws-blur-nav);-webkit-backdrop-filter:var(--ws-blur-nav)}
+.ws-dock__item{display:grid;flex:1;place-items:center;gap:.15rem;min-height:var(--ws-bottomnav-height);padding-block:.5rem;color:var(--ws-text-muted);font-family:var(--ws-font-sans);font-size:.6875rem;font-weight:730;text-decoration:none;transition:var(--ws-transition-control)}
+.ws-dock__item[aria-current=page]{color:var(--ws-text-primary)}
+.ws-dock__glyph{position:relative;display:grid;place-items:center;width:3.25rem;height:1.9rem;border-radius:var(--ws-radius-pill);transition:var(--ws-transition-control)}
+.ws-dock__item[aria-current=page] .ws-dock__glyph{background:var(--ws-brand-subtle)}
+.ws-dock__badge{position:absolute;top:-.1rem;right:.7rem;min-width:1rem;height:1rem;padding-inline:.25rem;border-radius:var(--ws-radius-pill);background:var(--ws-accent-ember-fill);color:#0e1315;font-size:.625rem;font-weight:800;line-height:1rem;text-align:center}
+.ws-rail{display:grid;align-content:start;gap:.25rem;width:var(--ws-width-rail);padding-block:var(--ws-space-4);border-inline-end:1px solid var(--ws-divider)}
+.ws-rail--labelled{width:var(--ws-width-sidebar);padding-inline:var(--ws-space-3)}
+.ws-rail__item{display:flex;align-items:center;gap:var(--ws-space-3);min-height:var(--ws-target-min);padding-inline:.75rem;border-radius:var(--ws-radius-pill);color:var(--ws-text-secondary);font-family:var(--ws-font-sans);font-size:var(--ws-label-lg-size);font-weight:700;text-decoration:none;transition:var(--ws-transition-control)}
+.ws-rail:not(.ws-rail--labelled) .ws-rail__item{justify-content:center;padding-inline:0;margin-inline:auto;width:3rem}
+.ws-rail__item:hover{color:var(--ws-text-primary);background:var(--ws-state-hover-overlay)}
+.ws-rail__item[aria-current=page]{color:var(--ws-brand-on-subtle);background:var(--ws-brand-subtle)}
+.ws-theme-picker{display:inline-flex;padding:.2rem;border:1px solid var(--ws-border-default);border-radius:var(--ws-radius-pill);background:var(--ws-surface-raised)}
+.ws-theme-picker button{display:inline-flex;align-items:center;gap:.35rem;min-height:2.1rem;padding:.4rem .65rem;border:0;border-radius:var(--ws-radius-pill);background:transparent;color:var(--ws-text-muted);font-family:var(--ws-font-sans);font-size:var(--ws-label-sm-size);font-weight:730;cursor:pointer;transition:var(--ws-transition-control)}
+.ws-theme-picker button[aria-pressed=true]{color:var(--ws-text-primary);background:var(--ws-state-selected-surface)}

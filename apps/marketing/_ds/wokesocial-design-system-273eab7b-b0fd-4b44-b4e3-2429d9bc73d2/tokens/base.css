@@ -1,0 +1,125 @@
+/* Base layer. Element defaults every WokeSocial surface inherits.
+   Deliberately small: this system styles components, not documents. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 20rem;
+  scroll-padding-top: var(--ws-scroll-padding-top);
+  background: var(--ws-surface-canvas);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ws-text-primary);
+  background: var(--ws-surface-canvas);
+  font-family: var(--ws-font-sans);
+  font-size: var(--ws-body-md-size);
+  line-height: var(--ws-body-md-line);
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Focus. One indicator everywhere: a 3px brand ring plus a halo so it stays
+   visible on mint, on media and on the signal gradient alike. */
+:focus-visible {
+  outline: var(--ws-border-width-focus) solid var(--ws-focus-ring);
+  outline-offset: var(--ws-focus-offset);
+  box-shadow: 0 0 0 calc(var(--ws-focus-offset) + var(--ws-border-width-focus)) var(--ws-focus-halo);
+}
+
+::selection {
+  color: var(--ws-brand-on-primary);
+  background: var(--ws-brand-mint);
+}
+
+a {
+  color: var(--ws-text-link);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.17em;
+}
+
+a:hover {
+  color: var(--ws-text-link-hover);
+}
+
+a:visited {
+  color: var(--ws-text-link-visited);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+::placeholder {
+  color: var(--ws-text-placeholder);
+  opacity: 1;
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--ws-font-mono);
+  font-size: var(--ws-code-size);
+}
+
+img,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+hr {
+  border: 0;
+  border-top: var(--ws-border-width-hairline) solid var(--ws-divider);
+  margin: var(--ws-space-5) 0;
+}
+
+/* Utility every WokeSocial surface needs. Icon-only controls pair a glyph with
+   one of these labels; never ship an icon button without one. */
+.ws-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Reduced transparency: swap every blurred surface for an opaque one. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --ws-blur-nav: none; /* @kind other */
+    --ws-blur-overlay: none; /* @kind other */
+    --ws-surface-nav: var(--ws-surface-canvas);
+    --ws-surface-overlay: var(--ws-surface-raised);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,37 @@
+@keyframes ws-spin{to{transform:rotate(1turn)}}
+.ws-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--ws-space-2);min-height:var(--ws-target-min);padding-inline:1.25rem;border:1px solid transparent;border-radius:var(--ws-radius-pill);font-family:var(--ws-font-sans);font-size:var(--ws-label-lg-size);font-weight:var(--ws-label-lg-weight);letter-spacing:var(--ws-label-lg-tracking);line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;transition:var(--ws-transition-control),transform var(--ws-duration-instant) var(--ws-ease-standard)}
+.ws-btn:active:not([disabled]):not([aria-disabled=true]){transform:scale(var(--ws-press-scale))}
+.ws-btn[disabled],.ws-btn[aria-disabled=true]{opacity:var(--ws-state-disabled-opacity);cursor:not-allowed;transform:none}
+.ws-btn[data-loading=true]{cursor:progress}
+.ws-btn--sm{min-height:2.5rem;padding-inline:.875rem;font-size:var(--ws-label-md-size)}
+.ws-btn--lg{min-height:3.5rem;padding-inline:1.625rem;font-size:1.0625rem}
+.ws-btn--block{width:100%}
+.ws-btn--primary{background:var(--ws-brand-primary);color:var(--ws-brand-on-primary)}
+.ws-btn--primary:hover:not([disabled]):not([aria-disabled=true]){background:var(--ws-brand-primary-hover)}
+.ws-btn--secondary{background:transparent;border-color:var(--ws-border-strong);color:var(--ws-text-primary)}
+.ws-btn--secondary:hover:not([disabled]):not([aria-disabled=true]){background:var(--ws-state-hover-overlay);border-color:var(--ws-brand-subtle-border)}
+.ws-btn--quiet{background:transparent;color:var(--ws-text-link)}
+.ws-btn--quiet:hover:not([disabled]):not([aria-disabled=true]){background:var(--ws-brand-subtle)}
+.ws-btn--signal{background:var(--ws-accent-gradient);color:var(--ws-text-on-accent);font-weight:800}
+.ws-btn--signal:hover:not([disabled]):not([aria-disabled=true]){filter:brightness(1.07)}
+.ws-btn--danger{background:var(--ws-status-danger-fill);color:var(--ws-status-on-danger-fill)}
+.ws-btn--danger:hover:not([disabled]):not([aria-disabled=true]){filter:brightness(1.1)}
+.ws-btn__spinner{width:1.05em;height:1.05em;flex:0 0 auto;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:ws-spin 700ms linear infinite}
+@media (prefers-reduced-motion:reduce){.ws-btn__spinner{animation-duration:2s}}
+.ws-iconbtn{display:inline-grid;place-items:center;width:var(--ws-target-min);height:var(--ws-target-min);flex:0 0 auto;padding:0;border:1px solid transparent;border-radius:var(--ws-radius-circle);background:transparent;color:var(--ws-text-secondary);cursor:pointer;transition:var(--ws-transition-control),transform var(--ws-duration-instant) var(--ws-ease-standard)}
+.ws-iconbtn:hover:not([disabled]){background:var(--ws-state-hover-overlay);color:var(--ws-text-primary)}
+.ws-iconbtn:active:not([disabled]){transform:scale(var(--ws-press-scale))}
+.ws-iconbtn[disabled]{opacity:var(--ws-state-disabled-opacity);cursor:not-allowed}
+.ws-iconbtn--outlined{border-color:var(--ws-border-default)}
+.ws-iconbtn--filled{background:var(--ws-brand-primary);color:var(--ws-brand-on-primary)}
+.ws-iconbtn--filled:hover:not([disabled]){background:var(--ws-brand-primary-hover);color:var(--ws-brand-on-primary)}
+.ws-iconbtn--danger{color:var(--ws-status-danger)}
+.ws-iconbtn--danger:hover:not([disabled]){background:var(--ws-status-danger-surface);color:var(--ws-status-danger)}
+.ws-iconbtn[aria-pressed=true],.ws-iconbtn[data-selected=true]{background:var(--ws-brand-subtle);color:var(--ws-brand-on-subtle);border-color:var(--ws-brand-subtle-border)}
+.ws-iconbtn--inline{width:2.25rem;height:2.25rem}
+.ws-fab{display:inline-flex;align-items:center;justify-content:center;gap:var(--ws-space-2);height:3.5rem;min-width:3.5rem;padding-inline:1.25rem;border:0;border-radius:var(--ws-radius-md);background:var(--ws-brand-primary);color:var(--ws-brand-on-primary);font-family:var(--ws-font-sans);font-size:var(--ws-label-lg-size);font-weight:780;letter-spacing:-0.01em;box-shadow:var(--ws-elevation-2);cursor:pointer;transition:var(--ws-transition-control),transform var(--ws-duration-instant) var(--ws-ease-standard)}
+.ws-fab--icon{padding:0;width:3.5rem}
+.ws-fab--signal{background:var(--ws-accent-gradient);color:var(--ws-text-on-accent)}
+.ws-fab:hover{background:var(--ws-brand-primary-hover)}
+.ws-fab--signal:hover{background:var(--ws-accent-gradient);filter:brightness(1.07)}
+.ws-fab:active{transform:scale(var(--ws-press-scale))}

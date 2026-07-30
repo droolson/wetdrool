@@ -54,3 +54,4 @@ infra/.state/
 tmp/
 *.pid
 *.pid.lock
+.vercel/

@@ -1,0 +1,11 @@
+/* Component stylesheet index. Every group's rules ship with the one
+   `styles.css` link a consumer adds. Classes are prefixed `ws-`. */
+@import url("icon/icon.css");
+@import url("brand/brand.css");
+@import url("actions/actions.css");
+@import url("forms/forms.css");
+@import url("display/display.css");
+@import url("navigation/navigation.css");
+@import url("feedback/feedback.css");
+@import url("social/social.css");
+@import url("trust/trust.css");

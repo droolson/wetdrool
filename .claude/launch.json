@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "marketing",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["apps/marketing/scripts/dev-server.mjs"],
+      "port": 3100
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+/* Radius, borders, dividers, elevation, scrims.
+   Rule: radius scales with the size of the container, never with its importance.
+   Pill is reserved for controls that carry a text label — buttons, chips, tabs.
+   It is never used on a content container. */
+:root {
+  --ws-radius-xs: 0.5rem;   /* 8px  — inputs, small tiles, media thumbs */
+  --ws-radius-sm: 0.75rem;  /* 12px — nested surfaces, menu items, toasts */
+  --ws-radius-md: 1.25rem;  /* 20px — post cards, community cards, sheets */
+  --ws-radius-lg: 2rem;     /* 32px — full-width panels, hero blocks, dialogs */
+  --ws-radius-pill: 999px;
+  --ws-radius-circle: 50%;
+  --ws-radius-media: 1rem;  /* 16px — image/video frames inside a card */
+
+  /* Borders. Hairlines do the structural work; shadow only signals lift. */
+  --ws-border-width-hairline: 1px;
+  --ws-border-width-strong: 2px;
+  --ws-border-width-focus: 3px;
+  --ws-focus-offset: 3px;
+
+  /* Elevation. Four levels, no more. Elevation 0 is the default: flat surface
+     separated by a hairline. Reach for shadow only when something floats over
+     content the user was already reading. */
+  --ws-elevation-0: none; /* @kind other */
+  --ws-elevation-1: 0 1px 2px rgba(8, 11, 12, 0.32), 0 8px 24px rgba(8, 11, 12, 0.24); /* @kind other */
+  --ws-elevation-2: 0 2px 6px rgba(8, 11, 12, 0.36), 0 18px 44px rgba(8, 11, 12, 0.34); /* @kind other */
+  --ws-elevation-3: 0 8px 18px rgba(8, 11, 12, 0.4), 0 34px 90px rgba(8, 11, 12, 0.46); /* @kind other */
+
+  /* Scrims sit under sheets, dialogs and vertical-video chrome. */
+  --ws-scrim-soft: rgba(8, 11, 12, 0.44); /* @kind other */
+  --ws-scrim-strong: rgba(8, 11, 12, 0.72); /* @kind other */
+  --ws-scrim-media-top: linear-gradient(180deg, rgba(8, 11, 12, 0.72) 0%, transparent 100%); /* @kind other */
+  --ws-scrim-media-bottom: linear-gradient(0deg, rgba(8, 11, 12, 0.78) 0%, transparent 100%); /* @kind other */
+
+  /* Blur is reserved for navigation, floating controls and temporary overlays.
+     Never behind primary reading content. Falls back to an opaque surface when
+     prefers-reduced-transparency is set. */
+  --ws-blur-nav: blur(18px) saturate(125%); /* @kind other */
+  --ws-blur-overlay: blur(28px) saturate(115%); /* @kind other */
+}
+
+:root[data-theme="light"] {
+  --ws-elevation-1: 0 1px 2px rgba(23, 29, 31, 0.06), 0 10px 28px rgba(23, 29, 31, 0.08); /* @kind other */
+  --ws-elevation-2: 0 2px 6px rgba(23, 29, 31, 0.08), 0 18px 44px rgba(23, 29, 31, 0.1); /* @kind other */
+  --ws-elevation-3: 0 8px 18px rgba(23, 29, 31, 0.1), 0 34px 90px rgba(23, 29, 31, 0.16); /* @kind other */
+  --ws-scrim-soft: rgba(23, 29, 31, 0.4); /* @kind other */
+  --ws-scrim-strong: rgba(23, 29, 31, 0.66); /* @kind other */
+}
+
+:root[data-theme="contrast"] {
+  --ws-elevation-1: none; /* @kind other */
+  --ws-elevation-2: none; /* @kind other */
+  --ws-elevation-3: none; /* @kind other */
+  --ws-blur-nav: none; /* @kind other */
+  --ws-blur-overlay: none; /* @kind other */
+  --ws-scrim-soft: rgba(0, 0, 0, 0.85); /* @kind other */
+  --ws-scrim-strong: rgba(0, 0, 0, 0.95); /* @kind other */
+}

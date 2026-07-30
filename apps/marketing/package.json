@@ -1,0 +1,12 @@
+{
+  "name": "@wokesocial/marketing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public WokeSocial marketing launch site (static)",
+  "license": "MIT",
+  "scripts": {
+    "build": "node ./scripts/verify-static.mjs",
+    "dev": "node ./scripts/dev-server.mjs",
+    "start": "node ./scripts/dev-server.mjs"
+  }
+}

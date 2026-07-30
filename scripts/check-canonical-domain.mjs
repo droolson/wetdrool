@@ -18,6 +18,8 @@ const ignoredDirectories = new Set([
 ]);
 const intentionalLegacyReferences = new Set([
   '.env.example',
+  'apps/marketing/_ds/wokesocial-design-system-273eab7b-b0fd-4b44-b4e3-2429d9bc73d2/_ds_bundle.js',
+  'apps/marketing/_ds/wokesocial-design-system-273eab7b-b0fd-4b44-b4e3-2429d9bc73d2/readme.md',
   'FINAL_REPORT.md',
   'README.md',
   'apps/auth-service/README.md',

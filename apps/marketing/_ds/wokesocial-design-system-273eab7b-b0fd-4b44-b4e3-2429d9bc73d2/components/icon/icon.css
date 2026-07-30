@@ -1,0 +1,2 @@
+.ws-icon{display:inline-block;flex:0 0 auto;vertical-align:middle;color:currentColor}
+.ws-icon--missing{border:1px dashed var(--ws-border-strong);border-radius:3px;opacity:.6}

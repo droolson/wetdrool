@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://woke.social/sitemap.xml

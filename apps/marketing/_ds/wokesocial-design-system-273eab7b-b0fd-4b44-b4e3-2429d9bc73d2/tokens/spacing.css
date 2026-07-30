@@ -1,0 +1,27 @@
+/* 4px base unit. Steps 1–7 mirror the wokenet codebase exactly; 8–10 extend it. */
+:root {
+  --ws-space-0: 0;
+  --ws-space-1: 0.25rem;   /* 4px  — icon/label gap */
+  --ws-space-2: 0.5rem;    /* 8px  — inside chips, tight stacks */
+  --ws-space-3: 0.75rem;   /* 12px — control inner padding */
+  --ws-space-4: 1rem;      /* 16px — default gap, card padding on compact */
+  --ws-space-5: 1.5rem;    /* 24px — card padding, section gap */
+  --ws-space-6: 2rem;      /* 32px — panel padding */
+  --ws-space-7: 3rem;      /* 48px — between page sections */
+  --ws-space-8: 4.5rem;    /* 72px — major section break */
+  --ws-space-9: 6rem;      /* 96px — hero breathing room */
+  --ws-space-10: 8rem;     /* 128px — full-bleed editorial breaks */
+
+  /* Density. Comfortable is the default; compact is a user setting, not a
+     breakpoint response. Both keep touch targets at 48px. */
+  --ws-density-row-comfortable: 3.5rem;  /* 56px list row */
+  --ws-density-row-compact: 3rem;        /* 48px list row */
+  --ws-density-stack-comfortable: var(--ws-space-4);
+  --ws-density-stack-compact: var(--ws-space-3);
+
+  /* Touch. 48px is the floor on every platform, not just Android. */
+  --ws-target-min: 3rem;       /* 48px */
+  --ws-target-comfortable: 3.25rem;
+  --ws-target-inline: 2.75rem; /* 44px — allowed only for inline text controls
+                                  inside a 48px-tall row */
+}

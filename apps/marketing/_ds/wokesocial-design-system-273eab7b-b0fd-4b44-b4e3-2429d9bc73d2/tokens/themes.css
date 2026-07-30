@@ -1,0 +1,271 @@
+/* Semantic tokens. Product code and components reference ONLY these.
+   Dark is the default theme: the $WOKE mark is a mint drawing on near-black,
+   and mint only reads as luminous against ink. Light and high-contrast are
+   opt-in via data-theme on <html> and are equally specified — neither is a
+   filter over the other. */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --ws-surface-canvas: #0e1315;
+  --ws-surface-sunken: #080b0c;
+  --ws-surface-raised: #171d1f;
+  --ws-surface-card: #171d1f;
+  --ws-surface-card-hover: #1e2527;
+  --ws-surface-input: #0b1011;
+  --ws-surface-overlay: rgba(23, 29, 31, 0.86);
+  --ws-surface-nav: rgba(14, 19, 21, 0.78);
+  --ws-surface-inverse: #f3f6f6;
+  --ws-text-on-inverse: #0e1315;
+
+  /* Text */
+  --ws-text-primary: #f3f6f6;
+  --ws-text-secondary: #aeb8ba;
+  --ws-text-muted: #828d90;
+  --ws-text-placeholder: #6c7679;
+  --ws-text-disabled: #5b6467;
+  --ws-text-link: #cff0ec;
+  --ws-text-link-hover: #e4f8f4;
+  --ws-text-link-visited: #a9e3dc;
+
+  /* Borders & dividers */
+  --ws-border-subtle: rgba(207, 240, 236, 0.1);
+  --ws-border-default: rgba(207, 240, 236, 0.16);
+  --ws-border-strong: rgba(207, 240, 236, 0.3);
+  --ws-divider: rgba(207, 240, 236, 0.12);
+
+  /* Brand. --ws-brand-mint is the literal logo colour and never changes;
+     --ws-brand-primary is the themed action colour. */
+  --ws-brand-mint: #cff0ec;
+  --ws-brand-primary: #cff0ec;
+  --ws-brand-primary-hover: #e4f8f4;
+  --ws-brand-primary-press: #a9e3dc;
+  --ws-brand-on-primary: #0e1315;
+  --ws-brand-subtle: rgba(207, 240, 236, 0.1);
+  --ws-brand-subtle-hover: rgba(207, 240, 236, 0.16);
+  --ws-brand-subtle-border: rgba(207, 240, 236, 0.26);
+  --ws-brand-on-subtle: #cff0ec;
+
+  /* Accents. The signal gradient marks WokeSocial's own voice: brand moments,
+     selection, progress, verification. It is never a background for body text. */
+  --ws-accent-violet: #a87eff;
+  --ws-accent-violet-fill: #8c52ff;
+  --ws-accent-ember: #ff914d;
+  --ws-accent-ember-fill: #ff914d;
+  --ws-accent-gradient: var(--woke-gradient-signal); /* @kind other */
+  --ws-accent-gradient-diagonal: var(--woke-gradient-signal-diagonal); /* @kind other */
+  --ws-accent-gradient-soft: var(--woke-gradient-signal-soft); /* @kind other */
+  --ws-text-on-accent: #0e1315;
+
+  /* Status. Every status pairs colour with an icon and a word — never colour alone. */
+  --ws-status-success: #58d3a3;
+  --ws-status-success-surface: rgba(88, 211, 163, 0.12);
+  --ws-status-success-border: rgba(88, 211, 163, 0.36);
+  --ws-status-warning: #ffc46b;
+  --ws-status-warning-surface: rgba(255, 196, 107, 0.12);
+  --ws-status-warning-border: rgba(255, 196, 107, 0.36);
+  --ws-status-danger: #ff8e97;
+  --ws-status-danger-surface: rgba(255, 142, 151, 0.12);
+  --ws-status-danger-border: rgba(255, 142, 151, 0.38);
+  --ws-status-danger-fill: #c22834;
+  --ws-status-on-danger-fill: #ffffff;
+  --ws-status-info: #6cc9ef;
+  --ws-status-info-surface: rgba(108, 201, 239, 0.12);
+  --ws-status-info-border: rgba(108, 201, 239, 0.36);
+  --ws-status-moderation: #a87eff;
+  --ws-status-moderation-surface: rgba(168, 126, 255, 0.14);
+  --ws-status-moderation-border: rgba(168, 126, 255, 0.38);
+
+  /* Network & provenance states. Never say "confirmed" before it is confirmed. */
+  --ws-chain-verified: var(--ws-status-success);
+  --ws-chain-pending: var(--ws-status-warning);
+  --ws-chain-failed: var(--ws-status-danger);
+  --ws-chain-degraded: var(--ws-status-warning);
+  --ws-chain-offline: var(--ws-text-muted);
+  --ws-chain-readonly: var(--ws-status-info);
+
+  /* Interaction */
+  --ws-state-hover-overlay: rgba(207, 240, 236, 0.07);
+  --ws-state-press-overlay: rgba(207, 240, 236, 0.12);
+  --ws-state-selected-surface: rgba(207, 240, 236, 0.12);
+  --ws-state-selected-border: rgba(207, 240, 236, 0.34);
+  --ws-state-disabled-opacity: 0.45; /* @kind other */
+  --ws-focus-ring: #cff0ec;
+  --ws-focus-halo: #0e1315;
+
+  /* Avatar fallbacks — 6 deterministic tints, assigned by hash of the account id. */
+  --ws-avatar-1: #23736c;
+  --ws-avatar-2: #4a1aa1;
+  --ws-avatar-3: #ab4409;
+  --ws-avatar-4: #085578;
+  --ws-avatar-5: #6d4200;
+  --ws-avatar-6: #353e40;
+  --ws-avatar-ink: #f3f6f6;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ws-surface-canvas: #f3f6f6;
+  --ws-surface-sunken: #e7ecec;
+  --ws-surface-raised: #ffffff;
+  --ws-surface-card: #ffffff;
+  --ws-surface-card-hover: #fafbfb;
+  --ws-surface-input: #ffffff;
+  --ws-surface-overlay: rgba(255, 255, 255, 0.92);
+  --ws-surface-nav: rgba(243, 246, 246, 0.82);
+  --ws-surface-inverse: #171d1f;
+  --ws-text-on-inverse: #f3f6f6;
+
+  --ws-text-primary: #171d1f;
+  --ws-text-secondary: #495356;
+  --ws-text-muted: #616c6f;
+  --ws-text-placeholder: #6c7679;
+  --ws-text-disabled: #828d90;
+  --ws-text-link: #6023cd;
+  --ws-text-link-hover: #4a1aa1;
+  --ws-text-link-visited: #4a1aa1;
+
+  --ws-border-subtle: rgba(23, 29, 31, 0.09);
+  --ws-border-default: rgba(23, 29, 31, 0.16);
+  --ws-border-strong: rgba(23, 29, 31, 0.3);
+  --ws-divider: rgba(23, 29, 31, 0.12);
+
+  --ws-brand-mint: #cff0ec;
+  --ws-brand-primary: #171d1f;
+  --ws-brand-primary-hover: #232a2c;
+  --ws-brand-primary-press: #0e1315;
+  --ws-brand-on-primary: #cff0ec;
+  --ws-brand-subtle: #e4f8f4;
+  --ws-brand-subtle-hover: #cff0ec;
+  --ws-brand-subtle-border: #a9e3dc;
+  --ws-brand-on-subtle: #17544f;
+
+  --ws-accent-violet: #6023cd;
+  --ws-accent-violet-fill: #7534f0;
+  --ws-accent-ember: #ab4409;
+  --ws-accent-ember-fill: #ff914d;
+  --ws-accent-gradient: var(--woke-gradient-signal); /* @kind other */
+  --ws-accent-gradient-diagonal: var(--woke-gradient-signal-diagonal); /* @kind other */
+  --ws-accent-gradient-soft: var(--woke-gradient-signal-soft); /* @kind other */
+  --ws-text-on-accent: #0e1315;
+
+  --ws-status-success: #0f6448;
+  --ws-status-success-surface: #e5f6ef;
+  --ws-status-success-border: #93d3b8;
+  --ws-status-warning: #6d4200;
+  --ws-status-warning-surface: #fdf1dc;
+  --ws-status-warning-border: #e0be7c;
+  --ws-status-danger: #9c1f29;
+  --ws-status-danger-surface: #fdecee;
+  --ws-status-danger-border: #e7a2a8;
+  --ws-status-danger-fill: #9c1f29;
+  --ws-status-on-danger-fill: #ffffff;
+  --ws-status-info: #08557f;
+  --ws-status-info-surface: #e4f2fa;
+  --ws-status-info-border: #96c9e4;
+  --ws-status-moderation: #4a1aa1;
+  --ws-status-moderation-surface: #efe7fd;
+  --ws-status-moderation-border: #bda3f0;
+
+  --ws-state-hover-overlay: rgba(23, 29, 31, 0.05);
+  --ws-state-press-overlay: rgba(23, 29, 31, 0.09);
+  --ws-state-selected-surface: #e4f8f4;
+  --ws-state-selected-border: #7fd0c7;
+  --ws-state-disabled-opacity: 0.45; /* @kind other */
+  --ws-focus-ring: #6023cd;
+  --ws-focus-halo: #ffffff;
+
+  --ws-avatar-1: #17544f;
+  --ws-avatar-2: #4a1aa1;
+  --ws-avatar-3: #7d330b;
+  --ws-avatar-4: #08557f;
+  --ws-avatar-5: #6d4200;
+  --ws-avatar-6: #353e40;
+  --ws-avatar-ink: #ffffff;
+}
+
+/* High contrast. Pure black canvas, pure white structure, no shadow, no blur,
+   no translucency. Every status colour clears 7:1 on black. */
+:root[data-theme="contrast"] {
+  color-scheme: dark;
+
+  --ws-surface-canvas: #000000;
+  --ws-surface-sunken: #000000;
+  --ws-surface-raised: #000000;
+  --ws-surface-card: #000000;
+  --ws-surface-card-hover: #14181a;
+  --ws-surface-input: #000000;
+  --ws-surface-overlay: #000000;
+  --ws-surface-nav: #000000;
+  --ws-surface-inverse: #ffffff;
+  --ws-text-on-inverse: #000000;
+
+  --ws-text-primary: #ffffff;
+  --ws-text-secondary: #ffffff;
+  --ws-text-muted: #e7ecec;
+  --ws-text-placeholder: #d2d9da;
+  --ws-text-disabled: #aeb8ba;
+  --ws-text-link: #cff0ec;
+  --ws-text-link-hover: #ffffff;
+  --ws-text-link-visited: #cff0ec;
+
+  --ws-border-subtle: #ffffff;
+  --ws-border-default: #ffffff;
+  --ws-border-strong: #ffffff;
+  --ws-divider: #ffffff;
+
+  --ws-brand-mint: #cff0ec;
+  --ws-brand-primary: #cff0ec;
+  --ws-brand-primary-hover: #ffffff;
+  --ws-brand-primary-press: #a9e3dc;
+  --ws-brand-on-primary: #000000;
+  --ws-brand-subtle: #000000;
+  --ws-brand-subtle-hover: #14181a;
+  --ws-brand-subtle-border: #cff0ec;
+  --ws-brand-on-subtle: #cff0ec;
+
+  --ws-accent-violet: #c0a1ff;
+  --ws-accent-violet-fill: #c0a1ff;
+  --ws-accent-ember: #ffb587;
+  --ws-accent-ember-fill: #ffb587;
+  --ws-accent-gradient: linear-gradient(90deg, #c0a1ff 0%, #ffb587 100%); /* @kind other */
+  --ws-accent-gradient-diagonal: linear-gradient(135deg, #c0a1ff 0%, #ffb587 100%); /* @kind other */
+  --ws-accent-gradient-soft: none; /* @kind other */
+  --ws-text-on-accent: #000000;
+
+  --ws-status-success: #7ce3b7;
+  --ws-status-success-surface: #000000;
+  --ws-status-success-border: #7ce3b7;
+  --ws-status-warning: #ffd68f;
+  --ws-status-warning-surface: #000000;
+  --ws-status-warning-border: #ffd68f;
+  --ws-status-danger: #ffaeb4;
+  --ws-status-danger-surface: #000000;
+  --ws-status-danger-border: #ffaeb4;
+  --ws-status-danger-fill: #ffaeb4;
+  --ws-status-on-danger-fill: #000000;
+  --ws-status-info: #9adcf7;
+  --ws-status-info-surface: #000000;
+  --ws-status-info-border: #9adcf7;
+  --ws-status-moderation: #c0a1ff;
+  --ws-status-moderation-surface: #000000;
+  --ws-status-moderation-border: #c0a1ff;
+
+  --ws-state-hover-overlay: rgba(255, 255, 255, 0.16);
+  --ws-state-press-overlay: rgba(255, 255, 255, 0.26);
+  --ws-state-selected-surface: #14181a;
+  --ws-state-selected-border: #cff0ec;
+  --ws-state-disabled-opacity: 0.6; /* @kind other */
+  --ws-focus-ring: #ffef62;
+  --ws-focus-halo: #000000;
+
+  --ws-avatar-1: #000000;
+  --ws-avatar-2: #000000;
+  --ws-avatar-3: #000000;
+  --ws-avatar-4: #000000;
+  --ws-avatar-5: #000000;
+  --ws-avatar-6: #000000;
+  --ws-avatar-ink: #ffffff;
+}
