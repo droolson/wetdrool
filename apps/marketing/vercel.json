@@ -56,6 +56,36 @@
       "source": "/alexbtc420/",
       "destination": "https://alexbtc420.woke.social",
       "permanent": false
+    },
+    {
+      "source": "/hailmary",
+      "destination": "/HAILMARY",
+      "permanent": false
+    },
+    {
+      "source": "/hailmary/",
+      "destination": "/HAILMARY",
+      "permanent": false
+    },
+    {
+      "source": "/HailMary",
+      "destination": "/HAILMARY",
+      "permanent": false
+    },
+    {
+      "source": "/HailMary/",
+      "destination": "/HAILMARY",
+      "permanent": false
+    },
+    {
+      "source": "/order-hail-mary",
+      "destination": "/HAILMARY",
+      "permanent": false
+    },
+    {
+      "source": "/order-hail-mary/",
+      "destination": "/HAILMARY",
+      "permanent": false
     }
   ],
   "rewrites": [
@@ -63,12 +93,6 @@
     { "source": "/docs/", "destination": "/docs.html" },
     { "source": "/HAILMARY", "destination": "/HAILMARY.html" },
     { "source": "/HAILMARY/", "destination": "/HAILMARY.html" },
-    { "source": "/hailmary", "destination": "/HAILMARY.html" },
-    { "source": "/hailmary/", "destination": "/HAILMARY.html" },
-    { "source": "/HailMary", "destination": "/HAILMARY.html" },
-    { "source": "/HailMary/", "destination": "/HAILMARY.html" },
-    { "source": "/order-hail-mary", "destination": "/HAILMARY.html" },
-    { "source": "/order-hail-mary/", "destination": "/HAILMARY.html" },
     { "source": "/landing", "destination": "/index.html" },
     { "source": "/Landing.dc.html", "destination": "/index.html" },
     { "source": "/Docs.dc.html", "destination": "/docs.html" }
