@@ -1309,3 +1309,135 @@
     flex-direction: column;
   }
 }
+
+/* Sites, Woke AI, and launchpad preview surfaces */
+
+.site-preset-option {
+  border: 1px solid var(--surface-border, rgba(95, 44, 131, 0.2));
+  border-radius: 0.9rem;
+  cursor: pointer;
+  display: block;
+  padding: 1rem;
+}
+
+.site-preset-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.site-preset-option[data-selected='true'] {
+  border-color: var(--wokesocial-plum, #5f2c83);
+  box-shadow: 0 0 0 2px var(--wokesocial-plum, #5f2c83);
+}
+
+.site-preset-option[data-featured='true'] {
+  background: linear-gradient(160deg, rgba(95, 44, 131, 0.08), transparent 65%);
+}
+
+.site-preset-option:focus-within {
+  outline: 3px solid var(--wokesocial-sky, #4f9dde);
+  outline-offset: 2px;
+}
+
+.site-preset-option__body {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.site-preset-option__label {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.site-preview {
+  border: 1px solid var(--surface-border, rgba(95, 44, 131, 0.2));
+  border-radius: 1rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.site-preview__hero h3 {
+  margin: 0.25rem 0;
+}
+
+.site-preview[data-accent='coral'] .site-preview__hero h3 {
+  color: var(--wokesocial-coral, #ed6a5a);
+}
+
+.site-preview[data-accent='plum'] .site-preview__hero h3 {
+  color: var(--wokesocial-plum, #5f2c83);
+}
+
+.site-preview[data-accent='sky'] .site-preview__hero h3 {
+  color: var(--wokesocial-sky, #4f9dde);
+}
+
+.site-preview__footer {
+  border-top: 1px solid var(--surface-border, rgba(95, 44, 131, 0.2));
+  font-size: 0.85rem;
+  padding-top: 0.75rem;
+}
+
+.site-generation-request {
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.woke-ai-transcript {
+  border: 1px solid var(--surface-border, rgba(95, 44, 131, 0.2));
+  border-radius: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+  max-height: 24rem;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.woke-ai-transcript__entry {
+  margin: 0;
+}
+
+.woke-ai-transcript__entry[data-role='system-notice'] {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.woke-ai-transcript__entry strong {
+  display: block;
+}
+
+.launchpad-agent-endpoints {
+  display: grid;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.launchpad-agent-endpoints li {
+  border: 1px solid var(--surface-border, rgba(95, 44, 131, 0.2));
+  border-radius: 0.9rem;
+  padding: 1rem;
+}
+
+.launchpad-agent-endpoints p {
+  margin: 0 0 0.4rem;
+}
+
+.profile-links {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.profile-links__url {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  word-break: break-all;
+}

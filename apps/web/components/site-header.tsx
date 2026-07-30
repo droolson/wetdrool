@@ -8,11 +8,14 @@ const PRIMARY_LINKS = [
   { href: '/explore', label: 'Explore' },
   { href: '/feeds', label: 'Feeds' },
   { href: '/communities', label: 'Communities' },
+  { href: '/launchpad', label: 'Launchpad' },
+  { href: '/ai', label: 'Woke AI' },
   { href: '/search', label: 'Search' },
 ] as const;
 
 const MOBILE_LINKS = [
   ...PRIMARY_LINKS,
+  { href: '/sites', label: 'Sites' },
   { href: '/notifications', label: 'Notifications' },
   { href: '/messages', label: 'Messages' },
   { href: '/stories', label: 'Stories' },

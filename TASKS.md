@@ -802,6 +802,28 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
     Verified by the indexer (210), indexer-client (64), and web (260) unit
     suites on 2026-07-29. Share surfaces and public-cluster surfaces
     remain open.
+- [ ] Ship handle subdomains (`*.woke.social`), `handle@woke.social` E2EE
+  mail, the Woke AI site builder, the platform assistant, and the feed-native
+  Solana token launchpad.
+  - Partial evidence (front-end flows and prepared contracts only): `/sites`
+    derives the injective identity bundle for any canonical handle — the
+    DNS-safe subdomain (underscore→hyphen; handles never contain hyphens)
+    and the verbatim `handle@woke.social` mail address, with E2EE-between-
+    identities semantics and non-deployed status stated — offers the Crypto
+    Project (featured), Personal Blog, and Work Portfolio presets with
+    device-local drafts, a deterministic local preview, and the exact frozen
+    Woke AI generation request (Qwen3 Coder Next, static bundle, no
+    trackers, truthful-claims constraint); `/ai` is the platform assistant
+    surface over the self-hosted model catalog (Kairos default) with a
+    fail-closed `WOKESOCIAL_AI_INFERENCE_URL` runtime reader — messages stay
+    on-device and no inference occurs; `/launchpad` previews the fair
+    bonding-curve Solana token launch flow (SPL/Token-2022), sentiment
+    discovery, and the prepared noncustodial agent API, with launching and
+    trading explicitly disabled behind named gates. Verified by the web unit
+    suite (22 files / 271 cases) on 2026-07-30. No site is served, no model
+    runs, no token exists, and no trade can execute; the mint-aware ABI,
+    bonding-curve program, publishing service, and inference runtime all
+    remain open gated work.
 - [ ] Specify and implement custom-name eligibility, reservation,
   commit/reveal, expiry/grace/cooldown, recovery, transfer, reserved-name,
   impersonation/trademark, appeal, refund, and anti-squatting policy.
