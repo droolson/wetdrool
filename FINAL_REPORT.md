@@ -21,7 +21,7 @@ signed Seeker APK or distribution artifact exists.
 The release decision remains **NO-GO for production**.
 
 The configured source remote is the private GitHub repository
-`wokesocial/wokesocial`; the local repository/workspace identity is `wokenet`.
+`AlexBTC420/wokesocial`; the local repository/workspace identity is `wokenet`.
 This is source hosting, not a deployment or release artifact.
 
 ## Architecture decision

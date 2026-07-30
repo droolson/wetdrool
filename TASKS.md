@@ -56,14 +56,14 @@ Dependencies: repository audit.
 
 ### Monorepo and toolchains
 
-- [x] Initialize Git and configure the private `wokesocial/wokesocial` source
+- [x] Initialize Git and configure the private `AlexBTC420/wokesocial` source
   remote.
 - [x] Set the repository identity to `wokenet` and enforce the platform/protocol
   naming boundary.
   - Evidence: the local repository directory and root package are both
     `wokenet`; `pnpm naming:check` enforces `WokeSocial`/`wokesocial` for the
     platform and `WokeNet`/`wokenet` for the protocol and local repository
-    identity. `origin` points to the private `wokesocial/wokesocial` source
+    identity. `origin` points to the private `AlexBTC420/wokesocial` source
     repository; this hosting name does not change the local WokeNet protocol
     namespace.
 - [x] Add a strict pnpm workspace and Turborepo pipeline.
@@ -740,7 +740,7 @@ Dependencies: all applicable product phases.
 Dependencies: the verified social publication foundation, plus the specific
 privacy, security, economic, and operational gates named below. The complete
 design is in [docs/PLATFORM_EXPANSION.md](docs/PLATFORM_EXPANSION.md) and is
-tracked by [GitHub epic #12](https://github.com/wokesocial/wokesocial/issues/12).
+tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12).
 
 - [ ] Define and verify decentralized long-form and vertical short-form video
   manifests, browser upload/playback, replaceable delivery, accessibility, and

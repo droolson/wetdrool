@@ -21,7 +21,7 @@ understand the verified boundary before changing status language.
 
 ## Access and collaboration
 
-The GitHub repository, `wokesocial/wokesocial`, is currently private and
+The GitHub repository, `AlexBTC420/wokesocial`, is currently private and
 invite-only. People who already have a direct channel to
 [@AlexBTC420](https://github.com/AlexBTC420) may request access there. A public
 contributor-intake channel has not yet opened. After access is granted:

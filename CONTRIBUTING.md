@@ -12,7 +12,7 @@ read it before joining project discussions.
 
 ## Repository access
 
-The GitHub repository, `wokesocial/wokesocial`, is currently private. It is not
+The GitHub repository, `AlexBTC420/wokesocial`, is currently private. It is not
 yet an open public issue tracker or public fork target. Access is invite-only.
 Prospective contributors who already have a direct channel to
 [@AlexBTC420](https://github.com/AlexBTC420) may request access and an initial

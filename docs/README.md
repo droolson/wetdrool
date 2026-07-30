@@ -102,7 +102,7 @@ verified intake channels; follow the exact warnings in those documents.
 | -------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [TASKS.md](../TASKS.md)                                              | Checkbox-level implementation and verification boundary             |
 | [FINAL_REPORT.md](../FINAL_REPORT.md)                                | Current evidence snapshot and production NO-GO decision             |
-| [Git history](https://github.com/wokesocial/wokesocial/commits/main) | Change history in the private source repository; access is required |
+| [Git history](https://github.com/AlexBTC420/wokesocial/commits/main) | Change history in the private source repository; access is required |
 
 An unchecked broad task can contain a tested subset. A checked task is not a
 substitute for production deployment, external audit, independent operation,
