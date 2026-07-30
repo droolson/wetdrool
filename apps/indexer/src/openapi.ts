@@ -292,6 +292,30 @@ export const openApiDocument = {
         },
       },
     },
+    '/v1/identities/{identityId}/profile': {
+      get: {
+        summary: 'Read one identity’s public profile projection',
+        description:
+          'Exact-identifier read of the current identity state, its verified public profile manifest projection when one exists, and its canonical active handle. Only explicitly public profile fields are ever projected; protected fields are filtered at ingestion and never served. A deactivated identity remains readable as honest historical state with active=false and a null handle, matching fail-closed .woke resolution, but this route is not a discovery surface. Responses are noncanonical and gated on a checkpoint covering the identity and profile slots.',
+        parameters: [
+          {
+            name: 'identityId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+          },
+        ],
+        responses: {
+          '200': {
+            description:
+              'Identity state, public profile projection or null, canonical active handle or null, and checkpoint metadata',
+          },
+          '400': { description: 'Invalid identity identifier' },
+          '404': { description: 'Identity not found' },
+          '503': { description: 'The projection checkpoint does not cover this identity yet' },
+        },
+      },
+    },
     '/v1/communities': {
       get: {
         summary: 'List verified public communities',

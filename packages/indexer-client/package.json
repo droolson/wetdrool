@@ -18,6 +18,10 @@
       "types": "./dist/src/community.d.ts",
       "import": "./dist/src/community.js"
     },
+    "./identity-profile": {
+      "types": "./dist/src/identity-profile.d.ts",
+      "import": "./dist/src/identity-profile.js"
+    },
     "./projected-feed": {
       "types": "./dist/src/projected-feed.d.ts",
       "import": "./dist/src/projected-feed.js"

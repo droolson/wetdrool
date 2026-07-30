@@ -171,7 +171,9 @@ requirement rather than an implemented control. The open indexer now
 serializes each author's canonical active handle into feed, post-detail, and
 post-search projections—null for deactivated identities, matching fail-closed
 resolution—and the web and Seeker read surfaces render `handle.woke` with an
-honest no-active-name state. Profile-surface rendering, share surfaces, and
+honest no-active-name state. The web profile route reads one exact identity's
+checkpoint-covered public projection and renders its name, `handle.woke`, and
+identity receipt with honest degraded states. Share surfaces and
 public-cluster execution remain required.
 
 ### 4.3 Custom-name eligibility

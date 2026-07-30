@@ -789,8 +789,19 @@ tracked by [GitHub epic #12](https://github.com/wokesocial/wokesocial/issues/12)
     web post card, search results, and Seeker read-only feed render
     `handle.woke` with an honest no-active-name state. Verified by the
     indexer (209), indexer-client (59), web (260), and mobile (12) unit
-    suites on 2026-07-29. Profile-surface rendering, share surfaces, and
-    public-cluster surfaces remain open.
+    suites on 2026-07-29.
+  - Partial evidence (profile surface): `GET
+    /v1/identities/{identityId}/profile` serves one exact identity's
+    checkpoint-covered state, its ingestion-filtered public profile
+    projection, and its canonical active handle (always null for a
+    deactivated identity); the strict client parser rejects broken
+    identity/handle/deactivation bindings and stale checkpoints; and the
+    web profile route renders the display name, `handle.woke`, public
+    bio/pronouns/links, an independently checkable identity receipt, and
+    honest deactivated/not-found/degraded/invalid-identifier states.
+    Verified by the indexer (210), indexer-client (64), and web (260) unit
+    suites on 2026-07-29. Share surfaces and public-cluster surfaces
+    remain open.
 - [ ] Specify and implement custom-name eligibility, reservation,
   commit/reveal, expiry/grace/cooldown, recovery, transfer, reserved-name,
   impersonation/trademark, appeal, refund, and anti-squatting policy.

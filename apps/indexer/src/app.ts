@@ -653,6 +653,68 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     },
   );
 
+  app.get<{ Params: { identityId: string } }>(
+    '/v1/identities/:identityId/profile',
+    async (request, reply) => {
+      const parsed = identityParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        void reply.code(400);
+        return { error: { code: 'invalid-identity-id', message: 'Identity ID is invalid.' } };
+      }
+      const identity = await options.projection.getIdentity(parsed.data.identityId);
+      if (identity === undefined) {
+        void reply.code(404);
+        return { error: { code: 'not-found', message: 'Identity was not found.' } };
+      }
+      const profile = await options.projection.getProfile(identity.identityId);
+      const checkpoint = await options.projection.checkpoint(identity.networkId);
+      if (
+        checkpoint === undefined ||
+        checkpoint < identity.updatedSlot ||
+        (profile !== undefined && checkpoint < profile.updatedSlot)
+      ) {
+        void reply.code(503);
+        return {
+          error: {
+            code: 'projection-incomplete',
+            message: 'The projection checkpoint does not cover this identity yet.',
+          },
+        };
+      }
+      const handles = identity.active
+        ? await options.projection.getHandlesByIdentity(identity.identityId)
+        : [];
+      return {
+        canonical: false,
+        network: identity.networkId,
+        identity: {
+          identityId: identity.identityId,
+          identityAddress: identity.identityAddress,
+          rootAuthority: identity.rootAuthority,
+          active: identity.active,
+          identitySequence: identity.identitySequence.toString(),
+          updatedSlot: identity.updatedSlot.toString(),
+          ...(identity.deactivatedAt === undefined
+            ? {}
+            : { deactivatedAt: identity.deactivatedAt }),
+        },
+        handle: handles[0]?.handle ?? null,
+        profile:
+          profile === undefined
+            ? null
+            : {
+                objectId: profile.objectId,
+                cid: profile.cid,
+                payloadHash: profile.payloadHash,
+                content: profile.content,
+                updatedSlot: profile.updatedSlot.toString(),
+                updatedAt: profile.updatedAt,
+              },
+        meta: responseMetaForCheckpoint(checkpoint),
+      };
+    },
+  );
+
   app.get(
     '/v1/communities',
     { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },

@@ -639,9 +639,15 @@ Continue in this order:
     `/v1/posts/{objectId}`, and post-kind search results; the strict
     projected-feed client parses it fail-closed; and the web post
     card/search results plus the Seeker read-only feed render `handle.woke`
-    with an honest no-active-name state. The profile route remains a
-    placeholder with no data path, and share surfaces and public-cluster
-    rendering remain open.
+    with an honest no-active-name state. The profile route is now connected:
+    `GET /v1/identities/{identityId}/profile` serves checkpoint-covered
+    identity state, the ingestion-filtered public profile projection, and
+    the canonical active handle (null for deactivated identities), a strict
+    client parser rejects broken bindings, and the web profile page renders
+    the display name, `handle.woke`, public bio/pronouns/links, honest
+    deactivated/not-found/degraded/invalid-identifier states, and an
+    independently checkable identity receipt. Share surfaces and
+    public-cluster rendering remain open.
 - [ ] Implement issue #15’s non-transferable reputation ledger and separately
       accounted spendable points only after abuse simulations and audit rules.
 - [ ] Keep points, AI credits, future redemption claims, and any future `$WOKE`

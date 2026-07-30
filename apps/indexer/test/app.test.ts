@@ -606,6 +606,74 @@ describe('indexer HTTP contract', () => {
     }
   });
 
+  it('serves one exact identity profile with its canonical active handle', async () => {
+    const fixture = await indexedFixture();
+    const handle = 'river_chen';
+    const handleHash = encodeMultibaseBase64Url(
+      createHash('sha256').update(handle, 'utf8').digest(),
+    );
+    await fixture.indexer.ingest({
+      ...eventBase(4n, 4, '2026-07-28T14:04:00.000Z'),
+      type: 'handle-claimed',
+      handleClaimAddress: bs58.encode(Uint8Array.from({ length: 32 }, () => 28)),
+      identityId,
+      authority: bs58.encode(publicKey),
+      identitySequence: 3n,
+      handleHash,
+      handle,
+    });
+    const app = await buildIndexerApp({
+      projection: fixture.projection,
+      defaultNetworkId: networkId,
+      logger: false,
+    });
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/v1/identities/${encodeURIComponent(identityId)}/profile`,
+      });
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body).toMatchObject({
+        canonical: false,
+        network: networkId,
+        identity: {
+          identityId,
+          identityAddress,
+          rootAuthority: bs58.encode(publicKey),
+          active: true,
+          identitySequence: '3',
+        },
+        handle,
+        profile: {
+          content: {
+            displayName: profileContent.displayName,
+            bio: profileContent.bio,
+          },
+        },
+        meta: { checkpointSlot: 4 },
+      });
+      expect(body.identity.deactivatedAt).toBeUndefined();
+      expect(body.profile.content.location).toBeUndefined();
+
+      const unknown = await app.inject({
+        method: 'GET',
+        url: `/v1/identities/${encodeURIComponent(`wokesocialid:v1:${networkId}:${bs58.encode(Uint8Array.from({ length: 32 }, () => 29))}`)}/profile`,
+      });
+      expect(unknown.statusCode).toBe(404);
+
+      const invalid = await app.inject({
+        method: 'GET',
+        url: '/v1/identities/not-an-identity/profile',
+      });
+      expect(invalid.statusCode).toBe(400);
+    } finally {
+      await app.close();
+      await fixture.projection.close();
+    }
+  });
+
   it('serializes a valid empty profile display name with the consumer fallback', async () => {
     const fixture = await indexedFixture({ ...profileContent, displayName: '' });
     const app = await buildIndexerApp({
