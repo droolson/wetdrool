@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">WetDrool mark</title>
+  <desc id="desc">Two spectral droplet curves form a heart-shaped vessel around a signal eye and central drop.</desc>
+  <defs>
+    <linearGradient id="spectrum" x1="18" y1="20" x2="111" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13d7ff"/>
+      <stop offset=".27" stop-color="#187cff"/>
+      <stop offset=".52" stop-color="#9d4dff"/>
+      <stop offset=".76" stop-color="#f13bca"/>
+      <stop offset="1" stop-color="#ffb25e"/>
+    </linearGradient>
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g fill="none" stroke="url(#spectrum)" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
+    <path d="M55 14c2 21-8 31-19 44-14 17-9 39 26 57-4-20-13-32-27-40 14-9 24-20 29-34" stroke-width="8"/>
+    <path d="M73 14c-2 21 8 31 19 44 14 17 9 39-26 57 4-20 13-32 27-40-14-9-24-20-29-34" stroke-width="8"/>
+    <path d="M64 38c-8 9-9 14 0 21 9-7 8-12 0-21Z" fill="url(#spectrum)" stroke-width="3"/>
+  </g>
+  <path d="M42 67c6-9 13-13 22-13s16 4 22 13c-6 9-13 13-22 13s-16-4-22-13Z" fill="#fff"/>
+  <circle cx="64" cy="67" r="9" fill="#050505"/>
+  <circle cx="64" cy="67" r="4.5" fill="#35e2ee"/>
+</svg>

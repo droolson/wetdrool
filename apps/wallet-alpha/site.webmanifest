@@ -1,0 +1,17 @@
+{
+  "name": "WetDrool — WOKE.NET protocol alpha",
+  "short_name": "WetDrool",
+  "description": "Wallet-entry, encrypted, local-first protocol proof.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#030303",
+  "icons": [
+    {
+      "src": "/assets/wetdrool-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

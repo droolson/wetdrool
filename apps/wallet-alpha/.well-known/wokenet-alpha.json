@@ -1,0 +1,38 @@
+{
+  "schema": "https://wetdrool.com/schemas/wokenet-alpha-status-v1.json",
+  "product": "WetDrool",
+  "protocol": "DroolNet",
+  "researchLayer": "WOKE.NET",
+  "status": "web-bootstrap",
+  "walletEntry": {
+    "active": true,
+    "kind": "local-solana-message-signature",
+    "transactionRequested": false,
+    "tokenRequirement": null
+  },
+  "publicNetwork": false,
+  "onchainWrites": false,
+  "adultContent": false,
+  "payments": false,
+  "tokenRail": {
+    "symbol": "$WET",
+    "status": "mint-pending",
+    "mint": null,
+    "entryGate": false
+  },
+  "messaging": false,
+  "publicUploads": false,
+  "storage": [
+    "encrypted-browser-local",
+    "portable-json-export"
+  ],
+  "objectIds": "cidv1-raw-sha256",
+  "privacy": "pseudonymous-not-anonymous",
+  "claims": {
+    "onionRouting": false,
+    "directP2P": false,
+    "independentPeers": 0,
+    "externalAudit": false
+  },
+  "updatedAt": "2026-08-04T00:00:00.000Z"
+}
