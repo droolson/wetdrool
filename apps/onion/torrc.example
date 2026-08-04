@@ -1,0 +1,19 @@
+## Example Tor hidden service for WetDrool onion gateway
+## Copy to a secure path, adjust, never commit real keys.
+##
+## 1) Run onion app locally:  cd apps/onion && node scripts/dev-server.mjs
+## 2) Or proxy to Vercel production URL via a local reverse proxy on 127.0.0.1:3080
+## 3) Start Tor with this config
+
+HiddenServiceDir /var/lib/tor/wetdrool_onion
+HiddenServiceVersion 3
+# Onion HTTP → local gateway (no JS app)
+HiddenServicePort 80 127.0.0.1:3080
+
+# Optional: only allow this service
+# SocksPort 0
+# ControlPort 0
+
+## After start, hostname file:
+##   cat /var/lib/tor/wetdrool_onion/hostname
+## Publish that .onion (or link from wetdrool.com/onion once live).
