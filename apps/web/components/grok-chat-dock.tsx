@@ -29,29 +29,63 @@ export function GrokChatDock() {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [transcript]);
 
-  function send(text: string) {
+  async function send(text: string) {
     const trimmed = text.trim();
     if (trimmed === '') return;
     const mode = typeof window === 'undefined' ? 'sfw' : readContentMode(window.localStorage);
-    const nextUser = [...transcript.filter((t) => t.role === 'user' || t.role === 'assistant'), { role: 'user' as const, text: trimmed }];
-    const prepared = prepareGrokRequest(
-      nextUser.map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.text })),
-      mode,
-      'web-dock',
-    );
+    const history = [
+      ...transcript.filter((t) => t.role === 'user' || t.role === 'assistant'),
+      { role: 'user' as const, text: trimmed },
+    ];
 
-    const notice =
-      runtime.kind === 'frontend-only'
-        ? 'Frontend-only mode: your message stayed on this device. Add WETDROOL_GROK_API_KEY to enable live Grok 4.5 replies.'
-        : 'API key detected, but the server route is not wired yet — nothing left this device.';
-
-    setTranscript((current) => [
-      ...current,
-      { role: 'user', text: trimmed },
-      { role: 'system-notice', text: notice },
-    ]);
+    setTranscript((current) => [...current, { role: 'user', text: trimmed }]);
     setInput('');
-    void prepared;
+
+    try {
+      const res = await fetch('/api/v1/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          nsfwMode: mode,
+          messages: history.map((m) => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.text,
+          })),
+        }),
+      });
+      const body = (await res.json()) as {
+        ok?: boolean;
+        kind?: string;
+        text?: string;
+        detail?: string;
+      };
+
+      if (res.ok && body.ok && typeof body.text === 'string' && body.text.trim() !== '') {
+        setTranscript((current) => [...current, { role: 'assistant', text: body.text!.trim() }]);
+        return;
+      }
+
+      const detail =
+        typeof body.detail === 'string'
+          ? body.detail
+          : runtime.kind === 'frontend-only'
+            ? 'No xAI key on server. Set WETDROOL_GROK_API_KEY or XAI_API_KEY for live Grok 4.5.'
+            : 'Chat unavailable right now.';
+      setTranscript((current) => [...current, { role: 'system-notice', text: detail }]);
+      void prepareGrokRequest(
+        history.map((m) => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.text,
+        })),
+        mode,
+        'web-dock',
+      );
+    } catch {
+      setTranscript((current) => [
+        ...current,
+        { role: 'system-notice', text: 'Network error reaching /api/v1/ai/chat.' },
+      ]);
+    }
   }
 
   if (!open) {

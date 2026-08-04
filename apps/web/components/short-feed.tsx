@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { StatusBadge } from '@wetdrool/ui';
 
@@ -34,6 +34,9 @@ export function ShortFeed() {
   const [ageOk, setAgeOk] = useState(false);
   const [ledger, setLedger] = useState<PointsLedgerV1 | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [clips, setClips] = useState<readonly RankedShort[]>([]);
+  const [source, setSource] = useState<'api' | 'local'>('local');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMode(readDiscoveryMode(window.localStorage));
@@ -42,7 +45,26 @@ export function ShortFeed() {
     setLedger(loadLedger(window.localStorage));
   }, []);
 
-  const clips = useMemo(() => rankShorts(mode, 24), [mode]);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void (async () => {
+      const { fetchShorts } = await import('@/lib/product-client');
+      const result = await fetchShorts(mode, 24);
+      if (cancelled) return;
+      if (result.kind === 'ok' && result.data.items.length > 0) {
+        setClips(result.data.items);
+        setSource('api');
+      } else {
+        setClips(rankShorts(mode, 24));
+        setSource('local');
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode]);
 
   const selectMode = useCallback((next: DiscoveryMode) => {
     writeDiscoveryMode(window.localStorage, next);
@@ -104,7 +126,9 @@ export function ShortFeed() {
           <h1>Drool shorts</h1>
         </div>
         <div className="shorts-app__meta">
-          <StatusBadge tone="pending">synthetic fixtures</StatusBadge>
+          <StatusBadge tone="pending">
+            {loading ? 'loading…' : source === 'api' ? 'api · synthetic' : 'local · synthetic'}
+          </StatusBadge>
           <span className="points-pill" title="Local points ledger">
             {ledger?.available ?? 0} pts
           </span>
