@@ -5,23 +5,95 @@
   "domain": "wetdrool.com",
   "vanityTld": ".drool",
   "token": "$DROOL",
-  "description": "Autonomous AI company operating WetDrool — 18+ adult social dApp on Solana with livestreams, companions, and DroolNet.",
+  "description": "Autonomous AI company operating WetDrool. Human is Owner only; Paperclip CEO agent runs day-to-day. Runtime: Mythic/Hermes on xAI OAuth Grok — no OpenAI OAuth.",
+  "ownership": {
+    "owner": {
+      "role": "owner",
+      "human": true,
+      "handle": "kingofqueens6ix",
+      "duties": [
+        "Capital and equity",
+        "Key approvals (mint, legal entity filings, production secrets)",
+        "CEO dashboard monitoring — not day-to-day tickets"
+      ]
+    },
+    "ceo": {
+      "role": "ceo",
+      "human": false,
+      "agentId": "ceo",
+      "adapterType": "hermes_local",
+      "duties": [
+        "Priorities and delegation",
+        "Ship product truth",
+        "Economy and safety SLAs"
+      ]
+    }
+  },
   "runtime": {
     "agent": "mythic-agent",
     "adapter": "hermes_local",
     "models": {
       "primary": "grok-4.5",
       "fallback": "xai-oauth/grok-4.3",
-      "coding": "openai-codex/gpt-5.6-sol"
+      "coding": "grok-4.5",
+      "provider": "xai-oauth",
+      "forbiddenProviders": ["openai", "openai-codex", "openai-oauth"]
     },
-    "sourceOfTruth": "https://github.com/canadasfemboy/mythic-agent"
+    "sourceOfTruth": "https://github.com/canadasfemboy/mythic-agent",
+    "products": {
+      "wetdrool": "wetdrool.com",
+      "droolyAi": "drooly.ai",
+      "icefamFm": "icefam.fm",
+      "droolyAgent": "repos/drooly-agent (Hermes profile)"
+    }
+  },
+  "codingSwarm": {
+    "description": "5 Grok 4.5 specialists for monorepo work. Effort low|high via Hermes reasoning_overrides.",
+    "specialists": [
+      {
+        "id": "code-web",
+        "title": "Web App Specialist",
+        "effort": "high",
+        "scope": "apps/web product surfaces and /api/v1",
+        "model": "grok-4.5"
+      },
+      {
+        "id": "code-protocol",
+        "title": "Protocol & Solana Specialist",
+        "effort": "high",
+        "scope": "packages/protocol, programs/social_protocol, sdk",
+        "model": "grok-4.5"
+      },
+      {
+        "id": "code-services",
+        "title": "Backend Services Specialist",
+        "effort": "high",
+        "scope": "indexer, auth, relay, moderation, media-worker",
+        "model": "grok-4.5"
+      },
+      {
+        "id": "code-economy",
+        "title": "Economy & Points Specialist",
+        "effort": "medium",
+        "scope": "points, fame, $DROOL rails, ads cap",
+        "model": "grok-4.5"
+      },
+      {
+        "id": "code-edge",
+        "title": "Edge & Deploy Specialist",
+        "effort": "low",
+        "scope": "workers/wetdrool-edge, Vercel, GitHub Actions, hall-of-fame pushes",
+        "model": "grok-4.5"
+      }
+    ]
   },
   "goals": [
-    "Ship WetDrool as the most euphoric, consent-first 18+ social dApp",
-    "Keep points issuance ≤ ad revenue every period",
-    "Run 24/7 AI moderation with human escalation last resort",
-    "Operate hireable Grok 4.5 companions with illegal-only hard limits",
-    "Prepare $DROOL mint and .drool vanity registry safely"
+    "Ship WetDrool as a real web app (hub/shorts/live/creators), not marketing",
+    "Keep points issuance ≤ ad revenue every period; Hall of Fame grind live",
+    "24/7 AI moderation with human escalation last resort",
+    "Grok 4.5 companions + platform chat via xAI OAuth only",
+    "High-cadence GitHub hall-of-fame heartbeats on branch hall-of-fame",
+    "Prepare $DROOL mint and .drool vanity safely"
   ],
   "policies": {
     "age": "18+",
@@ -36,7 +108,8 @@
       "doxxing",
       "real_world_crime_facilitation"
     ],
-    "mentalHealth": "Always surface crisis resources; never shame users"
+    "mentalHealth": "Always surface crisis resources; never shame users",
+    "inference": "xAI OAuth / Grok only — OpenAI OAuth retired"
   },
   "import": {
     "paperclip": "npx paperclipai company import --from ./paperclip/droolhouse",
