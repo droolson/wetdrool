@@ -1,63 +1,67 @@
 # Droolhouse — Paperclip company pack
 
-Importable org for [Paperclip](https://paperclip.ing) using the
+Importable org for [Paperclip](https://paperclip.ing) +
 [hermes-paperclip-adapter](https://github.com/NousResearch/hermes-paperclip-adapter)
-against **Mythic Agent** (`canadasfemboy/mythic-agent`).
+on **Mythic Agent** / Hermes.
 
-## Prerequisites
+## Owner vs CEO
 
-1. Mythic Agent installed (`~/mythic-agent`, `hermes` on PATH with Infisical wrapper)
-2. Paperclip running (`npx paperclipai onboard --yes` or local clone)
-3. Adapter: `npm install hermes-paperclip-adapter` in the Paperclip server and register `hermes_local`
+| Role | Actor | Runtime |
+| ---- | ----- | ------- |
+| **Owner** | Human (`kingofqueens6ix`) | No agent loop — dashboard only |
+| **CEO** | Paperclip employee `ceo` | Hermes + **Grok 4.5 / xAI OAuth** |
 
-## Import (after you finish wiring Hermes + Paperclip)
+## Inference (mandatory)
+
+- **Use:** `xai-oauth` · `grok-4.5` (fallback `grok-4.3`)  
+- **Do not use:** OpenAI OAuth, `openai-codex`, OpenAI API for company agents  
+
+Configure Hermes:
+
+```bash
+hermes model   # provider xai-oauth, default grok-4.5
+hermes fallback
+# remove openai-codex if still listed
+```
+
+## Coding swarm (5 specialists)
+
+| ID | Effort | Scope |
+| -- | ------ | ----- |
+| `code-web` | high | apps/web + API |
+| `code-protocol` | high | protocol / program / sdk |
+| `code-services` | high | backend services |
+| `code-economy` | medium | points / fame / $DROOL |
+| `code-edge` | low | CF / Vercel / HOF pushes |
+
+## Import
 
 ```bash
 # From wetdrool repo root
 npx paperclipai company import --from ./paperclip/droolhouse
 ```
 
-Or manually create agents from `org-chart.json` with adapter config:
-
-```json
-{
-  "adapterType": "hermes_local",
-  "adapterConfig": {
-    "model": "grok-4.5",
-    "provider": "auto",
-    "maxIterations": 80,
-    "timeoutSec": 600,
-    "persistSession": true,
-    "hermesCommand": "hermes",
-    "enabledToolsets": ["terminal", "file", "web", "memory", "skills", "delegation"],
-    "checkpoints": true
-  }
-}
-```
-
-## Agents
-
-| ID | File |
-|----|------|
-| ceo | `agents/ceo.md` |
-| moderation-lead | `agents/moderation-lead.md` |
-| support-agent | `agents/support-agent.md` |
-| companion-curator | `agents/companion-curator.md` |
-| engineering | (use monorepo `AGENTS.md` + wetdrool workspace) |
-| growth / economy / trust-legal | create from `org-chart.json` missions |
+Adapter defaults are in `org-chart.json` → `adapterDefaults`.
 
 ## Workspace path
 
-Point Paperclip project workspace at:
+Point Paperclip at this monorepo checkout (example):
 
-`/Users/raphaelcardona/Pinkman, Inc./wetdrool`
+`/Users/raphaelcardona/drooly-inc/repos/wetdrool-web`
 
-so agents share product docs and code.
+## Autonomy
 
-## Autonomy profile (aggressive but not reckless)
+- CEO heartbeat 30m; moderation 5m; support 3m  
+- Hermes approvals: `smart`  
+- Tirith + secret redaction on  
+- Checkpoints on  
 
-- Heartbeats: moderation 5m, support 3m, eng 30m, CEO 60m
-- Approvals in Hermes: `smart` (not YOLO)
-- Cron approvals: deny
-- Tirith + secret redaction on
-- Checkpoints on for rollback
+## Related products (powered together)
+
+| Surface | Role |
+| ------- | ---- |
+| wetdrool.com | Flagship adult social web app |
+| drooly.ai | Sibling AI product |
+| icefam.fm | Music / culture rail |
+| drooly-agent | Private Hermes profile distribution |
+| Paperclip | Company orchestration |

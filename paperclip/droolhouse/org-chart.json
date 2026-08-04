@@ -1,22 +1,98 @@
 {
   "company": "Droolhouse",
-  "version": 1,
+  "version": 2,
+  "owner": {
+    "id": "owner-human",
+    "title": "Owner",
+    "human": true,
+    "handle": "kingofqueens6ix",
+    "reportsTo": null,
+    "mission": "Equity, capital, final approvals. Monitors CEO dashboard only — not day-to-day tickets.",
+    "adapterType": null
+  },
   "roles": [
     {
       "id": "ceo",
-      "title": "CEO / Operator",
-      "reportsTo": null,
+      "title": "CEO (Paperclip employee)",
+      "human": false,
+      "reportsTo": "owner-human",
       "adapterType": "hermes_local",
-      "mission": "Set priorities, capital allocation, and product truth for WetDrool.",
-      "heartbeatMinutes": 60,
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "high",
+      "mission": "Operate Droolhouse day-to-day: priorities, delegation, product truth, ship evidence.",
+      "heartbeatMinutes": 30,
       "toolsets": ["terminal", "file", "web", "delegation", "memory", "skills"]
+    },
+    {
+      "id": "code-web",
+      "title": "Web App Specialist",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "high",
+      "mission": "apps/web hub/shorts/live/fame + /api/v1 product routes.",
+      "heartbeatMinutes": 20,
+      "toolsets": ["terminal", "file", "web", "code_execution", "memory", "skills"]
+    },
+    {
+      "id": "code-protocol",
+      "title": "Protocol & Solana Specialist",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "high",
+      "mission": "packages/protocol, programs, sdk — ABI honesty, no $DROOL mint invention.",
+      "heartbeatMinutes": 45,
+      "toolsets": ["terminal", "file", "web", "code_execution", "memory", "skills"]
+    },
+    {
+      "id": "code-services",
+      "title": "Backend Services Specialist",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "high",
+      "mission": "indexer, auth, relay, moderation, media-worker fail-closed.",
+      "heartbeatMinutes": 30,
+      "toolsets": ["terminal", "file", "web", "code_execution", "memory", "skills"]
+    },
+    {
+      "id": "code-economy",
+      "title": "Economy & Points Specialist",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "medium",
+      "mission": "Points ≤ ads, Hall of Fame grind, $DROOL tax rails, vanity pricing.",
+      "heartbeatMinutes": 25,
+      "toolsets": ["terminal", "file", "web", "code_execution", "memory", "skills"]
+    },
+    {
+      "id": "code-edge",
+      "title": "Edge & Deploy Specialist",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "low",
+      "mission": "Cloudflare worker, Vercel, GitHub Actions, hall-of-fame push cadence.",
+      "heartbeatMinutes": 15,
+      "toolsets": ["terminal", "file", "web", "memory", "skills"]
     },
     {
       "id": "moderation-lead",
       "title": "Moderation Lead",
       "reportsTo": "ceo",
       "adapterType": "hermes_local",
-      "mission": "24/7 AI triage, auto-resolve clear policy hits, escalate humans last.",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "medium",
+      "mission": "24/7 AI triage, auto-resolve clear hits, escalate humans last.",
       "heartbeatMinutes": 5,
       "toolsets": ["terminal", "file", "web", "memory", "skills", "code_execution"]
     },
@@ -25,34 +101,34 @@
       "title": "Support User-Agent",
       "reportsTo": "moderation-lead",
       "adapterType": "hermes_local",
-      "mission": "User-facing support: reports, bans, mental health routing, vanity help.",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "low",
+      "mission": "Reports, bans, mental health routing, vanity help.",
       "heartbeatMinutes": 3,
       "toolsets": ["terminal", "file", "web", "memory", "skills"]
-    },
-    {
-      "id": "engineering",
-      "title": "Engineering Lead",
-      "reportsTo": "ceo",
-      "adapterType": "hermes_local",
-      "mission": "Ship DroolNet, web, media, indexer, and economy systems from wetdrool monorepo.",
-      "heartbeatMinutes": 30,
-      "toolsets": ["terminal", "file", "web", "code_execution", "delegation", "memory", "skills"]
     },
     {
       "id": "companion-curator",
       "title": "Companion Curator",
       "reportsTo": "ceo",
       "adapterType": "hermes_local",
-      "mission": "Grok 4.5 + Mythic companion personas, evals, consent UX, memory hygiene.",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "high",
+      "mission": "Grok companions, evals, consent UX.",
       "heartbeatMinutes": 45,
-      "toolsets": ["terminal", "file", "web", "memory", "skills", "creative"]
+      "toolsets": ["terminal", "file", "web", "memory", "skills"]
     },
     {
       "id": "growth",
       "title": "Growth",
       "reportsTo": "ceo",
       "adapterType": "hermes_local",
-      "mission": "Creator onboarding, campaigns, livestream growth without spam farms.",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "medium",
+      "mission": "Creator onboarding and campaigns without spam farms.",
       "heartbeatMinutes": 120,
       "toolsets": ["terminal", "file", "web", "memory", "skills", "browser"]
     },
@@ -61,7 +137,10 @@
       "title": "Economy Officer",
       "reportsTo": "ceo",
       "adapterType": "hermes_local",
-      "mission": "Points ≤ ad rev, vanity pricing, $DROOL mint readiness, anti-farm.",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "medium",
+      "mission": "Points ≤ ad rev, vanity, $DROOL mint readiness.",
       "heartbeatMinutes": 60,
       "toolsets": ["terminal", "file", "web", "code_execution", "memory", "skills"]
     },
@@ -70,9 +149,25 @@
       "title": "Trust & Safety Legal",
       "reportsTo": "ceo",
       "adapterType": "hermes_local",
-      "mission": "Age assurance, jurisdiction, NCMEC/notice paths, policy versioning.",
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "effort": "high",
+      "mission": "Age assurance, jurisdiction, notice/takedown, policy versioning.",
       "heartbeatMinutes": 180,
       "toolsets": ["terminal", "file", "web", "memory", "skills"]
     }
-  ]
+  ],
+  "adapterDefaults": {
+    "adapterType": "hermes_local",
+    "adapterConfig": {
+      "model": "grok-4.5",
+      "provider": "xai-oauth",
+      "maxIterations": 80,
+      "timeoutSec": 600,
+      "persistSession": true,
+      "hermesCommand": "hermes",
+      "enabledToolsets": ["terminal", "file", "web", "memory", "skills", "delegation", "code_execution"],
+      "checkpoints": true
+    }
+  }
 }
