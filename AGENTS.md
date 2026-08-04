@@ -4,8 +4,11 @@ Guidance for AI coding agents working in this repository.
 
 **Workspace home:** this checkout lives under `drooly-inc/repos/wetdrool-web`.
 Parent maps: [`../../AGENTS.md`](../../AGENTS.md) · [`../AGENTS.md`](../AGENTS.md).
-Other products (Icefam FM, $DROOLY sites, wokenet) are **sibling repos** — do not mix their branding or deploy targets into this monorepo. Keep this file and
-`CLAUDE.md` in sync — they carry the same content for different tools.
+Other products (Icefam FM, $DROOLY sites, wokenet) are **sibling repos** — do not
+mix their branding or deploy targets into this monorepo.
+
+Keep this file and `CLAUDE.md` in sync — they carry the same content for
+different tools.
 
 ## What this repository is
 
