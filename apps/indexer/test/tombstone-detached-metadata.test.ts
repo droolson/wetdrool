@@ -1,7 +1,7 @@
 import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { NetworkId, PostContent } from '@wokesocial/protocol';
+import type { NetworkId, PostContent } from '@wetdrool/protocol';
 
 import {
   ManifestVerifier,
@@ -15,8 +15,8 @@ import { TEST_CID } from './cid-fixtures.js';
 const genesis = publicKey(1);
 const programId = publicKey(2);
 const identityAddress = publicKey(3);
-const networkId = `wokenet:v1:${genesis}:${programId}` as NetworkId;
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const networkId = `droolnet:v1:${genesis}:${programId}` as NetworkId;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
 const rootAuthority = publicKey(4);
 const postReference = publicKey(5);
 const postObjectId = objectId('post', 6);
@@ -131,7 +131,7 @@ function eventBase(slot: bigint, signatureSeed: number) {
 }
 
 function objectId(type: 'post' | 'tombstone', seed: number): string {
-  return `wokesocialobj:v1:${type}:${digest(seed)}`;
+  return `wetdroolobj:v1:${type}:${digest(seed)}`;
 }
 
 function digest(seed: number): string {

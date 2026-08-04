@@ -14,8 +14,8 @@ import { useSolanaDeployment } from './src/use-deployment';
 
 const walletIdentity = {
   icon: 'icon.svg',
-  name: 'WokeSocial',
-  uri: 'https://woke.social',
+  name: 'WetDrool',
+  uri: 'https://wetdrool.com',
 } as const;
 
 function runtimeEnvironment(): MobileRuntimeEnvironment {
@@ -24,9 +24,9 @@ function runtimeEnvironment(): MobileRuntimeEnvironment {
     EXPO_PUBLIC_SOLANA_RPC_URL: process.env.EXPO_PUBLIC_SOLANA_RPC_URL,
     EXPO_PUBLIC_WOKENET_NETWORK_ID: process.env.EXPO_PUBLIC_WOKENET_NETWORK_ID,
     EXPO_PUBLIC_WOKENET_RPC_URL: process.env.EXPO_PUBLIC_WOKENET_RPC_URL,
-    EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID: process.env.EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID,
-    EXPO_PUBLIC_WOKESOCIAL_INDEXER_URL: process.env.EXPO_PUBLIC_WOKESOCIAL_INDEXER_URL,
-    EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID: process.env.EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID,
+    EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID: process.env.EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID,
+    EXPO_PUBLIC_WETDROOL_INDEXER_URL: process.env.EXPO_PUBLIC_WETDROOL_INDEXER_URL,
+    EXPO_PUBLIC_WETDROOL_PROGRAM_ID: process.env.EXPO_PUBLIC_WETDROOL_PROGRAM_ID,
   };
 }
 
@@ -38,7 +38,7 @@ function ConfigurationError({ detail }: { readonly detail: string }): React.JSX.
       <View accessibilityLiveRegion="assertive" style={styles.configurationError}>
         <Text style={styles.configurationKicker}>CONFIGURATION REJECTED</Text>
         <Text accessibilityRole="header" style={styles.configurationTitle}>
-          WokeSocial stayed fail-closed.
+          WetDrool stayed fail-closed.
         </Text>
         <Text style={styles.configurationCopy}>{detail}</Text>
         <Text style={styles.configurationHint}>

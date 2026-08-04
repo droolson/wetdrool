@@ -1,7 +1,7 @@
 /* Primitive palette. Never reference these directly in product code —
    use the semantic tokens in themes.css. */
 :root {
-  /* ── Mint. The brand core. #cff0ec is the exact colour of the $WOKE mark. ── */
+  /* ── Mint. The brand core. #cff0ec is the exact colour of the $DROOL mark. ── */
   --woke-mint-50: #f4fcfa;
   --woke-mint-100: #e4f8f4;
   --woke-mint-200: #cff0ec;

@@ -1,7 +1,7 @@
 import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   ManifestVerifier,
@@ -16,11 +16,11 @@ import { purgePostgresTestNetworks } from './postgres-test-cleanup.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wetdrool';
 
 describe('PostgreSQL payment projection integration', () => {
   it('migrates, validates transitions atomically, rebuilds, and isolates exact networks', async () => {

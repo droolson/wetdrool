@@ -1,6 +1,6 @@
-# WokeSocial feed service
+# WetDrool feed service
 
-This package is an independently replaceable, deterministic feed engine. It ranks caller-provided signed projection summaries; it is **not** a canonical protocol authority and does **not** verify projection signatures, WokeNet anchors, or content authenticity. Every response says so explicitly with `canonical: false`.
+This package is an independently replaceable, deterministic feed engine. It ranks caller-provided signed projection summaries; it is **not** a canonical protocol authority and does **not** verify projection signatures, DroolNet anchors, or content authenticity. Every response says so explicitly with `canonical: false`.
 
 ## Ranking behavior
 
@@ -60,10 +60,10 @@ Cursors are opaque base64url JSON containing a hash of the ranking inputs, the o
 ## Local development
 
 ```sh
-pnpm --filter @wokesocial/feed-service typecheck
-pnpm --filter @wokesocial/feed-service test
-pnpm --filter @wokesocial/feed-service build
-pnpm --filter @wokesocial/feed-service dev
+pnpm --filter @wetdrool/feed-service typecheck
+pnpm --filter @wetdrool/feed-service test
+pnpm --filter @wetdrool/feed-service build
+pnpm --filter @wetdrool/feed-service dev
 ```
 
 Environment:

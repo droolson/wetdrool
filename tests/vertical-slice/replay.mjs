@@ -63,7 +63,7 @@ try {
 
   const [, , genesisHash, networkProgramId] = networkId.split(':');
   if (genesisHash === undefined || networkProgramId !== programId) {
-    throw new Error('WokeNet ID is not bound to the configured program.');
+    throw new Error('DroolNet ID is not bound to the configured program.');
   }
   const replay = await rebuildFromDurableLedger({
     databaseUrl,

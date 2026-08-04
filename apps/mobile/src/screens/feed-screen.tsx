@@ -1,4 +1,4 @@
-import type { IndexedPost } from '@wokesocial/indexer-client';
+import type { IndexedPost } from '@wetdrool/indexer-client';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -39,7 +39,7 @@ function PostCard({ post }: { readonly post: IndexedPost }): React.JSX.Element {
           <Text numberOfLines={1} style={styles.authorMeta}>
             {post.author.handle === null
               ? compactIdentity(post.author.identityId)
-              : `${post.author.handle}.woke`}
+              : `${post.author.handle}.drool`}
           </Text>
         </View>
         <Text style={styles.time}>
@@ -98,7 +98,7 @@ export function FeedScreen({ config, deployment }: FeedScreenProps): React.JSX.E
           The timeline, without the tricks.
         </Text>
         <Text style={styles.intro}>
-          Finalized posts from a replaceable open indexer. WokeSocial verifies the response before
+          Finalized posts from a replaceable open indexer. WetDrool verifies the response before
           anything reaches this screen.
         </Text>
       </View>

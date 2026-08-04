@@ -80,7 +80,7 @@ async function assertBrowserPublication(
   );
 
   const wokeName = await projection.getHandle(publication.networkId, publication.wokeName.handle);
-  assert.ok(wokeName, `${phase}: anonymous .woke claim must exist`);
+  assert.ok(wokeName, `${phase}: anonymous .drool claim must exist`);
   assert.equal(wokeName.handle, publication.wokeName.handle);
   assert.equal(wokeName.handleClaimAddress, publication.wokeName.handleClaimAddress);
   assert.equal(wokeName.handleHash, publication.wokeName.handleHash);

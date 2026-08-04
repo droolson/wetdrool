@@ -1,12 +1,12 @@
-name: wokesocial-local
+name: wetdrool-local
 
 services:
   postgres:
     image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-wokesocial}
+      POSTGRES_DB: ${POSTGRES_DB:-wetdrool}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
-      POSTGRES_USER: ${POSTGRES_USER:-wokesocial}
+      POSTGRES_USER: ${POSTGRES_USER:-wetdrool}
     ports:
       - 127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432
     volumes:
@@ -38,7 +38,7 @@ services:
       - >-
         exec psql --host postgres --username "$${POSTGRES_USER}"
         --dbname "$${POSTGRES_DB}"
-        --file /opt/wokesocial/provision-service-roles.sql
+        --file /opt/wetdrool/provision-service-roles.sql
     environment:
       AUTH_DATABASE_MIGRATION_PASSWORD: ${AUTH_DATABASE_MIGRATION_PASSWORD:-local-auth-migration-only}
       AUTH_DATABASE_RUNTIME_PASSWORD: ${AUTH_DATABASE_RUNTIME_PASSWORD:-local-auth-runtime-only}
@@ -47,10 +47,10 @@ services:
       MODERATION_DATABASE_MIGRATION_PASSWORD: ${MODERATION_DATABASE_MIGRATION_PASSWORD:-local-moderation-migration-only}
       MODERATION_DATABASE_RUNTIME_PASSWORD: ${MODERATION_DATABASE_RUNTIME_PASSWORD:-local-moderation-runtime-only}
       PGPASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
-      POSTGRES_DB: ${POSTGRES_DB:-wokesocial}
-      POSTGRES_USER: ${POSTGRES_USER:-wokesocial}
+      POSTGRES_DB: ${POSTGRES_DB:-wetdrool}
+      POSTGRES_USER: ${POSTGRES_USER:-wetdrool}
     volumes:
-      - ./postgres/provision-service-roles.sql:/opt/wokesocial/provision-service-roles.sql:ro
+      - ./postgres/provision-service-roles.sql:/opt/wetdrool/provision-service-roles.sql:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,7 +126,7 @@ services:
     profiles:
       - services
       - privilege-probe
-    image: wokesocial-auth-service:local
+    image: wetdrool-auth-service:local
     build:
       context: ..
       dockerfile: apps/auth-service/Dockerfile
@@ -134,7 +134,7 @@ services:
       - dist/src/migrate.js
     environment:
       APP_ENV: ${AUTH_APP_ENV:-development}
-      AUTH_DATABASE_MIGRATION_URL: ${AUTH_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wokesocial_auth_migration:${AUTH_DATABASE_MIGRATION_PASSWORD:-local-auth-migration-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      AUTH_DATABASE_MIGRATION_URL: ${AUTH_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wetdrool_auth_migration:${AUTH_DATABASE_MIGRATION_PASSWORD:-local-auth-migration-only}@postgres:5432/${POSTGRES_DB:-wetdrool}}
       NODE_ENV: ${AUTH_NODE_ENV:-development}
     depends_on:
       postgres-provision:
@@ -153,7 +153,7 @@ services:
   auth-service:
     profiles:
       - services
-    image: wokesocial-auth-service:local
+    image: wetdrool-auth-service:local
     build:
       context: ..
       dockerfile: apps/auth-service/Dockerfile
@@ -161,10 +161,10 @@ services:
       APP_ENV: ${AUTH_APP_ENV:-development}
       AUTH_HOST: 0.0.0.0
       AUTH_PORT: 4300
-      AUTH_RP_NAME: ${AUTH_RP_NAME:-WokeSocial}
+      AUTH_RP_NAME: ${AUTH_RP_NAME:-WetDrool}
       AUTH_RP_ID: ${AUTH_RP_ID:-localhost}
       AUTH_ORIGIN: ${AUTH_ORIGIN:-http://localhost:3000}
-      AUTH_DATABASE_URL: ${AUTH_COMPOSE_DATABASE_URL:-postgresql://wokesocial_auth_runtime:${AUTH_DATABASE_RUNTIME_PASSWORD:-local-auth-runtime-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      AUTH_DATABASE_URL: ${AUTH_COMPOSE_DATABASE_URL:-postgresql://wetdrool_auth_runtime:${AUTH_DATABASE_RUNTIME_PASSWORD:-local-auth-runtime-only}@postgres:5432/${POSTGRES_DB:-wetdrool}}
       AUTH_DANGEROUSLY_USE_MEMORY_STORE: 0
       AUTH_CLEANUP_INTERVAL_MS: ${AUTH_CLEANUP_INTERVAL_MS:-60000}
       AUTH_PENDING_ACCOUNT_RETENTION_MS: ${AUTH_PENDING_ACCOUNT_RETENTION_MS:-3600000}
@@ -212,7 +212,7 @@ services:
   feed-service:
     profiles:
       - services
-    image: wokesocial-feed-service:local
+    image: wetdrool-feed-service:local
     build:
       context: ..
       dockerfile: apps/feed-service/Dockerfile
@@ -261,7 +261,7 @@ services:
     profiles:
       - indexer
       - privilege-probe
-    image: wokesocial-indexer:local
+    image: wetdrool-indexer:local
     build:
       context: ..
       dockerfile: apps/indexer/Dockerfile
@@ -269,7 +269,7 @@ services:
       - dist/src/migrate.js
     environment:
       APP_ENV: ${INDEXER_APP_ENV:-development}
-      DATABASE_MIGRATION_URL: ${INDEXER_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wokesocial_indexer_migration:${INDEXER_DATABASE_MIGRATION_PASSWORD:-local-indexer-migration-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      DATABASE_MIGRATION_URL: ${INDEXER_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wetdrool_indexer_migration:${INDEXER_DATABASE_MIGRATION_PASSWORD:-local-indexer-migration-only}@postgres:5432/${POSTGRES_DB:-wetdrool}}
       NODE_ENV: ${INDEXER_NODE_ENV:-development}
     depends_on:
       postgres-provision:
@@ -288,15 +288,15 @@ services:
   indexer:
     profiles:
       - indexer
-    image: wokesocial-indexer:local
+    image: wetdrool-indexer:local
     build:
       context: ..
       dockerfile: apps/indexer/Dockerfile
     environment:
       ALLOWED_ORIGINS: ${INDEXER_ALLOWED_ORIGINS:-http://localhost:3000}
       APP_ENV: ${INDEXER_APP_ENV:-development}
-      CONTENT_STORAGE_PATH: /var/lib/wokesocial/content
-      DATABASE_URL: ${INDEXER_DATABASE_URL:-postgresql://wokesocial_indexer_runtime:${INDEXER_DATABASE_RUNTIME_PASSWORD:-local-indexer-runtime-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      CONTENT_STORAGE_PATH: /var/lib/wetdrool/content
+      DATABASE_URL: ${INDEXER_DATABASE_URL:-postgresql://wetdrool_indexer_runtime:${INDEXER_DATABASE_RUNTIME_PASSWORD:-local-indexer-runtime-only}@postgres:5432/${POSTGRES_DB:-wetdrool}}
       INDEXER_BATCH_SIZE: ${INDEXER_BATCH_SIZE:-100}
       INDEXER_DEPLOYMENT_SLOT: ${INDEXER_DEPLOYMENT_SLOT:-0}
       INDEXER_HOST: 0.0.0.0
@@ -320,7 +320,7 @@ services:
     ports:
       - 127.0.0.1:${INDEXER_PORT:-4000}:4000
     volumes:
-      - indexer-content:/var/lib/wokesocial/content:ro
+      - indexer-content:/var/lib/wetdrool/content:ro
     depends_on:
       indexer-migrate:
         condition: service_completed_successfully
@@ -356,7 +356,7 @@ services:
   relay:
     profiles:
       - locked-services
-    image: wokesocial-relay:local
+    image: wetdrool-relay:local
     build:
       context: ..
       dockerfile: apps/relay/Dockerfile
@@ -365,7 +365,7 @@ services:
       NODE_ENV: ${RELAY_NODE_ENV:-development}
       RELAY_HOST: 0.0.0.0
       RELAY_PORT: 4200
-      RELAY_ID: ${RELAY_ID:-wokesocial-local}
+      RELAY_ID: ${RELAY_ID:-wetdrool-local}
       RELAY_ALLOWED_ORIGINS: ${RELAY_ALLOWED_ORIGINS:-http://localhost:3000}
       RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: ${RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE:-0}
       RELAY_KEY_AUTHORIZER_URL: ${RELAY_KEY_AUTHORIZER_URL:-}
@@ -415,7 +415,7 @@ services:
     profiles:
       - locked-services
       - privilege-probe
-    image: wokesocial-moderation-service:local
+    image: wetdrool-moderation-service:local
     build:
       context: ..
       dockerfile: apps/moderation-service/Dockerfile
@@ -423,7 +423,7 @@ services:
       - dist/src/migrate.js
     environment:
       APP_ENV: ${MODERATION_APP_ENV:-development}
-      MODERATION_DATABASE_MIGRATION_URL: ${MODERATION_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wokesocial_moderation_migration:${MODERATION_DATABASE_MIGRATION_PASSWORD:-local-moderation-migration-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      MODERATION_DATABASE_MIGRATION_URL: ${MODERATION_COMPOSE_DATABASE_MIGRATION_URL:-postgresql://wetdrool_moderation_migration:${MODERATION_DATABASE_MIGRATION_PASSWORD:-local-moderation-migration-only}@postgres:5432/${POSTGRES_DB:-wetdrool}}
       NODE_ENV: ${MODERATION_NODE_ENV:-development}
     depends_on:
       postgres-provision:
@@ -442,7 +442,7 @@ services:
   moderation-service:
     profiles:
       - locked-services
-    image: wokesocial-moderation-service:local
+    image: wetdrool-moderation-service:local
     build:
       context: ..
       dockerfile: apps/moderation-service/Dockerfile
@@ -451,7 +451,7 @@ services:
       MODERATION_HOST: 0.0.0.0
       MODERATION_PORT: 4400
       MODERATION_ALLOWED_ORIGINS: ${MODERATION_ALLOWED_ORIGINS:-http://localhost:3000}
-      MODERATION_DATABASE_URL: ${MODERATION_COMPOSE_DATABASE_URL:-postgresql://wokesocial_moderation_runtime:${MODERATION_DATABASE_RUNTIME_PASSWORD:-local-moderation-runtime-only}@postgres:5432/${POSTGRES_DB:-wokesocial}}
+      MODERATION_DATABASE_URL: ${MODERATION_COMPOSE_DATABASE_URL:-postgresql://wetdrool_moderation_runtime:${MODERATION_DATABASE_RUNTIME_PASSWORD:-local-moderation-runtime-only}@postgres:5432/${POSTGRES_DB:-wetdrool}}
       MODERATION_DATA_KEYS: ${MODERATION_DATA_KEYS:-}
       MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: ${MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE:-0}
       NODE_ENV: ${MODERATION_NODE_ENV:-development}
@@ -498,7 +498,7 @@ services:
     image: postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     command:
       - /bin/sh
-      - /opt/wokesocial/probe-service-roles.sh
+      - /opt/wetdrool/probe-service-roles.sh
     environment:
       AUTH_DATABASE_MIGRATION_PASSWORD: ${AUTH_DATABASE_MIGRATION_PASSWORD:-local-auth-migration-only}
       AUTH_DATABASE_RUNTIME_PASSWORD: ${AUTH_DATABASE_RUNTIME_PASSWORD:-local-auth-runtime-only}
@@ -506,9 +506,9 @@ services:
       INDEXER_DATABASE_RUNTIME_PASSWORD: ${INDEXER_DATABASE_RUNTIME_PASSWORD:-local-indexer-runtime-only}
       MODERATION_DATABASE_MIGRATION_PASSWORD: ${MODERATION_DATABASE_MIGRATION_PASSWORD:-local-moderation-migration-only}
       MODERATION_DATABASE_RUNTIME_PASSWORD: ${MODERATION_DATABASE_RUNTIME_PASSWORD:-local-moderation-runtime-only}
-      POSTGRES_DB: ${POSTGRES_DB:-wokesocial}
+      POSTGRES_DB: ${POSTGRES_DB:-wetdrool}
     volumes:
-      - ./postgres/probe-service-roles.sh:/opt/wokesocial/probe-service-roles.sh:ro
+      - ./postgres/probe-service-roles.sh:/opt/wetdrool/probe-service-roles.sh:ro
     depends_on:
       auth-service-migrate:
         condition: service_completed_successfully
@@ -530,7 +530,7 @@ services:
   clamav:
     profiles:
       - media
-    image: wokesocial-clamav:local
+    image: wetdrool-clamav:local
     build:
       context: ..
       dockerfile: infra/clamav/Dockerfile
@@ -564,7 +564,7 @@ services:
   media-worker:
     profiles:
       - media
-    image: wokesocial-media-worker:local
+    image: wetdrool-media-worker:local
     build:
       context: ..
       dockerfile: apps/media-worker/Dockerfile
@@ -580,9 +580,9 @@ services:
       MEDIA_WORKER_CLAMD_STREAM_MAX_BYTES: 100000000
       MEDIA_WORKER_CLAMD_MAX_DATABASE_AGE_MS: ${MEDIA_WORKER_CLAMD_MAX_DATABASE_AGE_MS:-259200000}
       MEDIA_WORKER_STATIC_BEARER_TOKEN: ${MEDIA_WORKER_STATIC_BEARER_TOKEN:?Set a canonical base64url media-worker token}
-      MEDIA_WORKER_STAGING_ROOT: /var/lib/wokesocial/staging
-      MEDIA_WORKER_TEMPORARY_ROOT: /var/lib/wokesocial/temporary
-      MEDIA_WORKER_STORAGE_ROOT: /var/lib/wokesocial/cas
+      MEDIA_WORKER_STAGING_ROOT: /var/lib/wetdrool/staging
+      MEDIA_WORKER_TEMPORARY_ROOT: /var/lib/wetdrool/temporary
+      MEDIA_WORKER_STORAGE_ROOT: /var/lib/wetdrool/cas
       MEDIA_WORKER_CLEANUP_INTERVAL_MS: ${MEDIA_WORKER_CLEANUP_INTERVAL_MS:-900000}
       NODE_ENV: ${MEDIA_WORKER_NODE_ENV:-development}
       RATE_LIMIT_DANGEROUSLY_USE_MEMORY_STORE: 0
@@ -597,9 +597,9 @@ services:
       - media-private
       - rate-limit-private
     volumes:
-      - media-staging:/var/lib/wokesocial/staging
-      - media-temporary:/var/lib/wokesocial/temporary
-      - media-cas:/var/lib/wokesocial/cas
+      - media-staging:/var/lib/wetdrool/staging
+      - media-temporary:/var/lib/wetdrool/temporary
+      - media-cas:/var/lib/wetdrool/cas
     depends_on:
       clamav:
         condition: service_healthy

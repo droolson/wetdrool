@@ -23,39 +23,39 @@ function parseEnvironmentFile(source: string): Record<string, string> {
 }
 
 const productionEnvironment = {
-  ALLOWED_ORIGINS: 'https://woke.social',
+  ALLOWED_ORIGINS: 'https://wetdrool.com',
   APP_ENV: 'production',
   DATABASE_MIGRATION_URL:
-    'postgresql://migration:secret@db.woke.social/wokesocial?sslmode=verify-full',
-  DATABASE_URL: 'postgresql://application:secret@db.woke.social/wokesocial?sslmode=verify-full',
-  IPFS_API_URL: 'https://ipfs-api.woke.social',
-  IPFS_GATEWAY_URL: 'https://gateway.woke.social',
-  NEXT_PUBLIC_APP_ORIGIN: 'https://woke.social',
-  NEXT_PUBLIC_AUTH_SERVICE_URL: 'https://auth.woke.social',
-  NEXT_PUBLIC_FEED_SERVICE_URL: 'https://feed.woke.social',
-  NEXT_PUBLIC_INDEXER_URL: 'https://indexer.woke.social',
-  NEXT_PUBLIC_IPFS_GATEWAY_URL: 'https://gateway.woke.social',
-  NEXT_PUBLIC_MEDIA_WORKER_URL: 'https://media.woke.social',
-  NEXT_PUBLIC_MODERATION_SERVICE_URL: 'https://moderation.woke.social',
+    'postgresql://migration:secret@db.wetdrool.com/wetdrool?sslmode=verify-full',
+  DATABASE_URL: 'postgresql://application:secret@db.wetdrool.com/wetdrool?sslmode=verify-full',
+  IPFS_API_URL: 'https://ipfs-api.wetdrool.com',
+  IPFS_GATEWAY_URL: 'https://gateway.wetdrool.com',
+  NEXT_PUBLIC_APP_ORIGIN: 'https://wetdrool.com',
+  NEXT_PUBLIC_AUTH_SERVICE_URL: 'https://auth.wetdrool.com',
+  NEXT_PUBLIC_FEED_SERVICE_URL: 'https://feed.wetdrool.com',
+  NEXT_PUBLIC_INDEXER_URL: 'https://indexer.wetdrool.com',
+  NEXT_PUBLIC_IPFS_GATEWAY_URL: 'https://gateway.wetdrool.com',
+  NEXT_PUBLIC_MEDIA_WORKER_URL: 'https://media.wetdrool.com',
+  NEXT_PUBLIC_MODERATION_SERVICE_URL: 'https://moderation.wetdrool.com',
   NEXT_PUBLIC_PROGRAM_ID: '11111111111111111111111111111111',
-  NEXT_PUBLIC_RELAY_URL: 'wss://relay.woke.social/v1/relay',
+  NEXT_PUBLIC_RELAY_URL: 'wss://relay.wetdrool.com/v1/relay',
   NEXT_PUBLIC_SOLANA_CLUSTER: 'mainnet-beta',
-  NEXT_PUBLIC_SOLANA_RPC_URL: 'https://rpc.woke.social',
+  NEXT_PUBLIC_SOLANA_RPC_URL: 'https://rpc.wetdrool.com',
   NODE_ENV: 'production',
-  REDIS_URL: 'rediss://cache:secret@redis.woke.social',
+  REDIS_URL: 'rediss://cache:secret@redis.wetdrool.com',
   SESSION_SECRET: 'a-production-session-secret-with-32-characters',
   SOLANA_COMMITMENT: 'finalized',
-  SOLANA_RPC_URLS: 'https://rpc.woke.social',
-  SOLANA_WS_URLS: 'wss://rpc.woke.social',
+  SOLANA_RPC_URLS: 'https://rpc.wetdrool.com',
+  SOLANA_WS_URLS: 'wss://rpc.wetdrool.com',
 } as const;
 
 const stagingEnvironment = {
   ...productionEnvironment,
   APP_ENV: 'staging',
   DATABASE_MIGRATION_URL:
-    'postgresql://migration:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
+    'postgresql://migration:secret@db.staging.wetdrool.com/wetdrool?sslmode=verify-full',
   DATABASE_URL:
-    'postgresql://application:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
+    'postgresql://application:secret@db.staging.wetdrool.com/wetdrool?sslmode=verify-full',
   NEXT_PUBLIC_SOLANA_CLUSTER: 'devnet',
 } as const;
 
@@ -83,10 +83,10 @@ describe('environment configuration', () => {
   it('only returns public keys from the public parser', () => {
     const environment = parsePublicEnvironment({
       DATABASE_URL: 'postgresql://user:secret@example.test/database',
-      NEXT_PUBLIC_APP_ORIGIN: 'https://woke.social',
+      NEXT_PUBLIC_APP_ORIGIN: 'https://wetdrool.com',
     });
 
-    expect(environment.NEXT_PUBLIC_APP_ORIGIN).toBe('https://woke.social');
+    expect(environment.NEXT_PUBLIC_APP_ORIGIN).toBe('https://wetdrool.com');
     expect(environment).not.toHaveProperty('DATABASE_URL');
   });
 
@@ -94,7 +94,7 @@ describe('environment configuration', () => {
     expect(() =>
       parseServerEnvironment({
         APP_ENV: 'production',
-        NEXT_PUBLIC_APP_ORIGIN: 'https://woke.social',
+        NEXT_PUBLIC_APP_ORIGIN: 'https://wetdrool.com',
       }),
     ).toThrowError(EnvironmentValidationError);
   });
@@ -109,7 +109,7 @@ describe('environment configuration', () => {
 
   it('parses explicit provider lists and enabled sponsorship', () => {
     const environment = parseServerEnvironment({
-      ALLOWED_ORIGINS: 'https://woke.social, https://app.woke.social',
+      ALLOWED_ORIGINS: 'https://wetdrool.com, https://app.wetdrool.com',
       SOLANA_RPC_URLS: 'https://rpc-one.example,https://rpc-two.example',
       SOLANA_WS_URLS: 'wss://rpc-one.example,wss://rpc-two.example',
       SPONSOR_DAILY_LAMPORT_LIMIT: '1000000',
@@ -125,7 +125,7 @@ describe('environment configuration', () => {
 
   it('rejects malformed booleans, origins, protocols, and public RPC credentials', () => {
     expect(() => parseServerEnvironment({ SPONSOR_ENABLED: 'sometimes' })).toThrow();
-    expect(() => parseServerEnvironment({ ALLOWED_ORIGINS: 'https://woke.social/path' })).toThrow(
+    expect(() => parseServerEnvironment({ ALLOWED_ORIGINS: 'https://wetdrool.com/path' })).toThrow(
       /origins without paths/,
     );
     expect(() => parseServerEnvironment({ DATABASE_URL: 'https://database.example' })).toThrow(
@@ -154,12 +154,12 @@ describe('environment configuration', () => {
   });
 
   it.each([
-    ['NEXT_PUBLIC_APP_ORIGIN', 'https://sociallywoke.com'],
+    ['NEXT_PUBLIC_APP_ORIGIN', 'https://droolhouse.com'],
     ['NEXT_PUBLIC_APP_ORIGIN', 'https://SOCIALLYWOKE.COM..'],
-    ['NEXT_PUBLIC_AUTH_SERVICE_URL', 'https://www.sociallywoke.com'],
-    ['NEXT_PUBLIC_AUTH_SERVICE_URL', 'https://www.sociallywoke.com.'],
-    ['NEXT_PUBLIC_RELAY_URL', 'wss://sociallywoke.com/v1/relay'],
-    ['NEXT_PUBLIC_RELAY_URL', 'wss://sociallywoke.com../v1/relay'],
+    ['NEXT_PUBLIC_AUTH_SERVICE_URL', 'https://www.droolhouse.com'],
+    ['NEXT_PUBLIC_AUTH_SERVICE_URL', 'https://www.droolhouse.com.'],
+    ['NEXT_PUBLIC_RELAY_URL', 'wss://droolhouse.com/v1/relay'],
+    ['NEXT_PUBLIC_RELAY_URL', 'wss://droolhouse.com../v1/relay'],
   ])('rejects the redirect-only hostname for %s', (key, value) => {
     expect(() => parsePublicEnvironment({ [key]: value })).toThrow(/legacy redirect-only hostname/);
   });
@@ -167,7 +167,7 @@ describe('environment configuration', () => {
   it('rejects the redirect-only hostname from server CORS origins', () => {
     expect(() =>
       parseServerEnvironment({
-        ALLOWED_ORIGINS: 'https://woke.social,https://SOCIALLYWOKE.COM..',
+        ALLOWED_ORIGINS: 'https://wetdrool.com,https://SOCIALLYWOKE.COM..',
       }),
     ).toThrow(/legacy redirect hosts/);
   });
@@ -198,14 +198,14 @@ describe('environment configuration', () => {
       expect(() =>
         parseServerEnvironment({
           ...productionEnvironment,
-          [variableName]: 'postgresql://application:secret@db.woke.social/wokesocial',
+          [variableName]: 'postgresql://application:secret@db.wetdrool.com/wetdrool',
         }),
       ).toThrow(/sslmode=verify-full/u);
       expect(() =>
         parseServerEnvironment({
           ...productionEnvironment,
           [variableName]:
-            'postgresql://application:secret@db.woke.social/wokesocial?sslmode=require',
+            'postgresql://application:secret@db.wetdrool.com/wetdrool?sslmode=require',
         }),
       ).toThrow(/sslmode=verify-full/u);
     },
@@ -218,7 +218,7 @@ describe('environment configuration', () => {
       expect(() =>
         parseServerEnvironment({
           ...stagingEnvironment,
-          [variableName]: 'postgresql://application:secret@db.staging.woke.social/wokesocial',
+          [variableName]: 'postgresql://application:secret@db.staging.wetdrool.com/wetdrool',
         }),
       ).toThrow(/sslmode=verify-full/u);
     },
@@ -235,7 +235,7 @@ describe('environment configuration', () => {
       parseServerEnvironment({
         APP_ENV: 'staging',
         DATABASE_URL:
-          'postgresql://application:secret@db.staging.woke.social/wokesocial?sslmode=verify-full',
+          'postgresql://application:secret@db.staging.wetdrool.com/wetdrool?sslmode=verify-full',
         NODE_TLS_REJECT_UNAUTHORIZED: '0',
       }),
     ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED/u);
@@ -246,13 +246,13 @@ describe('environment configuration', () => {
       parseServerEnvironment({
         NODE_ENV: 'production',
         DATABASE_URL:
-          'postgresql://application:secret@db.woke.social/wokesocial?sslmode=verify-full',
+          'postgresql://application:secret@db.wetdrool.com/wetdrool?sslmode=verify-full',
       }),
     ).toThrow(/APP_ENV/u);
     expect(() =>
       parseServerEnvironment({
         NODE_ENV: 'production',
-        DATABASE_URL: 'postgresql://application:secret@db.woke.social/wokesocial',
+        DATABASE_URL: 'postgresql://application:secret@db.wetdrool.com/wetdrool',
       }),
     ).toThrow(/sslmode=verify-full/u);
   });
@@ -268,13 +268,13 @@ describe('environment configuration', () => {
     expect(() =>
       parseServerEnvironment({
         ...stagingEnvironment,
-        REDIS_URL: 'redis://cache:secret@redis.staging.woke.social',
+        REDIS_URL: 'redis://cache:secret@redis.staging.wetdrool.com',
       }),
     ).toThrow(/rediss/u);
     expect(() =>
       parseServerEnvironment({
         ...stagingEnvironment,
-        SOLANA_RPC_URLS: 'http://rpc.staging.woke.social',
+        SOLANA_RPC_URLS: 'http://rpc.staging.wetdrool.com',
       }),
     ).toThrow(/non-local HTTPS endpoint/u);
   });
@@ -285,10 +285,10 @@ describe('environment configuration', () => {
       const endpointOverrides = [
         { ALLOWED_ORIGINS: `https://${hostname}` },
         {
-          DATABASE_URL: `postgresql://application:secret@${hostname}/wokesocial?sslmode=verify-full`,
+          DATABASE_URL: `postgresql://application:secret@${hostname}/wetdrool?sslmode=verify-full`,
         },
         {
-          DATABASE_MIGRATION_URL: `postgresql://migration:secret@${hostname}/wokesocial?sslmode=verify-full`,
+          DATABASE_MIGRATION_URL: `postgresql://migration:secret@${hostname}/wetdrool?sslmode=verify-full`,
         },
         { IPFS_API_URL: `https://${hostname}` },
         { IPFS_GATEWAY_URL: `https://${hostname}` },
@@ -365,7 +365,7 @@ describe('environment configuration', () => {
     expect(() =>
       parseServerEnvironment({
         ...productionEnvironment,
-        REDIS_URL: 'redis://redis.woke.social',
+        REDIS_URL: 'redis://redis.wetdrool.com',
       }),
     ).toThrow(/rediss/u);
   });

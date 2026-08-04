@@ -1,8 +1,8 @@
-# WokeSocial Product Specification
+# WetDrool Product Specification
 
 **Status:** Product requirements baseline; implementation subsets tracked separately  
 **Last updated:** 2026-07-29
-**Primary domain:** `woke.social` (`sociallywoke.com` is redirect-only)
+**Primary domain:** `wetdrool.com` (`droolhouse.com` is redirect-only)
 
 ## 1. Status and evidence policy
 
@@ -28,13 +28,13 @@ Documentation, screenshots, mock data, disabled controls, and successful API-sha
 
 ## 2. Product vision
 
-WokeSocial is a polished, inclusive social platform for everyone, powered by
-WokeNet, its protocol and smart-contract deployment layer on Solana. WokeNet is
+WetDrool is a polished, inclusive social platform for everyone, powered by
+DroolNet, its protocol and smart-contract deployment layer on Solana. DroolNet is
 not a blockchain or validator network. People should be able to own and move
 their identity, social graph,
 public content relationships, communities, and choice of algorithm without
 needing to understand cryptocurrency.
-WokeNet does not operate Firedancer/Agave validators or an application-chain
+DroolNet does not operate Firedancer/Agave validators or an application-chain
 topology; Solana supplies the external ledger and runtime.
 
 The flagship client must feel like a trustworthy consumer application rather
@@ -42,8 +42,8 @@ than a wallet or blockchain explorer. A person may browse without a token,
 create a recoverable passkey-first account, use a familiar handle, and
 understand every transaction before approving it.
 
-No `$WOKE` mint exists. The name is reserved for a possible future SPL or
-Token-2022 asset; SOL and lamports are not `$WOKE`. The product remains
+No `$DROOL` mint exists. The name is reserved for a possible future SPL or
+Token-2022 asset; SOL and lamports are not `$DROOL`. The product remains
 noncustodial: ordinary reading never requires a token, and no token sale,
 bridge, exchange, lending, yield, or token-gated identity feature is authorized
 by this specification.
@@ -53,7 +53,7 @@ It must not require disclosure of sensitive identity attributes, a legal name,
 or a wallet address in the visible interface.
 
 The approved expansion adds decentralized long- and short-form video,
-pseudonymous `.woke` names, transparent contribution points, an avatar and
+pseudonymous `.drool` names, transparent contribution points, an avatar and
 creator-item ecosystem, optional minimal-disclosure verification, open-model AI
 tools, social-sentiment market research, and published product governance.
 These systems remain planned and are specified in
@@ -112,7 +112,7 @@ cached network reading remains open.
 layer supports exact-origin/RP, user-verifying passkey registration and
 discoverable sign-in, client-only Ed25519 seed generation, and ciphertext-only
 PRF wrapper synchronization. It deliberately does not yet claim to create the
-protocol identity. Existing Solana-wallet onboarding, finalized WokeNet program
+protocol identity. Existing Solana-wallet onboarding, finalized DroolNet program
 identity creation, email-assisted recovery, and the complete
 device/recovery product remain open.
 
@@ -198,7 +198,7 @@ right-to-left presentation, and does not assume English grammar.
 **PS-ID-002 — Partially implemented and local-validator tested.** Human-readable
 ASCII v1 handles are globally collision-safe onchain, distinct from wallet
 addresses, exactly released/reclaimed through events, and projected by memory
-and PostgreSQL indexers. Versioned anonymous `.woke` candidates are now
+and PostgreSQL indexers. Versioned anonymous `.drool` candidates are now
 deterministically derived from the immutable identity origin, rendered after
 passkey registration/sign-in, and protected onchain so another identity cannot
 claim the reserved `anon_` value. Fresh development-localnet registration
@@ -210,7 +210,7 @@ custom-name policy remain incomplete.
 
 - Collision and impersonation behavior must be explained before handle claim.
 - A payment or signature flow must reveal the current Solana destination,
-  network, deployed WokeNet program, fees, and rent; `.woke` is never rendered
+  network, deployed DroolNet program, fees, and rent; `.drool` is never rendered
   as a native wallet address or external DNS name.
 - Wallet details are available only in an intentional account or transaction detail view.
 - Copy-address actions include network and recipient context.
@@ -409,7 +409,7 @@ moderation/appeal UX remain planned.
 
 **PS-MSG-001 — Partially implemented and experimentally tested.** A
 pairwise-only adapter delegates real Olm device/session cryptography to pinned
-Matrix Rust crypto WASM, binds engine keys to current WokeSocial device
+Matrix Rust crypto WASM, binds engine keys to current WetDrool device
 authorization, authenticates sender-signed outer routing metadata before Olm
 state mutation plus the encrypted inner context, and rejects replay, relay
 mutation, corruption, wrong-device delivery, authorization changes, and local
@@ -465,12 +465,12 @@ Product surfaces must include:
 
 ## 12. Creator economy and payments
 
-**PS-PAY-001 — Legacy ABI quarantined; replacement planned.** No `$WOKE` mint
+**PS-PAY-001 — Legacy ABI quarantined; replacement planned.** No `$DROOL` mint
 exists. The program contains a paused lamport-denominated tip/subscription ABI
 with deterministic recipient splits, fee snapshots, replay receipts, and
 entitlement state. That ABI is historical regression surface only: it must
 remain paused, cannot execute or be unpaused, and must never label SOL or
-lamports as `$WOKE`.
+lamports as `$DROOL`.
 
 Portable signed payment metadata is distinct from the onchain execution ABI:
 `{ kind: "sol" }` truthfully represents SOL and SPL assets carry exact token
@@ -600,7 +600,7 @@ No product copy may claim GDPR, CCPA, COPPA, or other legal compliance solely be
 
 ## 18. Out of scope
 
-- A public token sale, speculative `$WOKE` promotion, or token-gated ordinary identity/content
+- A public token sale, speculative `$DROOL` promotion, or token-gated ordinary identity/content
 - NFTs for ordinary profiles or posts
 - Custodial wallets or application-controlled custody of creator funds
 - Exchange, lending, yield, or investment products
@@ -608,7 +608,7 @@ No product copy may claim GDPR, CCPA, COPPA, or other legal compliance solely be
 - Appearance-based identity verification
 - A proprietary service required to interpret public protocol objects
 - Automatic publication to permanent storage without item-specific consent
-- Automatic WokeNet program deployment, token creation, APK publication, or
+- Automatic DroolNet program deployment, token creation, APK publication, or
   spending real funds as part of ordinary development
 
 ## 19. Product verification gates
@@ -640,7 +640,7 @@ The product cannot be described as production-ready until:
 | One-to-one encrypted messaging | Experimental subset | Pairwise real-WASM Olm adapter passes 13 envelope/device/revocation/lifecycle adversarial cases; volatile storage and absent browser/relay/product integration keep it non-production |
 | Group encrypted messaging | Experimental design only | UI is disabled; no group cryptography is claimed |
 | Media, stories, events, and livestream architecture | Partial | Hardened resumable media worker, real processing, ClamAV scanning, unsigned manifests, routes, encrypted signaling, and verified media-reference retention for media-only feed posts exist; feed gateway playback, browser publication, and stories/events/live product flows remain gated |
-| Creator payments and entitlements | Quarantined legacy subset | Historical lamport-denominated tip/subscription, receipt, entitlement, SDK, and indexer paths have local regression tests but cannot execute or be unpaused. No `$WOKE` mint exists; a real mint and new mint-aware ABI are required |
+| Creator payments and entitlements | Quarantined legacy subset | Historical lamport-denominated tip/subscription, receipt, entitlement, SDK, and indexer paths have local regression tests but cannot execute or be unpaused. No `$DROOL` mint exists; a real mint and new mint-aware ABI are required |
 | Solana Seeker Android | Implemented non-release read foundation | Expo/React Native source, Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only feed and verified community discovery, honest failure states, and focused tests exist. Membership mutation remains absent; no verified Seeker-device run, program transaction flow, reproducible signed APK, signing provenance, secure update/rollback evidence, store submission, or publication exists |
 | Portability and provider replacement | Partial | Alternate endpoint validation, open indexer/storage/feed/relay/moderation contracts, replay, and relay failover pass |
 | Accessibility, performance, and resilience | Partial | Production web build, automated desktop/mobile-viewport/axe matrix, and reproducible unthrottled loopback TTFB/DOM/load/LCP/CLS observations pass; manual WCAG, native Android accessibility/performance, field Core Web Vitals, INP, load/capacity, and resilience gates remain |

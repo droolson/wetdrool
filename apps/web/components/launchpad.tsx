@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { deriveSiteSubdomain, SiteSubdomainError } from '@/lib/site-builder';
 
@@ -48,7 +48,7 @@ const AGENT_ENDPOINTS = [
     method: 'GET',
     path: '/v1/launchpad/tokens/{mint}/analysis',
     detail:
-      'Woke Hermes analysis over sourced signals only — every claim carries its sources and uncertainty; no advice, no price targets.',
+      'Drool Hermes analysis over sourced signals only — every claim carries its sources and uncertainty; no advice, no price targets.',
   },
   {
     method: 'POST',
@@ -93,7 +93,7 @@ export function Launchpad() {
       >
         <p>
           This is the launch experience being built, shown honestly. Real launching and trading stay
-          disabled until every gate below passes. Nothing here is financial advice, and no `$WOKE`
+          disabled until every gate below passes. Nothing here is financial advice, and no `$DROOL`
           token exists.
         </p>
       </StatePanel>
@@ -181,7 +181,7 @@ export function Launchpad() {
             </div>
             <div className="field-stack">
               <label htmlFor="launch-handle">
-                Creator .woke handle <span>Optional</span>
+                Creator .drool handle <span>Optional</span>
               </label>
               <input
                 id="launch-handle"
@@ -192,8 +192,8 @@ export function Launchpad() {
               />
               <p className="field-help">
                 {handleSubdomain === null
-                  ? 'Launches attribute to a verified .woke identity, never an anonymous deployer.'
-                  : `Attributed to ${handleSubdomain.handle}.woke · project site: ${handleSubdomain.host}`}
+                  ? 'Launches attribute to a verified .drool identity, never an anonymous deployer.'
+                  : `Attributed to ${handleSubdomain.handle}.drool · project site: ${handleSubdomain.host}`}
               </p>
             </div>
             <div className="field-stack field-stack--full">
@@ -242,7 +242,7 @@ export function Launchpad() {
                 <span>
                   {handleSubdomain === null
                     ? 'Creator identity not set'
-                    : `by ${handleSubdomain.handle}.woke`}
+                    : `by ${handleSubdomain.handle}.drool`}
                 </span>
               </div>
             </header>
@@ -300,7 +300,7 @@ export function Launchpad() {
         >
           <p>
             When launching goes live, this board ranks tokens by signed social activity from the
-            open indexer — never by paid placement or fabricated volume. Woke Hermes analysis
+            open indexer — never by paid placement or fabricated volume. Drool Hermes analysis
             appears beside each token with sources and stated uncertainty.
           </p>
         </StatePanel>

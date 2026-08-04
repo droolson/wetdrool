@@ -20,4 +20,4 @@ for (const relative of required) {
   await access(join(root, relative));
 }
 
-console.log(`@wokesocial/marketing: static bundle verified (${required.length} paths).`);
+console.log(`@wetdrool/marketing: static bundle verified (${required.length} paths).`);

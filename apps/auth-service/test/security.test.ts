@@ -52,16 +52,16 @@ describe('authentication service security primitives', () => {
     expect(() =>
       parseAuthConfig({
         NODE_ENV: 'production',
-        AUTH_RP_ID: 'woke.social',
-        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_RP_ID: 'wetdrool.com',
+        AUTH_ORIGIN: 'https://auth.wetdrool.com',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
     ).toThrow(/restricted to loopback development/u);
     expect(() =>
       parseAuthConfig({
         APP_ENV: 'staging',
-        AUTH_RP_ID: 'woke.social',
-        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_RP_ID: 'wetdrool.com',
+        AUTH_ORIGIN: 'https://auth.wetdrool.com',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
     ).toThrow(/restricted to loopback development/u);
@@ -69,8 +69,8 @@ describe('authentication service security primitives', () => {
       parseAuthConfig({
         APP_ENV: 'production',
         NODE_ENV: 'development',
-        AUTH_RP_ID: 'woke.social',
-        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_RP_ID: 'wetdrool.com',
+        AUTH_ORIGIN: 'https://auth.wetdrool.com',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
     ).toThrow(/restricted to loopback development/u);
@@ -88,7 +88,7 @@ describe('authentication service security primitives', () => {
         parseAuthConfig({
           APP_ENV: appEnvironment,
           AUTH_DATABASE_URL:
-            'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+            'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=verify-full',
         }),
       ).toThrow(/nonlocal HTTPS endpoint/u);
       for (const [origin, rpId] of [
@@ -102,7 +102,7 @@ describe('authentication service security primitives', () => {
           parseAuthConfig({
             APP_ENV: appEnvironment,
             AUTH_DATABASE_URL:
-              'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+              'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=verify-full',
             AUTH_ORIGIN: origin,
             AUTH_RP_ID: rpId,
           }),
@@ -114,22 +114,22 @@ describe('authentication service security primitives', () => {
   it('rejects insecure remote origins, RP mismatches, and non-PostgreSQL stores', () => {
     expect(
       parseAuthConfig({
-        AUTH_RP_ID: 'woke.social',
-        AUTH_ORIGIN: 'https://woke.social',
+        AUTH_RP_ID: 'wetdrool.com',
+        AUTH_ORIGIN: 'https://wetdrool.com',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
-    ).toMatchObject({ rpId: 'woke.social', origin: 'https://woke.social' });
+    ).toMatchObject({ rpId: 'wetdrool.com', origin: 'https://wetdrool.com' });
     expect(() =>
       parseAuthConfig({
-        AUTH_RP_ID: 'woke.social',
-        AUTH_ORIGIN: 'https://sociallywoke.com',
+        AUTH_RP_ID: 'wetdrool.com',
+        AUTH_ORIGIN: 'https://droolhouse.com',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
     ).toThrow('legacy redirect hostname');
     expect(() =>
       parseAuthConfig({
-        AUTH_RP_ID: 'sociallywoke.com',
-        AUTH_ORIGIN: 'https://sociallywoke.com',
+        AUTH_RP_ID: 'droolhouse.com',
+        AUTH_ORIGIN: 'https://droolhouse.com',
         AUTH_DANGEROUSLY_USE_MEMORY_STORE: '1',
       }),
     ).toThrow('legacy redirect hostname');
@@ -179,40 +179,40 @@ describe('authentication service security primitives', () => {
     expect(
       parseAuthConfig({
         NODE_ENV: 'production',
-        AUTH_RP_ID: 'woke.social',
-        AUTH_ORIGIN: 'https://auth.woke.social',
+        AUTH_RP_ID: 'wetdrool.com',
+        AUTH_ORIGIN: 'https://auth.wetdrool.com',
         AUTH_DATABASE_URL:
-          'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+          'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=verify-full',
       }),
     ).toMatchObject({
-      databaseUrl: 'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+      databaseUrl: 'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=verify-full',
     });
 
     for (const databaseUrl of [
-      'postgresql://authentication:secret@db.woke.social/auth',
-      'postgresql://authentication:secret@db.woke.social/auth?sslmode=require',
-      'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-ca',
-      'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full&sslmode=disable',
+      'postgresql://authentication:secret@db.wetdrool.com/auth',
+      'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=require',
+      'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=verify-ca',
+      'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=verify-full&sslmode=disable',
       'postgresql://authentication:secret@127.0.0.1:5432/auth',
     ]) {
       expect(() =>
         parseAuthConfig({
           NODE_ENV: 'production',
-          AUTH_RP_ID: 'woke.social',
-          AUTH_ORIGIN: 'https://auth.woke.social',
+          AUTH_RP_ID: 'wetdrool.com',
+          AUTH_ORIGIN: 'https://auth.wetdrool.com',
           AUTH_DATABASE_URL: databaseUrl,
         }),
       ).toThrow(/exactly one sslmode=verify-full/u);
     }
     for (const databaseUrl of [
-      'postgresql://authentication:secret@db.staging.woke.social/auth',
+      'postgresql://authentication:secret@db.staging.wetdrool.com/auth',
       'postgresql://authentication:secret@localhost:5432/auth',
     ]) {
       expect(() =>
         parseAuthConfig({
           APP_ENV: 'staging',
-          AUTH_RP_ID: 'woke.social',
-          AUTH_ORIGIN: 'https://auth.woke.social',
+          AUTH_RP_ID: 'wetdrool.com',
+          AUTH_ORIGIN: 'https://auth.wetdrool.com',
           AUTH_DATABASE_URL: databaseUrl,
         }),
       ).toThrow(/exactly one sslmode=verify-full/u);
@@ -222,7 +222,7 @@ describe('authentication service security primitives', () => {
         parseAuthConfig({
           APP_ENV: appEnvironment,
           AUTH_DATABASE_URL:
-            'postgresql://authentication:secret@db.woke.social/auth?sslmode=verify-full',
+            'postgresql://authentication:secret@db.wetdrool.com/auth?sslmode=verify-full',
           NODE_TLS_REJECT_UNAUTHORIZED: '0',
         }),
       ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED must not be 0/u);
@@ -232,11 +232,11 @@ describe('authentication service security primitives', () => {
       parseAuthConfig({
         NODE_ENV: 'test',
         AUTH_DATABASE_URL:
-          'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial',
+          'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool',
         NODE_TLS_REJECT_UNAUTHORIZED: '0',
       }),
     ).toMatchObject({
-      databaseUrl: 'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial',
+      databaseUrl: 'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool',
     });
   });
 
@@ -247,8 +247,8 @@ describe('authentication service security primitives', () => {
   ])('rejects %s credentials from the long-running runtime', (variableName) => {
     expect(() =>
       parseAuthConfig({
-        AUTH_DATABASE_URL: 'postgresql://auth_runtime:secret@localhost/wokesocial',
-        [variableName]: 'postgresql://unrelated_migration:migration-secret@localhost/wokesocial',
+        AUTH_DATABASE_URL: 'postgresql://auth_runtime:secret@localhost/wetdrool',
+        [variableName]: 'postgresql://unrelated_migration:migration-secret@localhost/wetdrool',
       }),
     ).toThrow('Privileged database credentials must not be injected');
   });

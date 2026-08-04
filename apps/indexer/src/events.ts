@@ -14,7 +14,7 @@ import {
   solanaPublicKeySchema,
   timestampSchema,
   transactionSignatureSchema,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   calculatePaymentAllocation,
@@ -1111,7 +1111,7 @@ function assertNetworkBindings(
     });
   }
 
-  const identityPrefix = `wokesocialid:v1:${event.networkId}:`;
+  const identityPrefix = `wetdroolid:v1:${event.networkId}:`;
   for (const [field, value] of Object.entries(event)) {
     if (
       typeof value === 'string' &&

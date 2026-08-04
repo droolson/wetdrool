@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import postgres, { type Sql, type TransactionSql } from 'postgres';
 import { z } from 'zod';
 
-import { type ModerationSubject, verifyEnvelope } from '@wokesocial/protocol';
+import { type ModerationSubject, verifyEnvelope } from '@wetdrool/protocol';
 
 import type { EncryptedPayload, ModerationKeyRing } from './encryption.js';
 import { ModerationServiceError } from './errors.js';

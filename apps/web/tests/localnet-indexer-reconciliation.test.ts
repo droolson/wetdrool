@@ -6,9 +6,9 @@ const GENESIS = '4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB';
 const PROGRAM = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const IDENTITY_ADDRESS = '8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
 const ROOT = '11111111111111111111111111111111';
-const NETWORK = `wokenet:v1:${GENESIS}:${PROGRAM}`;
-const IDENTITY_ID = `wokesocialid:v1:${NETWORK}:${IDENTITY_ADDRESS}`;
-const OBJECT_ID = `wokesocialobj:v1:post:u${'A'.repeat(43)}`;
+const NETWORK = `droolnet:v1:${GENESIS}:${PROGRAM}`;
+const IDENTITY_ID = `wetdroolid:v1:${NETWORK}:${IDENTITY_ADDRESS}`;
+const OBJECT_ID = `wetdroolobj:v1:post:u${'A'.repeat(43)}`;
 const CID = 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm';
 const HASH = `u${'B'.repeat(43)}`;
 const SIGNATURE = '1'.repeat(64);
@@ -41,7 +41,7 @@ function postResponse(overrides: Record<string, unknown> = {}) {
     meta: {
       checkpointSlot: 45,
       indexedAt: '2026-07-29T12:00:01.000Z',
-      source: 'WokeNet open indexer',
+      source: 'DroolNet open indexer',
     },
     post: {
       author: {
@@ -107,7 +107,7 @@ describe('localnet indexer reconciliation', () => {
 
   it.each([
     ['another root', { rootAuthority: PROGRAM }],
-    ['another identity', { identityId: `wokesocialid:v1:${NETWORK}:${PROGRAM}` }],
+    ['another identity', { identityId: `wetdroolid:v1:${NETWORK}:${PROGRAM}` }],
     ['inactive state', { active: false, deactivatedSlot: '42' }],
     ['unknown field', { privateProfile: 'leak' }],
   ])('rejects %s instead of selecting substituted identity state', async (_label, override) => {
@@ -138,7 +138,7 @@ describe('localnet indexer reconciliation', () => {
             meta: {
               checkpointSlot: 44,
               indexedAt: '2026-07-29T12:00:01.000Z',
-              source: 'WokeNet open indexer',
+              source: 'DroolNet open indexer',
             },
           }),
         ),
@@ -170,7 +170,7 @@ describe('localnet indexer reconciliation', () => {
   });
 
   it.each([
-    ['object', { id: `wokesocialobj:v1:post:u${'C'.repeat(43)}` }],
+    ['object', { id: `wetdroolobj:v1:post:u${'C'.repeat(43)}` }],
     ['author', { author: { displayName: 'x', handle: null, identityId: IDENTITY_ID.slice(1) } }],
     ['body', { body: 'substituted' }],
     ['invalid event time', { createdAt: 'not-a-date' }],

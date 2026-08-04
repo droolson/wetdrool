@@ -3,58 +3,57 @@
   "framework": null,
   "installCommand": null,
   "buildCommand": null,
-  "outputDirectory": ".",
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
     {
       "source": "/EnochFAFO",
-      "destination": "https://enochfafo.woke.social",
+      "destination": "https://enochfafo.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/EnochFAFO/",
-      "destination": "https://enochfafo.woke.social",
+      "destination": "https://enochfafo.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/enochfafo",
-      "destination": "https://enochfafo.woke.social",
+      "destination": "https://enochfafo.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/enochfafo/",
-      "destination": "https://enochfafo.woke.social",
+      "destination": "https://enochfafo.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/enoch-fafo",
-      "destination": "https://enochfafo.woke.social",
+      "destination": "https://enochfafo.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/enoch-fafo/",
-      "destination": "https://enochfafo.woke.social",
+      "destination": "https://enochfafo.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/AlexBTC420",
-      "destination": "https://alexbtc420.woke.social",
+      "destination": "https://alexbtc420.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/AlexBTC420/",
-      "destination": "https://alexbtc420.woke.social",
+      "destination": "https://alexbtc420.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/alexbtc420",
-      "destination": "https://alexbtc420.woke.social",
+      "destination": "https://alexbtc420.wetdrool.com",
       "permanent": false
     },
     {
       "source": "/alexbtc420/",
-      "destination": "https://alexbtc420.woke.social",
+      "destination": "https://alexbtc420.wetdrool.com",
       "permanent": false
     },
     {
@@ -89,6 +88,51 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/drooly"
+    },
+    {
+      "source": "/drooly",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/drooly"
+    },
+    {
+      "source": "/api/:path*",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/api/:path*"
+    },
+    {
+      "source": "/assets/:path*",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/assets/:path*"
+    },
+    {
+      "source": "/styles.css",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/styles.css"
+    },
+    {
+      "source": "/drooly.js",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/drooly.js"
+    },
+    {
+      "source": "/robots.txt",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/sitemap.xml"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "destination": "https://icefam.fm/api/drooly-host-not-found"
+    },
     { "source": "/docs", "destination": "/docs.html" },
     { "source": "/docs/", "destination": "/docs.html" },
     { "source": "/HAILMARY", "destination": "/HAILMARY.html" },
@@ -98,6 +142,30 @@
     { "source": "/Docs.dc.html", "destination": "/docs.html" }
   ],
   "headers": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src https://fonts.gstatic.com; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; img-src 'self' data:; media-src 'none'; object-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; worker-src 'none'; upgrade-insecure-requests"
+        },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" }
+      ]
+    },
+    {
+      "source": "/drooly",
+      "has": [{ "type": "host", "value": "drooly.ai" }],
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src https://fonts.gstatic.com; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; img-src 'self' data:; media-src 'none'; object-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; worker-src 'none'; upgrade-insecure-requests"
+        },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [

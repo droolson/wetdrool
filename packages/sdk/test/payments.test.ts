@@ -9,9 +9,9 @@ import {
 } from '../src/index.js';
 
 const network =
-  'wokenet:v1:US517G5965aydkZ46HS38QLi7UQiSojurfbQfKCELFx:YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mnyfaf';
-const identityA = `wokesocialid:v1:${network}:cGfHiC6Kgg3FpFZvgwGcswsCRtp4aBP2fzuXRQPizuN`;
-const identityB = `wokesocialid:v1:${network}:gBxS1f6uyyGPuW5MzGBukidSb71jdsCb5fZaoSzULE5`;
+  'droolnet:v1:US517G5965aydkZ46HS38QLi7UQiSojurfbQfKCELFx:YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mnyfaf';
+const identityA = `wetdroolid:v1:${network}:cGfHiC6Kgg3FpFZvgwGcswsCRtp4aBP2fzuXRQPizuN`;
+const identityB = `wetdroolid:v1:${network}:gBxS1f6uyyGPuW5MzGBukidSb71jdsCb5fZaoSzULE5`;
 const destinationA = 'cGfHiC6Kgg3FpFZvgwGcswsCRtp4aBP2fzuXRQPizuN';
 const destinationB = 'gBxS1f6uyyGPuW5MzGBukidSb71jdsCb5fZaoSzULE5';
 const feeDestination = 'YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mnyfaf';

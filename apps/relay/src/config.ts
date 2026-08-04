@@ -5,10 +5,10 @@ import {
   assertNoMigrationCredentials,
   isLocalOrUnspecifiedHostname,
   isLoopbackHostname,
-} from '@wokesocial/config';
-import { parseTrustedProxyCidrs } from '@wokesocial/config/trusted-proxy';
+} from '@wetdrool/config';
+import { parseTrustedProxyCidrs } from '@wetdrool/config/trusted-proxy';
 
-const legacyRedirectHostnames = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const legacyRedirectHostnames = new Set(['droolhouse.com', 'www.droolhouse.com']);
 
 function isLegacyRedirectHostname(hostname: string): boolean {
   return legacyRedirectHostnames.has(hostname.toLowerCase().replace(/\.+$/u, ''));
@@ -65,7 +65,7 @@ const environmentSchema = z
     NODE_TLS_REJECT_UNAUTHORIZED: z.string().optional(),
     RELAY_HOST: hostSchema.default('127.0.0.1'),
     RELAY_PORT: z.coerce.number().int().min(1).max(65_535).default(4200),
-    RELAY_ID: relayIdSchema.default('wokesocial-relay'),
+    RELAY_ID: relayIdSchema.default('wetdrool-relay'),
     RELAY_ALLOWED_ORIGINS: z.string().default(''),
     RELAY_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: z.enum(['0', '1']).default('0'),
     RELAY_KEY_AUTHORIZER_URL: optionalAuthorizerUrlSchema,

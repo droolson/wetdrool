@@ -34,11 +34,11 @@ import {
 import {
   WOKENET_SYSTEM_PROGRAM_ADDRESS,
   assertWokePaymentSimulationMatches,
-  createWokeNetContext,
+  createDroolNetContext,
   type BuiltWokeSettlementInstruction,
   type BuiltWokeSubscriptionSettlementInstruction,
   type BuiltWokeTipInstruction,
-  type ValidatedWokeNetContext,
+  type ValidatedDroolNetContext,
   type WokeInstruction,
   type WokeNativePaymentPlan,
   type WokePaymentSimulation,
@@ -151,8 +151,8 @@ export interface WokeTransactionSignature {
  * recent blockhash, fee payer, instruction, or transaction bytes.
  */
 export interface WokeTransactionSigningRequest {
-  readonly purpose: 'wokenet-transaction-v1';
-  readonly context: ValidatedWokeNetContext;
+  readonly purpose: 'droolnet-transaction-v1';
+  readonly context: ValidatedDroolNetContext;
   readonly version: WokeTransactionVersion;
   readonly feePayer: string;
   readonly instructionProgramAddress: string;
@@ -202,7 +202,7 @@ export type WokeTransactionSimulationVerifier = (
 ) => void | Promise<void>;
 
 interface ExecuteWokeInstructionBase {
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly feePayer: string;
   readonly signer: WokeTransactionSigner;
   readonly verifySimulation: WokeTransactionSimulationVerifier;
@@ -230,7 +230,7 @@ export interface ExecuteWokePaymentTransactionInput {
 }
 
 export interface WokeTransactionExecutionResult {
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly signature: string;
   readonly slot: bigint;
   readonly finalized: true;
@@ -427,7 +427,7 @@ async function cancelRpcResponseReader(
 }
 
 /**
- * Compiles, signs, simulates, broadcasts, and finalizes one WokeSocial program
+ * Compiles, signs, simulates, broadcasts, and finalizes one WetDrool program
  * instruction against the exact endpoint/genesis/program tuple in `context`.
  *
  * `verifySimulation` is mandatory: generic instructions do not have a safe
@@ -444,7 +444,7 @@ export async function executeWokeInstruction(
 
 /**
  * Executes one atomic transaction containing a bounded ordered list of
- * instructions for the same context-bound WokeSocial program. Solana commits
+ * instructions for the same context-bound WetDrool program. Solana commits
  * all of them or none of them.
  */
 export async function executeWokeInstructions(
@@ -463,7 +463,7 @@ export async function executeWokeInstructions(
       throw executionError(
         'signer-mismatch',
         'validating',
-        'A per-operation WokeNet transaction signer is required.',
+        'A per-operation DroolNet transaction signer is required.',
       );
     }
     if (typeof input.verifySimulation !== 'function') {
@@ -553,7 +553,7 @@ export async function executeWokeInstructions(
       throw executionError(
         'simulation-mismatch',
         'simulating',
-        'The simulated effects do not match the approved WokeNet operation.',
+        'The simulated effects do not match the approved DroolNet operation.',
         error,
       );
     }
@@ -571,7 +571,7 @@ export async function executeWokeInstructions(
       throw executionError(
         'transaction-expired',
         'broadcasting',
-        'The signed WokeNet transaction blockhash expired before broadcast.',
+        'The signed DroolNet transaction blockhash expired before broadcast.',
       );
     }
 
@@ -668,7 +668,7 @@ function decodeWokePaymentSimulationWithEffects(snapshot: WokeTransactionSimulat
   readonly simulation: WokePaymentSimulation;
   readonly accountCreations: readonly ObservedSystemAccountCreation[];
 } {
-  const context = createWokeNetContext({
+  const context = createDroolNetContext({
     endpoint: snapshot.endpoint,
     genesisHash: snapshot.genesisHash,
     programAddress: snapshot.programAddress,
@@ -689,15 +689,15 @@ function decodeWokePaymentSimulationWithEffects(snapshot: WokeTransactionSimulat
   };
 }
 
-function parseExecutionContext(input: ValidatedWokeNetContext): ValidatedWokeNetContext {
-  let context: ValidatedWokeNetContext;
+function parseExecutionContext(input: ValidatedDroolNetContext): ValidatedDroolNetContext {
+  let context: ValidatedDroolNetContext;
   try {
-    context = createWokeNetContext(input);
+    context = createDroolNetContext(input);
   } catch (error) {
     throw executionError(
       'invalid-context',
       'validating',
-      'The WokeNet execution context is invalid.',
+      'The DroolNet execution context is invalid.',
       error,
     );
   }
@@ -740,12 +740,12 @@ function parseTransactionVersion(
   throw executionError(
     'invalid-instruction',
     'validating',
-    'WokeNet transaction version must be legacy or version 0.',
+    'DroolNet transaction version must be legacy or version 0.',
   );
 }
 
 function snapshotInstruction(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   candidate: WokeInstruction,
 ): WokeInstruction {
   if (
@@ -759,7 +759,7 @@ function snapshotInstruction(
     throw executionError(
       'invalid-instruction',
       'validating',
-      'The instruction must be a non-empty instruction for the context-bound WokeSocial program.',
+      'The instruction must be a non-empty instruction for the context-bound WetDrool program.',
     );
   }
   const accounts: AccountMeta[] = candidate.accounts.map((candidateMeta, index) => {
@@ -798,7 +798,7 @@ function snapshotInstruction(
 }
 
 function snapshotInstructions(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   candidates: readonly WokeInstruction[],
 ): readonly WokeInstruction[] {
   if (
@@ -809,7 +809,7 @@ function snapshotInstructions(
     throw executionError(
       'invalid-instruction',
       'validating',
-      `A WokeNet transaction must contain 1–${String(MAX_WOKENET_OUTER_INSTRUCTIONS)} instructions.`,
+      `A DroolNet transaction must contain 1–${String(MAX_WOKENET_OUTER_INSTRUCTIONS)} instructions.`,
     );
   }
   return Object.freeze(candidates.map((candidate) => snapshotInstruction(context, candidate)));
@@ -837,7 +837,7 @@ function compileWokeTransaction(
     throw executionError(
       'invalid-instruction',
       'compiling',
-      'The WokeSocial instructions could not be compiled into a Solana transaction.',
+      'The WetDrool instructions could not be compiled into a Solana transaction.',
       error,
     );
   }
@@ -898,7 +898,7 @@ function decodeWritableTransactionAccountAddresses(
 async function collectAndVerifySignatures(
   transaction: Readonly<Transaction>,
   binding: {
-    readonly context: ValidatedWokeNetContext;
+    readonly context: ValidatedDroolNetContext;
     readonly feePayer: string;
     readonly instructionProgramAddress: string;
     readonly version: WokeTransactionVersion;
@@ -929,7 +929,7 @@ async function collectAndVerifySignatures(
     returned = await awaitWithAbort(
       Promise.resolve(
         signer({
-          purpose: 'wokenet-transaction-v1',
+          purpose: 'droolnet-transaction-v1',
           context: Object.freeze({ ...binding.context }),
           version: binding.version,
           feePayer: binding.feePayer,
@@ -950,7 +950,7 @@ async function collectAndVerifySignatures(
     throw executionError(
       'signer-rejected',
       'signing',
-      'The operation-scoped signer rejected the WokeNet transaction.',
+      'The operation-scoped signer rejected the DroolNet transaction.',
       error,
     );
   }
@@ -1054,7 +1054,7 @@ async function collectAndVerifySignatures(
 
 async function assertProviderIdentity(
   rpc: ReturnType<typeof createSolanaRpc>,
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   scope: OperationScope,
   stage: WokeTransactionExecutionStage,
 ): Promise<void> {
@@ -1063,14 +1063,14 @@ async function assertProviderIdentity(
     throw executionError(
       'invalid-rpc-response',
       stage,
-      'The WokeNet provider returned a malformed genesis hash.',
+      'The DroolNet provider returned a malformed genesis hash.',
     );
   }
   if (observed !== context.genesisHash) {
     throw executionError(
       'provider-mismatch',
       stage,
-      'The RPC provider genesis hash does not match the approved WokeNet Solana deployment.',
+      'The RPC provider genesis hash does not match the approved DroolNet Solana deployment.',
     );
   }
 }
@@ -1101,7 +1101,7 @@ async function fetchLatestBlockhash(
     throw executionError(
       'invalid-rpc-response',
       'fetching-blockhash',
-      'The WokeNet provider returned a malformed latest blockhash response.',
+      'The DroolNet provider returned a malformed latest blockhash response.',
     );
   }
   let parsedBlockhash: Blockhash;
@@ -1111,7 +1111,7 @@ async function fetchLatestBlockhash(
     throw executionError(
       'invalid-rpc-response',
       'fetching-blockhash',
-      'The WokeNet provider returned an invalid recent blockhash.',
+      'The DroolNet provider returned an invalid recent blockhash.',
       error,
     );
   }
@@ -1156,7 +1156,7 @@ async function fetchMinimumRentExemptBalances(
 
 async function simulateExactTransaction(
   rpc: ReturnType<typeof createSolanaRpc>,
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   binding: {
     readonly feePayer: string;
     readonly version: WokeTransactionVersion;
@@ -1196,7 +1196,7 @@ async function simulateExactTransaction(
       throw executionError(
         'invalid-rpc-response',
         'simulating',
-        'The WokeNet provider returned a malformed pre-simulation account response.',
+        'The DroolNet provider returned a malformed pre-simulation account response.',
       );
     }
     const preLamports = parseSimulationRpcAccountLamports(
@@ -1233,7 +1233,7 @@ async function simulateExactTransaction(
       throw executionError(
         'fee-limit-exceeded',
         'simulating',
-        `The exact-message WokeNet transaction fee exceeds the approved ${String(
+        `The exact-message DroolNet transaction fee exceeds the approved ${String(
           binding.maxTransactionFeeLamports,
         )}-lamport limit.`,
       );
@@ -1270,7 +1270,7 @@ async function simulateExactTransaction(
       throw executionError(
         'invalid-rpc-response',
         'simulating',
-        'The WokeNet provider returned a malformed simulation response.',
+        'The DroolNet provider returned a malformed simulation response.',
       );
     }
     if (simulationContextSlot !== preAccountContextSlot) {
@@ -1298,7 +1298,7 @@ async function simulateExactTransaction(
       throw executionError(
         'simulation-failed',
         'simulating',
-        'The exact signed WokeNet transaction failed simulation.',
+        'The exact signed DroolNet transaction failed simulation.',
       );
     }
     const logs = parseSimulationLogs(response.value.logs);
@@ -1371,7 +1371,7 @@ function parseSimulationContextSlot(response: unknown, minimumSlot: bigint, labe
     throw executionError(
       'invalid-rpc-response',
       'simulating',
-      `The WokeNet provider returned a malformed or stale ${label} response.`,
+      `The DroolNet provider returned a malformed or stale ${label} response.`,
     );
   }
   return response.context.slot;
@@ -1590,7 +1590,7 @@ async function broadcastExactTransaction(
 
 async function waitForFinalization(input: {
   readonly rpc: ReturnType<typeof createSolanaRpc>;
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly transactionSignature: string;
   readonly wireTransactionBase64: string;
   readonly latestBlockhash: LatestBlockhash;
@@ -1643,7 +1643,7 @@ async function waitForFinalization(input: {
           throw executionError(
             'transaction-failed',
             'confirming',
-            'The finalized WokeNet transaction contains an execution error.',
+            'The finalized DroolNet transaction contains an execution error.',
           );
         }
         if (status.confirmationStatus === 'finalized') {
@@ -1664,7 +1664,7 @@ async function waitForFinalization(input: {
           throw executionError(
             'transaction-expired',
             'confirming',
-            'The WokeNet blockhash expired before the transaction was observed onchain.',
+            'The DroolNet blockhash expired before the transaction was observed onchain.',
           );
         }
         if (
@@ -1961,7 +1961,7 @@ function decodeSettlementEvents(
         throw executionError(
           'simulation-mismatch',
           'simulating',
-          'The WokeSocial program invocation log is malformed.',
+          'The WetDrool program invocation log is malformed.',
         );
       }
       const depth = Number(depthText);
@@ -1969,7 +1969,7 @@ function decodeSettlementEvents(
         throw executionError(
           'simulation-mismatch',
           'simulating',
-          'The WokeSocial program invocation depth is invalid.',
+          'The WetDrool program invocation depth is invalid.',
         );
       }
       stack.length = depth - 1;
@@ -2304,9 +2304,9 @@ function snapshotBuiltSettlement(
       'The legacy settlement builder result is malformed.',
     );
   }
-  let context: ValidatedWokeNetContext;
+  let context: ValidatedDroolNetContext;
   try {
-    context = createWokeNetContext(candidate.context);
+    context = createDroolNetContext(candidate.context);
   } catch (error) {
     throw executionError(
       'invalid-context',
@@ -2354,7 +2354,7 @@ function snapshotPaymentPlan(plan: WokeNativePaymentPlan): WokeNativePaymentPlan
   const transfers = Object.freeze(plan.transfers.map((transfer) => Object.freeze({ ...transfer })));
   return Object.freeze({
     ...plan,
-    context: createWokeNetContext(plan.context),
+    context: createDroolNetContext(plan.context),
     recipientAllocations,
     transfers,
   });
@@ -2430,7 +2430,7 @@ function createOperationScope(
   }
   const timer = setTimeout(() => {
     timedOut = true;
-    controller.abort(new Error('WokeNet transaction operation timed out.'));
+    controller.abort(new Error('DroolNet transaction operation timed out.'));
   }, limits.overallTimeoutMs);
 
   const error = (stage: WokeTransactionExecutionStage): WokeTransactionExecutionError =>
@@ -2438,8 +2438,8 @@ function createOperationScope(
       timedOut ? 'timeout' : 'aborted',
       stage,
       timedOut
-        ? 'The WokeNet transaction operation exceeded its overall timeout.'
-        : 'The WokeNet transaction operation was aborted.',
+        ? 'The DroolNet transaction operation exceeded its overall timeout.'
+        : 'The DroolNet transaction operation was aborted.',
     );
 
   return {
@@ -2494,8 +2494,8 @@ async function sendRpcRequest<T>(
       'rpc-failure',
       stage,
       requestTimedOut
-        ? `The WokeNet ${method} request timed out.`
-        : `The WokeNet ${method} request failed.`,
+        ? `The DroolNet ${method} request timed out.`
+        : `The DroolNet ${method} request failed.`,
       error,
     );
   } finally {

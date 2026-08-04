@@ -11,7 +11,7 @@ import {
 } from '../src/constants.js';
 import { signedEnvelopeSchema } from '../src/schemas.js';
 
-const outputUrl = new URL('../schemas/wokesocial-signed-envelope-v1.schema.json', import.meta.url);
+const outputUrl = new URL('../schemas/wetdrool-signed-envelope-v1.schema.json', import.meta.url);
 
 const generated = z.toJSONSchema(signedEnvelopeSchema, {
   io: 'input',
@@ -20,19 +20,19 @@ const generated = z.toJSONSchema(signedEnvelopeSchema, {
 });
 
 const artifact = {
-  $id: 'https://woke.social/protocol/schemas/signed-envelope-v1.schema.json',
+  $id: 'https://wetdrool.com/protocol/schemas/signed-envelope-v1.schema.json',
   ...generated,
-  title: 'WokeSocial signed portable object envelope v1',
+  title: 'WetDrool signed portable object envelope v1',
   description:
-    'Structural interchange schema for every WokeSocial v1 portable object and its Ed25519 proof.',
+    'Structural interchange schema for every WetDrool v1 portable object and its Ed25519 proof.',
   $comment:
     'JSON Schema validates the protocol-v1 read surface, including frozen schema-version-1 profiles, communities, and community memberships plus their current schema-version-2 shapes. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, immutable-transition rules, and current external authorization policy from the protocol library. New objects MUST use the current creation schema/builders.',
-  'x-wokesocial-protocol-version': '1.0',
-  'x-wokesocial-schema-versions': [1, 2],
-  'x-wokesocial-current-profile-schema-version': PROFILE_SCHEMA_VERSION,
-  'x-wokesocial-current-community-schema-version': COMMUNITY_SCHEMA_VERSION,
-  'x-wokesocial-current-community-membership-schema-version': COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
-  'x-wokesocial-object-types': PORTABLE_OBJECT_TYPES,
+  'x-wetdrool-protocol-version': '1.0',
+  'x-wetdrool-schema-versions': [1, 2],
+  'x-wetdrool-current-profile-schema-version': PROFILE_SCHEMA_VERSION,
+  'x-wetdrool-current-community-schema-version': COMMUNITY_SCHEMA_VERSION,
+  'x-wetdrool-current-community-membership-schema-version': COMMUNITY_MEMBERSHIP_SCHEMA_VERSION,
+  'x-wetdrool-object-types': PORTABLE_OBJECT_TYPES,
 };
 
 const serialized = await format(JSON.stringify(artifact), {
@@ -51,12 +51,12 @@ if (mode === '--write') {
     current = await readFile(outputUrl, 'utf8');
   } catch {
     throw new Error(
-      'The checked-in protocol JSON Schema is missing. Run pnpm --filter @wokesocial/protocol schema:generate.',
+      'The checked-in protocol JSON Schema is missing. Run pnpm --filter @wetdrool/protocol schema:generate.',
     );
   }
   if (current !== serialized) {
     throw new Error(
-      'The checked-in protocol JSON Schema is stale. Run pnpm --filter @wokesocial/protocol schema:generate.',
+      'The checked-in protocol JSON Schema is stale. Run pnpm --filter @wetdrool/protocol schema:generate.',
     );
   }
   process.stdout.write('Protocol JSON Schema matches the canonical Zod registry.\n');

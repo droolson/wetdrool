@@ -1,7 +1,7 @@
-# @wokesocial/marketing
+# @wetdrool/marketing
 
-Public marketing launch site for **WokeSocial**, built from the
-`Woke.social Marketing Launch` design-canvas package (landing + docs, design
+Public marketing launch site for **WetDrool**, built from the
+`WetDrool.com Marketing Launch` design-canvas package (landing + docs, design
 system tokens/components, brand assets, and the points/handle demo logic).
 
 This app is a **static site**. It does not talk to the indexer, auth service, or
@@ -11,12 +11,12 @@ browser) run entirely in the browser.
 ## Local development
 
 ```sh
-pnpm --filter @wokesocial/marketing dev
+pnpm --filter @wetdrool/marketing dev
 # open http://127.0.0.1:3100
 ```
 
 ```sh
-pnpm --filter @wokesocial/marketing build   # verifies required static assets
+pnpm --filter @wetdrool/marketing build   # verifies required static assets
 ```
 
 ## Deploy (Vercel)
@@ -56,10 +56,10 @@ clean URLs above.
 
 Copied and production-polished from:
 
-`/Users/raphaelcardona/Downloads/Woke.social Marketing Launch`
+`/Users/raphaelcardona/Downloads/WetDrool.com Marketing Launch`
 
 - `Landing.dc.html` / interactive launch page
 - `Docs.dc.html` + `docs-data.js` documentation browser
-- `_ds/wokesocial-design-system-*` tokens and component bundle
+- `_ds/wetdrool-design-system-*` tokens and component bundle
 - `assets/logo/*` brand artwork
 - `support.js` design-canvas runtime (loads React from unpkg at runtime)

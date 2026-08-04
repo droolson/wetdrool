@@ -14,7 +14,7 @@ moderation, allowed a provider projection to look more authoritative than the
 signed transition, and had no privacy-safe way to read one known public
 membership without exposing a roster.
 
-WokeSocial is a Solana dapp. WokeNet is its portable protocol, Anchor program,
+WetDrool is a Solana dapp. DroolNet is its portable protocol, Anchor program,
 and exact deployment namespace on Solana; it is not a chain, validator, RPC
 network, or Firedancer deployment. Solana validators and RPC providers remain
 external dependencies.
@@ -25,7 +25,7 @@ external dependencies.
 
 `community-membership` schema version 2 binds:
 
-- one exact WokeNet network;
+- one exact DroolNet network;
 - one exact Solana community account;
 - one member identity;
 - an action and its resulting state;
@@ -98,10 +98,10 @@ submission and verify finalized state afterward, so a landed transaction whose
 RPC response was lost can be retried without silently consuming another
 sequence.
 
-These SDK primitives do not select a WokeSocial identity, connect a browser
+These SDK primitives do not select a WetDrool identity, connect a browser
 wallet or Mobile Wallet Adapter, approve fees, or establish product membership
 on their own. A client must show the exact deployment, identity, action,
-sequence snapshots, rent/fees, and absence of a `$WOKE` transfer; obtain
+sequence snapshots, rent/fees, and absence of a `$DROOL` transfer; obtain
 explicit wallet approval; wait for finalized confirmation; and then wait for
 an indexer checkpoint covering that finalized transition.
 
@@ -144,7 +144,7 @@ transaction approval, finalized-account verification, and indexer-catch-up
 flow are not connected, so the app exposes no join/leave/moderation action.
 
 The web product likewise has no completed wallet-backed community mutation
-journey. No public WokeNet deployment exists. This decision and its local code
+journey. No public DroolNet deployment exists. This decision and its local code
 are predeployment evidence only; the release decision remains **NO-GO for
 production**.
 
@@ -195,13 +195,13 @@ production**.
   moderation privacy risk.
 - **Trust an optimistic transaction or indexer response:** neither proves the
   exact finalized account transition.
-- **Implement this as a WokeNet chain or Firedancer topology:** WokeNet is a
+- **Implement this as a DroolNet chain or Firedancer topology:** DroolNet is a
   Solana dapp/program namespace and operates no validator network.
 
 ## References
 
 - [ADR-0004: Indexer projection and replay](0004-indexer-projection-and-replay.md)
-- [ADR-0009: WokeNet on Solana](0009-wokenet-on-solana.md)
+- [ADR-0009: DroolNet on Solana](0009-droolnet-on-solana.md)
 - [ADR-0010: Verified community discovery](0010-verified-community-discovery.md)
 - `packages/protocol/src/community-schemas.ts`
 - `programs/social_protocol/src/instructions/join_community.rs`

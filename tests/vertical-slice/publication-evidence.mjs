@@ -1,6 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 
-export const PUBLICATION_EVIDENCE_SCHEMA = 'wokesocial.vertical-slice.publication-evidence.v2';
+export const PUBLICATION_EVIDENCE_SCHEMA = 'wetdrool.vertical-slice.publication-evidence.v2';
 export const BASELINE_DURABLE_EVENT_COUNT = 10;
 export const MAX_PUBLICATION_EVIDENCE_BYTES = 32 * 1_024;
 
@@ -76,7 +76,7 @@ export function assertPublicationEvidence(value, expected = {}) {
   ]);
   if (
     !/^anon_[0-9a-hjkmnp-tv-z]{16}$/u.test(value.wokeName.handle) ||
-    value.wokeName.name !== `${value.wokeName.handle}.woke` ||
+    value.wokeName.name !== `${value.wokeName.handle}.drool` ||
     !publicKey(value.wokeName.handleClaimAddress) ||
     !/^u[A-Za-z0-9_-]{43}$/u.test(value.wokeName.handleHash) ||
     value.wokeName.identitySequence !== '1' ||
@@ -85,7 +85,7 @@ export function assertPublicationEvidence(value, expected = {}) {
     !decimal(value.wokeName.resolutionCheckpointSlot) ||
     BigInt(value.wokeName.resolutionCheckpointSlot) < BigInt(value.wokeName.claimedSlot)
   ) {
-    throw new Error('Publication evidence .woke name proof is invalid.');
+    throw new Error('Publication evidence .drool name proof is invalid.');
   }
 
   if (!Array.isArray(value.posts) || value.posts.length !== 2) {
@@ -109,7 +109,7 @@ export function assertPublicationEvidence(value, expected = {}) {
       !bounded(post.body, 2_000) ||
       !bounded(post.cid, 256) ||
       !bounded(post.objectId, 512) ||
-      !post.objectId.startsWith('wokesocialobj:v1:post:') ||
+      !post.objectId.startsWith('wetdroolobj:v1:post:') ||
       !bounded(post.payloadHash, 256) ||
       !publicKey(post.postReference) ||
       !transactionSignature(post.transactionSignature) ||

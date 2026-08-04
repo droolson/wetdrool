@@ -6,14 +6,14 @@ import {
   createFastifyRateLimitStore,
   type FastifyRateLimitStoreResult,
   type RateLimiter,
-  type WokeSocialFastifyRateLimitStore,
+  type WetDroolFastifyRateLimitStore,
 } from '../src/index.js';
 import { FakeRedisTransport } from './fake-redis.js';
 
 const secret = new Uint8Array(32).fill(0x11);
 
 function callStore(
-  store: WokeSocialFastifyRateLimitStore,
+  store: WetDroolFastifyRateLimitStore,
   operation: 'incr' | 'read',
   key: string,
   timeWindow = 1_000,

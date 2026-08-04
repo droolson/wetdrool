@@ -4,7 +4,7 @@ import { requireBoundedString } from './validation.js';
 
 const MINIMUM_SECRET_BYTES = 32;
 const MAXIMUM_SECRET_BYTES = 1_024;
-const DEFAULT_REDIS_PREFIX = 'wokesocial:rate-limit:v1';
+const DEFAULT_REDIS_PREFIX = 'wetdrool:rate-limit:v1';
 const PREFIX_PATTERN = /^[A-Za-z0-9:_-]+$/u;
 
 export interface DeriveRateLimitRedisKeyOptions {
@@ -63,8 +63,8 @@ export function deriveRateLimitRedisKey(options: DeriveRateLimitRedisKeyOptions)
     const namespace = requireBoundedString(options.namespace, 'namespace', 512);
     const key = requireBoundedString(options.key, 'key', 4_096);
     const prefix = requirePrefix(options.prefix ?? DEFAULT_REDIS_PREFIX);
-    const namespaceDigest = digest(secret, 'wokesocial-rate-limit-namespace-v1', [namespace]);
-    const keyDigest = digest(secret, 'wokesocial-rate-limit-key-v1', [namespace, key]);
+    const namespaceDigest = digest(secret, 'wetdrool-rate-limit-namespace-v1', [namespace]);
+    const keyDigest = digest(secret, 'wetdrool-rate-limit-key-v1', [namespace, key]);
     return `${prefix}:${namespaceDigest}:${keyDigest}`;
   } finally {
     secret.fill(0);

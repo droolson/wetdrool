@@ -93,7 +93,7 @@ function validatePortablePayload(
     addIssue(issue: { code: 'custom'; path?: PropertyKey[] | undefined; message: string }): void;
   },
 ): void {
-  if (!payload.author.startsWith(`wokesocialid:v1:${payload.network}:`)) {
+  if (!payload.author.startsWith(`wetdroolid:v1:${payload.network}:`)) {
     context.addIssue({
       code: 'custom',
       path: ['author'],

@@ -4,18 +4,18 @@ Last reviewed: 2026-07-29
 
 ## Document status
 
-This document defines the provider-neutral deployment contract for WokeSocial
-and WokeNet.
+This document defines the provider-neutral deployment contract for WetDrool
+and DroolNet.
 
-WokeSocial is the web and Android product plus its replaceable services.
-WokeNet is the protocol and Anchor-program deployment layer on Solana. This
+WetDrool is the web and Android product plus its replaceable services.
+DroolNet is the protocol and Anchor-program deployment layer on Solana. This
 repository does not operate a separate blockchain, validator set, or RPC
 network.
 
 The verified boundary is local development:
 
 - pinned Node, pnpm, Rust, Solana, and Anchor toolchains;
-- a disposable Solana local validator and development WokeNet program ID;
+- a disposable Solana local validator and development DroolNet program ID;
 - local PostgreSQL, Redis, Kubo, media, and malware-scanning services;
 - locally built web and service artifacts with focused integration evidence;
   and
@@ -23,9 +23,9 @@ The verified boundary is local development:
   connection code, exact deployment checks, a read-only feed, tests, and Android
   export metadata.
 
-No WokeNet program deployment is recorded on Solana devnet or mainnet-beta. No
+No DroolNet program deployment is recorded on Solana devnet or mainnet-beta. No
 production service, DNS/TLS deployment, provider account, backup/restore
-attestation, `$WOKE` mint, signed APK, store submission, or public release is
+attestation, `$DROOL` mint, signed APK, store submission, or public release is
 claimed.
 
 ## Deployment principles
@@ -50,9 +50,9 @@ claimed.
 
 ```mermaid
 flowchart TB
-    DNS["woke.social DNS and TLS"]
-    WEB["WokeSocial web"]
-    ANDROID["WokeSocial Seeker Android"]
+    DNS["wetdrool.com DNS and TLS"]
+    WEB["WetDrool web"]
+    ANDROID["WetDrool Seeker Android"]
     WALLET["MWA-compatible Android wallet"]
     API["Replaceable public APIs"]
     IDX["Open indexer"]
@@ -62,7 +62,7 @@ flowchart TB
     REDIS["Redis cache, queues, limits"]
     RPC["Independent Solana RPC providers"]
     SOLANA["Selected Solana cluster"]
-    PROGRAM["WokeNet program"]
+    PROGRAM["DroolNet program"]
     STORAGE["Content-addressed storage providers"]
     OBS["Privacy-controlled observability"]
 
@@ -104,7 +104,7 @@ semantics.
 | Local/CI | Disposable local validator | Generated keys, synthetic fixtures, local SOL only | Program, client, indexer, and connected-flow evidence | Developer or restricted CI identity |
 | Devnet | Solana devnet | Devnet SOL and synthetic/non-sensitive data | Public program deployment rehearsal, RPC failover, client/device integration | Protected devnet program authority |
 | Staging | Solana devnet or an explicitly recorded non-production target | Synthetic data and staging-only secrets | Production-like services, recovery, monitoring, and release rehearsal | Protected staging quorum |
-| Production | Solana mainnet-beta | Real network fees and minimum necessary service data | Public WokeSocial and WokeNet release | Hardware-backed production quorums |
+| Production | Solana mainnet-beta | Real network fees and minimum necessary service data | Public WetDrool and DroolNet release | Hardware-backed production quorums |
 
 Each environment has distinct program IDs, deployment records, authority keys,
 databases, buckets, API tokens, telemetry projects, mobile configuration, and
@@ -112,20 +112,20 @@ signing identities. Operator and client surfaces show the cluster and exact
 deployment binding:
 
 ```text
-wokenet:v1:<solana-genesis-hash>:<social-protocol-program-id>
+droolnet:v1:<solana-genesis-hash>:<social-protocol-program-id>
 ```
 
 Human-readable cluster names never replace observed genesis verification.
 
-## `$WOKE` and payment boundary
+## `$DROOL` and payment boundary
 
-No `$WOKE` mint exists. The legacy lamport-denominated payment ABI is
+No `$DROOL` mint exists. The legacy lamport-denominated payment ABI is
 quarantined, cannot execute, cannot be unpaused, and never grants an
 entitlement. Deployment and sponsorship tooling must reject it.
 
 Portable signed metadata may describe SOL with `{ kind: "sol" }` or an SPL
 asset with exact token metadata. `{ kind: "woke" }` is rejected. A future
-`$WOKE` release requires a separately approved SPL or Token-2022 mint, new
+`$DROOL` release requires a separately approved SPL or Token-2022 mint, new
 mint-aware ABI, migration, devnet rehearsal, legal/security review, and
 explicit release authorization.
 
@@ -160,11 +160,11 @@ a public Solana cluster, publish permanent content, change DNS, create a mint,
 sign an APK, or spend real funds.
 
 The disposable local validator is started on demand by the program and
-connected-slice test commands; it is not left running as a WokeNet service.
+connected-slice test commands; it is not left running as a DroolNet service.
 
 ## Build and artifact promotion
 
-Web, service, WokeNet-program, and Android artifacts have separate release
+Web, service, DroolNet-program, and Android artifacts have separate release
 records and approvals.
 
 The application/program release pipeline is:
@@ -173,7 +173,7 @@ The application/program release pipeline is:
 2. Run formatting, lint, type checks, unit/integration/local-validator tests,
    responsive-web tests, security scans, and production builds.
 3. Build each service image once from the reviewed revision.
-4. Reproducibly build the WokeNet SBF artifact and record its hash, IDL, source
+4. Reproducibly build the DroolNet SBF artifact and record its hash, IDL, source
    revision, and exact toolchain.
 5. Generate SBOMs, vulnerability reports, provenance, and immutable digests.
 6. Sign or attest artifacts through protected release identities.
@@ -218,7 +218,7 @@ client bundles, or placed in `EXPO_PUBLIC_*` variables.
 | Sponsorship | Enable flag, Solana cluster, budgets, signer reference | Disabled by default; fee payer isolated; legacy payment instructions rejected |
 | Telemetry/operations | OTLP destination, sampling, release ID, admin binds, flags | No private content; private admin endpoints; audited/versioned flags |
 
-Retired `WOKENET_*` RPC aliases fail closed. WokeNet remains the protocol
+Retired `WOKENET_*` RPC aliases fail closed. DroolNet remains the protocol
 namespace, not an RPC transport.
 
 Startup fails when required configuration is absent, malformed, inconsistent,
@@ -248,7 +248,7 @@ private; broad `trustProxy` settings are forbidden.
 - Ordered migration checksums are verified before execution.
 - Destructive migrations require a restore rehearsal and compatibility window.
 - A fresh indexer database is rebuilt from the recorded Solana deployment slot,
-  finalized WokeNet history, and verified signed manifests.
+  finalized DroolNet history, and verified signed manifests.
 
 ### Redis
 
@@ -277,13 +277,13 @@ private; broad `trustProxy` settings are forbidden.
 - Cross-check sensitive state and finalized observations across independently
   administered providers.
 - Record slot/block identity and provider provenance for replay.
-- A provider change requires no WokeNet protocol migration.
+- A provider change requires no DroolNet protocol migration.
 - Stop unsafe writes and show a degraded state when providers disagree or
   required methods are unavailable.
 
 ## Database migration procedure
 
-1. Record the release, current schema, immutable WokeNet deployment metadata,
+1. Record the release, current schema, immutable DroolNet deployment metadata,
    row-count invariants, replica health, and recovery point.
 2. Verify that the encrypted backup is readable.
 3. Confirm old/new application compatibility.
@@ -299,7 +299,7 @@ rollback is not improvised.
 
 ## Solana devnet program rehearsal
 
-Devnet is the first public WokeNet deployment gate:
+Devnet is the first public DroolNet deployment gate:
 
 1. Reproduce the reviewed SBF artifact and IDL from a clean revision.
 2. Confirm the intended Solana devnet genesis hash and protected authority.
@@ -307,8 +307,8 @@ Devnet is the first public WokeNet deployment gate:
 4. Record deployment signature/slot, program ID/data address, deployed artifact
    hash, source/toolchain, and upgrade authority.
 5. Verify executable bytes and exact
-   `wokenet:v1:<solana-genesis-hash>:<program-id>` binding independently.
-6. Run the connected WokeSocial flow through at least two independently
+   `droolnet:v1:<solana-genesis-hash>:<program-id>` binding independently.
+6. Run the connected WetDrool flow through at least two independently
    administered Solana RPC providers.
 7. Exercise indexer rebuild, provider loss/disagreement, blockhash expiry,
    priority-fee bounds, authority compromise, upgrade, and rollback procedures.
@@ -334,7 +334,7 @@ Mainnet-beta deployment remains disabled until:
   exercises pass;
 - DNS/TLS, abuse response, on-call coverage, budgets, monitoring, backups, and
   rollback are operational; and
-- any future `$WOKE` mint and replacement ABI have separate explicit approval.
+- any future `$DROOL` mint and replacement ABI have separate explicit approval.
 
 General CI has no mainnet-beta program authority or real-fund signer. A
 production wrapper requires the exact cluster/genesis, program ID, authority,
@@ -407,8 +407,8 @@ time to upgrade.
 
 ## DNS, TLS, and public routing
 
-- `woke.social` is the sole canonical flagship origin.
-- `sociallywoke.com` and `www.sociallywoke.com` provide permanent,
+- `wetdrool.com` is the sole canonical flagship origin.
+- `droolhouse.com` and `www.droolhouse.com` provide permanent,
   path/query-preserving redirects only; they do not serve an application,
   session, cookie, or WebAuthn origin.
 - DNS changes are reviewed and reversible; TLS is automated with expiry alerts.
@@ -448,9 +448,9 @@ differently signed emergency APK is never treated as a valid update.
 
 - Complete an independent-machine release attestation, SBOMs, signatures, and
   provenance.
-- Finish essential WokeSocial web/mobile mutation flows and provider
+- Finish essential WetDrool web/mobile mutation flows and provider
   infrastructure.
-- Deploy and verify the reviewed WokeNet program on Solana devnet.
+- Deploy and verify the reviewed DroolNet program on Solana devnet.
 - Establish production program-authority, service, Android-signing, and
   distribution custody.
 - Define and validate measurable SLO/RPO/RTO and capacity budgets.
@@ -459,5 +459,5 @@ differently signed emergency APK is never treated as a valid update.
 - Demonstrate devnet deployment, restore, replay, provider failover, rollback,
   incident response, Seeker-device MWA behavior, and reproducible signed-APK
   verification.
-- Keep `$WOKE` out of deployment scope unless a real mint and replacement ABI
+- Keep `$DROOL` out of deployment scope unless a real mint and replacement ABI
   pass their separate approval gates.

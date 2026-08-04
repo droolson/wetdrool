@@ -5,7 +5,7 @@ import { extractWokeManifestCid, parseWokeManifestUri } from '../src/index.js';
 const cid = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku';
 const transactionId = 'A'.repeat(43);
 
-describe('WokeNet manifest URI policy', () => {
+describe('DroolNet manifest URI policy', () => {
   it.each([
     [`ipfs://${cid}`, 'ipfs'],
     [`local://${cid}`, 'local'],

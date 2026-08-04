@@ -5,13 +5,13 @@ import { z } from 'zod';
 import { handleSchema, solanaPublicKeySchema } from './schema-primitives.js';
 
 export const WOKE_NAME_NAMESPACE_VERSION = 1 as const;
-export const WOKE_NAME_SUFFIX = '.woke' as const;
+export const WOKE_NAME_SUFFIX = '.drool' as const;
 export const WOKE_RANDOM_HANDLE_PREFIX = 'anon_' as const;
 export const WOKE_RANDOM_HANDLE_ENTROPY_BITS = 80 as const;
 
 const RANDOM_BYTES = WOKE_RANDOM_HANDLE_ENTROPY_BITS / 8;
 const CROCKFORD_BASE32 = '0123456789abcdefghjkmnpqrstvwxyz';
-const RANDOM_DERIVATION_DOMAIN = new TextEncoder().encode('wokesocial:woke-name:random:v1\u0000');
+const RANDOM_DERIVATION_DOMAIN = new TextEncoder().encode('wetdrool:woke-name:random:v1\u0000');
 
 const RESERVED_CUSTOM_HANDLES = new Set([
   'admin',
@@ -30,8 +30,8 @@ const RESERVED_CUSTOM_HANDLES = new Set([
   'trust',
   'woke',
   'wokeai',
-  'wokenet',
-  'wokesocial',
+  'droolnet',
+  'wetdrool',
 ]);
 
 export type WokeNameErrorCode =
@@ -50,15 +50,15 @@ export class WokeNameError extends Error {
 
 export const wokeHandleSchema = handleSchema.refine(
   (handle) => !handle.startsWith('_') && !handle.endsWith('_') && !handle.includes('__'),
-  'WokeNet handles cannot start or end with an underscore or contain repeated underscores.',
+  'DroolNet handles cannot start or end with an underscore or contain repeated underscores.',
 );
 
 export const wokeNameSchema = z
   .string()
-  .regex(/^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?\.woke$/u)
+  .regex(/^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?\.drool$/u)
   .refine(
     (name) => wokeHandleSchema.safeParse(name.slice(0, -WOKE_NAME_SUFFIX.length)).success,
-    'A .woke name must contain one canonical WokeNet handle.',
+    'A .drool name must contain one canonical DroolNet handle.',
   );
 
 export interface CanonicalWokeName {
@@ -76,7 +76,7 @@ export interface RandomWokeName extends CanonicalWokeName {
 
 /**
  * Converts a UI name or handle into the exact lowercase ASCII value committed
- * by the v1 WokeNet handle account.
+ * by the v1 DroolNet handle account.
  *
  * Unicode is deliberately rejected rather than silently folded. Display names
  * remain Unicode-capable, while payment/signature destinations stay resistant
@@ -91,7 +91,7 @@ export function canonicalizeWokeName(input: string): CanonicalWokeName {
   ) {
     throw new WokeNameError(
       'confusable',
-      'A .woke name must use unpadded canonical ASCII without Unicode confusables.',
+      'A .drool name must use unpadded canonical ASCII without Unicode confusables.',
     );
   }
 
@@ -103,7 +103,7 @@ export function canonicalizeWokeName(input: string): CanonicalWokeName {
   if (!wokeHandleSchema.safeParse(handle).success) {
     throw new WokeNameError(
       'invalid-format',
-      'A .woke name must contain 3–30 lowercase letters, digits, or single underscores.',
+      'A .drool name must contain 3–30 lowercase letters, digits, or single underscores.',
     );
   }
   return Object.freeze({
@@ -124,7 +124,7 @@ export function deriveRandomWokeName(rootAuthorityInput: string): RandomWokeName
   if (!parsed.success) {
     throw new WokeNameError(
       'invalid-root-authority',
-      'Random .woke allocation requires one canonical 32-byte Solana public key.',
+      'Random .drool allocation requires one canonical 32-byte Solana public key.',
     );
   }
 
@@ -134,14 +134,14 @@ export function deriveRandomWokeName(rootAuthorityInput: string): RandomWokeName
   } catch {
     throw new WokeNameError(
       'invalid-root-authority',
-      'Random .woke allocation requires one canonical 32-byte Solana public key.',
+      'Random .drool allocation requires one canonical 32-byte Solana public key.',
     );
   }
   if (rootAuthority.byteLength !== 32) {
     rootAuthority.fill(0);
     throw new WokeNameError(
       'invalid-root-authority',
-      'Random .woke allocation requires one canonical 32-byte Solana public key.',
+      'Random .drool allocation requires one canonical 32-byte Solana public key.',
     );
   }
 
@@ -158,7 +158,7 @@ export function deriveRandomWokeName(rootAuthorityInput: string): RandomWokeName
 
   const handle = `${WOKE_RANDOM_HANDLE_PREFIX}${randomPart}`;
   if (!wokeHandleSchema.safeParse(handle).success) {
-    throw new WokeNameError('invalid-format', 'Derived random .woke handle was invalid.');
+    throw new WokeNameError('invalid-format', 'Derived random .drool handle was invalid.');
   }
   return Object.freeze({
     namespace: 'woke',

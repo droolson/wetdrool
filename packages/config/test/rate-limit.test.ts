@@ -101,7 +101,7 @@ describe('rate-limit runtime configuration', () => {
       parseRateLimitRuntimeConfig(
         {
           ...production,
-          REDIS_URL: 'redis://:secret@redis.woke.social',
+          REDIS_URL: 'redis://:secret@redis.wetdrool.com',
         },
         { serviceHost: '0.0.0.0' },
       ),
@@ -119,7 +119,7 @@ describe('rate-limit runtime configuration', () => {
       parseRateLimitRuntimeConfig(
         {
           ...production,
-          REDIS_URL: 'rediss://redis.woke.social',
+          REDIS_URL: 'rediss://redis.wetdrool.com',
         },
         { serviceHost: '0.0.0.0' },
       ),
@@ -129,7 +129,7 @@ describe('rate-limit runtime configuration', () => {
         parseRateLimitRuntimeConfig(
           {
             ...production,
-            REDIS_URL: `rediss://cache:${password}@redis.woke.social`,
+            REDIS_URL: `rediss://cache:${password}@redis.wetdrool.com`,
           },
           { serviceHost: '0.0.0.0' },
         ),
@@ -139,7 +139,7 @@ describe('rate-limit runtime configuration', () => {
       parseRateLimitRuntimeConfig(
         {
           ...production,
-          REDIS_URL: 'rediss://cache:secret@redis.woke.social',
+          REDIS_URL: 'rediss://cache:secret@redis.wetdrool.com',
         },
         { serviceHost: '0.0.0.0' },
       ),
@@ -150,7 +150,7 @@ describe('rate-limit runtime configuration', () => {
           APP_ENV: 'production',
           NODE_ENV: 'production',
           RATE_LIMIT_KEY_SECRET: productionSecret,
-          REDIS_URL: 'rediss://cache:secret@redis.woke.social',
+          REDIS_URL: 'rediss://cache:secret@redis.wetdrool.com',
         },
         { serviceHost: '0.0.0.0' },
       ),
@@ -160,7 +160,7 @@ describe('rate-limit runtime configuration', () => {
         {
           ...production,
           NODE_TLS_REJECT_UNAUTHORIZED: '0',
-          REDIS_URL: 'rediss://cache:secret@redis.woke.social',
+          REDIS_URL: 'rediss://cache:secret@redis.wetdrool.com',
         },
         { serviceHost: '0.0.0.0' },
       ),
@@ -176,7 +176,7 @@ describe('rate-limit runtime configuration', () => {
           NODE_ENV: 'production',
           RATE_LIMIT_DEPLOYMENT_ID: 'production',
           RATE_LIMIT_KEY_SECRET: localSecret,
-          REDIS_URL: 'rediss://cache:secret@redis.woke.social',
+          REDIS_URL: 'rediss://cache:secret@redis.wetdrool.com',
         },
         { serviceHost: '0.0.0.0' },
       ),

@@ -5,8 +5,8 @@ AS $$
 BEGIN
   IF (
     TG_OP = 'DELETE'
-    AND current_user = 'wokesocial_moderation_migration'
-    AND current_setting('wokesocial.retention_delete', true) = 'on'
+    AND current_user = 'wetdrool_moderation_migration'
+    AND current_setting('wetdrool.retention_delete', true) = 'on'
   ) THEN
     RETURN OLD;
   END IF;
@@ -59,23 +59,23 @@ CREATE TRIGGER moderation_public_objects_immutable
 
 DROP FUNCTION IF EXISTS moderation_apply_retention(timestamptz, integer);
 
-DO $wokesocial_restrict_moderation_runtime$
+DO $wetdrool_restrict_moderation_runtime$
 BEGIN
   IF EXISTS (
     SELECT 1
     FROM pg_roles
-    WHERE rolname = 'wokesocial_moderation_runtime'
+    WHERE rolname = 'wetdrool_moderation_runtime'
   ) THEN
     REVOKE UPDATE, DELETE
-      ON ALL TABLES IN SCHEMA wokesocial_moderation
-      FROM wokesocial_moderation_runtime;
+      ON ALL TABLES IN SCHEMA wetdrool_moderation
+      FROM wetdrool_moderation_runtime;
     GRANT UPDATE
       ON TABLE
         moderation_cases,
         moderation_public_objects,
         moderation_restricted_objects,
         moderation_actions
-      TO wokesocial_moderation_runtime;
+      TO wetdrool_moderation_runtime;
   END IF;
 END
-$wokesocial_restrict_moderation_runtime$;
+$wetdrool_restrict_moderation_runtime$;

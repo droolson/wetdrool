@@ -1,4 +1,4 @@
-/* 4px base unit. Steps 1–7 mirror the wokenet codebase exactly; 8–10 extend it. */
+/* 4px base unit. Steps 1–7 mirror the droolnet codebase exactly; 8–10 extend it. */
 :root {
   --ws-space-0: 0;
   --ws-space-1: 0.25rem;   /* 4px  — icon/label gap */

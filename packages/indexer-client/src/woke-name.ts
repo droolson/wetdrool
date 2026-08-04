@@ -8,7 +8,7 @@ import {
   timestampSchema,
   unsigned64Schema,
   utf8,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   IndexerPayloadError,
@@ -21,7 +21,7 @@ import { endpointFor, readIndexerJson } from './transport.js';
 
 export interface WokeNameResolution {
   canonical: false;
-  projection: 'wokenet-open-indexer';
+  projection: 'droolnet-open-indexer';
   network: string;
   namespace: 'woke';
   namespaceVersion: 1;
@@ -81,14 +81,14 @@ export function parseWokeNameResolution(
   const network = parsed(networkIdSchema, response.network, 'woke name resolution.network');
   if (
     response.canonical !== false ||
-    response.projection !== 'wokenet-open-indexer' ||
+    response.projection !== 'droolnet-open-indexer' ||
     response.namespace !== 'woke' ||
     response.namespaceVersion !== 1 ||
     response.handle !== canonical.handle ||
     (expected !== undefined &&
       (network !== expected.network || canonical.name !== canonicalizeWokeName(expected.name).name))
   ) {
-    throw new IndexerPayloadError('The .woke resolution scope is invalid.');
+    throw new IndexerPayloadError('The .drool resolution scope is invalid.');
   }
 
   const destination = record(response.destination, 'woke name destination');
@@ -108,7 +108,7 @@ export function parseWokeNameResolution(
     destination.nativeAddress !== false ||
     destination.semantics !== 'current-identity-root-authority'
   ) {
-    throw new IndexerPayloadError('The .woke destination semantics are invalid.');
+    throw new IndexerPayloadError('The .drool destination semantics are invalid.');
   }
 
   const identity = record(response.identity, 'woke name identity');
@@ -138,9 +138,9 @@ export function parseWokeNameResolution(
   if (
     identity.active !== true ||
     rootAuthority !== destinationAddress ||
-    identityId !== `wokesocialid:v1:${network}:${identityAddress}`
+    identityId !== `wetdroolid:v1:${network}:${identityAddress}`
   ) {
-    throw new IndexerPayloadError('The .woke identity binding is invalid.');
+    throw new IndexerPayloadError('The .drool identity binding is invalid.');
   }
 
   const claim = record(response.claim, 'woke name claim');
@@ -168,12 +168,12 @@ export function parseWokeNameResolution(
     BigInt(meta.checkpointSlot) < BigInt(claimedSlot) ||
     BigInt(meta.checkpointSlot) < BigInt(updatedSlot)
   ) {
-    throw new IndexerPayloadError('The indexer checkpoint does not cover the .woke proof.');
+    throw new IndexerPayloadError('The indexer checkpoint does not cover the .drool proof.');
   }
 
   return {
     canonical: false,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     network,
     namespace: 'woke',
     namespaceVersion: 1,
@@ -214,7 +214,7 @@ export async function resolveWokeName(
   let base;
   try {
     canonical = canonicalizeWokeName(request.name);
-    network = parsed(networkIdSchema, request.network, 'requested WokeNet identifier');
+    network = parsed(networkIdSchema, request.network, 'requested DroolNet identifier');
     base = new URL(options.baseUrl);
     if (
       (base.protocol !== 'http:' && base.protocol !== 'https:') ||
@@ -228,7 +228,7 @@ export async function resolveWokeName(
       throw new TypeError('invalid client configuration');
     }
   } catch {
-    return degraded('invalid-configuration', 'The .woke resolver configuration is invalid.');
+    return degraded('invalid-configuration', 'The .drool resolver configuration is invalid.');
   }
 
   const endpoint = endpointFor(
@@ -246,7 +246,7 @@ export async function resolveWokeName(
     if (!response.ok) {
       return degraded(
         response.status === 400 ? 'invalid-response' : 'unavailable',
-        `The .woke resolver returned HTTP ${response.status}.`,
+        `The .drool resolver returned HTTP ${response.status}.`,
       );
     }
     try {
@@ -259,10 +259,10 @@ export async function resolveWokeName(
         }),
       };
     } catch {
-      return degraded('invalid-response', 'The .woke resolver returned an invalid proof.');
+      return degraded('invalid-response', 'The .drool resolver returned an invalid proof.');
     }
   } catch {
-    return degraded('unavailable', 'The .woke resolver could not be reached before its deadline.');
+    return degraded('unavailable', 'The .drool resolver could not be reached before its deadline.');
   } finally {
     clearTimeout(timeout);
   }

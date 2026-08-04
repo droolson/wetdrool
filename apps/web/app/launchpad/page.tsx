@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { Launchpad } from '@/components/launchpad';
@@ -20,7 +20,7 @@ export default function LaunchpadPage() {
       >
         <p>
           Fair bonding-curve launches, trading beside the thread, verified social sentiment, and AI
-          analysis with sources — with your keys, your <code>.woke</code> identity, and the exact
+          analysis with sources — with your keys, your <code>.drool</code> identity, and the exact
           destination disclosed before every signature.
         </p>
       </AppPageHeader>

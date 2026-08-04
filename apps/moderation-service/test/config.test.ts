@@ -13,24 +13,24 @@ const publicLocalDataKeys = JSON.stringify({
 });
 
 describe('moderation configuration', () => {
-  it('accepts the canonical woke.social origin and a paired PostgreSQL/key-ring configuration', () => {
+  it('accepts the canonical wetdrool.com origin and a paired PostgreSQL/key-ring configuration', () => {
     const config = parseModerationConfig({
       NODE_ENV: 'production',
-      MODERATION_ALLOWED_ORIGINS: 'https://woke.social',
+      MODERATION_ALLOWED_ORIGINS: 'https://wetdrool.com',
       MODERATION_DATABASE_URL:
         'postgresql://moderation:secret@db.example/moderation?sslmode=verify-full',
       MODERATION_DATA_KEYS: dataKeys,
       TRUSTED_PROXY_CIDRS: '127.0.0.1/32',
     });
-    expect(config.allowedOrigins).toEqual(['https://woke.social']);
+    expect(config.allowedOrigins).toEqual(['https://wetdrool.com']);
     expect(config.databaseUrl).toContain('postgresql://');
     expect(config.keyRing?.activeKeyId).toBe('v1');
     expect(config.trustedProxyCidrs).toEqual(['127.0.0.1/32']);
   });
 
   it.each([
-    'https://sociallywoke.com',
-    'https://www.sociallywoke.com',
+    'https://droolhouse.com',
+    'https://www.droolhouse.com',
     'https://SOCIALLYWOKE.COM.',
     'https://WWW.SOCIALLYWOKE.COM..',
   ])('rejects redirect-only legacy origin %s', (origin) => {
@@ -140,7 +140,7 @@ describe('moderation configuration', () => {
   ])('rejects %s credentials from the long-running runtime', (variableName) => {
     expect(() =>
       parseModerationConfig({
-        [variableName]: 'postgresql://unrelated_migration:migration-secret@localhost/wokesocial',
+        [variableName]: 'postgresql://unrelated_migration:migration-secret@localhost/wetdrool',
       }),
     ).toThrow('Privileged database credentials must not be injected');
   });
@@ -189,19 +189,19 @@ describe('moderation configuration', () => {
       parseModerationConfig({
         NODE_ENV: 'test',
         MODERATION_DATABASE_URL:
-          'postgresql://wokesocial:local-development-only@localhost:5432/wokesocial',
+          'postgresql://wetdrool:local-development-only@localhost:5432/wetdrool',
         MODERATION_DATA_KEYS: dataKeys,
         NODE_TLS_REJECT_UNAUTHORIZED: '0',
       }),
     ).toMatchObject({
-      databaseUrl: 'postgresql://wokesocial:local-development-only@localhost:5432/wokesocial',
+      databaseUrl: 'postgresql://wetdrool:local-development-only@localhost:5432/wetdrool',
     });
   });
 
   it('normalizes origins before rejecting semantic duplicates', () => {
     expect(() =>
       parseModerationConfig({
-        MODERATION_ALLOWED_ORIGINS: 'https://woke.social,https://WOKE.SOCIAL:443/',
+        MODERATION_ALLOWED_ORIGINS: 'https://wetdrool.com,https://WOKE.SOCIAL:443/',
       }),
     ).toThrow(/must be unique/u);
   });

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   communityGovernanceStrategyCommitment,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   getHomeFeed,
@@ -24,11 +24,11 @@ import {
 } from '../lib/projected-feed';
 
 const NETWORK_ID =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const SECOND_NETWORK_ID =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:11111111111111111111111111111111';
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:11111111111111111111111111111111';
 const PROTOCOL_DIGEST = `u${'A'.repeat(43)}`;
-const PROJECTED_POST_ID = `wokesocialobj:v1:post:${PROTOCOL_DIGEST}`;
+const PROJECTED_POST_ID = `wetdroolobj:v1:post:${PROTOCOL_DIGEST}`;
 const PROJECTED_POST_CID = 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm';
 const PROJECTED_TRANSACTION_SIGNATURE = '1'.repeat(64);
 const COMMUNITY_ADDRESS = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
@@ -38,7 +38,7 @@ const VERIFIED_POST = {
     displayName: 'Ari',
     handle: 'ari',
     identityId:
-      'wokesocialid:v1:wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE',
+      'wetdroolid:v1:droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE',
   },
   body: 'Portable identity, ordinary language.',
   bodyReference: null,
@@ -97,7 +97,7 @@ const VERIFIED_COMMUNITY = {
   manifestHash: PROTOCOL_DIGEST,
   manifestVerified: true,
   networkId: NETWORK_ID,
-  objectId: `wokesocialobj:v1:community:${PROTOCOL_DIGEST}`,
+  objectId: `wetdroolobj:v1:community:${PROTOCOL_DIGEST}`,
   schemaVersion: 2,
   signingKeyId: `${VERIFIED_POST.author.identityId}#root/${'1'.repeat(32)}`,
   updatedAt: '2026-07-28T12:01:00.000Z',
@@ -251,25 +251,25 @@ const PROJECTED_FEED_RESPONSE = {
   meta: {
     checkpointSlot: 42,
     indexedAt: '2026-07-28T12:01:00.000Z',
-    source: 'WokeNet open indexer',
+    source: 'DroolNet open indexer',
   },
   mode: 'chronological',
   network: NETWORK_ID,
   nextCursor: null,
-  projection: 'wokenet-open-indexer',
-  recipe: 'wokenet-open-indexer-feed-v1',
+  projection: 'droolnet-open-indexer',
+  recipe: 'droolnet-open-indexer-feed-v1',
   viewer: null,
 } as const;
 
 describe('typed projected-feed parsing and requests', () => {
-  const originalIndexerUrl = process.env['WOKESOCIAL_INDEXER_URL'];
+  const originalIndexerUrl = process.env['WETDROOL_INDEXER_URL'];
 
   afterEach(() => {
     vi.unstubAllGlobals();
     if (originalIndexerUrl === undefined) {
-      delete process.env['WOKESOCIAL_INDEXER_URL'];
+      delete process.env['WETDROOL_INDEXER_URL'];
     } else {
-      process.env['WOKESOCIAL_INDEXER_URL'] = originalIndexerUrl;
+      process.env['WETDROOL_INDEXER_URL'] = originalIndexerUrl;
     }
   });
 
@@ -292,7 +292,7 @@ describe('typed projected-feed parsing and requests', () => {
     });
     expect(parsed.network).toBe(NETWORK_ID);
     expect(parsed.nextCursor).toBeNull();
-    expect(parsed.recipe).toBe('wokenet-open-indexer-feed-v1');
+    expect(parsed.recipe).toBe('droolnet-open-indexer-feed-v1');
     expect(() =>
       parseProjectedFeedResponse(
         { ...PROJECTED_FEED_RESPONSE, recipe: 'provider-invented-feed-v1' },
@@ -393,7 +393,7 @@ describe('typed projected-feed parsing and requests', () => {
             ...PROJECTED_FEED_RESPONSE.entries[0],
             post: {
               ...PROJECTED_FEED_RESPONSE.entries[0].post,
-              transactionSignature: 'not-a-wokenet-signature',
+              transactionSignature: 'not-a-droolnet-signature',
             },
           },
         ],
@@ -429,7 +429,7 @@ describe('typed projected-feed parsing and requests', () => {
       post: {
         ...PROJECTED_FEED_RESPONSE.entries[0].post,
         createdAt: '2026-07-28T11:59:00.000Z',
-        objectId: `wokesocialobj:v1:post:u${'B'.repeat(43)}`,
+        objectId: `wetdroolobj:v1:post:u${'B'.repeat(43)}`,
       },
     } as const;
 
@@ -459,7 +459,7 @@ describe('typed projected-feed parsing and requests', () => {
   });
 
   it('requests the default-network chronological route with an encoded opaque cursor', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/operator/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/operator/';
     const fetch = vi.fn<typeof globalThis.fetch>(async () =>
       Response.json(PROJECTED_FEED_RESPONSE),
     );
@@ -478,7 +478,7 @@ describe('typed projected-feed parsing and requests', () => {
   });
 
   it('does not transmit malformed viewer or cursor input', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     const fetch = vi.fn<typeof globalThis.fetch>();
     vi.stubGlobal('fetch', fetch);
 
@@ -506,7 +506,7 @@ describe('post identifiers', () => {
 });
 
 describe('typed public-search response parsing', () => {
-  const originalIndexerUrl = process.env['WOKESOCIAL_INDEXER_URL'];
+  const originalIndexerUrl = process.env['WETDROOL_INDEXER_URL'];
   const originalNetworkId = process.env['WOKENET_NETWORK_ID'];
   const communityResult = {
     community: VERIFIED_COMMUNITY,
@@ -518,7 +518,7 @@ describe('typed public-search response parsing', () => {
     meta: {
       checkpointSlot: 42,
       indexedAt: '2026-07-28T12:01:00.000Z',
-      source: 'WokeNet open indexer',
+      source: 'DroolNet open indexer',
     },
     network: NETWORK_ID,
     query: 'river',
@@ -556,9 +556,9 @@ describe('typed public-search response parsing', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     if (originalIndexerUrl === undefined) {
-      delete process.env['WOKESOCIAL_INDEXER_URL'];
+      delete process.env['WETDROOL_INDEXER_URL'];
     } else {
-      process.env['WOKESOCIAL_INDEXER_URL'] = originalIndexerUrl;
+      process.env['WETDROOL_INDEXER_URL'] = originalIndexerUrl;
     }
     if (originalNetworkId === undefined) {
       delete process.env['WOKENET_NETWORK_ID'];
@@ -740,12 +740,12 @@ describe('typed public-search response parsing', () => {
     });
   });
 
-  it('rejects a response or community result from a different WokeNet deployment', () => {
+  it('rejects a response or community result from a different DroolNet deployment', () => {
     expect(() => parseSearchResponse(response, { network: SECOND_NETWORK_ID })).toThrow(
       'changed its requested network',
     );
 
-    const secondIdentity = `wokesocialid:v1:${SECOND_NETWORK_ID}:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE`;
+    const secondIdentity = `wetdroolid:v1:${SECOND_NETWORK_ID}:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE`;
     expect(() =>
       parseSearchResponse({
         ...response,
@@ -761,7 +761,7 @@ describe('typed public-search response parsing', () => {
           },
         ],
       }),
-    ).toThrow('different WokeNet Solana deployment');
+    ).toThrow('different DroolNet Solana deployment');
   });
 
   it('rejects community or post results newer than the declared search checkpoint', () => {
@@ -833,7 +833,7 @@ describe('typed public-search response parsing', () => {
   });
 
   it('sends a bounded canonical query only to the configured indexer', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/operator/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/operator/';
     const fetch = vi.fn<typeof globalThis.fetch>(async () =>
       Response.json({ ...response, query: 'river chen' }),
     );
@@ -853,7 +853,7 @@ describe('typed public-search response parsing', () => {
   });
 
   it('rejects a two-code-point local query without transmitting it', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     const fetch = vi.fn<typeof globalThis.fetch>();
     vi.stubGlobal('fetch', fetch);
 
@@ -865,8 +865,8 @@ describe('typed public-search response parsing', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('does not search an indexer default when the explicit WokeNet scope is absent', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+  it('does not search an indexer default when the explicit DroolNet scope is absent', async () => {
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     delete process.env['WOKENET_NETWORK_ID'];
     const fetch = vi.fn<typeof globalThis.fetch>();
     vi.stubGlobal('fetch', fetch);
@@ -904,7 +904,7 @@ describe('typed public-search response parsing', () => {
       reason: 'too-long',
     });
 
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     const fetch = vi.fn<typeof globalThis.fetch>();
     vi.stubGlobal('fetch', fetch);
 
@@ -928,7 +928,7 @@ describe('typed public-search response parsing', () => {
   });
 
   it('rejects oversized declared responses for every indexer fetch', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     const fetch = vi.fn<typeof globalThis.fetch>(
       async () =>
         new Response('{}', {
@@ -956,7 +956,7 @@ describe('typed public-search response parsing', () => {
   });
 
   it('stops an oversized streamed JSON body before parsing ignored properties', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     const encoder = new TextEncoder();
     let part = 0;
     const cancel = vi.fn();

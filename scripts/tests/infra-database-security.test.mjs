@@ -10,9 +10,9 @@ const infraScriptUrl = new URL('../infra.mjs', import.meta.url);
 describe('local PostgreSQL service-role isolation', () => {
   it('fails before provisioning when a legacy public-schema volume contains objects', async () => {
     const source = await readFile(provisionUrl, 'utf8');
-    const preflight = source.indexOf('DO $wokesocial_legacy_public_preflight$');
-    const roleCreation = source.indexOf('CREATE ROLE wokesocial_auth_runtime');
-    const schemaCreation = source.indexOf('CREATE SCHEMA IF NOT EXISTS wokesocial_auth');
+    const preflight = source.indexOf('DO $wetdrool_legacy_public_preflight$');
+    const roleCreation = source.indexOf('CREATE ROLE wetdrool_auth_runtime');
+    const schemaCreation = source.indexOf('CREATE SCHEMA IF NOT EXISTS wetdrool_auth');
     assert.ok(preflight >= 0 && preflight < roleCreation && preflight < schemaCreation);
     assert.match(source, /namespace\.nspname = 'public'/u);
     assert.match(source, /FROM pg_class/u);
@@ -29,34 +29,34 @@ describe('local PostgreSQL service-role isolation', () => {
     ]);
     assert.match(
       provision,
-      /CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA wokesocial_indexer/u,
+      /CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA wetdrool_indexer/u,
     );
     assert.match(
       provision,
-      /CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA wokesocial_indexer/u,
+      /CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA wetdrool_indexer/u,
     );
     assert.doesNotMatch(provision, /GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA/u);
-    assert.match(provision, /GRANT SELECT, INSERT ON TABLES TO wokesocial_moderation_runtime/u);
+    assert.match(provision, /GRANT SELECT, INSERT ON TABLES TO wetdrool_moderation_runtime/u);
     assert.doesNotMatch(
       provision,
-      /GRANT SELECT, INSERT, UPDATE ON TABLES TO wokesocial_moderation_runtime/u,
+      /GRANT SELECT, INSERT, UPDATE ON TABLES TO wetdrool_moderation_runtime/u,
     );
     assert.match(
       provision,
-      /REVOKE DELETE ON ALL TABLES IN SCHEMA wokesocial_moderation\s+FROM wokesocial_moderation_runtime/u,
+      /REVOKE DELETE ON ALL TABLES IN SCHEMA wetdrool_moderation\s+FROM wetdrool_moderation_runtime/u,
     );
     assert.match(
       provision,
-      /REVOKE UPDATE ON ALL TABLES IN SCHEMA wokesocial_moderation\s+FROM wokesocial_moderation_runtime/u,
+      /REVOKE UPDATE ON ALL TABLES IN SCHEMA wetdrool_moderation\s+FROM wetdrool_moderation_runtime/u,
     );
-    assert.match(provision, /GRANT UPDATE ON TABLE %I\.%I TO wokesocial_moderation_runtime/u);
+    assert.match(provision, /GRANT UPDATE ON TABLE %I\.%I TO wetdrool_moderation_runtime/u);
     for (const role of [
-      'wokesocial_auth_runtime',
-      'wokesocial_auth_migration',
-      'wokesocial_indexer_runtime',
-      'wokesocial_indexer_migration',
-      'wokesocial_moderation_runtime',
-      'wokesocial_moderation_migration',
+      'wetdrool_auth_runtime',
+      'wetdrool_auth_migration',
+      'wetdrool_indexer_runtime',
+      'wetdrool_indexer_migration',
+      'wetdrool_moderation_runtime',
+      'wetdrool_moderation_migration',
     ]) {
       assert.match(
         provision,
@@ -71,9 +71,9 @@ describe('local PostgreSQL service-role isolation', () => {
     assert.match(provision, /REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA/u);
     assert.match(provision, /REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA/u);
     for (const [schema, ledger, runtimeRole] of [
-      ['wokesocial_auth', 'auth_schema_migrations', 'wokesocial_auth_runtime'],
-      ['wokesocial_indexer', 'schema_migrations', 'wokesocial_indexer_runtime'],
-      ['wokesocial_moderation', 'moderation_schema_migrations', 'wokesocial_moderation_runtime'],
+      ['wetdrool_auth', 'auth_schema_migrations', 'wetdrool_auth_runtime'],
+      ['wetdrool_indexer', 'schema_migrations', 'wetdrool_indexer_runtime'],
+      ['wetdrool_moderation', 'moderation_schema_migrations', 'wetdrool_moderation_runtime'],
     ]) {
       assert.match(provision, new RegExp(`namespace\\.nspname = '${schema}'`, 'u'));
       assert.match(provision, new RegExp(`class\\.relname <> '${ledger}'`, 'u'));
@@ -92,12 +92,12 @@ describe('local PostgreSQL service-role isolation', () => {
       assert.match(probe, new RegExp(`expect_failure[^]*${statement}`, 'u'));
     }
     assert.match(probe, /DELETE FROM \$\{own_schema\}\.\$\{own_ledger\}/u);
-    assert.match(probe, /DELETE FROM wokesocial_moderation\.moderation_cases WHERE false/u);
+    assert.match(probe, /DELETE FROM wetdrool_moderation\.moderation_cases WHERE false/u);
     assert.match(probe, /role_policy_violation_count/u);
     assert.match(probe, /role\.rolsuper/u);
     assert.match(probe, /FROM pg_auth_members AS membership/u);
     assert.match(probe, /__cross_service_must_not_create/u);
-    assert.match(probe, /extnamespace = 'wokesocial_indexer'::regnamespace/u);
+    assert.match(probe, /extnamespace = 'wetdrool_indexer'::regnamespace/u);
   });
 
   it('loads role passwords from the provisioner environment instead of process arguments', async () => {
@@ -121,12 +121,12 @@ describe('local PostgreSQL service-role isolation', () => {
   it('wires scoped role URLs and explicit local service modes in Compose', async () => {
     const compose = await readFile(composeUrl, 'utf8');
     for (const role of [
-      'wokesocial_auth_runtime',
-      'wokesocial_auth_migration',
-      'wokesocial_indexer_runtime',
-      'wokesocial_indexer_migration',
-      'wokesocial_moderation_runtime',
-      'wokesocial_moderation_migration',
+      'wetdrool_auth_runtime',
+      'wetdrool_auth_migration',
+      'wetdrool_indexer_runtime',
+      'wetdrool_indexer_migration',
+      'wetdrool_moderation_runtime',
+      'wetdrool_moderation_migration',
     ]) {
       assert.match(compose, new RegExp(`postgresql://${role}:`, 'u'));
     }

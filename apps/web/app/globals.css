@@ -5,5 +5,198 @@
 @import '../styles/application.css';
 @import '../styles/product.css';
 @import '../styles/extended-product.css';
+@import '../styles/anytype-shell.css';
+@import '../styles/product-hub.css';
 
 @source "../../../packages/ui/src";
+
+/* —— WetDrool: NSFW toggle, Grok dock, live/companion cards —— */
+.nsfw-toggle {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+.nsfw-toggle__control {
+  display: inline-flex;
+  border: 1px solid color-mix(in oklab, canvasText 18%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.nsfw-toggle__control button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+.nsfw-toggle__control button.is-active {
+  background: color-mix(in oklab, #ff3d7f 75%, black);
+  color: white;
+}
+.nsfw-toggle__age {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 40;
+  width: min(18rem, 80vw);
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: canvas;
+  border: 1px solid color-mix(in oklab, canvasText 16%, transparent);
+  box-shadow: 0 12px 40px color-mix(in oklab, black 25%, transparent);
+}
+.nsfw-toggle__age button {
+  margin-right: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.grok-dock__fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 5rem;
+  z-index: 50;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.15rem;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(135deg, #ff3d7f, #7c3aed);
+  box-shadow: 0 10px 30px color-mix(in oklab, #ff3d7f 40%, transparent);
+}
+.grok-dock {
+  position: fixed;
+  right: 1rem;
+  bottom: 5rem;
+  z-index: 50;
+  width: min(24rem, calc(100vw - 2rem));
+  max-height: min(70vh, 36rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  background: canvas;
+  border: 1px solid color-mix(in oklab, canvasText 14%, transparent);
+  box-shadow: 0 18px 50px color-mix(in oklab, black 28%, transparent);
+}
+.grok-dock__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+.grok-dock__transcript {
+  flex: 1;
+  overflow: auto;
+  min-height: 10rem;
+  max-height: 22rem;
+  padding: 0.5rem;
+  border-radius: 0.6rem;
+  background: color-mix(in oklab, canvasText 4%, canvas);
+}
+.grok-dock__transcript p[data-role='system-notice'] {
+  opacity: 0.85;
+  font-size: 0.92em;
+}
+.grok-dock__suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.grok-dock__suggestions button,
+.grok-dock__form button,
+.grok-dock__header button {
+  font: inherit;
+  cursor: pointer;
+}
+.grok-dock__form {
+  display: flex;
+  gap: 0.4rem;
+}
+.grok-dock__form input {
+  flex: 1;
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in oklab, canvasText 16%, transparent);
+  background: canvas;
+  color: inherit;
+}
+.grok-dock__resources {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+.grok-dock__resources ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.live-grid,
+.companion-grid,
+.value-grid {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+.live-card,
+.companion-card {
+  border: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: color-mix(in oklab, canvasText 3%, canvas);
+}
+.live-card__meta,
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  list-style: none;
+  margin: 0.5rem 0;
+  padding: 0;
+}
+.tag-row li {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, #7c3aed 18%, canvas);
+}
+.price-table {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.75rem;
+}
+.price-table dt {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.price-table dd {
+  margin: 0;
+  font-weight: 650;
+}
+.policy-block {
+  margin-top: 2rem;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -10,7 +10,7 @@
 .providers-hero h1,
 .post-detail__header h1 {
   margin: 0.55rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2.7rem, 7vw, 5.5rem);
   letter-spacing: -0.06em;
   line-height: 0.93;
@@ -18,7 +18,7 @@
 
 .app-page-header > p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.7;
 }
 
@@ -40,10 +40,10 @@
   display: grid;
   gap: 1rem;
   padding: clamp(1.25rem, 3vw, 1.8rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .composer__heading {
@@ -55,16 +55,16 @@
 
 .composer h2 {
   margin: 0.35rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.65rem;
   letter-spacing: -0.04em;
 }
 
 .foundation-label {
   padding: 0.38rem 0.58rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-warning);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-warning);
   font-size: 0.68rem;
   font-weight: 780;
   white-space: nowrap;
@@ -82,15 +82,15 @@
   width: 100%;
   resize: vertical;
   padding: 1rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-canvas-raised);
   line-height: 1.6;
 }
 
 .composer textarea::placeholder {
-  color: color-mix(in srgb, var(--wokesocial-ink-muted) 82%, transparent);
+  color: color-mix(in srgb, var(--wetdrool-ink-muted) 82%, transparent);
   opacity: 1;
 }
 
@@ -109,9 +109,9 @@
 
 .composer__toolbar span {
   padding: 0.34rem 0.55rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-ink-muted);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.68rem;
 }
 
@@ -119,16 +119,16 @@
 .provider-editor button {
   min-height: 2.55rem;
   padding: 0.65rem 0.9rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-canvas-raised);
   font-weight: 720;
 }
 
 .composer__explanation {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.75rem;
   line-height: 1.5;
 }
@@ -137,9 +137,9 @@
   display: grid;
   gap: 1rem;
   padding: 1.25rem;
-  border: 1px solid color-mix(in srgb, var(--wokesocial-success) 32%, var(--wokesocial-line));
-  border-radius: var(--wokesocial-radius-md);
-  background: color-mix(in srgb, var(--wokesocial-success) 5%, var(--wokesocial-surface));
+  border: 1px solid color-mix(in srgb, var(--wetdrool-success) 32%, var(--wetdrool-line));
+  border-radius: var(--wetdrool-radius-md);
+  background: color-mix(in srgb, var(--wetdrool-success) 5%, var(--wetdrool-surface));
 }
 
 .indexer-receipt > div:first-child {
@@ -151,7 +151,7 @@
 
 .indexer-receipt h2 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.3rem;
 }
 
@@ -168,13 +168,13 @@
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem;
-  border-radius: var(--wokesocial-radius-sm);
-  background: color-mix(in srgb, var(--wokesocial-surface-strong) 70%, transparent);
+  border-radius: var(--wetdrool-radius-sm);
+  background: color-mix(in srgb, var(--wetdrool-surface-strong) 70%, transparent);
 }
 
 .indexer-receipt dt,
 .post-detail__receipt dt {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.65rem;
   font-weight: 780;
   letter-spacing: 0.08em;
@@ -192,7 +192,7 @@
 .indexer-receipt > p,
 .post-detail__receipt > p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.74rem;
   line-height: 1.5;
 }
@@ -212,13 +212,13 @@
 
 .feed-list__heading h2 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.4rem;
   letter-spacing: -0.03em;
 }
 
 .feed-list__heading span {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.74rem;
 }
 
@@ -229,11 +229,11 @@
   justify-content: space-between;
   gap: 1rem;
   padding-block: 1rem;
-  border-block-start: 1px solid var(--wokesocial-line);
+  border-block-start: 1px solid var(--wetdrool-line);
 }
 
 .feed-pagination > span {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.76rem;
   font-weight: 700;
 }
@@ -243,10 +243,10 @@
   gap: 1.25rem;
   overflow: hidden;
   padding: clamp(1.25rem, 3vw, 1.7rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .post-card--prominent {
@@ -257,9 +257,9 @@
   display: grid;
   gap: 0.75rem;
   padding: 1rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: color-mix(in srgb, var(--wokesocial-sky) 7%, var(--wokesocial-canvas-raised));
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: color-mix(in srgb, var(--wetdrool-sky) 7%, var(--wetdrool-canvas-raised));
 }
 
 .post-card__media > div,
@@ -269,12 +269,12 @@
 }
 
 .post-card__media strong {
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 0.9rem;
 }
 
 .post-card__media span {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -289,7 +289,7 @@
 
 .post-card__media li {
   padding-block-start: 0.55rem;
-  border-block-start: 1px solid var(--wokesocial-line);
+  border-block-start: 1px solid var(--wetdrool-line);
 }
 
 .post-card__header {
@@ -314,8 +314,8 @@
   place-items: center;
   border-radius: 43% 57% 53% 47% / 50% 40% 60% 50%;
   color: #17131d;
-  background: linear-gradient(145deg, var(--wokesocial-citron), var(--wokesocial-sky));
-  font-family: var(--wokesocial-font-display);
+  background: linear-gradient(145deg, var(--wetdrool-citron), var(--wetdrool-sky));
+  font-family: var(--wetdrool-font-display);
   font-size: 1.25rem;
   font-style: italic;
   font-weight: 760;
@@ -334,13 +334,13 @@
 }
 
 .post-card__handle {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.78rem;
 }
 
 .post-card__body {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.2rem, 2.5vw, 1.55rem);
   letter-spacing: -0.015em;
   line-height: 1.45;
@@ -357,17 +357,17 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem 1rem;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.72rem;
 }
 
 .proof-details {
-  border-block: 1px solid var(--wokesocial-line);
+  border-block: 1px solid var(--wetdrool-line);
 }
 
 .proof-details summary {
   padding-block: 0.9rem;
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-size: 0.78rem;
   font-weight: 760;
   cursor: pointer;
@@ -378,19 +378,19 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
   margin: 0;
-  border-top: 1px solid var(--wokesocial-line);
+  border-top: 1px solid var(--wetdrool-line);
 }
 
 .proof-details dl div {
   min-width: 0;
   padding: 0.8rem;
-  border-right: 1px solid var(--wokesocial-line);
-  border-bottom: 1px solid var(--wokesocial-line);
+  border-right: 1px solid var(--wetdrool-line);
+  border-bottom: 1px solid var(--wetdrool-line);
 }
 
 .proof-details dt {
   margin-bottom: 0.25rem;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.64rem;
   font-weight: 760;
   letter-spacing: 0.06em;
@@ -416,13 +416,13 @@
 }
 
 .post-card__footer a {
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-size: 0.8rem;
   font-weight: 760;
 }
 
 .post-card__footer > span {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.68rem;
 }
 
@@ -431,17 +431,17 @@
   top: 6rem;
   display: grid;
   overflow: hidden;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .home-sidebar section {
   display: grid;
   gap: 0.6rem;
   padding: 1.25rem;
-  border-bottom: 1px solid var(--wokesocial-line);
+  border-bottom: 1px solid var(--wetdrool-line);
 }
 
 .home-sidebar section:last-child {
@@ -450,21 +450,21 @@
 
 .home-sidebar h2 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.25rem;
   letter-spacing: -0.03em;
 }
 
 .home-sidebar p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.8rem;
   line-height: 1.6;
 }
 
 .sidebar-links a {
   width: fit-content;
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-size: 0.8rem;
   font-weight: 720;
 }
@@ -473,20 +473,20 @@
   display: grid;
   gap: 0.8rem;
   padding: 1.5rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
 }
 
 .skeleton-composer span {
   display: block;
   height: 0.85rem;
-  border-radius: var(--wokesocial-radius-pill);
+  border-radius: var(--wetdrool-radius-pill);
   background: linear-gradient(
     90deg,
-    var(--wokesocial-line),
-    color-mix(in srgb, var(--wokesocial-line) 40%, transparent),
-    var(--wokesocial-line)
+    var(--wetdrool-line),
+    color-mix(in srgb, var(--wetdrool-line) 40%, transparent),
+    var(--wetdrool-line)
   );
   background-size: 200% 100%;
   animation: skeleton-slide 1.4s linear infinite;
@@ -543,21 +543,21 @@
   grid-template-columns: minmax(0, 0.72fr) minmax(20rem, 1fr);
   gap: 1rem 3rem;
   padding: clamp(1.5rem, 4vw, 3rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .provider-editor h2 {
   margin: 0.55rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.8rem, 4vw, 3rem);
   letter-spacing: -0.04em;
 }
 
 .provider-editor > div p:last-child,
 .provider-editor > p {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.6;
 }
 
@@ -566,19 +566,19 @@
   align-content: start;
   gap: 0.65rem;
   padding: 1.25rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
 }
 
 .provider-editor legend {
   padding-inline: 0.4rem;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.2rem;
   font-weight: 700;
 }
 
 .provider-editor label {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.72rem;
   font-weight: 760;
 }
@@ -586,10 +586,10 @@
 .provider-editor input {
   min-height: 2.8rem;
   padding: 0.7rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-sm);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-sm);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-surface);
 }
 
 .provider-editor > p {
@@ -603,12 +603,12 @@
   grid-template-columns: 0.5fr 1fr;
   gap: 3rem;
   padding-top: 3rem;
-  border-top: 1px solid var(--wokesocial-line);
+  border-top: 1px solid var(--wetdrool-line);
 }
 
 .provider-safety-note h2 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2rem, 4vw, 3.3rem);
   letter-spacing: -0.045em;
 }
@@ -618,12 +618,12 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 1px;
   margin: 0;
-  background: var(--wokesocial-line);
+  background: var(--wetdrool-line);
 }
 
 .provider-safety-note dl div {
   padding: 1rem;
-  background: var(--wokesocial-canvas);
+  background: var(--wetdrool-canvas);
 }
 
 .provider-safety-note dt {
@@ -633,7 +633,7 @@
 
 .provider-safety-note dd {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.82rem;
   line-height: 1.5;
 }
@@ -657,14 +657,14 @@
   display: grid;
   gap: 1rem;
   padding: 1.25rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .post-detail__receipt h2 {
   margin: 0.4rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.35rem;
 }
 
@@ -683,7 +683,7 @@
   }
 
   .home-sidebar section {
-    border-right: 1px solid var(--wokesocial-line);
+    border-right: 1px solid var(--wetdrool-line);
     border-bottom: 0;
   }
 
@@ -732,7 +732,7 @@
 
   .home-sidebar section {
     border-right: 0;
-    border-bottom: 1px solid var(--wokesocial-line);
+    border-bottom: 1px solid var(--wetdrool-line);
   }
 
   .post-card__header {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import {
   createDefaultDevicePreferences,

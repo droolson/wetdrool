@@ -12,7 +12,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gin;
 -- every Unicode Separator run becomes one ASCII space, surrounding spaces are
 -- removed, and only ASCII A-Z is case-folded. Non-ASCII text remains
 -- case-sensitive by design so JavaScript and PostgreSQL cannot disagree.
-CREATE OR REPLACE FUNCTION wokesocial_public_search_normalize(value text)
+CREATE OR REPLACE FUNCTION wetdrool_public_search_normalize(value text)
 RETURNS text
 LANGUAGE sql
 IMMUTABLE
@@ -33,35 +33,35 @@ RETURN translate(
 
 ALTER TABLE identities
   ADD COLUMN IF NOT EXISTS search_identity_id text
-  GENERATED ALWAYS AS (wokesocial_public_search_normalize(identity_id)) STORED;
+  GENERATED ALWAYS AS (wetdrool_public_search_normalize(identity_id)) STORED;
 
 ALTER TABLE profiles
   ADD COLUMN IF NOT EXISTS search_display_name text
-  GENERATED ALWAYS AS (wokesocial_public_search_normalize(display_name)) STORED,
+  GENERATED ALWAYS AS (wetdrool_public_search_normalize(display_name)) STORED,
   ADD COLUMN IF NOT EXISTS search_bio text
-  GENERATED ALWAYS AS (wokesocial_public_search_normalize(bio)) STORED,
+  GENERATED ALWAYS AS (wetdrool_public_search_normalize(bio)) STORED,
   ADD COLUMN IF NOT EXISTS search_bio_prefix text
   GENERATED ALWAYS AS (
-    left(wokesocial_public_search_normalize(bio), 512)
+    left(wetdrool_public_search_normalize(bio), 512)
   ) STORED;
 
 ALTER TABLE handle_claims
   ADD COLUMN IF NOT EXISTS search_handle text
-  GENERATED ALWAYS AS (wokesocial_public_search_normalize(handle)) STORED;
+  GENERATED ALWAYS AS (wetdrool_public_search_normalize(handle)) STORED;
 
 ALTER TABLE posts
   ADD COLUMN IF NOT EXISTS search_object_id text
-  GENERATED ALWAYS AS (wokesocial_public_search_normalize(object_id)) STORED,
+  GENERATED ALWAYS AS (wetdrool_public_search_normalize(object_id)) STORED,
   ADD COLUMN IF NOT EXISTS search_body text
   GENERATED ALWAYS AS (
-    wokesocial_public_search_normalize(
+    wetdrool_public_search_normalize(
       COALESCE(body, content -> 'bodyReference' ->> 'cid', '')
     )
   ) STORED,
   ADD COLUMN IF NOT EXISTS search_body_prefix text
   GENERATED ALWAYS AS (
     left(
-      wokesocial_public_search_normalize(
+      wetdrool_public_search_normalize(
         COALESCE(body, content -> 'bodyReference' ->> 'cid', '')
       ),
       512

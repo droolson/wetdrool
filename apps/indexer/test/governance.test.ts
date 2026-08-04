@@ -13,8 +13,8 @@ import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   type CommunityContent,
   type NetworkId,
-} from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+} from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   AnchorEventDecodingError,
@@ -44,12 +44,12 @@ const strategyBytes = Uint8Array.from([
   42, 13, 118, 19, 131, 75, 148, 53, 117, 113,
 ]);
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
+const networkId = `droolnet:v1:${publicKey(1)}:${programId}` as NetworkId;
 const configAddress = publicKey(2);
 const creatorAddress = publicKey(3);
 const voterAddress = publicKey(4);
-const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
-const voterIdentityId = `wokesocialid:v1:${networkId}:${voterAddress}`;
+const creatorIdentityId = `wetdroolid:v1:${networkId}:${creatorAddress}`;
+const voterIdentityId = `wetdroolid:v1:${networkId}:${voterAddress}`;
 const creatorPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 51);
 const creatorAuthority = bs58.encode(ed25519.getPublicKey(creatorPrivateKey));
 const voterPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => 180 - index);
@@ -392,7 +392,7 @@ describe('governance projection', () => {
   });
 
   it('isolates identical identity, community, proposal, membership, and vote addresses by network', async () => {
-    const secondNetworkId = `wokenet:v1:${publicKey(140)}:${programId}` as NetworkId;
+    const secondNetworkId = `droolnet:v1:${publicKey(140)}:${programId}` as NetworkId;
     const projection = new MemoryProjectionStore();
     const indexer = new OpenIndexer(
       projection,

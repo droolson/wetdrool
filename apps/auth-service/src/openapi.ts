@@ -1,10 +1,10 @@
 export const authOpenApiDocument = {
   openapi: '3.1.0',
   info: {
-    title: 'WokeSocial Replaceable Authentication API',
+    title: 'WetDrool Replaceable Authentication API',
     version: '0.1.0',
     description:
-      'Passkey account authentication and atomic opaque key-wrapper custody. This service never becomes a WokeSocial protocol identity or signing authority.',
+      'Passkey account authentication and atomic opaque key-wrapper custody. This service never becomes a WetDrool protocol identity or signing authority.',
   },
   paths: {
     '/healthz': {

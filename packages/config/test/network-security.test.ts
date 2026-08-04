@@ -23,7 +23,7 @@ describe('nonlocal hostname policy', () => {
   });
 
   it.each([
-    'woke.social',
+    'wetdrool.com',
     'localhost.example',
     'examplelocalhost',
     '10.0.0.1',

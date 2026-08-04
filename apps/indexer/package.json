@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/indexer",
+  "name": "@wetdrool/indexer",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Open, rebuildable WokeNet social-protocol indexer",
+  "description": "Open, rebuildable DroolNet social-protocol indexer",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-static.mjs",
@@ -25,10 +25,10 @@
     "@fastify/rate-limit": "11.1.0",
     "@opentelemetry/api": "1.9.1",
     "@solana/kit": "7.0.0",
-    "@wokesocial/config": "workspace:*",
-    "@wokesocial/protocol": "workspace:*",
-    "@wokesocial/rate-limit": "workspace:*",
-    "@wokesocial/storage": "workspace:*",
+    "@wetdrool/config": "workspace:*",
+    "@wetdrool/protocol": "workspace:*",
+    "@wetdrool/rate-limit": "workspace:*",
+    "@wetdrool/storage": "workspace:*",
     "bs58": "6.0.0",
     "fastify": "5.10.0",
     "pino": "10.3.1",
@@ -38,7 +38,7 @@
   "devDependencies": {
     "@noble/curves": "2.2.0",
     "@types/node": "22.20.1",
-    "@wokesocial/test-fixtures": "workspace:*",
+    "@wetdrool/test-fixtures": "workspace:*",
     "tsx": "4.23.1",
     "vitest": "4.1.10"
   }

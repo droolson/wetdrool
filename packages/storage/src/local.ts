@@ -2,7 +2,7 @@ import { access, mkdir, open, readFile, rename, rm, stat } from 'node:fs/promise
 import { dirname, join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { getContentCid, isCanonicalRawSha256Cid, verifyContentCid } from '@wokesocial/protocol';
+import { getContentCid, isCanonicalRawSha256Cid, verifyContentCid } from '@wetdrool/protocol';
 
 import {
   type ContentAddressedStorage,

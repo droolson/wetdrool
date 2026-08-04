@@ -7,34 +7,34 @@ import { readIndexerConfig, removeIndexerSetupOnlyVariables } from '../src/confi
 import { readMigrationDatabaseUrl } from '../src/migrate.js';
 
 const programId = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
-const networkId = `wokenet:v1:11111111111111111111111111111111:${programId}`;
+const networkId = `droolnet:v1:11111111111111111111111111111111:${programId}`;
 
 describe('indexer runtime configuration', () => {
   it('keeps runtime and migration database roles distinct', () => {
     expect(() =>
       readIndexerConfig({
-        DATABASE_URL: 'postgresql://runtime:runtime-secret@database.test/wokesocial',
-        DATABASE_MIGRATION_URL: 'postgresql://migration:migration-secret@database.test/wokesocial',
+        DATABASE_URL: 'postgresql://runtime:runtime-secret@database.test/wetdrool',
+        DATABASE_MIGRATION_URL: 'postgresql://migration:migration-secret@database.test/wetdrool',
       }),
     ).toThrow('Privileged database credentials must not be injected');
     expect(() =>
       readIndexerConfig({
         AUTH_DATABASE_MIGRATION_URL:
-          'postgresql://migration:migration-secret@database.test/wokesocial',
+          'postgresql://migration:migration-secret@database.test/wetdrool',
       }),
     ).toThrow('Privileged database credentials must not be injected');
     expect(
       readMigrationDatabaseUrl({
-        DATABASE_MIGRATION_URL: 'postgresql://migration:migration-secret@database.test/wokesocial',
+        DATABASE_MIGRATION_URL: 'postgresql://migration:migration-secret@database.test/wetdrool',
       }),
-    ).toBe('postgresql://migration:migration-secret@database.test/wokesocial');
+    ).toBe('postgresql://migration:migration-secret@database.test/wetdrool');
     expect(() =>
       readMigrationDatabaseUrl({ DATABASE_MIGRATION_URL: 'https://database.test' }),
     ).toThrow('must use postgres:// or postgresql://');
     const sentinel = 'SENTINEL_INDEXER_MIGRATION_SECRET';
     try {
       readMigrationDatabaseUrl({
-        DATABASE_MIGRATION_URL: `postgresql://migration:${sentinel}@[invalid/wokesocial`,
+        DATABASE_MIGRATION_URL: `postgresql://migration:${sentinel}@[invalid/wetdrool`,
       });
       throw new Error('Expected malformed migration URL rejection.');
     } catch (error) {
@@ -46,7 +46,7 @@ describe('indexer runtime configuration', () => {
     expect(() =>
       readIndexerConfig({
         APP_ENV: 'development',
-        DATABASE_URL: 'postgresql://runtime:secret@database.test/wokesocial?sslmode=verify-full',
+        DATABASE_URL: 'postgresql://runtime:secret@database.test/wetdrool?sslmode=verify-full',
         NODE_ENV: 'production',
       }),
     ).toThrow('NODE_ENV must be production exactly');
@@ -59,7 +59,7 @@ describe('indexer runtime configuration', () => {
     for (const appEnvironment of ['staging', 'production'] as const) {
       expect(readIndexerConfig(nonlocalEnvironment(appEnvironment))).toMatchObject({
         databaseUrl:
-          'postgresql://indexer_runtime:secret@database.test/wokesocial?sslmode=verify-full',
+          'postgresql://indexer_runtime:secret@database.test/wetdrool?sslmode=verify-full',
         sync: { networkId, programId },
       });
     }
@@ -68,7 +68,7 @@ describe('indexer runtime configuration', () => {
   it('uses a minimal indexer-only nonlocal dependency set', () => {
     const config = readIndexerConfig(nonlocalEnvironment('staging'));
     expect(config.sync?.rpcUrls).toEqual(['https://rpc.solana.test']);
-    expect(config.allowedOrigins).toEqual(['https://woke.social']);
+    expect(config.allowedOrigins).toEqual(['https://wetdrool.com']);
     expect(config).not.toHaveProperty('sessionSecret');
     expect(config).not.toHaveProperty('redisUrl');
     expect(config).not.toHaveProperty('ipfsApiUrl');
@@ -76,14 +76,14 @@ describe('indexer runtime configuration', () => {
 
   it('rejects nonlocal transport downgrades and local endpoints', () => {
     for (const override of [
-      { ALLOWED_ORIGINS: 'http://woke.social' },
+      { ALLOWED_ORIGINS: 'http://wetdrool.com' },
       { ALLOWED_ORIGINS: 'https://app.localhost' },
       { ALLOWED_ORIGINS: 'https://127.0.0.5' },
       { SOLANA_RPC_URLS: 'http://rpc.solana.test' },
       { SOLANA_RPC_URLS: 'https://[::ffff:127.0.0.1]' },
       {
         DATABASE_URL:
-          'postgresql://indexer_runtime:secret@127.0.0.1/wokesocial?sslmode=verify-full',
+          'postgresql://indexer_runtime:secret@127.0.0.1/wetdrool?sslmode=verify-full',
       },
     ]) {
       expect(() =>
@@ -138,15 +138,15 @@ describe('indexer runtime configuration', () => {
 
   it('retains the shared limiter runtime connection while scrubbing setup secrets', () => {
     const environment = {
-      DATABASE_MIGRATION_URL: 'postgresql://migration:secret@localhost/wokesocial',
-      DATABASE_URL: 'postgresql://indexer:secret@localhost/wokesocial',
+      DATABASE_MIGRATION_URL: 'postgresql://migration:secret@localhost/wetdrool',
+      DATABASE_URL: 'postgresql://indexer:secret@localhost/wetdrool',
       RATE_LIMIT_DEPLOYMENT_ID: 'local-development',
       RATE_LIMIT_KEY_SECRET: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI',
       REDIS_URL: 'redis://:secret@127.0.0.1:6379',
     };
     removeIndexerSetupOnlyVariables(environment);
     expect(environment).toEqual({
-      DATABASE_URL: 'postgresql://indexer:secret@localhost/wokesocial',
+      DATABASE_URL: 'postgresql://indexer:secret@localhost/wetdrool',
       RATE_LIMIT_DEPLOYMENT_ID: 'local-development',
       RATE_LIMIT_KEY_SECRET: 'AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI',
       REDIS_URL: 'redis://:secret@127.0.0.1:6379',
@@ -190,16 +190,16 @@ describe('indexer runtime configuration', () => {
     }
 
     const environment = {
-      AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wokesocial',
+      AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wetdrool',
       AUTH_DATABASE_RUNTIME_PASSWORD: 'auth-secret',
-      DATABASE_MIGRATION_URL: 'postgresql://migration:secret@localhost/wokesocial',
-      DATABASE_URL: 'postgresql://indexer:secret@localhost/wokesocial',
+      DATABASE_MIGRATION_URL: 'postgresql://migration:secret@localhost/wetdrool',
+      DATABASE_URL: 'postgresql://indexer:secret@localhost/wetdrool',
       PGPASSWORD: 'bootstrap-secret',
       SAFE_VALUE: 'retained',
     };
     removeIndexerSetupOnlyVariables(environment);
     expect(environment).toEqual({
-      DATABASE_URL: 'postgresql://indexer:secret@localhost/wokesocial',
+      DATABASE_URL: 'postgresql://indexer:secret@localhost/wetdrool',
       SAFE_VALUE: 'retained',
     });
   });
@@ -209,7 +209,7 @@ describe('indexer runtime configuration', () => {
       readMigrationDatabaseUrl({
         APP_ENV: 'production',
         DATABASE_MIGRATION_URL:
-          'postgresql://migration:secret@database.test/wokesocial?sslmode=verify-full',
+          'postgresql://migration:secret@database.test/wetdrool?sslmode=verify-full',
       }),
     ).toContain('sslmode=verify-full');
 
@@ -223,7 +223,7 @@ describe('indexer runtime configuration', () => {
       expect(() =>
         readMigrationDatabaseUrl({
           APP_ENV: 'production',
-          DATABASE_MIGRATION_URL: `postgresql://migration:secret@database.test/wokesocial${sslQuery}`,
+          DATABASE_MIGRATION_URL: `postgresql://migration:secret@database.test/wetdrool${sslQuery}`,
         }),
       ).toThrow('must set exactly one sslmode=verify-full');
     }
@@ -235,7 +235,7 @@ describe('indexer runtime configuration', () => {
       expect(() =>
         readMigrationDatabaseUrl({
           ...environment,
-          DATABASE_MIGRATION_URL: 'postgresql://migration:secret@database.test/wokesocial',
+          DATABASE_MIGRATION_URL: 'postgresql://migration:secret@database.test/wetdrool',
         }),
       ).toThrow('must set exactly one sslmode=verify-full');
     }
@@ -243,7 +243,7 @@ describe('indexer runtime configuration', () => {
       readMigrationDatabaseUrl({
         APP_ENV: 'staging',
         DATABASE_MIGRATION_URL:
-          'postgresql://migration:secret@database.test/wokesocial?sslmode=verify-full',
+          'postgresql://migration:secret@database.test/wetdrool?sslmode=verify-full',
         NODE_TLS_REJECT_UNAUTHORIZED: '0',
       }),
     ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED must not be 0/u);
@@ -285,10 +285,10 @@ describe('indexer runtime configuration', () => {
 
 function nonlocalEnvironment(appEnvironment: 'staging' | 'production') {
   return {
-    ALLOWED_ORIGINS: 'https://woke.social',
+    ALLOWED_ORIGINS: 'https://wetdrool.com',
     APP_ENV: appEnvironment,
     DATABASE_URL:
-      'postgresql://indexer_runtime:secret@database.test/wokesocial?sslmode=verify-full',
+      'postgresql://indexer_runtime:secret@database.test/wetdrool?sslmode=verify-full',
     INDEXER_NETWORK_ID: networkId,
     NEXT_PUBLIC_PROGRAM_ID: programId,
     NODE_ENV: 'production',

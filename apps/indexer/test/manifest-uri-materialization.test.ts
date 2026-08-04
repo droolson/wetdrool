@@ -1,8 +1,8 @@
 import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
-import { encodeMultibaseBase64Url, parseWokeManifestUri } from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+import { encodeMultibaseBase64Url, parseWokeManifestUri } from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   ManifestVerifier,
@@ -24,7 +24,7 @@ const identity = publicKey(3);
 const authority = publicKey(4);
 const community = publicKey(5);
 const postReference = publicKey(6);
-const networkId = `wokenet:v1:${publicKey(7)}:${programId}`;
+const networkId = `droolnet:v1:${publicKey(7)}:${programId}`;
 const manifestHash = Uint8Array.from({ length: 32 }, () => 8);
 const validUris = [
   `ipfs://${cid}`,

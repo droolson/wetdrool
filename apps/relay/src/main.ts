@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url';
 
-import { parseRateLimitRuntimeConfig } from '@wokesocial/config/rate-limit';
-import { createRuntimeRateLimiter, type RuntimeRateLimiterOptions } from '@wokesocial/rate-limit';
+import { parseRateLimitRuntimeConfig } from '@wetdrool/config/rate-limit';
+import { createRuntimeRateLimiter, type RuntimeRateLimiterOptions } from '@wetdrool/rate-limit';
 
 import { parseRelayConfig } from './config.js';
 import { combineRelayReadinessChecks } from './http-authorizer-client.js';

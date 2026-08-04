@@ -4,8 +4,8 @@ import bs58 from 'bs58';
 import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
-import type { NetworkId } from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+import type { NetworkId } from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   deriveRecoveryPolicyAddress,
@@ -23,18 +23,18 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wetdrool';
 
 describe('PostgreSQL recovery projection integration', () => {
   it('rolls back invalid transitions and deterministically rebuilds policy and request state', async () => {
     await migrate(migrationDatabaseUrl);
     const fixture = await recoveryFixture();
     const secondNetworkId =
-      `wokenet:v1:${publicKey()}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
+      `droolnet:v1:${publicKey()}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
     const projection = new PostgresProjectionStore(databaseUrl);
     const inspectionSql = postgres(databaseUrl, { max: 1 });
     const indexer = new OpenIndexer(
@@ -190,10 +190,10 @@ describe('PostgreSQL recovery projection integration', () => {
 
 async function recoveryFixture() {
   const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-  const networkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
+  const networkId = `droolnet:v1:${publicKey()}:${programId}` as NetworkId;
   const configAddress = publicKey();
   const identityAddress = publicKey();
-  const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+  const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
   const originalRoot = publicKey();
   const recoveredRoot = publicKey();
   const secondTargetRoot = publicKey();

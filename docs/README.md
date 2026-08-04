@@ -1,10 +1,10 @@
-# WokeSocial documentation
+# WetDrool documentation
 
 This directory contains the product, protocol, trust, safety, development, and
-operations documentation for WokeSocial and WokeNet.
+operations documentation for WetDrool and DroolNet.
 
-WokeSocial is the social platform and flagship product at `woke.social`.
-WokeNet is its portable protocol and Anchor smart-contract layer on Solana. It
+WetDrool is the social platform and flagship product at `wetdrool.com`.
+DroolNet is its portable protocol and Anchor smart-contract layer on Solana. It
 is not a blockchain, validator network, Solana fork, or Firedancer/Agave
 topology.
 
@@ -17,17 +17,27 @@ treat an architectural design or roadmap item as implemented.
 
 The source repository is currently private. These documents describe the
 checked-in project state; they do not prove a public service, Solana deployment,
-security audit, `$WOKE` mint, or Solana Seeker release.
+security audit, `$DROOL` mint, or Solana Seeker release.
 
 ## Start here
 
 | Audience                       | Recommended path                                                                                                                         |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Product / ops (Obsidian)**   | [obsidian/00 Home](obsidian/00%20Home%20—%20WetDrool%20Knowledge%20Base.md) → [PRODUCT_PRIORITY](PRODUCT_PRIORITY.md) → public **https://wetdrool.com/docs** |
 | New contributor                | [Repository README](../README.md) → [Contributing](../CONTRIBUTING.md) → [Development](DEVELOPMENT.md) → [Developer handoff](DEVELOPER_HANDOFF.md) → [Testing](TESTING.md) |
-| Product or design contributor  | [Product specification](PRODUCT_SPEC.md) → [Brand](BRAND.md) → [Accessibility](ACCESSIBILITY.md) → [Roadmap](ROADMAP.md)                 |
+| Product or design contributor  | [Product specification](PRODUCT_SPEC.md) → [Vision](WETDROOL_VISION.md) → [Brand](BRAND.md) → [Accessibility](ACCESSIBILITY.md) → [Roadmap](ROADMAP.md)                 |
 | Protocol or Solana contributor | [Architecture](ARCHITECTURE.md) → [Protocol](PROTOCOL.md) → [ADRs](DECISIONS/) → [Testing](TESTING.md)                                   |
 | Security or privacy reviewer   | [Security policy](../SECURITY.md) → [Security design](SECURITY.md) → [Threat model](THREAT_MODEL.md) → [Privacy](PRIVACY.md)             |
 | Trust-and-safety contributor   | [Moderation](MODERATION.md) → [Privacy](PRIVACY.md) → [Legal review scope](LEGAL_REVIEW.md)                                              |
+| Deploy / edge                  | [DEPLOY_VERCEL_CLOUDFLARE](DEPLOY_VERCEL_CLOUDFLARE.md) → [Deployment](DEPLOYMENT.md) → [Operations](OPERATIONS.md)                      |
+
+## Obsidian vault
+
+Point an Obsidian vault at **`docs/`** (or **`docs/obsidian/`** for the short notes only).
+
+- Wikilinks use `[[Note title]]` between files under `docs/obsidian/`.
+- Longer specs remain as root `docs/*.md` and ADRs under `docs/DECISIONS/`.
+- The Next app serves a browsable catalog at **`/docs`** (`apps/web/lib/docs-catalog.ts`) for wetdrool.com.
 | Operator or release reviewer   | [Deployment](DEPLOYMENT.md) → [Operations](OPERATIONS.md) → [Decentralization](DECENTRALIZATION.md) → [Final report](../FINAL_REPORT.md) |
 
 ## Product and experience
@@ -35,8 +45,8 @@ security audit, `$WOKE` mint, or Solana Seeker release.
 | Document                                 | Purpose                                                                                     |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
 | [Product specification](PRODUCT_SPEC.md) | Product principles, audiences, journeys, feature boundaries, and delivery status            |
-| [Platform expansion](PLATFORM_EXPANSION.md) | Planned video, `.woke` names, points, avatars, verification, AI, market intelligence, and governance systems |
-| [Woke AI platform](AI_PLATFORM.md)       | Athena, Kairos, Hermes, owned-hardware evaluation, inference, credits, training, privacy, and release gates |
+| [Platform expansion](PLATFORM_EXPANSION.md) | Planned video, `.drool` names, points, avatars, verification, AI, market intelligence, and governance systems |
+| [Drool AI platform](AI_PLATFORM.md)       | Athena, Kairos, Hermes, owned-hardware evaluation, inference, credits, training, privacy, and release gates |
 | [Organization](ORGANIZATION.md)          | Owner-provided corporate structure, product responsibilities, service boundaries, and verification limits |
 | [Brand](BRAND.md)                        | Voice, visual direction, inclusive identity UX, and originality expectations                |
 | [Accessibility](ACCESSIBILITY.md)        | Accessibility requirements, implemented evidence, and the remaining manual conformance work |
@@ -62,11 +72,11 @@ security audit, `$WOKE` mint, or Solana Seeker release.
 | [0005](DECISIONS/0005-provider-replaceability.md)             | Provider replaceability                        |
 | [0006](DECISIONS/0006-passkey-account-key-boundary.md)        | Passkey/account-key boundary                   |
 | [0007](DECISIONS/0007-messaging-cryptographic-engine.md)      | Messaging cryptographic engine                 |
-| [0008](DECISIONS/0008-canonical-domain-transition.md)         | Canonical-domain transition to `woke.social`   |
-| [0009](DECISIONS/0009-wokenet-on-solana.md)                   | WokeNet as a Solana program and protocol layer |
+| [0008](DECISIONS/0008-canonical-domain-transition.md)         | Canonical-domain transition to `wetdrool.com`   |
+| [0009](DECISIONS/0009-droolnet-on-solana.md)                   | DroolNet as a Solana program and protocol layer |
 | [0010](DECISIONS/0010-verified-community-discovery.md)        | Verified community discovery                   |
 | [0011](DECISIONS/0011-member-signed-community-membership.md)  | Member-signed community membership             |
-| [0012](DECISIONS/0012-woke-name-namespace.md)                 | Versioned `.woke` identity names                |
+| [0012](DECISIONS/0012-woke-name-namespace.md)                 | Versioned `.drool` identity names                |
 
 ## Security, privacy, and safety
 
@@ -94,7 +104,7 @@ verified intake channels; follow the exact warnings in those documents.
 | [Deployment](DEPLOYMENT.md)                          | Environment, artifact, authority, rollout, and public-deployment requirements |
 | [Operations](OPERATIONS.md)                          | Service ownership, readiness, observability, incidents, backups, and runbooks |
 | [Infrastructure README](../infra/README.md)          | Local provider-neutral infrastructure                                         |
-| [Solana network README](../network/solana/README.md) | WokeNet deployment-manifest and cluster metadata boundaries                   |
+| [Solana network README](../network/solana/README.md) | DroolNet deployment-manifest and cluster metadata boundaries                   |
 
 ## Delivery evidence
 
@@ -102,7 +112,7 @@ verified intake channels; follow the exact warnings in those documents.
 | -------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [TASKS.md](../TASKS.md)                                              | Checkbox-level implementation and verification boundary             |
 | [FINAL_REPORT.md](../FINAL_REPORT.md)                                | Current evidence snapshot and production NO-GO decision             |
-| [Git history](https://github.com/AlexBTC420/wokesocial/commits/main) | Change history in the private source repository; access is required |
+| [Git history](https://github.com/AlexBTC420/wetdrool/commits/main) | Change history in the private source repository; access is required |
 
 An unchecked broad task can contain a tested subset. A checked task is not a
 substitute for production deployment, external audit, independent operation,
@@ -116,11 +126,11 @@ or release approval unless its evidence explicitly proves that outcome.
 - Add an ADR before merging a decision that changes canonical bytes, IDs,
   signatures, PDA seeds, account layouts, authority, trust boundaries, provider
   contracts, permanence, or migration behavior.
-- Use exact terms: WokeSocial for the platform, WokeNet for the protocol and
+- Use exact terms: WetDrool for the platform, DroolNet for the protocol and
   Solana program layer, and Solana for the underlying chain.
 - Do not describe local-validator results as devnet, mainnet-beta, public
   deployment, or production evidence.
-- Do not describe SOL or lamports as `$WOKE`. No `$WOKE` mint exists.
+- Do not describe SOL or lamports as `$DROOL`. No `$DROOL` mint exists.
 - Keep legacy hostnames redirect-only; see
   [ADR-0008](DECISIONS/0008-canonical-domain-transition.md).
 - Run `pnpm format:check` after editing Markdown and verify every relative link
@@ -128,3 +138,13 @@ or release approval unless its evidence explicitly proves that outcome.
 
 Documentation improvements are first-class contributions. See
 [CONTRIBUTING.md](../CONTRIBUTING.md) for the contribution process.
+
+## WetDrool product (2026-07 rebrand)
+
+| Doc | Topic |
+|-----|--------|
+| [WETDROOL_VISION.md](WETDROOL_VISION.md) | Full product vision |
+| [ECONOMY.md](ECONOMY.md) | Points, ads, vanity, $DROOL |
+| [ALGORITHM.md](ALGORITHM.md) | DroolRank |
+| [MYTHIC_PERFORMANCE.md](MYTHIC_PERFORMANCE.md) | Mythic Agent tuning |
+

@@ -1,4 +1,4 @@
-# WokeSocial development guide
+# WetDrool development guide
 
 This guide gets a contributor from repository access to a review-ready change.
 It complements the [contribution policy](../CONTRIBUTING.md) and
@@ -6,11 +6,11 @@ It complements the [contribution policy](../CONTRIBUTING.md) and
 
 ## Current boundary
 
-WokeSocial and WokeNet are pre-release. The repository contains substantial
+WetDrool and DroolNet are pre-release. The repository contains substantial
 locally verified work, but no production deployment is authorized or claimed:
 
-- no WokeNet program is published to Solana devnet or mainnet-beta;
-- no `$WOKE` mint or usable `$WOKE` payment flow exists;
+- no DroolNet program is published to Solana devnet or mainnet-beta;
+- no `$DROOL` mint or usable `$DROOL` payment flow exists;
 - the legacy lamport payment ABI is quarantined and must remain fail-closed;
 - the Solana Seeker Android project is a non-release foundation; and
 - security, privacy, moderation, accessibility, legal, operations, and
@@ -21,7 +21,7 @@ understand the verified boundary before changing status language.
 
 ## Access and collaboration
 
-The GitHub repository, `AlexBTC420/wokesocial`, is currently private and
+The GitHub repository, `AlexBTC420/wetdrool`, is currently private and
 invite-only. People who already have a direct channel to
 [@AlexBTC420](https://github.com/AlexBTC420) may request access there. A public
 contributor-intake channel has not yet opened. After access is granted:
@@ -105,7 +105,7 @@ apps/
   media-worker/         Authenticated media verification and processing
 packages/
   protocol/             Canonical schemas, signatures, hashes, and identifiers
-  sdk/                  Publication and WokeNet program client boundaries
+  sdk/                  Publication and DroolNet program client boundaries
   storage/              Content-addressed storage adapters
   indexer-client/       Runtime-neutral validated indexer client
   crypto/               WebCrypto and passkey key-wrapping primitives
@@ -114,7 +114,7 @@ packages/
   config/               Typed environment and runtime contracts
   ui/                   Accessible shared UI foundations
 programs/
-  social_protocol/      WokeNet Anchor program
+  social_protocol/      DroolNet Anchor program
 network/solana/         Deployment-manifest and cluster metadata
 infra/                  Local provider-neutral infrastructure
 scripts/                Setup, verification, operations, and evidence harnesses
@@ -165,7 +165,7 @@ iterating. Before review, run the relevant root gates so cross-workspace
 contracts are checked. Keep public parsers strict, inputs bounded, errors
 stable, and logs free of secrets or private content.
 
-### WokeNet program or protocol
+### DroolNet program or protocol
 
 Read [PROTOCOL.md](PROTOCOL.md) and the applicable
 [ADRs](DECISIONS/) first. Changes to canonical bytes, schema versions,
@@ -224,7 +224,7 @@ contracts, or migrations.
   a safe placeholder or commented example in `.env.example`.
 - Production and shared environments must fail closed when required security,
   provider, origin, TLS, or authority configuration is missing.
-- `woke.social` is the canonical origin. Legacy hostnames are redirect-only.
+- `wetdrool.com` is the canonical origin. Legacy hostnames are redirect-only.
 - Never commit embedded RPC credentials, provider tokens, session secrets,
   database secrets, wallet material, or passkey material.
 - Local bypasses must be explicit, loopback-only, development-only, and

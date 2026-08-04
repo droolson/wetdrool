@@ -1,4 +1,4 @@
-import { solanaPublicKeySchema, transactionSignatureSchema } from '@wokesocial/protocol';
+import { solanaPublicKeySchema, transactionSignatureSchema } from '@wetdrool/protocol';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
 const MAXIMUM_TARGET_LAMPORTS = 1_000_000_000;
@@ -248,7 +248,7 @@ async function assertGenesis(
   const observed = await rpc<string>(request, endpoint, 'getGenesisHash', [], signal);
   if (observed !== expected) {
     throw new LocalnetFaucetError(
-      'The local validator genesis hash does not match the selected WokeNet deployment.',
+      'The local validator genesis hash does not match the selected DroolNet deployment.',
       'network-mismatch',
     );
   }
@@ -288,7 +288,7 @@ async function rpc<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   assertActive(signal);
-  const requestId = `wokesocial-localnet-${method}`;
+  const requestId = `wetdrool-localnet-${method}`;
   let response: Response;
   try {
     response = await request(endpoint, {

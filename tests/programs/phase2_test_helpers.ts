@@ -7,7 +7,7 @@ import type { SocialProtocol } from "../../target/types/social_protocol";
 
 const { PublicKey, SystemProgram } = web3;
 
-const PDA_PREFIX = Buffer.from("wokesocial");
+const PDA_PREFIX = Buffer.from("wetdrool");
 const PDA_VERSION = Buffer.from([1]);
 const IDENTITY_SEED = Buffer.from("identity");
 const HANDLE_SEED = Buffer.from("handle");
@@ -26,7 +26,7 @@ export const SCOPE_SOCIAL = 1 << 2;
 export const TEST_MANIFEST_CID =
   "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
 const RANDOM_HANDLE_DOMAIN = Buffer.from(
-  "wokesocial:woke-name:random:v1\0",
+  "wetdrool:woke-name:random:v1\0",
   "utf8",
 );
 const CROCKFORD_BASE32 = "0123456789abcdefghjkmnpqrstvwxyz";

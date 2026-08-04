@@ -1,4 +1,4 @@
-import { ButtonLink } from '@wokesocial/ui';
+import { ButtonLink } from '@wetdrool/ui';
 
 export function ComposerUnavailable() {
   return (

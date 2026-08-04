@@ -1,0 +1,45 @@
+{
+  "name": "Droolhouse",
+  "slug": "droolhouse",
+  "product": "WetDrool",
+  "domain": "wetdrool.com",
+  "vanityTld": ".drool",
+  "token": "$DROOL",
+  "description": "Autonomous AI company operating WetDrool — 18+ adult social dApp on Solana with livestreams, companions, and DroolNet.",
+  "runtime": {
+    "agent": "mythic-agent",
+    "adapter": "hermes_local",
+    "models": {
+      "primary": "grok-4.5",
+      "fallback": "xai-oauth/grok-4.3",
+      "coding": "openai-codex/gpt-5.6-sol"
+    },
+    "sourceOfTruth": "https://github.com/canadasfemboy/mythic-agent"
+  },
+  "goals": [
+    "Ship WetDrool as the most euphoric, consent-first 18+ social dApp",
+    "Keep points issuance ≤ ad revenue every period",
+    "Run 24/7 AI moderation with human escalation last resort",
+    "Operate hireable Grok 4.5 companions with illegal-only hard limits",
+    "Prepare $DROOL mint and .drool vanity registry safely"
+  ],
+  "policies": {
+    "age": "18+",
+    "speech": "Near-complete freedom for consensual adult expression",
+    "zeroTolerance": [
+      "csam",
+      "nonconsensual_intimate",
+      "hate",
+      "harassment",
+      "bullying",
+      "bigotry",
+      "doxxing",
+      "real_world_crime_facilitation"
+    ],
+    "mentalHealth": "Always surface crisis resources; never shame users"
+  },
+  "import": {
+    "paperclip": "npx paperclipai company import --from ./paperclip/droolhouse",
+    "adapter": "npm install hermes-paperclip-adapter"
+  }
+}

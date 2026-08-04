@@ -4,7 +4,7 @@ import {
   timestampSchema,
   transactionSignatureSchema,
   unsigned64Schema,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   IndexerPayloadError,
@@ -27,7 +27,7 @@ export interface CommunityDirectoryResponse {
   meta: IndexerMeta;
   network: string;
   nextCursor: string | null;
-  projection: 'wokenet-open-indexer';
+  projection: 'droolnet-open-indexer';
   recipe: typeof COMMUNITY_DIRECTORY_RECIPE;
 }
 
@@ -36,7 +36,7 @@ export interface CommunityDetailResponse {
   community: DirectVerifiedCommunity;
   meta: IndexerMeta;
   network: string;
-  projection: 'wokenet-open-indexer';
+  projection: 'droolnet-open-indexer';
 }
 
 export type CommunityMembershipAction = 'ban' | 'join' | 'leave' | 'remove';
@@ -59,7 +59,7 @@ export interface CommunityMembershipStatus {
 
 export interface CommunityMembershipProof {
   finality: 'finalized';
-  kind: 'wokesocial-program-event';
+  kind: 'wetdrool-program-event';
   logIndex: number;
   slot: string;
   transactionIndex: number | null;
@@ -71,7 +71,7 @@ export interface CommunityMembershipStatusResponse {
   membership: CommunityMembershipStatus;
   meta: IndexerMeta;
   network: string;
-  projection: 'wokenet-open-indexer';
+  projection: 'droolnet-open-indexer';
   proof: CommunityMembershipProof;
 }
 
@@ -149,7 +149,7 @@ function canonicalNetwork(value: unknown, label: string): string {
   const parsed = networkIdSchema.safeParse(value);
   if (!parsed.success) {
     throw new IndexerPayloadError(
-      `${label} must be a canonical WokeNet Solana deployment identifier.`,
+      `${label} must be a canonical DroolNet Solana deployment identifier.`,
     );
   }
   return parsed.data;
@@ -247,7 +247,7 @@ export function parseCommunityDirectoryResponse(
   const network = canonicalNetwork(response.network, 'community directory response.network');
   if (
     response.canonical !== false ||
-    response.projection !== 'wokenet-open-indexer' ||
+    response.projection !== 'droolnet-open-indexer' ||
     response.recipe !== COMMUNITY_DIRECTORY_RECIPE ||
     (expected !== undefined && expected.network !== network) ||
     !Array.isArray(response.communities) ||
@@ -270,7 +270,7 @@ export function parseCommunityDirectoryResponse(
     const parsed = parseVerifiedCommunity(community, 'public') as PublicVerifiedCommunity;
     if (parsed.networkId !== network) {
       throw new IndexerPayloadError(
-        'A directory community belongs to a different WokeNet Solana deployment.',
+        'A directory community belongs to a different DroolNet Solana deployment.',
       );
     }
     return parsed;
@@ -306,7 +306,7 @@ export function parseCommunityDirectoryResponse(
     meta,
     network,
     nextCursor: cursorState.kind === 'valid' ? cursorState.cursor : null,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     recipe: COMMUNITY_DIRECTORY_RECIPE,
   };
 }
@@ -326,7 +326,7 @@ export function parseCommunityDetailResponse(
   const network = canonicalNetwork(response.network, 'community detail response.network');
   if (
     response.canonical !== false ||
-    response.projection !== 'wokenet-open-indexer' ||
+    response.projection !== 'droolnet-open-indexer' ||
     (expected !== undefined && expected.network !== network)
   ) {
     throw new IndexerPayloadError('The verified community detail metadata is invalid.');
@@ -345,7 +345,7 @@ export function parseCommunityDetailResponse(
     community,
     meta,
     network,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
   };
 }
 
@@ -368,7 +368,7 @@ export function parseCommunityMembershipStatusResponse(
   );
   if (
     response.canonical !== false ||
-    response.projection !== 'wokenet-open-indexer' ||
+    response.projection !== 'droolnet-open-indexer' ||
     (expected !== undefined && network !== expected.network)
   ) {
     throw new IndexerPayloadError('The community membership status metadata is invalid.');
@@ -472,7 +472,7 @@ export function parseCommunityMembershipStatusResponse(
           'community membership proof.transactionIndex',
         );
   if (
-    proof.kind !== 'wokesocial-program-event' ||
+    proof.kind !== 'wetdrool-program-event' ||
     proof.finality !== 'finalized' ||
     proofSlot !== updatedSlot
   ) {
@@ -502,10 +502,10 @@ export function parseCommunityMembershipStatusResponse(
     },
     meta,
     network,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     proof: {
       finality: 'finalized',
-      kind: 'wokesocial-program-event',
+      kind: 'wetdrool-program-event',
       logIndex,
       slot: proofSlot,
       transactionIndex,
@@ -639,7 +639,7 @@ export async function fetchCommunityDirectory(
   if (network === null) {
     return degraded(
       'invalid-response',
-      'A canonical WokeNet Solana deployment identifier is required for community discovery.',
+      'A canonical DroolNet Solana deployment identifier is required for community discovery.',
     );
   }
   if (cursorState.kind === 'invalid') return degraded('invalid-response', cursorState.detail);
@@ -704,7 +704,7 @@ export async function fetchCommunityDetail(
   if (network === null) {
     return degraded(
       'invalid-response',
-      'A canonical WokeNet Solana deployment identifier is required to read a community.',
+      'A canonical DroolNet Solana deployment identifier is required to read a community.',
     );
   }
   if (addressState.kind !== 'valid') {
@@ -775,7 +775,7 @@ export async function fetchCommunityMembershipStatus(
   if (network === null) {
     return degraded(
       'invalid-response',
-      'A canonical WokeNet Solana deployment identifier is required to read membership status.',
+      'A canonical DroolNet Solana deployment identifier is required to read membership status.',
     );
   }
   if (addressState.kind !== 'valid') {

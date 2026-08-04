@@ -1,6 +1,6 @@
 'use client';
 
-import { ButtonLink } from '@wokesocial/ui';
+import { ButtonLink } from '@wetdrool/ui';
 import { useEffect, useMemo, useState } from 'react';
 
 import { BrowserAuthClient, type BrowserAuthClientOptions } from '@/lib/auth/browser-auth-client';

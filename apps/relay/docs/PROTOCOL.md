@@ -11,17 +11,17 @@ The relay accelerates discovery. It does not participate in protocol consensus a
 }
 ```
 
-A client that receives `new-post`, `community-update`, or `live-reaction` should treat it as a fetch hint. It must fetch the referenced canonical signed object, verify its CID/object ID/signature and current key delegation, resolve tombstones and access policy, then reconcile the finalized WokeNet index. Event arrival order is never a substitute for that process.
+A client that receives `new-post`, `community-update`, or `live-reaction` should treat it as a fetch hint. It must fetch the referenced canonical signed object, verify its CID/object ID/signature and current key delegation, resolve tombstones and access policy, then reconcile the finalized DroolNet index. Event arrival order is never a substitute for that process.
 
 ## Signed envelope
 
 Published events contain a strict `message` and `proof`:
 
-- `protocol`: `wokesocial-relay`
+- `protocol`: `wetdrool-relay`
 - `version`: `1`
 - `identity`: a canonical protocol
-  `wokesocialid:v1:wokenet:v1:<genesis-hash-base58-32>:<program-id-base58-32>:<identity-address-base58-32>`;
-  pre-migration `wokesocialid:v1:solana:...` identifiers are rejected
+  `wetdroolid:v1:droolnet:v1:<genesis-hash-base58-32>:<program-id-base58-32>:<identity-address-base58-32>`;
+  pre-migration `wetdroolid:v1:solana:...` identifiers are rejected
 - `keyId`: that identity’s `#root/` or `#delegation/` Ed25519 key ID
 - exact UTC-millisecond `issuedAt` and `expiresAt`
 - a 16-byte multibase base64url `nonce`
@@ -67,7 +67,7 @@ The server responds with:
 Eligible retention is capped globally, per topic, by signed expiry, and at two minutes. Retained delivery still passes audience and event-kind filters. There is no delivery guarantee or durable mailbox.
 
 `new-post.slot` is an unsigned 64-bit decimal string, not a JavaScript number,
-so large WokeNet slots remain lossless. A supplied Solana-compatible
+so large DroolNet slots remain lossless. A supplied Solana-compatible
 transaction signature must be canonical base58 that decodes to exactly 64
 bytes.
 

@@ -8,7 +8,7 @@ import {
   buildClaimRandomWokeNameInstruction,
   decodeWokeNameClaimAccount,
   verifyRandomWokeNameClaimAccount,
-  type WokeNetContext,
+  type DroolNetContext,
 } from '../src/index.js';
 
 const CLAIM_HANDLE_DISCRIMINATOR = [93, 142, 47, 111, 164, 134, 99, 181];
@@ -19,13 +19,13 @@ const originAuthority = publicKey(1);
 const rootAuthority = publicKey(2);
 const payer = publicKey(3);
 const identityAddress = publicKey(4);
-const context: WokeNetContext = {
+const context: DroolNetContext = {
   endpoint: 'http://127.0.0.1:8899',
   genesisHash: publicKey(7),
   programAddress: publicKey(8),
 };
 
-describe('random .woke claim instruction', () => {
+describe('random .drool claim instruction', () => {
   it('derives one stable name, PDA, and exact Anchor ABI', async () => {
     const built = await buildClaimRandomWokeNameInstruction(context, {
       originAuthority,
@@ -35,7 +35,7 @@ describe('random .woke claim instruction', () => {
       expectedIdentitySequence: 9n,
     });
 
-    expect(built.randomName.name).toMatch(/^anon_[0-9a-hjkmnp-tv-z]{16}\.woke$/u);
+    expect(built.randomName.name).toMatch(/^anon_[0-9a-hjkmnp-tv-z]{16}\.drool$/u);
     expect(built.handleClaimAddress).toBe('Hh6xbaUWPn3yp5cpkHr5bp9Zoq4VUMmVkW2MWK6eXj4q');
     expect(built.handleClaimBump).toBe(255);
     expect(built.rentExemptionSpace).toBe(WOKE_HANDLE_CLAIM_ACCOUNT_SPACE);

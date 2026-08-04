@@ -2,7 +2,7 @@
 
 ## Our commitment
 
-WokeSocial is open to everyone who follows its community and safety standards.
+WetDrool is open to everyone who follows its community and safety standards.
 We are committed to a harassment-free experience regardless of identity or
 expression, race, ethnicity, disability, age, body size, religion, nationality,
 caste, pregnancy, family structure, socioeconomic status, technical
@@ -42,7 +42,7 @@ permanently exclude a participant in proportion to the behavior and risk. Respon
 minimize additional exposure, document conflicts of interest, preserve an appeal path when
 safe, and protect reporters from retaliation.
 
-The intended private contact is `conduct@woke.social`, but that mailbox has not yet been
+The intended private contact is `conduct@wetdrool.com`, but that mailbox has not yet been
 verified. Until a verified private intake channel is announced, do not send sensitive evidence
 to that address or place it in a public issue. The absence of a verified channel is a
 pre-production blocker.

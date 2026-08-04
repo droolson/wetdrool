@@ -2,12 +2,12 @@ import { buildAuthApp } from '../../auth-service/src/app.js';
 import { MemoryAuthStore } from '../../auth-service/src/memory-store.js';
 import { AuthService } from '../../auth-service/src/service.js';
 
-const port = Number(process.env['WOKESOCIAL_AUTH_PORT'] ?? '4300');
-const origin = process.env['WOKESOCIAL_WEB_ORIGIN'] ?? 'http://localhost:3000';
+const port = Number(process.env['WETDROOL_AUTH_PORT'] ?? '4300');
+const origin = process.env['WETDROOL_WEB_ORIGIN'] ?? 'http://localhost:3000';
 const store = new MemoryAuthStore();
 const service = new AuthService({
   store,
-  rpName: 'WokeSocial browser test',
+  rpName: 'WetDrool browser test',
   rpId: 'localhost',
   origin,
 });

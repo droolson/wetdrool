@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { CommunityCard } from '@/components/community-card';
@@ -16,7 +16,7 @@ import { abbreviate, formatUtcDate } from '@/lib/presentation';
 
 export const metadata: Metadata = {
   title: 'Search',
-  description: 'Search a typed, replaceable WokeNet public projection.',
+  description: 'Search a typed, replaceable DroolNet public projection.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -62,7 +62,7 @@ function SearchResultCard({ result }: { result: SearchItem }) {
         <StatusBadge tone="neutral">{matchLabel(result)}</StatusBadge>
         <h3>{result.displayName}</h3>
         <p className="search-result-card__handle">
-          {result.handle === null ? 'No active .woke name' : `${result.handle}.woke`}
+          {result.handle === null ? 'No active .drool name' : `${result.handle}.drool`}
         </p>
       </div>
       {result.bio ? <p>{result.bio}</p> : <p>No public bio is present in this projection.</p>}
@@ -198,7 +198,7 @@ export default async function SearchPage({
                 </dd>
               </div>
               <div>
-                <dt>WokeNet deployment</dt>
+                <dt>DroolNet deployment</dt>
                 <dd title={result.value.network}>
                   <code>{abbreviate(result.value.network, 8)}</code>
                 </dd>

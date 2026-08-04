@@ -1,4 +1,4 @@
-/* Base layer. Element defaults every WokeSocial surface inherits.
+/* Base layer. Element defaults every WetDrool surface inherits.
    Deliberately small: this system styles components, not documents. */
 *,
 *::before,
@@ -87,7 +87,7 @@ hr {
   margin: var(--ws-space-5) 0;
 }
 
-/* Utility every WokeSocial surface needs. Icon-only controls pair a glyph with
+/* Utility every WetDrool surface needs. Icon-only controls pair a glyph with
    one of these labels; never ship an icon button without one. */
 .ws-visually-hidden {
   position: absolute !important;

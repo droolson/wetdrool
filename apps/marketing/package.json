@@ -1,8 +1,8 @@
 {
-  "name": "@wokesocial/marketing",
+  "name": "@wetdrool/marketing",
   "version": "0.1.0",
   "private": true,
-  "description": "Public WokeSocial marketing launch site (static)",
+  "description": "Public WetDrool marketing launch site (static)",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "build": "node ./scripts/verify-static.mjs",

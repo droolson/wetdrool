@@ -4,7 +4,7 @@ import { getLocalnetPublicationConfig } from '../lib/localnet-publication-config
 
 const GENESIS = '4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB';
 const PROGRAM = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
-const NETWORK = `wokenet:v1:${GENESIS}:${PROGRAM}`;
+const NETWORK = `droolnet:v1:${GENESIS}:${PROGRAM}`;
 
 function environment(
   overrides: Record<string, string | undefined> = {},
@@ -17,11 +17,11 @@ function environment(
     NEXT_PUBLIC_SOLANA_CLUSTER: 'localnet',
     NEXT_PUBLIC_SOLANA_RPC_URL: 'http://127.0.0.1:8899',
     NODE_ENV: 'test',
-    CONTENT_STORAGE_PATH: '/tmp/wokesocial-localnet-publication-cas',
+    CONTENT_STORAGE_PATH: '/tmp/wetdrool-localnet-publication-cas',
     WOKENET_NETWORK_ID: NETWORK,
-    WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-    WOKESOCIAL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
-    WOKESOCIAL_LOCALNET_WRITES: '1',
+    WETDROOL_LOCAL_CAS_MODE: 'localnet',
+    WETDROOL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
+    WETDROOL_LOCALNET_WRITES: '1',
     ...overrides,
   };
 }
@@ -45,10 +45,10 @@ describe('localnet publication configuration', () => {
   });
 
   it.each([
-    ['missing opt-in', { WOKESOCIAL_LOCALNET_WRITES: '0' }],
-    ['missing CAS opt-in', { WOKESOCIAL_LOCAL_CAS_MODE: undefined }],
+    ['missing opt-in', { WETDROOL_LOCALNET_WRITES: '0' }],
+    ['missing CAS opt-in', { WETDROOL_LOCAL_CAS_MODE: undefined }],
     ['relative CAS storage', { CONTENT_STORAGE_PATH: '.local/content' }],
-    ['remote CAS origin', { WOKESOCIAL_LOCAL_CAS_ORIGIN: 'https://woke.social' }],
+    ['remote CAS origin', { WETDROOL_LOCAL_CAS_ORIGIN: 'https://wetdrool.com' }],
     ['production mode', { NODE_ENV: 'production' }],
     ['remote RPC', { NEXT_PUBLIC_SOLANA_RPC_URL: 'https://api.devnet.solana.com' }],
     ['remote indexer', { NEXT_PUBLIC_INDEXER_URL: 'https://indexer.example' }],
@@ -65,7 +65,7 @@ describe('localnet publication configuration', () => {
   it('rejects the legacy redirect-only host as a remote endpoint by requiring loopback', () => {
     expect(
       getLocalnetPublicationConfig(
-        environment({ NEXT_PUBLIC_AUTH_SERVICE_URL: 'https://sociallywoke.com' }),
+        environment({ NEXT_PUBLIC_AUTH_SERVICE_URL: 'https://droolhouse.com' }),
       ),
     ).toMatchObject({ kind: 'unavailable' });
   });

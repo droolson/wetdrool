@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PasskeyWrappedKeyBundle, UnwrapPasskeyAccountKeyInput } from '@wokesocial/crypto';
+import type { PasskeyWrappedKeyBundle, UnwrapPasskeyAccountKeyInput } from '@wetdrool/crypto';
 
 import {
   BrowserAuthClient,
@@ -26,7 +26,7 @@ const newCredentialBytes = bytes(191, 32);
 const newCredentialId = encodeBase64Url(newCredentialBytes);
 
 describe('browser passkey authentication boundary', () => {
-  it.each(['https://sociallywoke.com', 'https://WWW.SOCIALLYWOKE.COM..'])(
+  it.each(['https://droolhouse.com', 'https://WWW.SOCIALLYWOKE.COM..'])(
     'rejects the legacy redirect host %s as an authentication-service origin',
     (baseUrl) => {
       expect(
@@ -1024,11 +1024,11 @@ function authenticationCredential(
 function creationOptions(): PublicKeyCredentialCreationOptionsJSON {
   return {
     challenge: encodeBase64Url(bytes(1, 32)),
-    rp: { id: 'example', name: 'WokeSocial Test' },
+    rp: { id: 'example', name: 'WetDrool Test' },
     user: {
       id: encodeBase64Url(bytes(41, 32)),
       name: accountId,
-      displayName: 'WokeSocial account',
+      displayName: 'WetDrool account',
     },
     pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
     timeout: 60_000,
@@ -1064,7 +1064,7 @@ function bundleFixture(): PasskeyWrappedKeyBundle {
     encryptedKey: {
       version: 1,
       algorithm: 'A256GCM',
-      domain: 'wokesocial/auth/account-key-bundle',
+      domain: 'wetdrool/auth/account-key-bundle',
       nonce: encodeBase64Url(bytes(81, 12)),
       ciphertext: encodeBase64Url(bytes(101, 48)),
     },
@@ -1145,7 +1145,7 @@ class DeniedStorage implements TokenStorage {
 
 function authenticatedStorage(): MemoryStorage {
   const storage = new MemoryStorage();
-  storage.setItem(`wokesocial.auth.csrf.v1:${encodeURIComponent('https://auth.example/')}`, csrf);
+  storage.setItem(`wetdrool.auth.csrf.v1:${encodeURIComponent('https://auth.example/')}`, csrf);
   return storage;
 }
 

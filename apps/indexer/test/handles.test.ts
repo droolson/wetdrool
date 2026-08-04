@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   buildIndexerApp,
@@ -20,11 +20,11 @@ import {
 } from '../src/index.js';
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
+const networkId = `droolnet:v1:${publicKey(1)}:${programId}` as NetworkId;
 const identityAddress = publicKey(2);
 const secondIdentityAddress = publicKey(3);
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
-const secondIdentityId = `wokesocialid:v1:${networkId}:${secondIdentityAddress}`;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
+const secondIdentityId = `wetdroolid:v1:${networkId}:${secondIdentityAddress}`;
 const rootAuthority = publicKey(4);
 const secondRootAuthority = publicKey(5);
 const configAddress = publicKey(6);
@@ -314,16 +314,16 @@ describe('handle HTTP contract', () => {
 
       const wokeName = await app.inject({
         method: 'GET',
-        url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+        url: `/v1/woke-names/${handle}.drool?network=${encodeURIComponent(networkId)}`,
       });
       expect(wokeName.statusCode).toBe(200);
       expect(wokeName.json()).toMatchObject({
         canonical: false,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         network: networkId,
         namespace: 'woke',
         namespaceVersion: 1,
-        name: `${handle}.woke`,
+        name: `${handle}.drool`,
         handle,
         destination: {
           chain: 'solana',
@@ -348,7 +348,7 @@ describe('handle HTTP contract', () => {
         },
         meta: {
           checkpointSlot: 2,
-          source: 'WokeNet open indexer',
+          source: 'DroolNet open indexer',
         },
       });
 
@@ -393,7 +393,7 @@ describe('handle HTTP contract', () => {
         (
           await app.inject({
             method: 'GET',
-            url: `/v1/woke-names/${handle}.woke`,
+            url: `/v1/woke-names/${handle}.drool`,
           })
         ).statusCode,
       ).toBe(400);
@@ -401,7 +401,7 @@ describe('handle HTTP contract', () => {
         (
           await app.inject({
             method: 'GET',
-            url: `/v1/woke-names/${encodeURIComponent('rіver_chen.woke')}?network=${encodeURIComponent(networkId)}`,
+            url: `/v1/woke-names/${encodeURIComponent('rіver_chen.drool')}?network=${encodeURIComponent(networkId)}`,
           })
         ).statusCode,
       ).toBe(400);
@@ -428,7 +428,7 @@ describe('handle HTTP contract', () => {
         (
           await app.inject({
             method: 'GET',
-            url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+            url: `/v1/woke-names/${handle}.drool?network=${encodeURIComponent(networkId)}`,
           })
         ).statusCode,
       ).toBe(404);
@@ -446,7 +446,7 @@ describe('handle HTTP contract', () => {
     }
   });
 
-  it('follows finalized identity root rotations without changing the stable .woke claim', async () => {
+  it('follows finalized identity root rotations without changing the stable .drool claim', async () => {
     const projection = new MemoryProjectionStore();
     const indexer = createIndexer(projection);
     await indexer.ingest(identityEvent(identityId, identityAddress, rootAuthority, 1n, 50));
@@ -465,11 +465,11 @@ describe('handle HTTP contract', () => {
     try {
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+        url: `/v1/woke-names/${handle}.drool?network=${encodeURIComponent(networkId)}`,
       });
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({
-        name: `${handle}.woke`,
+        name: `${handle}.drool`,
         destination: { address: secondRootAuthority },
         identity: {
           identityId,
@@ -517,11 +517,11 @@ describe('handle HTTP contract', () => {
       await expect(projection.getHandle(networkId, handle)).resolves.toBeDefined();
       const response = await app.inject({
         method: 'GET',
-        url: `/v1/woke-names/${handle}.woke?network=${encodeURIComponent(networkId)}`,
+        url: `/v1/woke-names/${handle}.drool?network=${encodeURIComponent(networkId)}`,
       });
       expect(response.statusCode).toBe(404);
       expect(response.json()).toEqual({
-        error: { code: 'not-found', message: 'Active .woke claim was not found.' },
+        error: { code: 'not-found', message: 'Active .drool claim was not found.' },
       });
     } finally {
       await app.close();

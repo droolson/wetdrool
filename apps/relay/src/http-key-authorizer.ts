@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { networkIdSchema, unsigned64Schema } from '@wokesocial/protocol';
+import { networkIdSchema, unsigned64Schema } from '@wetdrool/protocol';
 import { z } from 'zod';
 
 import { HttpAuthorizerClient, parseHttpAuthorizerEndpoint } from './http-authorizer-client.js';
@@ -8,7 +8,7 @@ import type { RelayKeyAuthorization, RelayKeyAuthorizer } from './protocol.js';
 
 const authorizationResponseSchema = z
   .object({
-    version: z.literal('wokesocial-relay-key-authorization-v1'),
+    version: z.literal('wetdrool-relay-key-authorization-v1'),
     requestId: z.uuid(),
     authorized: z.boolean(),
     finalized: z.literal(true),
@@ -61,7 +61,7 @@ export class HttpRelayKeyAuthorizer {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            version: 'wokesocial-relay-key-authorization-v1',
+            version: 'wetdrool-relay-key-authorization-v1',
             requestId,
             identityId: input.identityId,
             keyId: input.keyId,

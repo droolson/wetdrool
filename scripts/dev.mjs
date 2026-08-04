@@ -62,7 +62,7 @@ run(process.execPath, [
   'up',
   ...LOCAL_DEV_CONTAINER_PROFILES.flatMap((profile) => ['--profile', profile]),
 ]);
-run('pnpm', ['--filter', '@wokesocial/config', 'env:check']);
+run('pnpm', ['--filter', '@wetdrool/config', 'env:check']);
 
 for (const { directory, manifest } of await readWorkspacePackages()) {
   if (typeof manifest.scripts?.['setup:local'] !== 'string') {

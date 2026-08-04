@@ -2,7 +2,7 @@ import { CID } from 'multiformats/cid';
 import * as raw from 'multiformats/codecs/raw';
 
 /**
- * Canonical WokeSocial content identifiers are CIDv1, base32-lowercase,
+ * Canonical WetDrool content identifiers are CIDv1, base32-lowercase,
  * raw-codec, SHA-256 multihashes. The final character is constrained by
  * unpadded base32's two zero padding bits.
  */

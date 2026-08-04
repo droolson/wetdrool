@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { OPEN_INDEXER_FEED_RECIPE } from '@wokesocial/indexer-client';
+import { OPEN_INDEXER_FEED_RECIPE } from '@wetdrool/indexer-client';
 
 const expectedAuthor = required('VERTICAL_SLICE_EXPECTED_AUTHOR');
 const expectedCommunity = required('VERTICAL_SLICE_EXPECTED_COMMUNITY');
@@ -20,7 +20,7 @@ test('renders the finalized validator post through the production indexer', asyn
   await expect(page.getByText(expectedPost, { exact: true })).toBeVisible();
   await expect(page.getByText(suppressedPost, { exact: true })).toHaveCount(0);
   await expect(page.getByText('Indexer: verified', { exact: true })).toBeVisible();
-  await expect(page.getByText('WokeNet open indexer', { exact: true })).toBeVisible();
+  await expect(page.getByText('DroolNet open indexer', { exact: true })).toBeVisible();
   await expect(page.getByText(/No live feed substituted/u)).toHaveCount(0);
 
   await page.getByText('Verification details', { exact: true }).click();

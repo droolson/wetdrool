@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { ProjectedFeedView } from '@/components/projected-feed-view';
@@ -13,7 +13,7 @@ import {
 export const metadata: Metadata = {
   title: 'Chronological feed',
   description:
-    'Verified public WokeSocial posts in deterministic finalized-event order with recipe-bound pagination.',
+    'Verified public WetDrool posts in deterministic finalized-event order with recipe-bound pagination.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -83,7 +83,7 @@ export default async function ChronologicalFeedPage({
           </div>
           <div>
             <dt>Scope</dt>
-            <dd>Verified public, non-tombstoned posts from one WokeNet deployment on Solana.</dd>
+            <dd>Verified public, non-tombstoned posts from one DroolNet deployment on Solana.</dd>
           </div>
           <div>
             <dt>Cursor</dt>

@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/feed-service",
+  "name": "@wetdrool/feed-service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Replaceable, explainable WokeSocial feed-ranking service",
+  "description": "Replaceable, explainable WetDrool feed-ranking service",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -18,8 +18,8 @@
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/rate-limit": "11.1.0",
-    "@wokesocial/config": "workspace:*",
-    "@wokesocial/rate-limit": "workspace:*",
+    "@wetdrool/config": "workspace:*",
+    "@wetdrool/rate-limit": "workspace:*",
     "fastify": "5.10.0",
     "zod": "4.4.3"
   },

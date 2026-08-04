@@ -1,8 +1,8 @@
 import { pathToFileURL } from 'node:url';
 
-import { parseRateLimitRuntimeConfig } from '@wokesocial/config/rate-limit';
-import { createRuntimeRateLimiter, type RuntimeRateLimiterOptions } from '@wokesocial/rate-limit';
-import { LocalContentAddressedStorage } from '@wokesocial/storage';
+import { parseRateLimitRuntimeConfig } from '@wetdrool/config/rate-limit';
+import { createRuntimeRateLimiter, type RuntimeRateLimiterOptions } from '@wetdrool/rate-limit';
+import { LocalContentAddressedStorage } from '@wetdrool/storage';
 
 import { buildIndexerApp } from './app.js';
 import { readIndexerConfig } from './config.js';
@@ -163,13 +163,13 @@ export async function startIndexerServer(): Promise<void> {
         readiness: runtimeReadiness,
         run: () => ownedSyncWorker.run(syncAbort.signal),
         onFailure: (error) => {
-          ownedApp.log.error({ error }, 'WokeNet ingestion stopped unexpectedly');
+          ownedApp.log.error({ error }, 'DroolNet ingestion stopped unexpectedly');
           process.exitCode = 1;
         },
       });
       void syncPromise.catch((error: unknown) => {
         runtimeReadiness.markSyncFailed();
-        ownedApp.log.error({ error }, 'indexer failed to close after WokeNet ingestion stopped');
+        ownedApp.log.error({ error }, 'indexer failed to close after DroolNet ingestion stopped');
         process.exitCode = 1;
       });
     }

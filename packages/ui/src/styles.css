@@ -3,117 +3,117 @@
 @layer theme {
   :root {
     color-scheme: light;
-    --wokesocial-font-sans: 'Avenir Next', Avenir, 'Segoe UI', Helvetica, Arial, sans-serif;
-    --wokesocial-font-display: 'Iowan Old Style', 'Palatino Linotype', Baskerville, Georgia, serif;
-    --wokesocial-ink: #17131d;
-    --wokesocial-ink-muted: #615a68;
-    --wokesocial-canvas: #f8f5ef;
-    --wokesocial-canvas-raised: #fffcf6;
-    --wokesocial-surface: rgba(255, 252, 246, 0.88);
-    --wokesocial-surface-strong: #fffdf8;
-    --wokesocial-line: rgba(43, 31, 50, 0.15);
-    --wokesocial-line-strong: rgba(43, 31, 50, 0.28);
-    --wokesocial-plum: #5f2c83;
-    --wokesocial-plum-deep: #40205f;
-    --wokesocial-coral: #ed6a5a;
-    --wokesocial-coral-soft: #ffd8cf;
-    --wokesocial-citron: #d7f171;
-    --wokesocial-sky: #76c5d5;
-    --wokesocial-success: #167653;
-    --wokesocial-warning: #9a5a00;
-    --wokesocial-danger: #b2303a;
-    --wokesocial-focus: #006dc7;
-    --wokesocial-shadow-sm: 0 10px 28px rgba(56, 40, 66, 0.09);
-    --wokesocial-shadow-lg: 0 34px 90px rgba(55, 34, 70, 0.16);
-    --wokesocial-radius-sm: 0.75rem;
-    --wokesocial-radius-md: 1.25rem;
-    --wokesocial-radius-lg: 2rem;
-    --wokesocial-radius-pill: 999px;
-    --wokesocial-space-1: 0.25rem;
-    --wokesocial-space-2: 0.5rem;
-    --wokesocial-space-3: 0.75rem;
-    --wokesocial-space-4: 1rem;
-    --wokesocial-space-5: 1.5rem;
-    --wokesocial-space-6: 2rem;
-    --wokesocial-space-7: 3rem;
-    --wokesocial-space-8: 4.5rem;
-    --wokesocial-duration-fast: 140ms;
-    --wokesocial-duration-base: 220ms;
-    --wokesocial-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --wetdrool-font-sans: 'Avenir Next', Avenir, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --wetdrool-font-display: 'Iowan Old Style', 'Palatino Linotype', Baskerville, Georgia, serif;
+    --wetdrool-ink: #17131d;
+    --wetdrool-ink-muted: #615a68;
+    --wetdrool-canvas: #f8f5ef;
+    --wetdrool-canvas-raised: #fffcf6;
+    --wetdrool-surface: rgba(255, 252, 246, 0.88);
+    --wetdrool-surface-strong: #fffdf8;
+    --wetdrool-line: rgba(43, 31, 50, 0.15);
+    --wetdrool-line-strong: rgba(43, 31, 50, 0.28);
+    --wetdrool-plum: #5f2c83;
+    --wetdrool-plum-deep: #40205f;
+    --wetdrool-coral: #ed6a5a;
+    --wetdrool-coral-soft: #ffd8cf;
+    --wetdrool-citron: #d7f171;
+    --wetdrool-sky: #76c5d5;
+    --wetdrool-success: #167653;
+    --wetdrool-warning: #9a5a00;
+    --wetdrool-danger: #b2303a;
+    --wetdrool-focus: #006dc7;
+    --wetdrool-shadow-sm: 0 10px 28px rgba(56, 40, 66, 0.09);
+    --wetdrool-shadow-lg: 0 34px 90px rgba(55, 34, 70, 0.16);
+    --wetdrool-radius-sm: 0.75rem;
+    --wetdrool-radius-md: 1.25rem;
+    --wetdrool-radius-lg: 2rem;
+    --wetdrool-radius-pill: 999px;
+    --wetdrool-space-1: 0.25rem;
+    --wetdrool-space-2: 0.5rem;
+    --wetdrool-space-3: 0.75rem;
+    --wetdrool-space-4: 1rem;
+    --wetdrool-space-5: 1.5rem;
+    --wetdrool-space-6: 2rem;
+    --wetdrool-space-7: 3rem;
+    --wetdrool-space-8: 4.5rem;
+    --wetdrool-duration-fast: 140ms;
+    --wetdrool-duration-base: 220ms;
+    --wetdrool-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']):not([data-theme='contrast']) {
       color-scheme: dark;
-      --wokesocial-ink: #f7f1fa;
-      --wokesocial-ink-muted: #c4bac9;
-      --wokesocial-canvas: #151019;
-      --wokesocial-canvas-raised: #1d1623;
-      --wokesocial-surface: rgba(29, 22, 35, 0.9);
-      --wokesocial-surface-strong: #241b2b;
-      --wokesocial-line: rgba(244, 228, 250, 0.15);
-      --wokesocial-line-strong: rgba(244, 228, 250, 0.3);
-      --wokesocial-plum: #c58cef;
-      --wokesocial-plum-deep: #e2c2f8;
-      --wokesocial-coral: #ff8879;
-      --wokesocial-coral-soft: #542d31;
-      --wokesocial-citron: #dff77d;
-      --wokesocial-sky: #8ad3e2;
-      --wokesocial-success: #74d5ab;
-      --wokesocial-warning: #ffc56d;
-      --wokesocial-danger: #ff9098;
-      --wokesocial-focus: #85c9ff;
-      --wokesocial-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
-      --wokesocial-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
+      --wetdrool-ink: #f7f1fa;
+      --wetdrool-ink-muted: #c4bac9;
+      --wetdrool-canvas: #151019;
+      --wetdrool-canvas-raised: #1d1623;
+      --wetdrool-surface: rgba(29, 22, 35, 0.9);
+      --wetdrool-surface-strong: #241b2b;
+      --wetdrool-line: rgba(244, 228, 250, 0.15);
+      --wetdrool-line-strong: rgba(244, 228, 250, 0.3);
+      --wetdrool-plum: #c58cef;
+      --wetdrool-plum-deep: #e2c2f8;
+      --wetdrool-coral: #ff8879;
+      --wetdrool-coral-soft: #542d31;
+      --wetdrool-citron: #dff77d;
+      --wetdrool-sky: #8ad3e2;
+      --wetdrool-success: #74d5ab;
+      --wetdrool-warning: #ffc56d;
+      --wetdrool-danger: #ff9098;
+      --wetdrool-focus: #85c9ff;
+      --wetdrool-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
+      --wetdrool-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
     }
   }
 
   :root[data-theme='dark'] {
     color-scheme: dark;
-    --wokesocial-ink: #f7f1fa;
-    --wokesocial-ink-muted: #c4bac9;
-    --wokesocial-canvas: #151019;
-    --wokesocial-canvas-raised: #1d1623;
-    --wokesocial-surface: rgba(29, 22, 35, 0.9);
-    --wokesocial-surface-strong: #241b2b;
-    --wokesocial-line: rgba(244, 228, 250, 0.15);
-    --wokesocial-line-strong: rgba(244, 228, 250, 0.3);
-    --wokesocial-plum: #c58cef;
-    --wokesocial-plum-deep: #e2c2f8;
-    --wokesocial-coral: #ff8879;
-    --wokesocial-coral-soft: #542d31;
-    --wokesocial-citron: #dff77d;
-    --wokesocial-sky: #8ad3e2;
-    --wokesocial-success: #74d5ab;
-    --wokesocial-warning: #ffc56d;
-    --wokesocial-danger: #ff9098;
-    --wokesocial-focus: #85c9ff;
-    --wokesocial-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
-    --wokesocial-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
+    --wetdrool-ink: #f7f1fa;
+    --wetdrool-ink-muted: #c4bac9;
+    --wetdrool-canvas: #151019;
+    --wetdrool-canvas-raised: #1d1623;
+    --wetdrool-surface: rgba(29, 22, 35, 0.9);
+    --wetdrool-surface-strong: #241b2b;
+    --wetdrool-line: rgba(244, 228, 250, 0.15);
+    --wetdrool-line-strong: rgba(244, 228, 250, 0.3);
+    --wetdrool-plum: #c58cef;
+    --wetdrool-plum-deep: #e2c2f8;
+    --wetdrool-coral: #ff8879;
+    --wetdrool-coral-soft: #542d31;
+    --wetdrool-citron: #dff77d;
+    --wetdrool-sky: #8ad3e2;
+    --wetdrool-success: #74d5ab;
+    --wetdrool-warning: #ffc56d;
+    --wetdrool-danger: #ff9098;
+    --wetdrool-focus: #85c9ff;
+    --wetdrool-shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.25);
+    --wetdrool-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
   }
 
   :root[data-theme='contrast'] {
     color-scheme: dark;
-    --wokesocial-ink: #ffffff;
-    --wokesocial-ink-muted: #ffffff;
-    --wokesocial-canvas: #000000;
-    --wokesocial-canvas-raised: #000000;
-    --wokesocial-surface: #000000;
-    --wokesocial-surface-strong: #000000;
-    --wokesocial-line: #ffffff;
-    --wokesocial-line-strong: #ffffff;
-    --wokesocial-plum: #f4a7ff;
-    --wokesocial-plum-deep: #ffffff;
-    --wokesocial-coral: #ffb3a7;
-    --wokesocial-coral-soft: #000000;
-    --wokesocial-citron: #e9ff75;
-    --wokesocial-sky: #9eeaff;
-    --wokesocial-success: #8dffc9;
-    --wokesocial-warning: #ffe27a;
-    --wokesocial-danger: #ff9ca5;
-    --wokesocial-focus: #ffef62;
-    --wokesocial-shadow-sm: none;
-    --wokesocial-shadow-lg: none;
+    --wetdrool-ink: #ffffff;
+    --wetdrool-ink-muted: #ffffff;
+    --wetdrool-canvas: #000000;
+    --wetdrool-canvas-raised: #000000;
+    --wetdrool-surface: #000000;
+    --wetdrool-surface-strong: #000000;
+    --wetdrool-line: #ffffff;
+    --wetdrool-line-strong: #ffffff;
+    --wetdrool-plum: #f4a7ff;
+    --wetdrool-plum-deep: #ffffff;
+    --wetdrool-coral: #ffb3a7;
+    --wetdrool-coral-soft: #000000;
+    --wetdrool-citron: #e9ff75;
+    --wetdrool-sky: #9eeaff;
+    --wetdrool-success: #8dffc9;
+    --wetdrool-warning: #ffe27a;
+    --wetdrool-danger: #ff9ca5;
+    --wetdrool-focus: #ffef62;
+    --wetdrool-shadow-sm: none;
+    --wetdrool-shadow-lg: none;
   }
 }
 
@@ -125,87 +125,75 @@
   }
 
   :focus-visible {
-    outline: 3px solid var(--wokesocial-focus);
+    outline: 3px solid var(--wetdrool-focus);
     outline-offset: 3px;
   }
 
   ::selection {
     color: #17131d;
-    background: var(--wokesocial-citron);
+    background: var(--wetdrool-citron);
   }
 }
 
 @layer components {
-  .wokesocial-brand {
+  .wetdrool-brand {
     display: inline-flex;
     align-items: center;
     gap: 0.7rem;
-    color: var(--wokesocial-ink);
+    color: var(--wetdrool-ink);
     text-decoration: none;
   }
 
-  .wokesocial-brand__symbol {
+  .wetdrool-brand__symbol {
     position: relative;
     display: inline-grid;
     width: 2.15rem;
     height: 2.15rem;
     flex: 0 0 auto;
     place-items: center;
-    overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--wokesocial-plum) 45%, transparent);
-    border-radius: 42% 58% 58% 42% / 48% 42% 58% 52%;
-    background:
-      radial-gradient(circle at 68% 28%, var(--wokesocial-citron) 0 13%, transparent 14%),
-      linear-gradient(145deg, var(--wokesocial-coral), var(--wokesocial-plum) 67%);
-    box-shadow: inset 0 0 0 0.24rem color-mix(in srgb, white 16%, transparent);
-    transform: rotate(-5deg);
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
   }
 
-  .wokesocial-brand__symbol::after {
-    position: absolute;
-    right: 0.18rem;
-    bottom: -0.09rem;
-    width: 0.72rem;
-    height: 0.72rem;
-    border-radius: 0 0 0.6rem;
-    background: var(--wokesocial-plum);
-    content: '';
-    transform: rotate(25deg);
+  .wetdrool-brand__mark {
+    display: block;
+    width: 2.15rem;
+    height: 2.15rem;
   }
 
-  .wokesocial-brand__spark {
-    width: 0.63rem;
-    height: 0.63rem;
-    border: 0.18rem solid white;
-    border-radius: 50%;
-    box-shadow: 0.53rem 0.42rem 0 -0.13rem white;
+  .wetdrool-brand__spark {
+    display: none;
   }
 
-  .wokesocial-brand__wordmark {
+  .wetdrool-brand__wordmark {
     display: flex;
     align-items: baseline;
     gap: 0.3rem;
-    font-family: var(--wokesocial-font-sans);
+    font-family: var(--wetdrool-font-sans);
     font-size: 1.03rem;
     font-weight: 730;
     letter-spacing: -0.04em;
     line-height: 1;
   }
 
-  .wokesocial-brand__wordmark strong {
-    color: var(--wokesocial-plum);
-    font-family: var(--wokesocial-font-display);
+  .wetdrool-brand__wordmark strong {
+    color: var(--wetdrool-plum);
+    font-family: var(--wetdrool-font-display);
     font-size: 1.16em;
     font-style: italic;
     font-weight: 700;
     letter-spacing: -0.035em;
   }
 
-  .wokesocial-brand--compact .wokesocial-brand__wordmark {
+  .wetdrool-brand--compact .wetdrool-brand__wordmark {
     display: none;
   }
 
-  .wokesocial-button {
+  .wetdrool-button {
     display: inline-flex;
     min-height: 2.85rem;
     align-items: center;
@@ -213,56 +201,56 @@
     gap: 0.5rem;
     padding: 0.72rem 1.05rem;
     border: 1px solid transparent;
-    border-radius: var(--wokesocial-radius-pill);
-    font-family: var(--wokesocial-font-sans);
+    border-radius: var(--wetdrool-radius-pill);
+    font-family: var(--wetdrool-font-sans);
     font-size: 0.92rem;
     font-weight: 720;
     letter-spacing: -0.015em;
     line-height: 1;
     text-decoration: none;
     transition:
-      transform var(--wokesocial-duration-fast) var(--wokesocial-ease),
-      background var(--wokesocial-duration-fast) var(--wokesocial-ease),
-      border-color var(--wokesocial-duration-fast) var(--wokesocial-ease);
+      transform var(--wetdrool-duration-fast) var(--wetdrool-ease),
+      background var(--wetdrool-duration-fast) var(--wetdrool-ease),
+      border-color var(--wetdrool-duration-fast) var(--wetdrool-ease);
   }
 
-  .wokesocial-button:hover {
+  .wetdrool-button:hover {
     transform: translateY(-2px);
   }
 
-  .wokesocial-button--primary {
+  .wetdrool-button--primary {
     color: #fff;
-    background: var(--wokesocial-plum-deep);
-    box-shadow: 0 8px 20px color-mix(in srgb, var(--wokesocial-plum) 25%, transparent);
+    background: var(--wetdrool-plum-deep);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--wetdrool-plum) 25%, transparent);
   }
 
-  :root[data-theme='dark'] .wokesocial-button--primary,
-  :root[data-theme='contrast'] .wokesocial-button--primary {
+  :root[data-theme='dark'] .wetdrool-button--primary,
+  :root[data-theme='contrast'] .wetdrool-button--primary {
     color: #17131d;
-    background: var(--wokesocial-citron);
+    background: var(--wetdrool-citron);
   }
 
-  .wokesocial-button--secondary {
-    color: var(--wokesocial-ink);
-    border-color: var(--wokesocial-line-strong);
-    background: var(--wokesocial-surface-strong);
+  .wetdrool-button--secondary {
+    color: var(--wetdrool-ink);
+    border-color: var(--wetdrool-line-strong);
+    background: var(--wetdrool-surface-strong);
   }
 
-  .wokesocial-button--secondary:hover {
-    border-color: var(--wokesocial-plum);
+  .wetdrool-button--secondary:hover {
+    border-color: var(--wetdrool-plum);
   }
 
-  .wokesocial-button--quiet {
+  .wetdrool-button--quiet {
     min-height: 2.5rem;
     padding-inline: 0.8rem;
-    color: var(--wokesocial-plum);
+    color: var(--wetdrool-plum);
     background: transparent;
   }
 
-  .wokesocial-eyebrow {
+  .wetdrool-eyebrow {
     margin: 0;
-    color: var(--wokesocial-plum);
-    font-family: var(--wokesocial-font-sans);
+    color: var(--wetdrool-plum);
+    font-family: var(--wetdrool-font-sans);
     font-size: 0.72rem;
     font-weight: 800;
     letter-spacing: 0.12em;
@@ -270,207 +258,207 @@
     text-transform: uppercase;
   }
 
-  .wokesocial-section-heading {
+  .wetdrool-section-heading {
     display: grid;
     max-width: 47rem;
     gap: 0.8rem;
   }
 
-  .wokesocial-section-heading--center {
+  .wetdrool-section-heading--center {
     margin-inline: auto;
     justify-items: center;
     text-align: center;
   }
 
-  .wokesocial-section-heading h1,
-  .wokesocial-section-heading h2 {
+  .wetdrool-section-heading h1,
+  .wetdrool-section-heading h2 {
     margin: 0;
-    color: var(--wokesocial-ink);
-    font-family: var(--wokesocial-font-display);
+    color: var(--wetdrool-ink);
+    font-family: var(--wetdrool-font-display);
     font-size: clamp(2rem, 5vw, 3.65rem);
     font-weight: 650;
     letter-spacing: -0.045em;
     line-height: 0.98;
   }
 
-  .wokesocial-section-heading__description {
-    color: var(--wokesocial-ink-muted);
-    font-family: var(--wokesocial-font-sans);
+  .wetdrool-section-heading__description {
+    color: var(--wetdrool-ink-muted);
+    font-family: var(--wetdrool-font-sans);
     font-size: clamp(1rem, 2vw, 1.15rem);
     line-height: 1.65;
   }
 
-  .wokesocial-section-heading__description > * {
+  .wetdrool-section-heading__description > * {
     margin: 0;
   }
 
-  .wokesocial-status {
+  .wetdrool-status {
     display: inline-flex;
     width: fit-content;
     align-items: center;
     gap: 0.42rem;
     padding: 0.36rem 0.62rem;
-    border: 1px solid var(--wokesocial-line);
-    border-radius: var(--wokesocial-radius-pill);
-    color: var(--wokesocial-ink-muted);
-    background: color-mix(in srgb, var(--wokesocial-surface-strong) 88%, transparent);
-    font-family: var(--wokesocial-font-sans);
+    border: 1px solid var(--wetdrool-line);
+    border-radius: var(--wetdrool-radius-pill);
+    color: var(--wetdrool-ink-muted);
+    background: color-mix(in srgb, var(--wetdrool-surface-strong) 88%, transparent);
+    font-family: var(--wetdrool-font-sans);
     font-size: 0.72rem;
     font-weight: 760;
     line-height: 1;
     white-space: nowrap;
   }
 
-  .wokesocial-status__dot {
+  .wetdrool-status__dot {
     width: 0.48rem;
     height: 0.48rem;
     border-radius: 50%;
     background: currentColor;
   }
 
-  .wokesocial-status--verified {
-    color: var(--wokesocial-success);
+  .wetdrool-status--verified {
+    color: var(--wetdrool-success);
   }
 
-  .wokesocial-status--pending {
-    color: var(--wokesocial-warning);
+  .wetdrool-status--pending {
+    color: var(--wetdrool-warning);
   }
 
-  .wokesocial-status--degraded {
-    color: var(--wokesocial-warning);
+  .wetdrool-status--degraded {
+    color: var(--wetdrool-warning);
   }
 
-  .wokesocial-status--unavailable {
-    color: var(--wokesocial-danger);
+  .wetdrool-status--unavailable {
+    color: var(--wetdrool-danger);
   }
 
-  .wokesocial-state-panel {
+  .wetdrool-state-panel {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     gap: 1.1rem;
     padding: clamp(1.25rem, 4vw, 2rem);
-    border: 1px solid var(--wokesocial-line);
-    border-radius: var(--wokesocial-radius-lg);
+    border: 1px solid var(--wetdrool-line);
+    border-radius: var(--wetdrool-radius-lg);
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--wokesocial-surface-strong) 94%, transparent),
-      color-mix(in srgb, var(--wokesocial-canvas-raised) 82%, transparent)
+      color-mix(in srgb, var(--wetdrool-surface-strong) 94%, transparent),
+      color-mix(in srgb, var(--wetdrool-canvas-raised) 82%, transparent)
     );
-    box-shadow: var(--wokesocial-shadow-sm);
+    box-shadow: var(--wetdrool-shadow-sm);
   }
 
-  .wokesocial-state-panel__signal {
+  .wetdrool-state-panel__signal {
     display: grid;
     width: 2.7rem;
     height: 2.7rem;
     place-items: center;
-    border: 1px solid var(--wokesocial-line);
+    border: 1px solid var(--wetdrool-line);
     border-radius: 50%;
-    background: var(--wokesocial-surface-strong);
+    background: var(--wetdrool-surface-strong);
   }
 
-  .wokesocial-state-panel__signal span {
+  .wetdrool-state-panel__signal span {
     width: 0.74rem;
     height: 0.74rem;
     border: 0.17rem solid currentColor;
     border-radius: 50%;
   }
 
-  .wokesocial-state-panel--loading .wokesocial-state-panel__signal span {
+  .wetdrool-state-panel--loading .wetdrool-state-panel__signal span {
     border-right-color: transparent;
-    animation: wokesocial-spin 850ms linear infinite;
+    animation: wetdrool-spin 850ms linear infinite;
   }
 
-  .wokesocial-state-panel--error .wokesocial-state-panel__signal {
-    color: var(--wokesocial-danger);
+  .wetdrool-state-panel--error .wetdrool-state-panel__signal {
+    color: var(--wetdrool-danger);
   }
 
-  .wokesocial-state-panel--offline .wokesocial-state-panel__signal,
-  .wokesocial-state-panel--degraded .wokesocial-state-panel__signal {
-    color: var(--wokesocial-warning);
+  .wetdrool-state-panel--offline .wetdrool-state-panel__signal,
+  .wetdrool-state-panel--degraded .wetdrool-state-panel__signal {
+    color: var(--wetdrool-warning);
   }
 
-  .wokesocial-state-panel--empty .wokesocial-state-panel__signal {
-    color: var(--wokesocial-plum);
+  .wetdrool-state-panel--empty .wetdrool-state-panel__signal {
+    color: var(--wetdrool-plum);
   }
 
-  .wokesocial-state-panel__body {
+  .wetdrool-state-panel__body {
     display: grid;
     gap: 0.55rem;
   }
 
-  .wokesocial-state-panel h1,
-  .wokesocial-state-panel h2,
-  .wokesocial-state-panel h3 {
+  .wetdrool-state-panel h1,
+  .wetdrool-state-panel h2,
+  .wetdrool-state-panel h3 {
     margin: 0;
-    color: var(--wokesocial-ink);
-    font-family: var(--wokesocial-font-display);
+    color: var(--wetdrool-ink);
+    font-family: var(--wetdrool-font-display);
     font-size: clamp(1.45rem, 3vw, 2rem);
     letter-spacing: -0.03em;
     line-height: 1.05;
   }
 
-  .wokesocial-state-panel__copy {
+  .wetdrool-state-panel__copy {
     max-width: 48rem;
-    color: var(--wokesocial-ink-muted);
-    font-family: var(--wokesocial-font-sans);
+    color: var(--wetdrool-ink-muted);
+    font-family: var(--wetdrool-font-sans);
     line-height: 1.6;
   }
 
-  .wokesocial-state-panel__copy > * {
+  .wetdrool-state-panel__copy > * {
     margin-block: 0;
   }
 
-  .wokesocial-state-panel__action {
+  .wetdrool-state-panel__action {
     margin-top: 0.5rem;
   }
 
-  .wokesocial-provider-card {
+  .wetdrool-provider-card {
     display: grid;
     min-height: 15rem;
     align-content: start;
     gap: 0.85rem;
     padding: 1.35rem;
-    border: 1px solid var(--wokesocial-line);
-    border-radius: var(--wokesocial-radius-md);
-    background: var(--wokesocial-surface);
-    box-shadow: var(--wokesocial-shadow-sm);
+    border: 1px solid var(--wetdrool-line);
+    border-radius: var(--wetdrool-radius-md);
+    background: var(--wetdrool-surface);
+    box-shadow: var(--wetdrool-shadow-sm);
   }
 
-  .wokesocial-provider-card__topline {
+  .wetdrool-provider-card__topline {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
   }
 
-  .wokesocial-provider-card h3 {
+  .wetdrool-provider-card h3 {
     margin: 0.25rem 0 0;
-    color: var(--wokesocial-ink);
-    font-family: var(--wokesocial-font-display);
+    color: var(--wetdrool-ink);
+    font-family: var(--wetdrool-font-display);
     font-size: 1.55rem;
     letter-spacing: -0.035em;
   }
 
-  .wokesocial-provider-card > p {
+  .wetdrool-provider-card > p {
     margin: 0;
-    color: var(--wokesocial-ink-muted);
-    font-family: var(--wokesocial-font-sans);
+    color: var(--wetdrool-ink-muted);
+    font-family: var(--wetdrool-font-sans);
     line-height: 1.6;
   }
 
-  .wokesocial-provider-card__footer {
+  .wetdrool-provider-card__footer {
     align-self: end;
     margin-top: auto;
     padding-top: 0.8rem;
-    border-top: 1px solid var(--wokesocial-line);
-    color: var(--wokesocial-ink-muted);
-    font-family: var(--wokesocial-font-sans);
+    border-top: 1px solid var(--wetdrool-line);
+    color: var(--wetdrool-ink-muted);
+    font-family: var(--wetdrool-font-sans);
     font-size: 0.82rem;
     line-height: 1.5;
   }
 
-  .wokesocial-info-card {
+  .wetdrool-info-card {
     position: relative;
     display: grid;
     min-height: 13rem;
@@ -478,85 +466,85 @@
     gap: 0.8rem;
     overflow: hidden;
     padding: 1.35rem;
-    border: 1px solid var(--wokesocial-line);
-    border-radius: var(--wokesocial-radius-md);
-    background: var(--wokesocial-surface);
-    box-shadow: var(--wokesocial-shadow-sm);
+    border: 1px solid var(--wetdrool-line);
+    border-radius: var(--wetdrool-radius-md);
+    background: var(--wetdrool-surface);
+    box-shadow: var(--wetdrool-shadow-sm);
   }
 
-  .wokesocial-info-card::before {
+  .wetdrool-info-card::before {
     position: absolute;
     inset-block: 0;
     inset-inline-start: 0;
     width: 0.28rem;
-    background: var(--wokesocial-line-strong);
+    background: var(--wetdrool-line-strong);
     content: '';
   }
 
-  .wokesocial-info-card--plum::before {
-    background: var(--wokesocial-plum);
+  .wetdrool-info-card--plum::before {
+    background: var(--wetdrool-plum);
   }
 
-  .wokesocial-info-card--coral::before {
-    background: var(--wokesocial-coral);
+  .wetdrool-info-card--coral::before {
+    background: var(--wetdrool-coral);
   }
 
-  .wokesocial-info-card--sky::before {
-    background: var(--wokesocial-sky);
+  .wetdrool-info-card--sky::before {
+    background: var(--wetdrool-sky);
   }
 
-  .wokesocial-info-card__top {
+  .wetdrool-info-card__top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
   }
 
-  .wokesocial-info-card__top > span {
+  .wetdrool-info-card__top > span {
     width: 0.65rem;
     height: 0.65rem;
-    border: 1px solid var(--wokesocial-line-strong);
+    border: 1px solid var(--wetdrool-line-strong);
     border-radius: 50%;
-    background: var(--wokesocial-canvas-raised);
+    background: var(--wetdrool-canvas-raised);
   }
 
-  .wokesocial-info-card h3 {
+  .wetdrool-info-card h3 {
     margin: 0;
-    color: var(--wokesocial-ink);
-    font-family: var(--wokesocial-font-display);
+    color: var(--wetdrool-ink);
+    font-family: var(--wetdrool-font-display);
     font-size: 1.55rem;
     letter-spacing: -0.035em;
     line-height: 1.05;
   }
 
-  .wokesocial-info-card__copy {
-    color: var(--wokesocial-ink-muted);
-    font-family: var(--wokesocial-font-sans);
+  .wetdrool-info-card__copy {
+    color: var(--wetdrool-ink-muted);
+    font-family: var(--wetdrool-font-sans);
     line-height: 1.6;
   }
 
-  .wokesocial-info-card__copy > * {
+  .wetdrool-info-card__copy > * {
     margin: 0;
   }
 
-  .wokesocial-info-card footer {
+  .wetdrool-info-card footer {
     padding-top: 0.8rem;
     margin-top: auto;
-    border-top: 1px solid var(--wokesocial-line);
-    color: var(--wokesocial-ink-muted);
-    font-family: var(--wokesocial-font-sans);
+    border-top: 1px solid var(--wetdrool-line);
+    color: var(--wetdrool-ink-muted);
+    font-family: var(--wetdrool-font-sans);
     font-size: 0.8rem;
     line-height: 1.5;
   }
 
-  @keyframes wokesocial-spin {
+  @keyframes wetdrool-spin {
     to {
       transform: rotate(1turn);
     }
   }
 
   @media (max-width: 36rem) {
-    .wokesocial-state-panel {
+    .wetdrool-state-panel {
       grid-template-columns: 1fr;
     }
   }
@@ -571,7 +559,7 @@
       transition-duration: 0.01ms !important;
     }
 
-    .wokesocial-button:hover {
+    .wetdrool-button:hover {
       transform: none;
     }
   }

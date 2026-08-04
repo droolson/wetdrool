@@ -1,6 +1,6 @@
-# WokeSocial SDK
+# WetDrool SDK
 
-`@wokesocial/sdk` contains provider-neutral client operations for WokeSocial.
+`@wetdrool/sdk` contains provider-neutral client operations for WetDrool.
 It does not silently trust the flagship service or choose a Solana RPC
 provider for the caller.
 
@@ -16,22 +16,22 @@ The implemented surface includes:
 - ordered provider health checks and failover;
 - portable payment planning for SOL and explicitly allowlisted SPL assets;
 - PDA derivation, instruction builders, and finalized-account verification for
-  the checked-in WokeSocial Solana program; and
+  the checked-in WetDrool Solana program; and
 - exact-byte Solana transaction simulation, signing, submission, and bounded
   finalized confirmation.
 
-## WokeNet deployment binding
+## DroolNet deployment binding
 
-WokeNet is the WokeSocial protocol/deployment namespace on Solana. It is not a
+DroolNet is the WetDrool protocol/deployment namespace on Solana. It is not a
 separate blockchain, RPC protocol, validator network, or native currency.
 
-The historical `WokeNetContext` API binds an operation to:
+The historical `DroolNetContext` API binds an operation to:
 
 - a Solana JSON-RPC endpoint;
 - the endpoint's Solana genesis hash; and
-- one deployed WokeSocial program address.
+- one deployed WetDrool program address.
 
-`createWokeNetContext` validates and normalizes those values. The context has no
+`createDroolNetContext` validates and normalizes those values. The context has no
 implicit cluster default. A production client should compare multiple
 independent RPC providers because a genesis-hash response alone cannot prove
 that an RPC provider is honest.
@@ -82,17 +82,17 @@ sequence or claim a second action. Success still requires a finalized
 confirmation for the exact derived membership address.
 
 These APIs do not connect a browser wallet or Mobile Wallet Adapter, select a
-WokeNet identity, upload to a production storage service, or imply that a
+DroolNet identity, upload to a production storage service, or imply that a
 community was joined. A client must display the exact Solana deployment,
 identity, action, policy and membership sequences, fees/rent, and absence of a
-`$WOKE` transfer; then it must verify finalized account state and an indexer
+`$DROOL` transfer; then it must verify finalized account state and an indexer
 checkpoint covering that state.
 
 ## Quarantined legacy payment ABI
 
 Several exported functions retain `Woke` in their names because they match the
 checked-in Anchor IDL and existing client ABI. The old instruction layout moves
-System Program lamports, which are SOL—not `$WOKE`.
+System Program lamports, which are SOL—not `$DROOL`.
 
 That legacy payment path is fail-closed:
 
@@ -104,7 +104,7 @@ That legacy payment path is fail-closed:
 The old builders, allocation calculator, simulation decoder, and finalized
 proof readers remain available for compatibility, audit, and regression
 testing. They must not be presented as an enabled payment feature, and clients
-should not ask users to sign those settlement instructions. A future `$WOKE`
+should not ask users to sign those settlement instructions. A future `$DROOL`
 asset would require a real SPL or Token-2022 mint, an explicit mint-aware
 program ABI, allowlisting, and new security review.
 
@@ -160,8 +160,8 @@ authority.
 ## Verification
 
 ```sh
-pnpm --filter @wokesocial/sdk lint
-pnpm --filter @wokesocial/sdk typecheck
-pnpm --filter @wokesocial/sdk test
-pnpm --filter @wokesocial/sdk build
+pnpm --filter @wetdrool/sdk lint
+pnpm --filter @wetdrool/sdk typecheck
+pnpm --filter @wetdrool/sdk test
+pnpm --filter @wetdrool/sdk build
 ```

@@ -69,7 +69,7 @@ function rpcFetch(
   return { bytes, fetch, methods };
 }
 
-describe('localnet WokeNet account reader', () => {
+describe('localnet DroolNet account reader', () => {
   it('verifies genesis and returns exact account bytes with RPC evidence', async () => {
     const fixture = rpcFetch();
     const reader = new LocalnetProgramAccountReader({ fetch: fixture.fetch });

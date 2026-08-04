@@ -12,7 +12,7 @@ import {
   type NetworkId,
   type PostContent,
   type ProfileContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   MemoryProjectionStore,
@@ -27,11 +27,11 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wetdrool';
 const programId = publicKey(2);
 const retryAt = '2026-07-28T12:05:00.000Z';
 
@@ -673,12 +673,12 @@ interface IdentityFixture {
 
 function identityFixture(): IdentityFixture {
   const genesis = bs58.encode(randomBytes(32));
-  const networkId = `wokenet:v1:${genesis}:${programId}` as NetworkId;
+  const networkId = `droolnet:v1:${genesis}:${programId}` as NetworkId;
   const identityAddress = bs58.encode(randomBytes(32));
   return {
     networkId,
     identityAddress,
-    identityId: `wokesocialid:v1:${networkId}:${identityAddress}`,
+    identityId: `wetdroolid:v1:${networkId}:${identityAddress}`,
     rootAuthority: bs58.encode(randomBytes(32)),
   };
 }
@@ -855,7 +855,7 @@ function digest(seed: number): string {
 }
 
 function objectId(type: 'community' | 'profile' | 'post', seed: number): string {
-  return `wokesocialobj:v1:${type}:${digest(seed)}`;
+  return `wetdroolobj:v1:${type}:${digest(seed)}`;
 }
 
 function cid(seed: number): string {

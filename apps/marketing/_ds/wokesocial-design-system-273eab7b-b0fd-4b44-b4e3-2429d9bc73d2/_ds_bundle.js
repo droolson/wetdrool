@@ -1,8 +1,8 @@
-/* @ds-bundle: {"format":4,"namespace":"WokeSocialDesignSystem_273eab","components":[{"name":"Button","sourcePath":"components/actions/Button.jsx"},{"name":"Fab","sourcePath":"components/actions/Fab.jsx"},{"name":"IconButton","sourcePath":"components/actions/IconButton.jsx"},{"name":"BrandMark","sourcePath":"components/brand/BrandMark.jsx"},{"name":"Eyebrow","sourcePath":"components/brand/Eyebrow.jsx"},{"name":"Avatar","sourcePath":"components/display/Avatar.jsx"},{"name":"Card","sourcePath":"components/display/Card.jsx"},{"name":"Chip","sourcePath":"components/display/Chip.jsx"},{"name":"SectionHeading","sourcePath":"components/display/SectionHeading.jsx"},{"name":"Skeleton","sourcePath":"components/display/Skeleton.jsx"},{"name":"StatusBadge","sourcePath":"components/display/StatusBadge.jsx"},{"name":"Banner","sourcePath":"components/feedback/Banner.jsx"},{"name":"Dialog","sourcePath":"components/feedback/Dialog.jsx"},{"name":"ProgressBar","sourcePath":"components/feedback/ProgressBar.jsx"},{"name":"StatePanel","sourcePath":"components/feedback/StatePanel.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"Checkbox","sourcePath":"components/forms/Checkbox.jsx"},{"name":"Field","sourcePath":"components/forms/Field.jsx"},{"name":"SearchField","sourcePath":"components/forms/SearchField.jsx"},{"name":"Select","sourcePath":"components/forms/Select.jsx"},{"name":"Switch","sourcePath":"components/forms/Switch.jsx"},{"name":"Icon","sourcePath":"components/icon/Icon.jsx"},{"name":"MobileDock","sourcePath":"components/navigation/MobileDock.jsx"},{"name":"NavRail","sourcePath":"components/navigation/NavRail.jsx"},{"name":"Tabs","sourcePath":"components/navigation/Tabs.jsx"},{"name":"ThemePicker","sourcePath":"components/navigation/ThemePicker.jsx"},{"name":"CommunityCard","sourcePath":"components/social/CommunityCard.jsx"},{"name":"ComposerBar","sourcePath":"components/social/ComposerBar.jsx"},{"name":"EventCard","sourcePath":"components/social/EventCard.jsx"},{"name":"NotificationRow","sourcePath":"components/social/NotificationRow.jsx"},{"name":"PostCard","sourcePath":"components/social/PostCard.jsx"},{"name":"ReactionBar","sourcePath":"components/social/ReactionBar.jsx"},{"name":"ProviderHealthNotice","sourcePath":"components/trust/ProviderHealthNotice.jsx"},{"name":"TransactionStatus","sourcePath":"components/trust/TransactionStatus.jsx"},{"name":"VerificationDetail","sourcePath":"components/trust/VerificationDetail.jsx"},{"name":"WalletConnectCard","sourcePath":"components/trust/WalletConnectCard.jsx"}],"sourceHashes":{"components/actions/Button.jsx":"8a6a9e001d59","components/actions/Fab.jsx":"2880c81aa22f","components/actions/IconButton.jsx":"d56ebed223d6","components/brand/BrandMark.jsx":"a34940e58124","components/brand/Eyebrow.jsx":"bae0b604a2d9","components/display/Avatar.jsx":"2377f38e87fc","components/display/Card.jsx":"f48a11185486","components/display/Chip.jsx":"39e287835944","components/display/SectionHeading.jsx":"36599399efdf","components/display/Skeleton.jsx":"0e901c618c32","components/display/StatusBadge.jsx":"c19e3e786a95","components/feedback/Banner.jsx":"48382524bb41","components/feedback/Dialog.jsx":"becf3e5eb9e1","components/feedback/ProgressBar.jsx":"3f66f8c6e609","components/feedback/StatePanel.jsx":"aa9de93ee2db","components/feedback/Toast.jsx":"78c242fe8708","components/forms/Checkbox.jsx":"6f43aed55dec","components/forms/Field.jsx":"c0b8b42cba5a","components/forms/SearchField.jsx":"ddfd4f0d63bc","components/forms/Select.jsx":"2cf45f76b3d5","components/forms/Switch.jsx":"adfa55536a6f","components/icon/Icon.jsx":"b4cf1b45124f","components/navigation/MobileDock.jsx":"51ff7b13162b","components/navigation/NavRail.jsx":"bfb9be68ad41","components/navigation/Tabs.jsx":"162f841f4ea0","components/navigation/ThemePicker.jsx":"41bbb359569b","components/social/CommunityCard.jsx":"8e4d246c4aac","components/social/ComposerBar.jsx":"9067fc8877b0","components/social/EventCard.jsx":"19890697467c","components/social/NotificationRow.jsx":"228f0ff902b2","components/social/PostCard.jsx":"c8207ea10287","components/social/ReactionBar.jsx":"7e653714c541","components/trust/ProviderHealthNotice.jsx":"11850dcbcb68","components/trust/TransactionStatus.jsx":"ff5282552b91","components/trust/VerificationDetail.jsx":"279d8a834b5e","components/trust/WalletConnectCard.jsx":"17fd3eb51f85","ui_kits/marketing/Landing.jsx":"0a3e92a96076","ui_kits/prototype/PAI.jsx":"75ff1725ae82","ui_kits/prototype/PApp.jsx":"42bf14ca14b9","ui_kits/prototype/PFeed.jsx":"d60cfa8c69c9","ui_kits/prototype/PPlus.jsx":"44da4ac0f6bb","ui_kits/prototype/PShell.jsx":"aeb2808d29c6","ui_kits/prototype/PStudio.jsx":"337c8ac2c1fe","ui_kits/prototype/PVideo.jsx":"9871e6de63df","ui_kits/prototype/PWallet.jsx":"478b8418e38a","ui_kits/prototype/pdata.js":"2bc58baa94d1","ui_kits/seeker/Screens.jsx":"df3002788b1c","ui_kits/seeker/android-frame.jsx":"cbf1bf9e56aa","ui_kits/web-app/App.jsx":"c4b88c795eaf","ui_kits/web-app/Explore.jsx":"4101a4763d83","ui_kits/web-app/HomeFeed.jsx":"5118931ddddf","ui_kits/web-app/PostDetail.jsx":"79ad523e75c0","ui_kits/web-app/Profile.jsx":"4843cee1451f","ui_kits/web-app/Safety.jsx":"896894ebda61","ui_kits/web-app/Settings.jsx":"6f26aeb5ad2c","ui_kits/web-app/Shell.jsx":"89eb39507743","ui_kits/web-app/data.js":"5242583d1a04"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"WetDroolDesignSystem_273eab","components":[{"name":"Button","sourcePath":"components/actions/Button.jsx"},{"name":"Fab","sourcePath":"components/actions/Fab.jsx"},{"name":"IconButton","sourcePath":"components/actions/IconButton.jsx"},{"name":"BrandMark","sourcePath":"components/brand/BrandMark.jsx"},{"name":"Eyebrow","sourcePath":"components/brand/Eyebrow.jsx"},{"name":"Avatar","sourcePath":"components/display/Avatar.jsx"},{"name":"Card","sourcePath":"components/display/Card.jsx"},{"name":"Chip","sourcePath":"components/display/Chip.jsx"},{"name":"SectionHeading","sourcePath":"components/display/SectionHeading.jsx"},{"name":"Skeleton","sourcePath":"components/display/Skeleton.jsx"},{"name":"StatusBadge","sourcePath":"components/display/StatusBadge.jsx"},{"name":"Banner","sourcePath":"components/feedback/Banner.jsx"},{"name":"Dialog","sourcePath":"components/feedback/Dialog.jsx"},{"name":"ProgressBar","sourcePath":"components/feedback/ProgressBar.jsx"},{"name":"StatePanel","sourcePath":"components/feedback/StatePanel.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"Checkbox","sourcePath":"components/forms/Checkbox.jsx"},{"name":"Field","sourcePath":"components/forms/Field.jsx"},{"name":"SearchField","sourcePath":"components/forms/SearchField.jsx"},{"name":"Select","sourcePath":"components/forms/Select.jsx"},{"name":"Switch","sourcePath":"components/forms/Switch.jsx"},{"name":"Icon","sourcePath":"components/icon/Icon.jsx"},{"name":"MobileDock","sourcePath":"components/navigation/MobileDock.jsx"},{"name":"NavRail","sourcePath":"components/navigation/NavRail.jsx"},{"name":"Tabs","sourcePath":"components/navigation/Tabs.jsx"},{"name":"ThemePicker","sourcePath":"components/navigation/ThemePicker.jsx"},{"name":"CommunityCard","sourcePath":"components/social/CommunityCard.jsx"},{"name":"ComposerBar","sourcePath":"components/social/ComposerBar.jsx"},{"name":"EventCard","sourcePath":"components/social/EventCard.jsx"},{"name":"NotificationRow","sourcePath":"components/social/NotificationRow.jsx"},{"name":"PostCard","sourcePath":"components/social/PostCard.jsx"},{"name":"ReactionBar","sourcePath":"components/social/ReactionBar.jsx"},{"name":"ProviderHealthNotice","sourcePath":"components/trust/ProviderHealthNotice.jsx"},{"name":"TransactionStatus","sourcePath":"components/trust/TransactionStatus.jsx"},{"name":"VerificationDetail","sourcePath":"components/trust/VerificationDetail.jsx"},{"name":"WalletConnectCard","sourcePath":"components/trust/WalletConnectCard.jsx"}],"sourceHashes":{"components/actions/Button.jsx":"8a6a9e001d59","components/actions/Fab.jsx":"2880c81aa22f","components/actions/IconButton.jsx":"d56ebed223d6","components/brand/BrandMark.jsx":"a34940e58124","components/brand/Eyebrow.jsx":"bae0b604a2d9","components/display/Avatar.jsx":"2377f38e87fc","components/display/Card.jsx":"f48a11185486","components/display/Chip.jsx":"39e287835944","components/display/SectionHeading.jsx":"36599399efdf","components/display/Skeleton.jsx":"0e901c618c32","components/display/StatusBadge.jsx":"c19e3e786a95","components/feedback/Banner.jsx":"48382524bb41","components/feedback/Dialog.jsx":"becf3e5eb9e1","components/feedback/ProgressBar.jsx":"3f66f8c6e609","components/feedback/StatePanel.jsx":"aa9de93ee2db","components/feedback/Toast.jsx":"78c242fe8708","components/forms/Checkbox.jsx":"6f43aed55dec","components/forms/Field.jsx":"c0b8b42cba5a","components/forms/SearchField.jsx":"ddfd4f0d63bc","components/forms/Select.jsx":"2cf45f76b3d5","components/forms/Switch.jsx":"adfa55536a6f","components/icon/Icon.jsx":"b4cf1b45124f","components/navigation/MobileDock.jsx":"51ff7b13162b","components/navigation/NavRail.jsx":"bfb9be68ad41","components/navigation/Tabs.jsx":"162f841f4ea0","components/navigation/ThemePicker.jsx":"41bbb359569b","components/social/CommunityCard.jsx":"8e4d246c4aac","components/social/ComposerBar.jsx":"9067fc8877b0","components/social/EventCard.jsx":"19890697467c","components/social/NotificationRow.jsx":"228f0ff902b2","components/social/PostCard.jsx":"c8207ea10287","components/social/ReactionBar.jsx":"7e653714c541","components/trust/ProviderHealthNotice.jsx":"11850dcbcb68","components/trust/TransactionStatus.jsx":"ff5282552b91","components/trust/VerificationDetail.jsx":"279d8a834b5e","components/trust/WalletConnectCard.jsx":"17fd3eb51f85","ui_kits/marketing/Landing.jsx":"0a3e92a96076","ui_kits/prototype/PAI.jsx":"75ff1725ae82","ui_kits/prototype/PApp.jsx":"42bf14ca14b9","ui_kits/prototype/PFeed.jsx":"d60cfa8c69c9","ui_kits/prototype/PPlus.jsx":"44da4ac0f6bb","ui_kits/prototype/PShell.jsx":"aeb2808d29c6","ui_kits/prototype/PStudio.jsx":"337c8ac2c1fe","ui_kits/prototype/PVideo.jsx":"9871e6de63df","ui_kits/prototype/PWallet.jsx":"478b8418e38a","ui_kits/prototype/pdata.js":"2bc58baa94d1","ui_kits/seeker/Screens.jsx":"df3002788b1c","ui_kits/seeker/android-frame.jsx":"cbf1bf9e56aa","ui_kits/web-app/App.jsx":"c4b88c795eaf","ui_kits/web-app/Explore.jsx":"4101a4763d83","ui_kits/web-app/HomeFeed.jsx":"5118931ddddf","ui_kits/web-app/PostDetail.jsx":"79ad523e75c0","ui_kits/web-app/Profile.jsx":"4843cee1451f","ui_kits/web-app/Safety.jsx":"896894ebda61","ui_kits/web-app/Settings.jsx":"6f26aeb5ad2c","ui_kits/web-app/Shell.jsx":"89eb39507743","ui_kits/web-app/data.js":"5242583d1a04"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
-const __ds_ns = (window.WokeSocialDesignSystem_273eab = window.WokeSocialDesignSystem_273eab || {});
+const __ds_ns = (window.WetDroolDesignSystem_273eab = window.WetDroolDesignSystem_273eab || {});
 
 const __ds_scope = {};
 
@@ -94,7 +94,7 @@ Object.assign(__ds_scope, { IconButton });
 
 // components/brand/BrandMark.jsx
 try { (() => {
-/* Renders the real $WOKE artwork from assets/logo. Never redraw the mark. */
+/* Renders the real $DROOL artwork from assets/logo. Never redraw the mark. */
 function BrandMark({
   variant = 'lockup',
   size = 'md',
@@ -114,7 +114,7 @@ function BrandMark({
   }));
   const srLabel = variant === 'mark' && !href ? React.createElement('span', {
     className: 'ws-visually-hidden'
-  }, 'WokeSocial') : null;
+  }, 'WetDrool') : null;
   const word = variant === 'mark' ? null : React.createElement('span', {
     className: 'ws-brand__word'
   }, 'Woke', React.createElement('em', null, 'Social'));
@@ -122,7 +122,7 @@ function BrandMark({
   return React.createElement(Tag, {
     className: cls,
     href,
-    'aria-label': href ? 'WokeSocial home' : undefined,
+    'aria-label': href ? 'WetDrool home' : undefined,
     ...rest
   }, mark, srLabel, word);
 }
@@ -529,7 +529,7 @@ Object.assign(__ds_scope, { Field });
 // components/forms/SearchField.jsx
 try { (() => {
 function SearchField({
-  label = 'Search WokeSocial',
+  label = 'Search WetDrool',
   value,
   onClear,
   className = '',
@@ -630,9 +630,9 @@ Object.assign(__ds_scope, { Switch });
 
 // components/icon/Icon.jsx
 try { (() => {
-/* WokeSocial has no proprietary glyph set: the wokenet codebase draws its few
+/* WetDrool has no proprietary glyph set: the droolnet codebase draws its few
    symbols with CSS geometry and single letters. This system substitutes Lucide
-   (2px round-cap strokes, the closest match to the hand-drawn $WOKE mark) and
+   (2px round-cap strokes, the closest match to the hand-drawn $DROOL mark) and
    loads it from CDN. See readme.md → ICONOGRAPHY. */
 function toPascal(name) {
   return String(name).replace(/(^|[-_ ])(\w)/g, (_, __, c) => c.toUpperCase());
@@ -1233,7 +1233,7 @@ function MkHeader() {
     BrandMark,
     Button,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement("header", {
     className: "mk-header"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1243,7 +1243,7 @@ function MkHeader() {
     assetBase: "../../assets/logo"
   }), /*#__PURE__*/React.createElement("ul", {
     className: "mk-nav"
-  }, ['Why WokeSocial', 'Safety', 'Communities', 'WokeNet', 'For developers'].map(l => /*#__PURE__*/React.createElement("li", {
+  }, ['Why WetDrool', 'Safety', 'Communities', 'DroolNet', 'For developers'].map(l => /*#__PURE__*/React.createElement("li", {
     key: l
   }, /*#__PURE__*/React.createElement("a", {
     href: "#"
@@ -1270,7 +1270,7 @@ function HeroObject() {
     ReactionBar,
     Card,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement("div", {
     className: "mk-hero__object"
   }, /*#__PURE__*/React.createElement(PostCard, {
@@ -1349,7 +1349,7 @@ function Landing() {
     SectionHeading,
     Icon,
     BrandMark
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const VALUES = [{
     m: '01',
     t: 'Identity that leaves with you',
@@ -1394,7 +1394,7 @@ function Landing() {
     id: "hero-title"
   }, "Own your voice.", /*#__PURE__*/React.createElement("span", null, "Choose your crowd."), /*#__PURE__*/React.createElement("em", null, "Keep the keys.")), /*#__PURE__*/React.createElement("p", {
     className: "mk-hero__lede"
-  }, "WokeSocial is an affirming social network where your identity is portable, your feed is inspectable, and safety does not require one company to become the world's speech authority."), /*#__PURE__*/React.createElement("div", {
+  }, "WetDrool is an affirming social network where your identity is portable, your feed is inspectable, and safety does not require one company to become the world's speech authority."), /*#__PURE__*/React.createElement("div", {
     className: "mk-hero__actions"
   }, /*#__PURE__*/React.createElement(Button, {
     variant: "signal",
@@ -1452,7 +1452,7 @@ function Landing() {
     align: "center",
     eyebrow: "One protocol, many doors",
     title: "A network should survive its favourite app.",
-    description: /*#__PURE__*/React.createElement("p", null, "WokeNet is the protocol layer underneath. You will almost never see it \u2014 and that is the point.")
+    description: /*#__PURE__*/React.createElement("p", null, "DroolNet is the protocol layer underneath. You will almost never see it \u2014 and that is the point.")
   }), /*#__PURE__*/React.createElement("div", {
     className: "mk-layers"
   }, LAYERS.map(l => /*#__PURE__*/React.createElement("article", {
@@ -1471,7 +1471,7 @@ function Landing() {
     className: "mk-shell mk-closing"
   }, /*#__PURE__*/React.createElement("p", {
     className: "ws-eyebrow"
-  }, "WokeSocial"), /*#__PURE__*/React.createElement("h2", null, "Bold enough to be joyful.", /*#__PURE__*/React.createElement("span", null, "Serious enough to earn trust.")), /*#__PURE__*/React.createElement("div", {
+  }, "WetDrool"), /*#__PURE__*/React.createElement("h2", null, "Bold enough to be joyful.", /*#__PURE__*/React.createElement("span", null, "Serious enough to earn trust.")), /*#__PURE__*/React.createElement("div", {
     className: "mk-closing__row"
   }, /*#__PURE__*/React.createElement("p", null, "Explicitly LGBTQ+ affirming and trans-owned. Open to everyone who honours the community's safety standards. Never dependent on disclosing your gender, your sexuality, a legal name, or a visible wallet address."), /*#__PURE__*/React.createElement(Button, {
     variant: "signal",
@@ -1511,7 +1511,7 @@ function Landing() {
     href: "#"
   }, "Provider status")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", null, "Open"), /*#__PURE__*/React.createElement("a", {
     href: "#"
-  }, "WokeNet protocol"), /*#__PURE__*/React.createElement("a", {
+  }, "DroolNet protocol"), /*#__PURE__*/React.createElement("a", {
     href: "#"
   }, "For developers"), /*#__PURE__*/React.createElement("a", {
     href: "#"
@@ -1519,7 +1519,7 @@ function Landing() {
     href: "#"
   }, "Accessibility")))), /*#__PURE__*/React.createElement("div", {
     className: "mk-fine"
-  }, /*#__PURE__*/React.createElement("p", null, "woke.social \xB7 sociallywoke.com redirects here. WokeNet is WokeSocial's protocol layer on Solana. There is no $WOKE mint, no token sale and no token-gated feature."), /*#__PURE__*/React.createElement("p", null, "\xA9 2026 WokeSocial")))));
+  }, /*#__PURE__*/React.createElement("p", null, "wetdrool.com \xB7 droolhouse.com redirects here. DroolNet is WetDrool's protocol layer on Solana. There is no $DROOL mint, no token sale and no token-gated feature."), /*#__PURE__*/React.createElement("p", null, "\xA9 2026 WetDrool")))));
 }
 Object.assign(window, {
   Landing,
@@ -1540,13 +1540,13 @@ function PAI({
     Icon,
     Banner,
     Chip
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [model, setModel] = React.useState('kairos');
   const m = window.PROTO.models.find(x => x.id === model);
   const SUITE = [{
     i: 'clapperboard',
     t: 'Video generation',
-    d: 'Script → storyboard → cut. Renders on the Woke AI cluster.',
+    d: 'Script → storyboard → cut. Renders on the Drool AI cluster.',
     c: '60 pts / min'
   }, {
     i: 'image',
@@ -1569,7 +1569,7 @@ function PAI({
     style: {
       margin: 0
     }
-  }, "Woke AI"), /*#__PURE__*/React.createElement("p", {
+  }, "Drool AI"), /*#__PURE__*/React.createElement("p", {
     className: "pr-lede"
   }, "Three models, one rule: your points are the meter. No separate credits, no expiring packs \u2014 the same points you earn by contributing."), /*#__PURE__*/React.createElement("div", {
     className: "pr-grid2",
@@ -1622,10 +1622,10 @@ function PAI({
       name: "server",
       size: 17
     }),
-    title: "Served by Woke AI, Inc. (pinkman.ai)"
+    title: "Served by Drool AI, Inc. (pinkman.ai)"
   }, "Open-weight models fine-tuned on crypto, content and community craft \u2014 learning from the platform, growing sharper and, yes, more woke by the day.")), /*#__PURE__*/React.createElement("div", {
     className: "pr-chat",
-    "aria-label": "Chat with Woke AI"
+    "aria-label": "Chat with Drool AI"
   }, /*#__PURE__*/React.createElement(Chip, {
     interactive: false,
     leadingIcon: /*#__PURE__*/React.createElement(Icon, {
@@ -1708,7 +1708,7 @@ function PAI({
       size: 17
     }),
     title: "Everything generated is labelled"
-  }, "AI-made media carries a visible \"Made with Woke AI\" chip, on the post and in its provenance record. No exceptions, including for us."));
+  }, "AI-made media carries a visible \"Made with Drool AI\" chip, on the post and in its provenance record. No exceptions, including for us."));
 }
 Object.assign(window, {
   PAI
@@ -1733,7 +1733,7 @@ function PApp() {
   const {
     Toast,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const screens = {
     home: /*#__PURE__*/React.createElement(window.PFeed, {
       addPoints: addPoints
@@ -1793,7 +1793,7 @@ function ProtoPost({
     StatusBadge,
     IconButton,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [liked, setLiked] = React.useState(false);
   return /*#__PURE__*/React.createElement(PostCard, {
     author: post.author,
@@ -1846,7 +1846,7 @@ function PFeed({
     IconButton,
     Icon,
     Banner
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [tab, setTab] = React.useState('foryou');
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(ComposerBar, {
     author: {
@@ -1861,7 +1861,7 @@ function PFeed({
       name: "image",
       size: 18
     })), /*#__PURE__*/React.createElement(IconButton, {
-      label: "Generate with Woke AI",
+      label: "Generate with Drool AI",
       inline: true
     }, /*#__PURE__*/React.createElement(Icon, {
       name: "sparkles",
@@ -1946,9 +1946,9 @@ function PPlus({
     StatusBadge,
     TransactionStatus,
     Checkbox
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [step, setStep] = React.useState(0);
-  const PERKS = [['hammer', 'Create marketplace items', 'Mint wearables on-chain and keep 70% of every sale.'], ['badge-check', 'Submit for verification', 'The Verified human badge — see how it works below.'], ['sparkles', 'Priority Woke AI', 'Front of the queue on Athena at peak times.'], ['undo-2', '30-day refund', 'Unhappy? Full refund inside 30 days, no questions, no forms.']];
+  const PERKS = [['hammer', 'Create marketplace items', 'Mint wearables on-chain and keep 70% of every sale.'], ['badge-check', 'Submit for verification', 'The Verified human badge — see how it works below.'], ['sparkles', 'Priority Drool AI', 'Front of the queue on Athena at peak times.'], ['undo-2', '30-day refund', 'Unhappy? Full refund inside 30 days, no questions, no forms.']];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("h1", {
     className: "pr-h2",
     style: {
@@ -2035,7 +2035,7 @@ function PPlus({
     }
   }, "Verification: prove you're a person, reveal nothing"), /*#__PURE__*/React.createElement("p", {
     className: "pr-lede"
-  }, "An end-to-end encrypted flow where AI checks your ID and a selfie, estimates age, and confirms you're you. Nothing is stored, and not even Woke.social can see it \u2014 the check runs sealed, then forgets."), step === 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "An end-to-end encrypted flow where AI checks your ID and a selfie, estimates age, and confirms you're you. Nothing is stored, and not even WetDrool.com can see it \u2014 the check runs sealed, then forgets."), step === 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gap: 4
@@ -2084,7 +2084,7 @@ function PPlus({
     variant: "flat"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pr-org"
-  }, /*#__PURE__*/React.createElement("b", null, "Corporate structure"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Pinkman, Inc."), " (Delaware C-Corp, umbrella) \u2192 ", /*#__PURE__*/React.createElement("b", null, "Woke Social, Inc."), " \xB7 ", /*#__PURE__*/React.createElement("b", null, "Woke AI, Inc."), " (pinkman.ai) \xB7 ", /*#__PURE__*/React.createElement("b", null, "ICEFAM Records, LLC"), "."))));
+  }, /*#__PURE__*/React.createElement("b", null, "Corporate structure"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Pinkman, Inc."), " (Delaware C-Corp, umbrella) \u2192 ", /*#__PURE__*/React.createElement("b", null, "Woke Social, Inc."), " \xB7 ", /*#__PURE__*/React.createElement("b", null, "Drool AI, Inc."), " (pinkman.ai) \xB7 ", /*#__PURE__*/React.createElement("b", null, "ICEFAM Records, LLC"), "."))));
 }
 Object.assign(window, {
   PPlus
@@ -2105,7 +2105,7 @@ function PShell({
     SearchField,
     Button,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const nav = [{
     value: 'home',
     label: 'Home',
@@ -2122,7 +2122,7 @@ function PShell({
     })
   }, {
     value: 'ai',
-    label: 'Woke AI',
+    label: 'Drool AI',
     icon: /*#__PURE__*/React.createElement(Icon, {
       name: "sparkles",
       size: 21
@@ -2161,7 +2161,7 @@ function PShell({
   }), /*#__PURE__*/React.createElement("div", {
     className: "pr-appbar__search"
   }, /*#__PURE__*/React.createElement(SearchField, {
-    placeholder: "Search Woke.social"
+    placeholder: "Search WetDrool.com"
   }, /*#__PURE__*/React.createElement(Icon, {
     name: "search",
     size: 18
@@ -2202,7 +2202,7 @@ function PShell({
     className: "pr-foot"
   }, /*#__PURE__*/React.createElement("div", {
     className: "pr-org"
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Woke Social, Inc."), " and ", /*#__PURE__*/React.createElement("b", null, "Woke AI, Inc."), " (pinkman.ai) are subsidiaries of ", /*#__PURE__*/React.createElement("b", null, "Pinkman, Inc."), ", alongside ", /*#__PURE__*/React.createElement("b", null, "ICEFAM Records, LLC"), "."), /*#__PURE__*/React.createElement("span", null, "Open-source protocols, open governance. Points are earned or bought; they are not an investment. Trading tools are signals, not advice."))));
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Woke Social, Inc."), " and ", /*#__PURE__*/React.createElement("b", null, "Drool AI, Inc."), " (pinkman.ai) are subsidiaries of ", /*#__PURE__*/React.createElement("b", null, "Pinkman, Inc."), ", alongside ", /*#__PURE__*/React.createElement("b", null, "ICEFAM Records, LLC"), "."), /*#__PURE__*/React.createElement("span", null, "Open-source protocols, open governance. Points are earned or bought; they are not an investment. Trading tools are signals, not advice."))));
 }
 Object.assign(window, {
   PShell
@@ -2223,7 +2223,7 @@ function PStudio({
     Chip,
     Card,
     Avatar
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [cat, setCat] = React.useState('All');
   const [owned, setOwned] = React.useState(['i3']);
   const [worn, setWorn] = React.useState(['i3']);
@@ -2245,7 +2245,7 @@ function PStudio({
     }
   }, "Avatar studio"), /*#__PURE__*/React.createElement("p", {
     className: "pr-lede"
-  }, "Your blob, your fit. Items are made by other users, minted on-chain when sold, and wearable everywhere on Woke.social. Creators keep 70% of every sale."), /*#__PURE__*/React.createElement("div", {
+  }, "Your blob, your fit. Items are made by other users, minted on-chain when sold, and wearable everywhere on WetDrool.com. Creators keep 70% of every sale."), /*#__PURE__*/React.createElement("div", {
     className: "pr-grid2",
     style: {
       alignItems: 'start'
@@ -2265,7 +2265,7 @@ function PStudio({
     style: {
       fontSize: 15
     }
-  }, "quietfox2481.woke"), /*#__PURE__*/React.createElement("div", {
+  }, "quietfox2481.drool"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -2341,7 +2341,7 @@ function PStudio({
     }
   }, "Make items, earn points, cash out"), /*#__PURE__*/React.createElement("p", {
     className: "pr-lede"
-  }, "Creators keep 70% of every sale. Points convert to SOL or $WOKE with no transaction fee. Item creation needs Woke Plus \u2014 that's the spam filter, not a paywall on creativity."), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Button, {
+  }, "Creators keep 70% of every sale. Points convert to SOL or $DROOL with no transaction fee. Item creation needs Woke Plus \u2014 that's the spam filter, not a paywall on creativity."), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Button, {
     size: "sm",
     leadingIcon: /*#__PURE__*/React.createElement(Icon, {
       name: "hammer",
@@ -2353,7 +2353,7 @@ function PStudio({
     }
   }, "Owned items are actually yours"), /*#__PURE__*/React.createElement("p", {
     className: "pr-lede"
-  }, "Purchased items mint on-chain to your .woke wallet. Trade them, gift them, or take them to any compatible client \u2014 the marketplace is an open protocol, not a walled garden."), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Button, {
+  }, "Purchased items mint on-chain to your .drool wallet. Trade them, gift them, or take them to any compatible client \u2014 the marketplace is an open protocol, not a walled garden."), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Button, {
     size: "sm",
     variant: "quiet"
   }, "Read the item spec")))));
@@ -2372,7 +2372,7 @@ function PVideo() {
     Icon,
     Chip,
     Button
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [tab, setTab] = React.useState('shorts');
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2498,10 +2498,10 @@ function PWallet({
     StatusBadge,
     VerificationDetail,
     Dialog
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [draft, setDraft] = React.useState('alex');
   const [confirm, setConfirm] = React.useState(false);
-  const custom = !handle.match(/\d{4}\.woke$/);
+  const custom = !handle.match(/\d{4}\.drool$/);
   const COST = 2500;
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("h1", {
     className: "pr-h2",
@@ -2556,7 +2556,7 @@ function PWallet({
       label: 'Custody',
       value: 'Yours — export any time'
     }],
-    note: "Nobody sees the raw address unless you show them. The .woke name is what the world uses."
+    note: "Nobody sees the raw address unless you show them. The .drool name is what the world uses."
   })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement("b", {
     style: {
       fontSize: 15
@@ -2569,7 +2569,7 @@ function PWallet({
     label: "Pick your name",
     value: draft,
     onChange: e => setDraft(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')),
-    help: draft ? draft + '.woke is available' : 'Letters and numbers only'
+    help: draft ? draft + '.drool is available' : 'Letters and numbers only'
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -2580,7 +2580,7 @@ function PWallet({
     size: "sm",
     disabled: !draft || points < COST,
     onClick: () => setConfirm(true)
-  }, "Claim ", draft || '…', ".woke \xB7 ", COST.toLocaleString(), " pts"), points < COST ? /*#__PURE__*/React.createElement("span", {
+  }, "Claim ", draft || '…', ".drool \xB7 ", COST.toLocaleString(), " pts"), points < COST ? /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 12,
       color: 'var(--ws-text-muted)'
@@ -2591,7 +2591,7 @@ function PWallet({
     }
   }, "Cash out"), /*#__PURE__*/React.createElement("p", {
     className: "pr-lede"
-  }, "Creator earnings convert to SOL or $WOKE with no transaction fee. Engagement points stay points \u2014 the economy rewards making things, not farming taps."), /*#__PURE__*/React.createElement("div", {
+  }, "Creator earnings convert to SOL or $DROOL with no transaction fee. Engagement points stay points \u2014 the economy rewards making things, not farming taps."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -2602,7 +2602,7 @@ function PWallet({
   }, "Convert to SOL"), /*#__PURE__*/React.createElement(Button, {
     size: "sm",
     variant: "secondary"
-  }, "Convert to $WOKE")))), /*#__PURE__*/React.createElement("div", {
+  }, "Convert to $DROOL")))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gap: 16
@@ -2716,7 +2716,7 @@ function PWallet({
     defaultChecked: true
   })))), /*#__PURE__*/React.createElement(Dialog, {
     open: confirm,
-    title: 'Claim ' + draft + '.woke?',
+    title: 'Claim ' + draft + '.drool?',
     description: 'This spends ' + COST.toLocaleString() + ' points and points don\u2019t come back. Your current name keeps resolving, so old links and signatures stay valid.',
     onDismiss: () => setConfirm(false),
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -2725,8 +2725,8 @@ function PWallet({
     }, "Not yet"), /*#__PURE__*/React.createElement(Button, {
       onClick: () => {
         setConfirm(false);
-        setHandle(draft + '.woke');
-        addPoints(-COST, 'Custom handle — ' + draft + '.woke');
+        setHandle(draft + '.drool');
+        addPoints(-COST, 'Custom handle — ' + draft + '.drool');
       }
     }, "Claim it"))
   }));
@@ -2738,10 +2738,10 @@ Object.assign(window, {
 
 // ui_kits/prototype/pdata.js
 try { (() => {
-/* Woke.social product-vision prototype data. Written, not generated. */
+/* WetDrool.com product-vision prototype data. Written, not generated. */
 window.PROTO = {
   me: {
-    handle: 'quietfox2481.woke',
+    handle: 'quietfox2481.drool',
     points: 3420,
     name: 'quietfox2481'
   },
@@ -2749,8 +2749,8 @@ window.PROTO = {
     id: 'v1',
     author: {
       id: 'a1',
-      name: 'mintyowl.woke',
-      handle: 'mintyowl.woke'
+      name: 'mintyowl.drool',
+      handle: 'mintyowl.drool'
     },
     time: '2h',
     verified: 'verified',
@@ -2765,8 +2765,8 @@ window.PROTO = {
     id: 'v2',
     author: {
       id: 'a2',
-      name: 'daedra.woke',
-      handle: 'daedra.woke'
+      name: 'daedra.drool',
+      handle: 'daedra.drool'
     },
     time: '5h',
     verified: 'verified',
@@ -2782,12 +2782,12 @@ window.PROTO = {
     id: 'v3',
     author: {
       id: 'a3',
-      name: 'kairofan7.woke',
-      handle: 'kairofan7.woke'
+      name: 'kairofan7.drool',
+      handle: 'kairofan7.drool'
     },
     time: '9h',
     verified: 'pending',
-    body: 'Asked Woke Kairos to cut my 40-minute stream into shorts. It found the three moments people actually clipped manually. 12 points well spent.',
+    body: 'Asked Drool Kairos to cut my 40-minute stream into shorts. It found the three moments people actually clipped manually. 12 points well spent.',
     counts: {
       replies: 7,
       reposts: 12,
@@ -2797,19 +2797,19 @@ window.PROTO = {
   }],
   shorts: [{
     id: 's1',
-    by: 'daedra.woke',
+    by: 'daedra.drool',
     cap: 'How WSIP voting works in 90 seconds. Captions on.',
     likes: '4.1k',
     len: '1:28'
   }, {
     id: 's2',
-    by: 'mintyowl.woke',
+    by: 'mintyowl.drool',
     cap: 'Speedrun: blob to full fit in the avatar studio.',
     likes: '2.8k',
     len: '0:59'
   }, {
     id: 's3',
-    by: 'icefam.woke',
+    by: 'icefam.drool',
     cap: 'Studio session \u2014 first release on ICEFAM Records.',
     likes: '9.2k',
     len: '2:41'
@@ -2817,47 +2817,47 @@ window.PROTO = {
   longs: [{
     id: 'l1',
     t: 'Middle-out, explained: why your feed loads twice as fast',
-    by: 'wokenet.woke',
+    by: 'droolnet.drool',
     len: '18:22',
     views: '41k views',
     age: '2d'
   }, {
     id: 'l2',
     t: 'Building a marketplace item from sketch to mint',
-    by: 'mintyowl.woke',
+    by: 'mintyowl.drool',
     len: '32:05',
     views: '12k views',
     age: '4d'
   }, {
     id: 'l3',
     t: 'Governance call \u2014 WSIP-14 open discussion (recorded)',
-    by: 'daedra.woke',
+    by: 'daedra.drool',
     len: '1:04:11',
     views: '8.4k views',
     age: '5d'
   }, {
     id: 'l4',
     t: 'Fine-tuning Athena: what \u201cwoke by the day\u201d actually means',
-    by: 'wokeai.woke',
+    by: 'wokeai.drool',
     len: '24:47',
     views: '29k views',
     age: '1w'
   }],
   models: [{
     id: 'athena',
-    name: 'Woke Athena 1',
+    name: 'Drool Athena 1',
     tag: 'Flagship reasoning',
     cost: '4 pts / 1k tokens',
     desc: 'Deepest reasoning. Long analysis, research, hard drafts.'
   }, {
     id: 'kairos',
-    name: 'Woke Kairos 1',
+    name: 'Drool Kairos 1',
     tag: 'Balanced',
     cost: '1.5 pts / 1k tokens',
     desc: 'The everyday model. Fast, sharp, cost-effective.'
   }, {
     id: 'hermes',
-    name: 'Woke Hermes 1',
+    name: 'Drool Hermes 1',
     tag: 'Fast \u00b7 agentic',
     cost: '0.4 pts / 1k tokens',
     desc: 'Cheapest and fastest. Automation, monitoring, agents.'
@@ -2868,42 +2868,42 @@ window.PROTO = {
     cat: 'Effects',
     tint: '#a87eff',
     price: 180,
-    by: 'mintyowl.woke'
+    by: 'mintyowl.drool'
   }, {
     id: 'i2',
     name: 'Ember bomber',
     cat: 'Outfits',
     tint: '#ff914d',
     price: 240,
-    by: 'stitchwrk.woke'
+    by: 'stitchwrk.drool'
   }, {
     id: 'i3',
     name: 'Mint bucket hat',
     cat: 'Headwear',
     tint: '#cff0ec',
     price: 120,
-    by: 'stitchwrk.woke'
+    by: 'stitchwrk.drool'
   }, {
     id: 'i4',
     name: 'Static shimmer',
     cat: 'Effects',
     tint: '#6cc9ef',
     price: 300,
-    by: 'glitchpx.woke'
+    by: 'glitchpx.drool'
   }, {
     id: 'i5',
     name: 'Slate trench',
     cat: 'Outfits',
     tint: '#616c6f',
     price: 200,
-    by: 'stitchwrk.woke'
+    by: 'stitchwrk.drool'
   }, {
     id: 'i6',
     name: 'Violet buzz',
     cat: 'Base',
     tint: '#8c52ff',
     price: 90,
-    by: 'glitchpx.woke'
+    by: 'glitchpx.drool'
   }],
   bots: [{
     id: 'b1',
@@ -2926,7 +2926,7 @@ window.PROTO = {
     d: '+27'
   }, {
     t: 'Today',
-    what: 'Woke Kairos \u2014 shorts cut from stream',
+    what: 'Drool Kairos \u2014 shorts cut from stream',
     d: '-12'
   }, {
     t: 'Yesterday',
@@ -2954,7 +2954,7 @@ function SkBar({
     BrandMark,
     IconButton,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement("div", {
     className: "sk-bar"
   }, title ? /*#__PURE__*/React.createElement("strong", {
@@ -2976,7 +2976,7 @@ function SkDock({
   const {
     MobileDock,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement(MobileDock, {
     current: current,
     items: [{
@@ -3020,7 +3020,7 @@ function SeekerFeed() {
     Icon,
     Fab,
     Tabs
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const posts = window.WS_DATA.posts.slice(0, 2);
   return /*#__PURE__*/React.createElement("div", {
     className: "sk-screen"
@@ -3098,7 +3098,7 @@ function SeekerComposer() {
     IconButton,
     Icon,
     Checkbox
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement("div", {
     className: "sk-screen",
     style: {
@@ -3176,7 +3176,7 @@ function SeekerComposer() {
   }), /*#__PURE__*/React.createElement(Checkbox, {
     type: "radio",
     name: "aud",
-    label: "Anyone on WokeSocial",
+    label: "Anyone on WetDrool",
     description: "Public. Anyone can find and repost it."
   }), /*#__PURE__*/React.createElement(Button, {
     block: true
@@ -3191,7 +3191,7 @@ function SeekerWallet() {
     Banner,
     Icon,
     IconButton
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement("div", {
     className: "sk-screen"
   }, /*#__PURE__*/React.createElement(SkBar, {
@@ -3233,7 +3233,7 @@ function SeekerWallet() {
       label: 'Approved on your device',
       state: 'done'
     }, {
-      label: 'Confirming on WokeNet',
+      label: 'Confirming on DroolNet',
       state: 'active'
     }, {
       label: 'Handle is yours',
@@ -3258,7 +3258,7 @@ function SeekerAlerts() {
     Icon,
     IconButton,
     StatePanel
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement("div", {
     className: "sk-screen"
   }, /*#__PURE__*/React.createElement(SkBar, {
@@ -3332,7 +3332,7 @@ function SeekerVideo() {
     Button,
     Icon,
     IconButton
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement("div", {
     className: "sk-screen"
   }, /*#__PURE__*/React.createElement("div", {
@@ -3854,7 +3854,7 @@ function Aside({
     Button,
     Chip,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "wa-aside__card"
   }, /*#__PURE__*/React.createElement("h2", null, "Your feed, explained"), /*#__PURE__*/React.createElement("p", null, "You are seeing Following: people and communities you chose, newest first, with nothing inserted."), /*#__PURE__*/React.createElement(Button, {
@@ -3880,7 +3880,7 @@ function Aside({
     className: "wa-aside__list"
   }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Sunday Kitchen"), /*#__PURE__*/React.createElement("span", null, "Rota for the 16th is up")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Repair Caf\xE9s UK"), /*#__PURE__*/React.createElement("span", null, "3 new posts since Tuesday")), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Trans Tech Collective"), /*#__PURE__*/React.createElement("span", null, "Pinned: how to ask for accommodations")))), /*#__PURE__*/React.createElement("div", {
     className: "wa-aside__card"
-  }, /*#__PURE__*/React.createElement("h2", null, "Nothing is trending"), /*#__PURE__*/React.createElement("p", null, "WokeSocial does not rank conversations by how angry they are. There is no trending list.")));
+  }, /*#__PURE__*/React.createElement("h2", null, "Nothing is trending"), /*#__PURE__*/React.createElement("p", null, "WetDrool does not rank conversations by how angry they are. There is no trending list.")));
 }
 function App() {
   const [route, setRoute] = React.useState('home');
@@ -3932,7 +3932,7 @@ function Explore({
     SectionHeading,
     Icon,
     Banner
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [picked, setPicked] = React.useState(['Mutual aid', 'Zine making']);
   const toggle = i => setPicked(p => p.includes(i) ? p.filter(x => x !== i) : [...p, i]);
   return /*#__PURE__*/React.createElement("div", {
@@ -4022,7 +4022,7 @@ function FeedPost({
     StatusBadge,
     IconButton,
     Icon
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [revealed, setRevealed] = React.useState(false);
   const [liked, setLiked] = React.useState(false);
   return /*#__PURE__*/React.createElement(PostCard, {
@@ -4083,7 +4083,7 @@ function HomeFeed({
     Icon,
     Banner,
     StatePanel
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [tab, setTab] = React.useState('following');
   const posts = window.WS_DATA.posts;
   return /*#__PURE__*/React.createElement("div", {
@@ -4192,7 +4192,7 @@ function PostDetail({
     IconButton,
     Icon,
     Avatar
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const p = post || window.WS_DATA.posts[0];
   return /*#__PURE__*/React.createElement("div", {
     className: "wa-col"
@@ -4236,7 +4236,7 @@ function PostDetail({
         label: 'Hash match',
         value: 'Valid'
       }, {
-        label: 'WokeNet anchor',
+        label: 'DroolNet anchor',
         value: 'Slot 298,441,203 · finalized'
       }, {
         label: 'Indexed by',
@@ -4322,7 +4322,7 @@ function Profile() {
     StatusBadge,
     Icon,
     IconButton
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [tab, setTab] = React.useState('posts');
   const [following, setFollowing] = React.useState(false);
   return /*#__PURE__*/React.createElement("div", {
@@ -4432,7 +4432,7 @@ function Safety() {
     StatusBadge,
     Icon,
     Chip
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [step, setStep] = React.useState('centre');
   const [confirm, setConfirm] = React.useState(false);
   const [done, setDone] = React.useState(false);
@@ -4591,7 +4591,7 @@ function Safety() {
   }, "Submit appeal"))) : null, /*#__PURE__*/React.createElement(Dialog, {
     open: confirm,
     title: "Send this report?",
-    description: "It goes to the moderators of Old Games Club first. If it breaks WokeSocial's standards it comes to us as well. You can withdraw it from your safety log at any time.",
+    description: "It goes to the moderators of Old Games Club first. If it breaks WetDrool's standards it comes to us as well. You can withdraw it from your safety log at any time.",
     onDismiss: () => setConfirm(false),
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
       variant: "secondary",
@@ -4627,7 +4627,7 @@ function Settings() {
     Banner,
     Icon,
     Tabs
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const [tab, setTab] = React.useState('feed');
   return /*#__PURE__*/React.createElement("div", {
     className: "wa-col"
@@ -4671,7 +4671,7 @@ function Settings() {
     label: "Autoplay video",
     description: "Off means you tap to play. Sound is always off until you turn it on."
   }), /*#__PURE__*/React.createElement(Select, {
-    label: "Default feed when I open WokeSocial",
+    label: "Default feed when I open WetDrool",
     options: [{
       value: 'following',
       label: 'Following'
@@ -4689,7 +4689,7 @@ function Settings() {
   }, /*#__PURE__*/React.createElement(Field, {
     label: "Display name",
     defaultValue: "Ro Mbeki",
-    help: "This is the only name shown anywhere on WokeSocial. Changing it updates every past post immediately."
+    help: "This is the only name shown anywhere on WetDrool. Changing it updates every past post immediately."
   }), /*#__PURE__*/React.createElement(Field, {
     label: "Pronouns",
     defaultValue: "they/them",
@@ -4715,7 +4715,7 @@ function Settings() {
     className: "wa-stack"
   }, /*#__PURE__*/React.createElement("p", {
     className: "wa-lede"
-  }, "These services make WokeSocial fast. None of them owns your account, and switching one never costs you your identity or your followers."), /*#__PURE__*/React.createElement(ProviderHealthNotice, {
+  }, "These services make WetDrool fast. None of them owns your account, and switching one never costs you your identity or your followers."), /*#__PURE__*/React.createElement(ProviderHealthNotice, {
     icon: /*#__PURE__*/React.createElement(Icon, {
       name: "radio-tower",
       size: 18
@@ -4784,7 +4784,7 @@ function Settings() {
     actions: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, null, "Review and connect"), /*#__PURE__*/React.createElement(Button, {
       variant: "quiet"
     }, "Not now")),
-    footnote: "WokeSocial never shows an address as your name, and never treats a balance as a reason to rank you higher."
+    footnote: "WetDrool never shows an address as your name, and never treats a balance as a reason to rank you higher."
   }) : null);
 }
 Object.assign(window, {
@@ -4807,7 +4807,7 @@ function Shell({
     Button,
     Icon,
     ThemePicker
-  } = window.WokeSocialDesignSystem_273eab;
+  } = window.WetDroolDesignSystem_273eab;
   const nav = [{
     value: 'home',
     label: 'Home',
@@ -4905,7 +4905,7 @@ Object.assign(window, {
 
 // ui_kits/web-app/data.js
 try { (() => {
-/* Sample WokeSocial content. Written, not generated — no lorem ipsum. */
+/* Sample WetDrool content. Written, not generated — no lorem ipsum. */
 window.WS_DATA = {
   me: {
     id: 'acct_me',

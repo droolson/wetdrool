@@ -1,0 +1,78 @@
+{
+  "company": "Droolhouse",
+  "version": 1,
+  "roles": [
+    {
+      "id": "ceo",
+      "title": "CEO / Operator",
+      "reportsTo": null,
+      "adapterType": "hermes_local",
+      "mission": "Set priorities, capital allocation, and product truth for WetDrool.",
+      "heartbeatMinutes": 60,
+      "toolsets": ["terminal", "file", "web", "delegation", "memory", "skills"]
+    },
+    {
+      "id": "moderation-lead",
+      "title": "Moderation Lead",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "mission": "24/7 AI triage, auto-resolve clear policy hits, escalate humans last.",
+      "heartbeatMinutes": 5,
+      "toolsets": ["terminal", "file", "web", "memory", "skills", "code_execution"]
+    },
+    {
+      "id": "support-agent",
+      "title": "Support User-Agent",
+      "reportsTo": "moderation-lead",
+      "adapterType": "hermes_local",
+      "mission": "User-facing support: reports, bans, mental health routing, vanity help.",
+      "heartbeatMinutes": 3,
+      "toolsets": ["terminal", "file", "web", "memory", "skills"]
+    },
+    {
+      "id": "engineering",
+      "title": "Engineering Lead",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "mission": "Ship DroolNet, web, media, indexer, and economy systems from wetdrool monorepo.",
+      "heartbeatMinutes": 30,
+      "toolsets": ["terminal", "file", "web", "code_execution", "delegation", "memory", "skills"]
+    },
+    {
+      "id": "companion-curator",
+      "title": "Companion Curator",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "mission": "Grok 4.5 + Mythic companion personas, evals, consent UX, memory hygiene.",
+      "heartbeatMinutes": 45,
+      "toolsets": ["terminal", "file", "web", "memory", "skills", "creative"]
+    },
+    {
+      "id": "growth",
+      "title": "Growth",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "mission": "Creator onboarding, campaigns, livestream growth without spam farms.",
+      "heartbeatMinutes": 120,
+      "toolsets": ["terminal", "file", "web", "memory", "skills", "browser"]
+    },
+    {
+      "id": "economy",
+      "title": "Economy Officer",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "mission": "Points ≤ ad rev, vanity pricing, $DROOL mint readiness, anti-farm.",
+      "heartbeatMinutes": 60,
+      "toolsets": ["terminal", "file", "web", "code_execution", "memory", "skills"]
+    },
+    {
+      "id": "trust-legal",
+      "title": "Trust & Safety Legal",
+      "reportsTo": "ceo",
+      "adapterType": "hermes_local",
+      "mission": "Age assurance, jurisdiction, NCMEC/notice paths, policy versioning.",
+      "heartbeatMinutes": 180,
+      "toolsets": ["terminal", "file", "web", "memory", "skills"]
+    }
+  ]
+}

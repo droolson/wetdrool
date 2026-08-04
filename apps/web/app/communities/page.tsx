@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { CommunityCard } from '@/components/community-card';
@@ -13,7 +13,7 @@ import { formatUtcDate } from '@/lib/presentation';
 
 export const metadata: Metadata = {
   title: 'Communities',
-  description: 'Discover verified public WokeSocial communities anchored to Solana.',
+  description: 'Discover verified public WetDrool communities anchored to Solana.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +50,7 @@ export default async function CommunitiesPage({
       >
         <p>
           This public directory accepts only schema-v2 community manifests whose content hash,
-          creator signature, Solana address, and WokeNet anchor agree. Unlisted and private spaces
+          creator signature, Solana address, and DroolNet anchor agree. Unlisted and private spaces
           are never placed in discovery.
         </p>
       </AppPageHeader>
@@ -89,7 +89,7 @@ export default async function CommunitiesPage({
           eyebrow="No directory data accepted"
           title={
             result.reason === 'unconfigured'
-              ? 'Connect an indexer and WokeNet network scope.'
+              ? 'Connect an indexer and DroolNet network scope.'
               : 'The community directory is safely degraded.'
           }
           tone="degraded"
@@ -192,7 +192,7 @@ export default async function CommunitiesPage({
         </InfoCard>
         <InfoCard eyebrow="Governance" title="One active member, one vote" tone="coral">
           <p>
-            Every accepted v2 manifest binds the exact WokeNet governance strategy instead of
+            Every accepted v2 manifest binds the exact DroolNet governance strategy instead of
             advertising unsupported voting models.
           </p>
         </InfoCard>

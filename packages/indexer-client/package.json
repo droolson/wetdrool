@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/indexer-client",
+  "name": "@wetdrool/indexer-client",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Runtime-neutral, strictly validated WokeSocial indexer client",
+  "description": "Runtime-neutral, strictly validated WetDrool indexer client",
   "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
@@ -47,7 +47,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@wokesocial/protocol": "workspace:*"
+    "@wetdrool/protocol": "workspace:*"
   },
   "devDependencies": {
     "vitest": "4.1.10"

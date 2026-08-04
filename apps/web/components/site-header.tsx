@@ -1,32 +1,27 @@
 import Link from 'next/link';
-import { BrandMark, ButtonLink } from '@wokesocial/ui';
+import { BrandMark, ButtonLink } from '@wetdrool/ui';
 
+import { NsfwModeToggle } from './nsfw-mode-toggle';
 import { ThemePicker } from './theme-picker';
 
 const PRIMARY_LINKS = [
-  { href: '/home', label: 'Home' },
-  { href: '/explore', label: 'Explore' },
-  { href: '/feeds', label: 'Feeds' },
-  { href: '/communities', label: 'Communities' },
-  { href: '/launchpad', label: 'Launchpad' },
-  { href: '/ai', label: 'Woke AI' },
-  { href: '/search', label: 'Search' },
+  { href: '/hub', label: 'Hub' },
+  { href: '/feeds', label: 'Shorts' },
+  { href: '/live', label: 'Live' },
+  { href: '/home', label: 'Social' },
+  { href: '/creator/kingofqueens6ix', label: 'Creators' },
+  { href: '/messages', label: 'Private' },
+  { href: '/token', label: '$DROOL' },
+  { href: '/docs', label: 'Docs' },
 ] as const;
 
 const MOBILE_LINKS = [
   ...PRIMARY_LINKS,
-  { href: '/sites', label: 'Sites' },
-  { href: '/notifications', label: 'Notifications' },
-  { href: '/messages', label: 'Messages' },
-  { href: '/stories', label: 'Stories' },
-  { href: '/video', label: 'Video' },
-  { href: '/events', label: 'Events' },
+  { href: '/home', label: 'Network feed' },
+  { href: '/companions', label: 'Companions' },
+  { href: '/vanity', label: 'Vanity .drool' },
   { href: '/settings', label: 'Settings' },
-  { href: '/recovery', label: 'Recovery' },
-  { href: '/developers', label: 'Developers' },
-  { href: '/status', label: 'Status' },
-  { href: '/about', label: 'About' },
-  { href: '/protocol', label: 'Protocol' },
+  { href: '/mesh', label: 'Mesh' },
   { href: '/safety', label: 'Safety' },
 ] as const;
 
@@ -34,7 +29,7 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link className="site-header__brand" href="/" aria-label="WokeSocial home">
+        <Link className="site-header__brand" href="/hub" aria-label="WetDrool hub">
           <BrandMark />
         </Link>
 
@@ -49,6 +44,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="site-header__actions">
+          <NsfwModeToggle />
           <div className="site-header__theme">
             <ThemePicker />
           </div>

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ButtonLink, InfoCard, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, InfoCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { PasskeyAuthPanel } from '@/components/passkey-auth-panel';
@@ -20,7 +20,7 @@ const STEPS = [
     tone: 'plum' as const,
   },
   {
-    copy: 'Receive a collision-resistant anonymous .woke candidate from the public passkey root, then add optional profile details with field-level visibility.',
+    copy: 'Receive a collision-resistant anonymous .drool candidate from the public passkey root, then add optional profile details with field-level visibility.',
     eyebrow: 'Step 02',
     footer: 'Onchain claim still required',
     title: 'Start pseudonymously',
@@ -37,7 +37,7 @@ const STEPS = [
 
 export default function OnboardingPage() {
   const authServiceUrl =
-    process.env['WOKESOCIAL_AUTH_URL'] ??
+    process.env['WETDROOL_AUTH_URL'] ??
     process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
     'http://localhost:4300';
 
@@ -50,7 +50,7 @@ export default function OnboardingPage() {
       >
         <p>
           Passkey approval can now atomically create an authentication-service account and its
-          credential-bound encrypted key wrapper. A random anonymous .woke candidate is derived
+          credential-bound encrypted key wrapper. A random anonymous .drool candidate is derived
           locally from the public root without email or legal identity. Profile publication,
           recovery, protocol identity creation, and the onchain name claim are still unavailable.
         </p>
@@ -103,7 +103,7 @@ export default function OnboardingPage() {
             The browser requires a discoverable, user-verifying credential with the PRF extension. A
             new Ed25519 seed is encrypted locally, then the credential and ciphertext-only wrapper
             are committed together. If either part fails, no service account is activated. The
-            resulting public root deterministically yields an anonymous .woke candidate, but no
+            resulting public root deterministically yields an anonymous .drool candidate, but no
             protocol identity or name claim is created.
           </p>
           <div className="product-cta__actions">

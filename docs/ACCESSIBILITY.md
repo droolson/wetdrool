@@ -11,7 +11,7 @@ browser coverage but has not
 joined the axe matrix. No manual assistive-technology matrix has been executed,
 and these results do not establish WCAG 2.2 AA conformance for the product.
 
-WokeSocial targets WCAG 2.2 Level AA across essential public, onboarding,
+WetDrool targets WCAG 2.2 Level AA across essential public, onboarding,
 publishing, social, community, safety, messaging, future mint-aware payment,
 settings, export, and deletion flows. Conformance is a launch gate, not a
 post-launch enhancement.

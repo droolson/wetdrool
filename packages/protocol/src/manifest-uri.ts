@@ -13,7 +13,7 @@ export interface ParsedWokeManifestUri {
 }
 
 /**
- * Parses the exact manifest-locator grammar accepted by the WokeNet program.
+ * Parses the exact manifest-locator grammar accepted by the DroolNet program.
  * HTTPS locators are parsed only to extract their final CID path segment; this
  * helper never fetches a provider-controlled URL.
  */

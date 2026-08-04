@@ -51,7 +51,7 @@ describe('indexer content storage startup check', () => {
 });
 
 async function temporaryRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'wokesocial-indexer-storage-'));
+  const root = await mkdtemp(join(tmpdir(), 'wetdrool-indexer-storage-'));
   temporaryRoots.push(root);
   return root;
 }

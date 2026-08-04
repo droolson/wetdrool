@@ -6,8 +6,8 @@ import {
   assertPostgresTlsPolicy,
   isLocalOrUnspecifiedHostname,
   isLoopbackHostname,
-} from '@wokesocial/config';
-import { parseTrustedProxyCidrs } from '@wokesocial/config/trusted-proxy';
+} from '@wetdrool/config';
+import { parseTrustedProxyCidrs } from '@wetdrool/config/trusted-proxy';
 
 const rpIdSchema = z
   .string()
@@ -40,7 +40,7 @@ const databaseUrlSchema = z.url().refine((value) => {
   const protocol = new URL(value).protocol;
   return protocol === 'postgres:' || protocol === 'postgresql:';
 }, 'Database URL must use PostgreSQL.');
-const legacyRedirectRpIds = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const legacyRedirectRpIds = new Set(['droolhouse.com', 'www.droolhouse.com']);
 
 function normalizeDnsHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.+$/u, '');
@@ -55,7 +55,7 @@ export function parseAuthConfig(input: NodeJS.ProcessEnv = process.env) {
       NODE_TLS_REJECT_UNAUTHORIZED: z.string().optional(),
       AUTH_HOST: z.string().min(1).default('127.0.0.1'),
       AUTH_PORT: z.coerce.number().int().min(1).max(65_535).default(4300),
-      AUTH_RP_NAME: z.string().trim().min(1).max(120).default('WokeSocial'),
+      AUTH_RP_NAME: z.string().trim().min(1).max(120).default('WetDrool'),
       AUTH_RP_ID: rpIdSchema.default('localhost'),
       AUTH_ORIGIN: originSchema.default('http://localhost:4300'),
       AUTH_DATABASE_URL: databaseUrlSchema.optional(),

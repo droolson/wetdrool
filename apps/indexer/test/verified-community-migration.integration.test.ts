@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_ADMIN_DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool';
 const migrationDirectory = join(dirname(fileURLToPath(import.meta.url)), '../migrations');
 
 describe('0018 predeployment ABI reset boundary', () => {
@@ -23,7 +23,7 @@ describe('0018 predeployment ABI reset boundary', () => {
           block_time, event_type, event_body, manifest_pending,
           terminal_manifest_failure_code
         ) VALUES (
-          ${`wokenet:v1:${publicKey()}:${publicKey()}`},
+          ${`droolnet:v1:${publicKey()}:${publicKey()}`},
           ${bs58.encode(randomBytes(64))}, 0, 0, 1,
           '2026-07-29T12:00:00.000Z', ${eventType},
           ${sql.json({ type: eventType })}, false, null
@@ -48,9 +48,9 @@ describe('0018 predeployment ABI reset boundary', () => {
 
   it('refuses a legacy projection row even when its raw event is absent', async () => {
     await withPre0018Schema(async (sql, migration0018) => {
-      const networkId = `wokenet:v1:${publicKey()}:${publicKey()}`;
+      const networkId = `droolnet:v1:${publicKey()}:${publicKey()}`;
       const identityAddress = publicKey();
-      const creatorIdentityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+      const creatorIdentityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
       const rootAuthority = publicKey();
       const transactionSignature = bs58.encode(randomBytes(64));
       await sql`
@@ -160,7 +160,7 @@ async function withPre0018Schema(
 
   try {
     await sql.unsafe(`CREATE SCHEMA "${schema}"`);
-    await sql.unsafe(`SET search_path TO "${schema}", wokesocial_indexer, pg_catalog`);
+    await sql.unsafe(`SET search_path TO "${schema}", wetdrool_indexer, pg_catalog`);
     for (const file of files.filter((candidate) => candidate < migration0018File)) {
       await sql.unsafe(await readFile(join(migrationDirectory, file), 'utf8'));
     }
@@ -170,7 +170,7 @@ async function withPre0018Schema(
       schema,
     );
   } finally {
-    await sql.unsafe('SET search_path TO wokesocial_indexer, pg_catalog').catch(() => undefined);
+    await sql.unsafe('SET search_path TO wetdrool_indexer, pg_catalog').catch(() => undefined);
     await sql.unsafe(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`).catch(() => undefined);
     await sql.end({ timeout: 5 });
   }

@@ -1,4 +1,4 @@
-import type { PostResponse } from '@wokesocial/indexer-client';
+import type { PostResponse } from '@wetdrool/indexer-client';
 import {
   canonicalizeEnvelope,
   decodeMultibaseBase64Url,
@@ -8,7 +8,7 @@ import {
   signingKeyIdFor,
   solanaPublicKeySchema,
   transactionSignatureSchema,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import {
   buildCreatePrimaryWokeIdentityInstruction,
   buildClaimRandomWokeNameInstruction,
@@ -45,7 +45,7 @@ import {
   type WokePostReferenceAccountRecord,
   type WokeTransactionExecutionResult,
   type WokeTransactionSigner,
-} from '@wokesocial/sdk';
+} from '@wetdrool/sdk';
 import bs58 from 'bs58';
 
 import type { BrowserAuthClient, PasskeyOperationSigner } from './auth/browser-auth-client';
@@ -317,7 +317,7 @@ export async function publishLocalnetTextPost(
         assertIdentityBuildersAgree(identityCoordinates, builtIdentity, rootAuthority, stage);
 
         const identityId = identityIdSchema.parse(
-          `wokesocialid:v1:${runtime.networkId}:${identityCoordinates.identityAddress}`,
+          `wetdroolid:v1:${runtime.networkId}:${identityCoordinates.identityAddress}`,
         );
         const rootSigningKey = signingKeyIdFor(identityId, publicKey, 'root');
         if (rootSigningKey !== `${identityId}#root/${rootAuthority}`) {
@@ -618,7 +618,7 @@ export async function publishLocalnetTextPost(
           const envelope = await signPayloadWithSigner(payload, (request) => {
             assertActive(input.abortSignal, stage);
             if (
-              request.purpose !== 'wokesocial-portable-object-v1' ||
+              request.purpose !== 'wetdrool-portable-object-v1' ||
               request.algorithm !== 'Ed25519' ||
               request.keyId !== rootSigningKey
             ) {
@@ -1015,7 +1015,7 @@ function parseRuntime(runtime: LocalnetPublicationRuntime): LocalnetPublicationR
     !genesis.success ||
     !program.success ||
     !network.success ||
-    network.data !== `wokenet:v1:${genesis.data}:${program.data}` ||
+    network.data !== `droolnet:v1:${genesis.data}:${program.data}` ||
     !Number.isSafeInteger(runtime.targetBalanceLamports) ||
     runtime.targetBalanceLamports < 1 ||
     runtime.targetBalanceLamports > MAXIMUM_LOCALNET_TARGET_LAMPORTS
@@ -1023,7 +1023,7 @@ function parseRuntime(runtime: LocalnetPublicationRuntime): LocalnetPublicationR
     throw publicationError(
       'invalid-runtime',
       'authenticating',
-      'The publication runtime is not an exact bounded loopback WokeNet deployment.',
+      'The publication runtime is not an exact bounded loopback DroolNet deployment.',
     );
   }
   return Object.freeze({
@@ -1266,7 +1266,7 @@ function transactionSignerFor(
       );
     }
     if (
-      request.purpose !== 'wokenet-transaction-v1' ||
+      request.purpose !== 'droolnet-transaction-v1' ||
       request.context.endpoint !== context.endpoint ||
       request.context.genesisHash !== context.genesisHash ||
       request.context.programAddress !== context.programAddress ||
@@ -1442,7 +1442,7 @@ function verifyRecoveredTransaction(
   if (message.instructions.length !== 1) {
     throw recoveryError(
       'invalid-response',
-      'The recovered transaction must contain one top-level WokeSocial instruction.',
+      'The recovered transaction must contain one top-level WetDrool instruction.',
     );
   }
   const instruction = record(message.instructions[0], 'transaction instruction');
@@ -1495,7 +1495,7 @@ async function recoveryRpc<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   assertRecoveryActive(signal);
-  const id = `wokesocial-finality-recovery-${method}`;
+  const id = `wetdrool-finality-recovery-${method}`;
   let response: Response;
   try {
     response = await request(endpoint, {

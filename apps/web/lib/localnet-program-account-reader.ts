@@ -1,9 +1,9 @@
-import { solanaPublicKeySchema } from '@wokesocial/protocol';
+import { solanaPublicKeySchema } from '@wetdrool/protocol';
 import type {
   WokeProgramAccountReader,
   WokeProgramAccountReadRequest,
   WokeProgramAccountSnapshot,
-} from '@wokesocial/sdk';
+} from '@wetdrool/sdk';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
 const MAXIMUM_RPC_RESPONSE_BYTES = 256 * 1024;
@@ -113,7 +113,7 @@ async function assertGenesis(
   const genesisHash = await rpc<string>(fetch, endpoint, 'getGenesisHash', [], signal);
   if (genesisHash !== expectedGenesisHash) {
     throw new LocalnetProgramAccountReaderError(
-      'The local validator genesis hash changed or does not match WokeNet.',
+      'The local validator genesis hash changed or does not match DroolNet.',
       'network-mismatch',
     );
   }
@@ -121,7 +121,7 @@ async function assertGenesis(
 
 function parseRequest(input: WokeProgramAccountReadRequest) {
   if (input === null || typeof input !== 'object') {
-    throw invalidRequest('A WokeNet account read request is required.');
+    throw invalidRequest('A DroolNet account read request is required.');
   }
   let endpoint: URL;
   try {
@@ -212,7 +212,7 @@ async function rpc<T>(
   params: readonly unknown[],
   signal?: AbortSignal,
 ): Promise<T> {
-  const requestId = `wokesocial-account-reader-${method}`;
+  const requestId = `wetdrool-account-reader-${method}`;
   let response: Response;
   try {
     response = await fetch(endpoint, {

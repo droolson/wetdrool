@@ -7,7 +7,7 @@ import {
   encodeMultibaseBase64Url,
   type CommunityMembershipContent,
   type NetworkId,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   deriveCommunityMembershipAddress,
@@ -23,15 +23,15 @@ export async function exerciseModerationAfterMemberDeactivation(
   signingKind: 'root' | 'delegation',
 ) {
   const programId = publicKey();
-  const networkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
+  const networkId = `droolnet:v1:${publicKey()}:${programId}` as NetworkId;
   const configAddress = publicKey();
   const creatorAddress = publicKey();
   const memberAddress = publicKey();
   const rootAuthority = publicKey();
   const memberAuthority = publicKey();
   const delegateAuthority = publicKey();
-  const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
-  const memberIdentityId = `wokesocialid:v1:${networkId}:${memberAddress}`;
+  const creatorIdentityId = `wetdroolid:v1:${networkId}:${creatorAddress}`;
+  const memberIdentityId = `wetdroolid:v1:${networkId}:${memberAddress}`;
   const communityAddress = publicKey();
   const membershipAddress = await deriveCommunityMembershipAddress(
     programId,
@@ -41,7 +41,7 @@ export async function exerciseModerationAfterMemberDeactivation(
   const communityHash = digest();
   const joinHash = digest();
   const moderationHash = digest();
-  const joinObjectId = `wokesocialobj:v1:community-membership:${joinHash}`;
+  const joinObjectId = `wetdroolobj:v1:community-membership:${joinHash}`;
   const action = signingKind === 'root' ? 'remove' : 'ban';
   const state = signingKind === 'root' ? 'removed' : 'banned';
   const actorSequence = signingKind === 'root' ? 2n : 3n;
@@ -74,7 +74,7 @@ export async function exerciseModerationAfterMemberDeactivation(
         };
 
   const communityManifest: VerifiedManifest = {
-    objectId: `wokesocialobj:v1:community:${communityHash}`,
+    objectId: `wetdroolobj:v1:community:${communityHash}`,
     cid: TEST_CID,
     payloadHash: communityHash,
     schemaVersion: 2,
@@ -112,7 +112,7 @@ export async function exerciseModerationAfterMemberDeactivation(
     } satisfies CommunityMembershipContent,
   };
   const moderationManifest: VerifiedManifest = {
-    objectId: `wokesocialobj:v1:community-membership:${moderationHash}`,
+    objectId: `wetdroolobj:v1:community-membership:${moderationHash}`,
     cid: TEST_CID,
     payloadHash: moderationHash,
     schemaVersion: 2,

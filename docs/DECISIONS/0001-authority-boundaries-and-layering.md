@@ -8,7 +8,7 @@
 
 Social applications commonly allow a hosted database, moderation service, or
 API to become the real source of truth even when some records are onchain.
-WokeSocial requires identity, public relationships, and signed content to
+WetDrool requires identity, public relationships, and signed content to
 survive the flagship operator while keeping private information off public
 infrastructure.
 

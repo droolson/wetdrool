@@ -1,4 +1,4 @@
-import { createIndexerClient, type IndexedPost } from '@wokesocial/indexer-client';
+import { createIndexerClient, type IndexedPost } from '@wetdrool/indexer-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { MobileRuntimeConfig } from './runtime-config';
@@ -80,7 +80,7 @@ export function useChronologicalFeed(
         if (result.value.network !== configuredDeployment.id) {
           setState({
             detail:
-              'The indexer returned a different WokeNet Solana deployment. No feed data was accepted.',
+              'The indexer returned a different DroolNet Solana deployment. No feed data was accepted.',
             kind: 'degraded',
             posts: previousPosts,
           });

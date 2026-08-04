@@ -17,7 +17,7 @@ const policy = { permanence: 'deletion-compatible' as const };
 
 describe('content-addressed storage', () => {
   it('round-trips and deletes verified local bytes', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'wokesocial-cas-'));
+    const root = await mkdtemp(join(tmpdir(), 'wetdrool-cas-'));
     try {
       const storage = new LocalContentAddressedStorage({
         rootDirectory: root,
@@ -37,7 +37,7 @@ describe('content-addressed storage', () => {
   });
 
   it('detects local corruption', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'wokesocial-cas-'));
+    const root = await mkdtemp(join(tmpdir(), 'wetdrool-cas-'));
     try {
       const storage = new LocalContentAddressedStorage({ rootDirectory: root });
       const receipt = await storage.put(bytes, policy);
@@ -85,7 +85,7 @@ describe('content-addressed storage', () => {
       await expect(operation).rejects.toMatchObject({ code: 'invalid-cid' });
     }
 
-    const root = await mkdtemp(join(tmpdir(), 'wokesocial-cas-'));
+    const root = await mkdtemp(join(tmpdir(), 'wetdrool-cas-'));
     try {
       const local = new LocalContentAddressedStorage({ rootDirectory: root });
       await expect(local.get(invalidCid)).rejects.toMatchObject({ code: 'invalid-cid' });

@@ -426,7 +426,7 @@ fn handle_validation_is_normalized_bounded_and_hash_bound() {
         "abc",
         "a1b",
         "1ab",
-        "wokesocial",
+        "wetdrool",
         "a_b_c",
         "a".repeat(MAX_HANDLE_BYTES).as_str(),
     ] {
@@ -875,7 +875,7 @@ fn governance_delegation_accepts_either_social_or_community_scope() {
 #[test]
 fn governance_strategy_and_windows_are_canonical_and_bounded() {
     const STRATEGY: &str = concat!(
-        "wokenet:community-governance-strategy:v1",
+        "droolnet:community-governance-strategy:v1",
         "\0",
         "{\"abstainTreatment\":\"quorum-only\",\"approvalBasisPoints\":5001,",
         "\"execution\":\"outcome-record-only\",\"model\":\"one-active-member-one-vote\",",

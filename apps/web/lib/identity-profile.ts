@@ -1,20 +1,20 @@
 import {
   fetchIdentityProfile,
   type IdentityProfileResult,
-} from '@wokesocial/indexer-client/identity-profile';
-import type { IndexerFetch } from '@wokesocial/indexer-client/projected-feed';
-import { identityIdSchema } from '@wokesocial/protocol';
+} from '@wetdrool/indexer-client/identity-profile';
+import type { IndexerFetch } from '@wetdrool/indexer-client/projected-feed';
+import { identityIdSchema } from '@wetdrool/protocol';
 
 import {
   getIndexerBaseUrl,
-  getWokeNetNetworkId,
+  getDroolNetNetworkId,
   ProviderConfigurationError,
 } from './provider-config';
 
 export type {
   IdentityProfileResult,
   IdentityProfileView,
-} from '@wokesocial/indexer-client/identity-profile';
+} from '@wetdrool/indexer-client/identity-profile';
 
 /**
  * A route segment that is not a portable identity identifier is reported as
@@ -38,7 +38,7 @@ export async function getIdentityProfile(identityId: string): Promise<IdentityPr
   let network: string | null;
   try {
     base = getIndexerBaseUrl();
-    network = getWokeNetNetworkId();
+    network = getDroolNetNetworkId();
   } catch (error) {
     return {
       detail:
@@ -52,7 +52,7 @@ export async function getIdentityProfile(identityId: string): Promise<IdentityPr
   if (!base) {
     return {
       detail:
-        'Set WOKESOCIAL_INDEXER_URL to a compatible indexer. No profile state is substituted.',
+        'Set WETDROOL_INDEXER_URL to a compatible indexer. No profile state is substituted.',
       kind: 'degraded',
       reason: 'unconfigured',
     };
@@ -65,7 +65,7 @@ export async function getIdentityProfile(identityId: string): Promise<IdentityPr
   if (result.kind === 'ready' && network !== null && result.value.network !== network) {
     return {
       detail:
-        'The resolved identity belongs to a different WokeNet Solana deployment than this app is configured for.',
+        'The resolved identity belongs to a different DroolNet Solana deployment than this app is configured for.',
       kind: 'degraded',
       reason: 'invalid-response',
     };

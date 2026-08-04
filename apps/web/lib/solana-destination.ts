@@ -2,8 +2,8 @@ import {
   deriveRandomWokeName,
   identityIdSchema,
   solanaPublicKeySchema,
-} from '@wokesocial/protocol';
-import { derivePrimaryWokeIdentityCoordinates } from '@wokesocial/sdk';
+} from '@wetdrool/protocol';
+import { derivePrimaryWokeIdentityCoordinates } from '@wetdrool/sdk';
 import bs58 from 'bs58';
 
 import type { SynchronizedBundle } from './auth/auth-api';
@@ -39,7 +39,7 @@ export interface SolanaDestinationBinding {
 
 /**
  * The deliberate pre-signature view of the underlying Solana destination. A
- * `.woke` name is WokeNet metadata; the values below are what a signature
+ * `.drool` name is DroolNet metadata; the values below are what a signature
  * actually targets on the configured deployment.
  */
 export interface SolanaDestinationDisclosure {
@@ -95,7 +95,7 @@ export interface DeriveSolanaDestinationInput {
 /**
  * Derives the exact destination the next signature would target: the root
  * authority, its deterministic primary identity account on the configured
- * WokeNet deployment, and the deterministic anonymous `.woke` candidate. The
+ * DroolNet deployment, and the deterministic anonymous `.drool` candidate. The
  * derivation is pure and never claims that any account exists onchain.
  */
 export async function deriveSolanaDestinationDisclosure(
@@ -107,7 +107,7 @@ export async function deriveSolanaDestinationDisclosure(
     rootAuthority,
   );
   const identityId = identityIdSchema.parse(
-    `wokesocialid:v1:${input.runtime.networkId}:${coordinates.identityAddress}`,
+    `wetdroolid:v1:${input.runtime.networkId}:${coordinates.identityAddress}`,
   );
   return Object.freeze({
     binding: Object.freeze({

@@ -1,4 +1,4 @@
-import { createCommunityClient, type PublicVerifiedCommunity } from '@wokesocial/indexer-client';
+import { createCommunityClient, type PublicVerifiedCommunity } from '@wetdrool/indexer-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { MobileRuntimeConfig } from './runtime-config';

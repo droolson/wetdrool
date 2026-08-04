@@ -292,7 +292,7 @@ describe('community membership v2', () => {
     const alternateGenesis = bs58.encode(Uint8Array.from({ length: 32 }, () => 13));
     const alternateIdentityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 14));
     const [, , , programAddress] = network.split(':');
-    const alternateMember = `wokesocialid:v1:wokenet:v1:${alternateGenesis}:${programAddress}:${alternateIdentityAddress}`;
+    const alternateMember = `wetdroolid:v1:droolnet:v1:${alternateGenesis}:${programAddress}:${alternateIdentityAddress}`;
     const result = currentPortablePayloadSchema.safeParse({
       ...buildCommunityMembershipPayload(
         moderatorIdentity,

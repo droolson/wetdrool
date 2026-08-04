@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import {
   addLocalSafetyEntry,

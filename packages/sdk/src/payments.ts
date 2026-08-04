@@ -4,7 +4,7 @@ import {
   recipientSplitSchema,
   solanaPublicKeySchema,
   type PaymentAsset,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 const BASIS_POINTS_DENOMINATOR = 10_000n;
 const U64_MAX = 18_446_744_073_709_551_615n;
@@ -302,7 +302,7 @@ function parseBaseUnitAmount(value: string, label: string): bigint {
   if (amount > U64_MAX) {
     throw new PaymentPlanError(
       'amount-out-of-range',
-      `The ${label} exceeds WokeNet's unsigned 64-bit transfer range.`,
+      `The ${label} exceeds DroolNet's unsigned 64-bit transfer range.`,
     );
   }
   return amount;

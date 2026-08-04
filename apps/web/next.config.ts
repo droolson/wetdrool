@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-  transpilePackages: ['@wokesocial/ui'],
+  transpilePackages: ['@wetdrool/ui'],
 };
 
 export default nextConfig;

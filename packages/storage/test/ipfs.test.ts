@@ -1,4 +1,4 @@
-import { getContentCid } from '@wokesocial/protocol';
+import { getContentCid } from '@wetdrool/protocol';
 import { describe, expect, it, vi } from 'vitest';
 
 import { IpfsHttpStorage, StorageError } from '../src/index.js';

@@ -1,4 +1,4 @@
-DO $wokesocial_membership_v2_predeployment_reset$
+DO $wetdrool_membership_v2_predeployment_reset$
 BEGIN
   IF EXISTS (
     SELECT 1
@@ -17,7 +17,7 @@ BEGIN
       '0018 changes the predeployment community, membership, and proposal ABI; discard the disposable PostgreSQL projection and local-validator ledger before applying this migration';
   END IF;
 END
-$wokesocial_membership_v2_predeployment_reset$;
+$wetdrool_membership_v2_predeployment_reset$;
 
 ALTER TABLE communities
   ADD COLUMN IF NOT EXISTS visibility text,
@@ -368,12 +368,12 @@ CREATE OR REPLACE FUNCTION accept_pending_manifest_event(
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, wokesocial_indexer
+SET search_path = pg_catalog, wetdrool_indexer
 AS $$
 DECLARE
   affected_rows integer;
 BEGIN
-  UPDATE wokesocial_indexer.protocol_events
+  UPDATE wetdrool_indexer.protocol_events
   SET manifest_pending = false
   WHERE network_id = p_network_id
     AND transaction_signature = p_transaction_signature
@@ -410,12 +410,12 @@ CREATE OR REPLACE FUNCTION reject_pending_manifest_event(
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, wokesocial_indexer
+SET search_path = pg_catalog, wetdrool_indexer
 AS $$
 DECLARE
   affected_rows integer;
 BEGIN
-  UPDATE wokesocial_indexer.protocol_events
+  UPDATE wetdrool_indexer.protocol_events
   SET
     manifest_pending = false,
     terminal_manifest_failure_code = p_terminal_failure_code

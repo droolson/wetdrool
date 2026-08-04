@@ -2,8 +2,8 @@
 
 ## Current status
 
-WokeSocial and WokeNet are pre-release software. No version is currently
-supported for production WokeSocial use or a public WokeNet deployment on
+WetDrool and DroolNet are pre-release software. No version is currently
+supported for production WetDrool use or a public DroolNet deployment on
 Solana, and no security control should be considered verified without evidence
 in the release report. The design requirements and threat model are in
 `docs/SECURITY.md` and `docs/THREAT_MODEL.md`.
@@ -15,7 +15,7 @@ content, or personal information in a public issue.
 
 GitHub private vulnerability reporting is the preferred channel when the repository exposes
 the **Report a vulnerability** button on its Security page. The intended project mailbox is
-`security@woke.social`, but it has not yet been verified. Do not send sensitive material
+`security@wetdrool.com`, but it has not yet been verified. Do not send sensitive material
 to that address until the project confirms it as operational. If private vulnerability
 reporting is unavailable, the project currently has no verified secure intake channel; that is
 an explicit production blocker.
@@ -50,7 +50,7 @@ privacy or service harm.
 High-priority areas include:
 
 - Wallet prompts, transaction substitution, future mint-aware payments,
-  sponsorship, WokeNet programs, and Solana RPC/provider behavior.
+  sponsorship, DroolNet programs, and Solana RPC/provider behavior.
 - Mobile Wallet Adapter intent handling, Seeker Android isolation, signed APK
   provenance, and signing-key protection.
 - Root identity, passkeys, delegated keys, recovery, and revocation.

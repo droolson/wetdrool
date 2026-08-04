@@ -1,10 +1,10 @@
 export type {
   MediaManifestContent,
   MediaManifestContent as ProtocolMediaManifestContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 export type {
   ContentAddressedStorage,
   StorageHealth,
   StoragePolicy,
   StorageReceipt,
-} from '@wokesocial/storage';
+} from '@wetdrool/storage';

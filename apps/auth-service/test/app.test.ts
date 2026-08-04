@@ -498,7 +498,7 @@ async function appFixture() {
   const service = new AuthService({
     store,
     verifier,
-    rpName: 'WokeSocial Test',
+    rpName: 'WetDrool Test',
     rpId: 'localhost',
     origin,
   });

@@ -1,16 +1,16 @@
 {
-  "name": "@wokesocial/protocol",
+  "name": "@wetdrool/protocol",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Canonical WokeSocial protocol schemas, identifiers, hashing, and signatures",
+  "description": "Canonical WetDrool protocol schemas, identifiers, hashing, and signatures",
   "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
-    "./schema/v1": "./schemas/wokesocial-signed-envelope-v1.schema.json"
+    "./schema/v1": "./schemas/wetdrool-signed-envelope-v1.schema.json"
   },
   "files": [
     "dist",

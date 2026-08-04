@@ -1,4 +1,4 @@
-import { networkIdSchema } from '@wokesocial/protocol';
+import { networkIdSchema } from '@wetdrool/protocol';
 
 export type ProviderKind = 'gateway' | 'indexer' | 'relay' | 'rpc';
 
@@ -12,7 +12,7 @@ export interface ProviderSummary {
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
-const LEGACY_REDIRECT_HOSTS = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const LEGACY_REDIRECT_HOSTS = new Set(['droolhouse.com', 'www.droolhouse.com']);
 
 function isLegacyRedirectHostname(hostname: string): boolean {
   return LEGACY_REDIRECT_HOSTS.has(hostname.toLowerCase().replace(/\.+$/u, ''));
@@ -22,7 +22,7 @@ const ENDPOINT_KEYS: Readonly<
   Record<ProviderKind, { key: string; label: string; plural: boolean }>
 > = {
   indexer: {
-    key: 'WOKESOCIAL_INDEXER_URL',
+    key: 'WETDROOL_INDEXER_URL',
     label: 'Indexer',
     plural: false,
   },
@@ -32,12 +32,12 @@ const ENDPOINT_KEYS: Readonly<
     plural: true,
   },
   gateway: {
-    key: 'WOKESOCIAL_CONTENT_GATEWAYS',
+    key: 'WETDROOL_CONTENT_GATEWAYS',
     label: 'Content gateways',
     plural: true,
   },
   relay: {
-    key: 'WOKESOCIAL_RELAY_ENDPOINTS',
+    key: 'WETDROOL_RELAY_ENDPOINTS',
     label: 'Real-time relays',
     plural: true,
   },
@@ -95,17 +95,17 @@ function parseEndpoint(
 }
 
 export function getIndexerBaseUrl(environment: Environment = process.env): URL | null {
-  const rawValue = environment.WOKESOCIAL_INDEXER_URL?.trim();
+  const rawValue = environment.WETDROOL_INDEXER_URL?.trim();
   return rawValue ? parseHttpEndpoint(rawValue) : null;
 }
 
-export function getWokeNetNetworkId(environment: Environment = process.env): string | null {
+export function getDroolNetNetworkId(environment: Environment = process.env): string | null {
   const rawValue = (environment.WOKENET_NETWORK_ID ?? environment.INDEXER_NETWORK_ID)?.trim();
   if (!rawValue) return null;
   const parsed = networkIdSchema.safeParse(rawValue);
   if (!parsed.success) {
     throw new ProviderConfigurationError(
-      'The configured WokeNet network ID is not a canonical Solana deployment identifier.',
+      'The configured DroolNet network ID is not a canonical Solana deployment identifier.',
     );
   }
   return parsed.data;

@@ -7,23 +7,23 @@ import {
   type CommunityCursorState,
   type CommunityDetailResult,
   type CommunityDirectoryResult,
-} from '@wokesocial/indexer-client/community';
-import type { IndexerFetch } from '@wokesocial/indexer-client/projected-feed';
+} from '@wetdrool/indexer-client/community';
+import type { IndexerFetch } from '@wetdrool/indexer-client/projected-feed';
 
 import {
   describeEndpoint,
   getIndexerBaseUrl,
-  getWokeNetNetworkId,
+  getDroolNetNetworkId,
   ProviderConfigurationError,
 } from './provider-config';
 
-export * from '@wokesocial/indexer-client/community';
+export * from '@wetdrool/indexer-client/community';
 export type {
   CommunitySearchMatch,
   DirectVerifiedCommunity,
   PublicVerifiedCommunity,
   VerifiedCommunity,
-} from '@wokesocial/indexer-client/contract';
+} from '@wetdrool/indexer-client/contract';
 
 const webFetch: IndexerFetch = (input, init) =>
   fetch(input, {
@@ -42,7 +42,7 @@ type CommunityConfiguration =
 function providerError(error: unknown): string {
   return error instanceof ProviderConfigurationError
     ? error.message
-    : 'The WokeNet community provider settings could not be read.';
+    : 'The DroolNet community provider settings could not be read.';
 }
 
 function getCommunityConfiguration(): CommunityConfiguration {
@@ -50,7 +50,7 @@ function getCommunityConfiguration(): CommunityConfiguration {
   let network: string | null;
   try {
     base = getIndexerBaseUrl();
-    network = getWokeNetNetworkId();
+    network = getDroolNetNetworkId();
   } catch (error) {
     return {
       detail: providerError(error),
@@ -61,7 +61,7 @@ function getCommunityConfiguration(): CommunityConfiguration {
   if (!base) {
     return {
       detail:
-        'Set WOKESOCIAL_INDEXER_URL to a compatible indexer. No community records are substituted.',
+        'Set WETDROOL_INDEXER_URL to a compatible indexer. No community records are substituted.',
       kind: 'degraded',
       reason: 'unconfigured',
     };

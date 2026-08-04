@@ -22,7 +22,7 @@
   --ws-transition-surface: opacity var(--ws-duration-base) var(--ws-ease-entrance),
     transform var(--ws-duration-base) var(--ws-ease-entrance);
 
-  /* Press feedback. WokeSocial presses shrink; they never bounce. */
+  /* Press feedback. WetDrool presses shrink; they never bounce. */
   --ws-press-scale: 0.975; /* @kind other */
   --ws-lift-distance: -2px; /* @kind other */
 

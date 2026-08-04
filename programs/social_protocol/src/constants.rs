@@ -7,8 +7,8 @@ pub const PROTOCOL_VERSION: u16 = 1;
 /// The only profile manifest schema accepted by new onchain references.
 pub const CURRENT_PROFILE_SCHEMA_VERSION: u16 = 2;
 
-/// All v1 protocol PDAs begin with `b"wokesocial"` and `[1]`.
-pub const PDA_PREFIX: &[u8] = b"wokesocial";
+/// All v1 protocol PDAs begin with `b"wetdrool"` and `[1]`.
+pub const PDA_PREFIX: &[u8] = b"wetdrool";
 /// A separate byte seed prevents future account-version collisions.
 pub const PDA_VERSION: &[u8] = &[ACCOUNT_VERSION];
 
@@ -44,7 +44,7 @@ pub const MAX_HANDLE_BYTES: usize = 30;
 /// Registration names occupy a dedicated prefix that custom claims must not use.
 pub const RANDOM_HANDLE_PREFIX: &str = "anon_";
 /// Cross-client domain separator for anonymous registration-name derivation.
-pub const RANDOM_HANDLE_DERIVATION_DOMAIN: &[u8] = b"wokesocial:woke-name:random:v1\0";
+pub const RANDOM_HANDLE_DERIVATION_DOMAIN: &[u8] = b"wetdrool:woke-name:random:v1\0";
 /// Ten digest bytes produce the frozen 80-bit anonymous suffix.
 pub const RANDOM_HANDLE_DIGEST_BYTES: usize = 10;
 
@@ -61,7 +61,7 @@ pub const VALID_DELEGATION_SCOPES: u16 =
 pub const COMMUNITY_ROLE_MEMBER: u16 = 1 << 0;
 
 /// The only executable governance strategy in v1. The digest is SHA-256 over
-/// the UTF-8 domain `wokenet:community-governance-strategy:v1`, a NUL byte,
+/// the UTF-8 domain `droolnet:community-governance-strategy:v1`, a NUL byte,
 /// and the RFC 8785 canonical JSON strategy descriptor:
 /// `{"abstainTreatment":"quorum-only","approvalBasisPoints":5001,"execution":"outcome-record-only","model":"one-active-member-one-vote","quorumBasisPoints":5000,"version":1}`.
 pub const ONE_ACTIVE_MEMBER_ONE_VOTE_STRATEGY_HASH: [u8; MANIFEST_HASH_BYTES] = [

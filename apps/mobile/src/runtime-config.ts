@@ -1,9 +1,9 @@
 import { clusterApiUrl, PublicKey } from '@solana/web3.js';
-import { networkIdSchema } from '@wokesocial/protocol';
+import { networkIdSchema } from '@wetdrool/protocol';
 
 export type MobileSolanaChain = 'solana:devnet' | 'solana:mainnet-beta';
 
-export interface WokeSocialDeployment {
+export interface WetDroolDeployment {
   readonly expectedGenesisHash: string;
   readonly id: string;
   readonly programId: string;
@@ -11,7 +11,7 @@ export interface WokeSocialDeployment {
 
 export interface MobileRuntimeConfig {
   readonly chain: MobileSolanaChain;
-  readonly deployment: WokeSocialDeployment | null;
+  readonly deployment: WetDroolDeployment | null;
   readonly indexerUrl: string | null;
   readonly rpcUrl: string;
 }
@@ -25,9 +25,9 @@ export interface MobileRuntimeEnvironment {
   readonly EXPO_PUBLIC_SOLANA_RPC_URL?: string | undefined;
   readonly EXPO_PUBLIC_WOKENET_NETWORK_ID?: string | undefined;
   readonly EXPO_PUBLIC_WOKENET_RPC_URL?: string | undefined;
-  readonly EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID?: string | undefined;
-  readonly EXPO_PUBLIC_WOKESOCIAL_INDEXER_URL?: string | undefined;
-  readonly EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID?: string | undefined;
+  readonly EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID?: string | undefined;
+  readonly EXPO_PUBLIC_WETDROOL_INDEXER_URL?: string | undefined;
+  readonly EXPO_PUBLIC_WETDROOL_PROGRAM_ID?: string | undefined;
 }
 
 export interface MobileRuntimeConfigOptions {
@@ -102,7 +102,7 @@ export function parseMobileRuntimeConfig(
   for (const retired of RETIRED_VARIABLES) {
     if (normalizeOptional(environment[retired]) !== null) {
       return invalid(
-        `${retired} is retired. Use EXPO_PUBLIC_SOLANA_RPC_URL and EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID.`,
+        `${retired} is retired. Use EXPO_PUBLIC_SOLANA_RPC_URL and EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID.`,
       );
     }
   }
@@ -120,36 +120,36 @@ export function parseMobileRuntimeConfig(
   );
   if (rpc.kind === 'invalid') return invalid(rpc.detail);
 
-  const rawIndexerUrl = normalizeOptional(environment.EXPO_PUBLIC_WOKESOCIAL_INDEXER_URL);
+  const rawIndexerUrl = normalizeOptional(environment.EXPO_PUBLIC_WETDROOL_INDEXER_URL);
   let indexerUrl: string | null = null;
   if (rawIndexerUrl !== null) {
     const indexer = parseEndpoint(
       rawIndexerUrl,
-      'EXPO_PUBLIC_WOKESOCIAL_INDEXER_URL',
+      'EXPO_PUBLIC_WETDROOL_INDEXER_URL',
       allowInsecureDevelopmentEndpoints,
     );
     if (indexer.kind === 'invalid') return invalid(indexer.detail);
     indexerUrl = indexer.value;
   }
 
-  const rawProgramId = normalizeOptional(environment.EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID);
-  const rawDeploymentId = normalizeOptional(environment.EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID);
+  const rawProgramId = normalizeOptional(environment.EXPO_PUBLIC_WETDROOL_PROGRAM_ID);
+  const rawDeploymentId = normalizeOptional(environment.EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID);
   if ((rawProgramId === null) !== (rawDeploymentId === null)) {
     return invalid(
-      'EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID and EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID must be configured together.',
+      'EXPO_PUBLIC_WETDROOL_PROGRAM_ID and EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID must be configured together.',
     );
   }
 
-  let deployment: WokeSocialDeployment | null = null;
+  let deployment: WetDroolDeployment | null = null;
   if (rawProgramId !== null && rawDeploymentId !== null) {
     const programId = parseProgramId(rawProgramId);
     if (programId === null) {
-      return invalid('EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID must be a canonical Solana public key.');
+      return invalid('EXPO_PUBLIC_WETDROOL_PROGRAM_ID must be a canonical Solana public key.');
     }
     const parsedDeployment = networkIdSchema.safeParse(rawDeploymentId);
     if (!parsedDeployment.success) {
       return invalid(
-        'EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID must be wokenet:v1:<Solana genesis hash>:<program ID>.',
+        'EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID must be droolnet:v1:<Solana genesis hash>:<program ID>.',
       );
     }
     const [, , expectedGenesisHash, deploymentProgramId] = parsedDeployment.data.split(':');
@@ -159,7 +159,7 @@ export function parseMobileRuntimeConfig(
       deploymentProgramId !== programId
     ) {
       return invalid(
-        'The WokeSocial program ID must match the program encoded in its WokeNet deployment ID.',
+        'The WetDrool program ID must match the program encoded in its DroolNet deployment ID.',
       );
     }
     deployment = {
@@ -171,7 +171,7 @@ export function parseMobileRuntimeConfig(
 
   if (indexerUrl !== null && deployment === null) {
     return invalid(
-      'A mobile indexer URL requires a configured WokeSocial Solana deployment so feed responses can be network-bound.',
+      'A mobile indexer URL requires a configured WetDrool Solana deployment so feed responses can be network-bound.',
     );
   }
 

@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/relay",
+  "name": "@wetdrool/relay",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Replaceable, non-authoritative WokeSocial real-time relay",
+  "description": "Replaceable, non-authoritative WetDrool real-time relay",
   "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
@@ -32,9 +32,9 @@
   },
   "dependencies": {
     "@noble/curves": "2.2.0",
-    "@wokesocial/config": "workspace:*",
-    "@wokesocial/protocol": "workspace:*",
-    "@wokesocial/rate-limit": "workspace:*",
+    "@wetdrool/config": "workspace:*",
+    "@wetdrool/protocol": "workspace:*",
+    "@wetdrool/rate-limit": "workspace:*",
     "bs58": "6.0.0",
     "json-canonicalize": "2.0.0",
     "ws": "8.21.1",

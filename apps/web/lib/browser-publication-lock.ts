@@ -1,7 +1,7 @@
 import { COMPOSER_DRAFT_STORAGE_KEY, type DraftStorage } from './composer-draft';
 import { POST_PUBLICATION_INTENT_STORAGE_KEY } from './post-publication-intent';
 
-export const LOCALNET_PUBLICATION_LOCK_NAME = 'wokesocial:localnet-publication:v1';
+export const LOCALNET_PUBLICATION_LOCK_NAME = 'wetdrool:localnet-publication:v1';
 
 export type BrowserPublicationLockErrorCode =
   'aborted' | 'busy' | 'state-changed' | 'storage-unavailable' | 'unavailable';
@@ -93,7 +93,7 @@ export async function withExclusiveLocalnetPublicationLock<Result>(
         ) {
           throw lockError(
             'busy',
-            'Another WokeSocial tab is already publishing this browser state.',
+            'Another WetDrool tab is already publishing this browser state.',
           );
         }
         const after = readSnapshot(storage);

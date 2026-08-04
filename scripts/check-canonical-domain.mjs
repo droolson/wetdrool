@@ -18,8 +18,8 @@ const ignoredDirectories = new Set([
 ]);
 const intentionalLegacyReferences = new Set([
   '.env.example',
-  'apps/marketing/_ds/wokesocial-design-system-273eab7b-b0fd-4b44-b4e3-2429d9bc73d2/_ds_bundle.js',
-  'apps/marketing/_ds/wokesocial-design-system-273eab7b-b0fd-4b44-b4e3-2429d9bc73d2/readme.md',
+  'apps/marketing/_ds/wetdrool-design-system-273eab7b-b0fd-4b44-b4e3-2429d9bc73d2/_ds_bundle.js',
+  'apps/marketing/_ds/wetdrool-design-system-273eab7b-b0fd-4b44-b4e3-2429d9bc73d2/readme.md',
   'FINAL_REPORT.md',
   'README.md',
   'apps/auth-service/README.md',
@@ -56,7 +56,7 @@ const intentionalLegacyReferences = new Set([
   'scripts/probe-production-domain-redirect.mjs',
 ]);
 const requiredCanonicalMarkers = new Map([
-  ['apps/web/lib/canonical-host.ts', "CANONICAL_ORIGIN = 'https://woke.social'"],
+  ['apps/web/lib/canonical-host.ts', "CANONICAL_ORIGIN = 'https://wetdrool.com'"],
   ['apps/web/proxy.ts', "request.headers.get('host')"],
   [
     'apps/web/lib/provider-config.ts',
@@ -66,11 +66,11 @@ const requiredCanonicalMarkers = new Map([
   ['apps/media-worker/src/config.ts', 'cannot use the legacy redirect host'],
   ['apps/relay/src/config.ts', 'cannot use the legacy redirect host'],
   ['packages/config/src/env.ts', 'must not use a legacy redirect-only hostname'],
-  ['packages/protocol/src/constants.ts', "SIGNATURE_DOMAIN = 'woke.social/protocol/signed-object'"],
-  ['apps/relay/src/protocol.ts', 'woke.social/relay/signed-envelope'],
+  ['packages/protocol/src/constants.ts', "SIGNATURE_DOMAIN = 'wetdrool.com/protocol/signed-object'"],
+  ['apps/relay/src/protocol.ts', 'wetdrool.com/relay/signed-envelope'],
   [
     'scripts/probe-production-domain-redirect.mjs',
-    'Production domain probe passed: exact legacy hosts redirect permanently to woke.social.',
+    'Production domain probe passed: exact legacy hosts redirect permanently to wetdrool.com.',
   ],
 ]);
 
@@ -105,7 +105,7 @@ if (violations.length > 0) {
   );
   process.exitCode = 1;
 } else {
-  process.stdout.write('Canonical domain policy is consistent: woke.social is primary.\n');
+  process.stdout.write('Canonical domain policy is consistent: wetdrool.com is primary.\n');
 }
 
 async function workspaceFiles(directory) {

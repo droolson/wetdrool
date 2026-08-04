@@ -27,7 +27,7 @@ describe('long-running runtime credential isolation', () => {
     const sentinel = 'SENTINEL_MIGRATION_CREDENTIAL';
     try {
       assertNoMigrationCredentials({
-        [name]: `postgresql://migration:${sentinel}@database.test/wokesocial`,
+        [name]: `postgresql://migration:${sentinel}@database.test/wetdrool`,
       });
       throw new Error('Expected migration credential rejection.');
     } catch (error) {
@@ -44,7 +44,7 @@ describe('long-running runtime credential isolation', () => {
           AUTH_DATABASE_RUNTIME_PASSWORD: '',
           PGPASSWORD: '   ',
           POSTGRES_PASSWORD: '',
-          DATABASE_URL: 'postgresql://runtime:secret@database.test/wokesocial',
+          DATABASE_URL: 'postgresql://runtime:secret@database.test/wetdrool',
         },
         { allowedRuntimeUrls: ['DATABASE_URL'] },
       ),
@@ -55,7 +55,7 @@ describe('long-running runtime credential isolation', () => {
     expect(() =>
       assertNoMigrationCredentials(
         {
-          AUTH_DATABASE_URL: 'postgresql://auth:secret@database.test/wokesocial',
+          AUTH_DATABASE_URL: 'postgresql://auth:secret@database.test/wetdrool',
         },
         { allowedRuntimeUrls: ['AUTH_DATABASE_URL'] },
       ),
@@ -63,8 +63,8 @@ describe('long-running runtime credential isolation', () => {
     expect(() =>
       assertNoMigrationCredentials(
         {
-          AUTH_DATABASE_URL: 'postgresql://auth:secret@database.test/wokesocial',
-          MODERATION_DATABASE_URL: 'postgresql://moderation:secret@database.test/wokesocial',
+          AUTH_DATABASE_URL: 'postgresql://auth:secret@database.test/wetdrool',
+          MODERATION_DATABASE_URL: 'postgresql://moderation:secret@database.test/wetdrool',
         },
         { allowedRuntimeUrls: ['AUTH_DATABASE_URL'] },
       ),

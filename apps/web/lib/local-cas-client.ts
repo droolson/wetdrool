@@ -1,4 +1,4 @@
-import { getContentCid, isCanonicalRawSha256Cid } from '@wokesocial/protocol';
+import { getContentCid, isCanonicalRawSha256Cid } from '@wetdrool/protocol';
 
 import {
   LOCAL_CAS_CONTENT_TYPE,

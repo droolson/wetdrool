@@ -19,16 +19,16 @@ import {
 import { CANONICAL_RAW_SHA256_CID_PATTERN, isCanonicalRawSha256Cid } from './content-cid.js';
 
 const base58Pattern = '[1-9A-HJ-NP-Za-km-z]+';
-const networkPattern = new RegExp(`^wokenet:v1:${base58Pattern}:${base58Pattern}$`, 'u');
+const networkPattern = new RegExp(`^droolnet:v1:${base58Pattern}:${base58Pattern}$`, 'u');
 const identityPattern = new RegExp(
-  `^wokesocialid:v1:wokenet:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}$`,
+  `^wetdroolid:v1:droolnet:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}$`,
   'u',
 );
 const keyPattern = new RegExp(
-  `^wokesocialid:v1:wokenet:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}#(?:root|delegation)/${base58Pattern}$`,
+  `^wetdroolid:v1:droolnet:v1:${base58Pattern}:${base58Pattern}:${base58Pattern}#(?:root|delegation)/${base58Pattern}$`,
   'u',
 );
-const objectIdPattern = /^wokesocialobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$/u;
+const objectIdPattern = /^wetdroolobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$/u;
 const digestPattern = /^u[A-Za-z0-9_-]{43}$/u;
 const signaturePattern = /^u[A-Za-z0-9_-]{86}$/u;
 const noncePattern = /^u[A-Za-z0-9_-]{22}$/u;
@@ -149,7 +149,7 @@ export const transactionSignatureSchema = z
   .regex(transactionPattern)
   .refine(
     (value) => isExactBase58Bytes(value, 64),
-    'WokeNet transaction signatures must decode to exactly 64 bytes.',
+    'DroolNet transaction signatures must decode to exactly 64 bytes.',
   );
 export const solanaPublicKeySchema = z
   .string()
@@ -157,7 +157,7 @@ export const solanaPublicKeySchema = z
   .regex(new RegExp(`^${base58Pattern}$`, 'u'))
   .refine(
     (value) => isExactBase58Bytes(value, 32),
-    'WokeNet public keys must decode to exactly 32 bytes.',
+    'DroolNet public keys must decode to exactly 32 bytes.',
   );
 
 export const limitedString = (maximumBytes: number) =>

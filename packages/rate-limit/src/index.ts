@@ -10,8 +10,8 @@ export {
   type FastifyRateLimitStoreCallback,
   type FastifyRateLimitStoreFactoryOptions,
   type FastifyRateLimitStoreResult,
-  type WokeSocialFastifyRateLimitStore,
-  type WokeSocialFastifyRateLimitStoreConstructor,
+  type WetDroolFastifyRateLimitStore,
+  type WetDroolFastifyRateLimitStoreConstructor,
 } from './fastify-store.js';
 export { deriveRateLimitRedisKey, type DeriveRateLimitRedisKeyOptions } from './key.js';
 export {

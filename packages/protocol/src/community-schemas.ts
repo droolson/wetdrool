@@ -510,7 +510,7 @@ export const communityMembershipPayloadSchema = z
         message: 'Community removal and ban actions must be authored by a moderator.',
       });
     }
-    if (!payload.content.member.startsWith(`wokesocialid:v1:${payload.network}:`)) {
+    if (!payload.content.member.startsWith(`wetdroolid:v1:${payload.network}:`)) {
       context.addIssue({
         code: 'custom',
         path: ['content', 'member'],

@@ -3,7 +3,7 @@ import {
   profileContentSchema,
   type LegacyProfileContent,
   type ProfileContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 export type ProfileManifestSchemaVersion = 1 | 2;
 

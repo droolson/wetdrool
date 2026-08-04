@@ -1,6 +1,6 @@
-# WokeSocial relay
+# WetDrool relay
 
-This package is an independently replaceable real-time transport. Relay events are **advisory and non-canonical**: a notification never proves that a manifest is authentic, available, or anchored on WokeNet. Clients must verify the signed manifest, current key authorization, tombstones, access policy, and finalized on-chain anchor before changing durable state.
+This package is an independently replaceable real-time transport. Relay events are **advisory and non-canonical**: a notification never proves that a manifest is authentic, available, or anchored on DroolNet. Clients must verify the signed manifest, current key authorization, tombstones, access policy, and finalized on-chain anchor before changing durable state.
 
 The service transports:
 
@@ -15,13 +15,13 @@ It never reads or logs an event payload, topic, recipient list, ciphertext, subs
 
 ## Security and privacy boundaries
 
-Every publish and subscription authorization is a strict, versioned Ed25519 envelope. The signing key ID must be structurally attached to the declared WokeSocial identity. The server validates the payload hash, signature, exact-millisecond timestamps, expiry, nonce, audience, opaque topic, known critical fields, and event-specific size limits.
+Every publish and subscription authorization is a strict, versioned Ed25519 envelope. The signing key ID must be structurally attached to the declared WetDrool identity. The server validates the payload hash, signature, exact-millisecond timestamps, expiry, nonce, audience, opaque topic, known critical fields, and event-specific size limits.
 
 Structural key possession is not identity authorization: an attacker can generate a key and write its public key under someone else’s identity-shaped key ID. The server therefore starts **locked and not ready by default**, rejects every WebSocket upgrade, and accepts no event until a deployment injects `authorizeKey` backed by a current finalized identity/delegation projection. `authorizeSubscription` can additionally enforce opaque-topic access.
 
 The shipped entrypoint can activate verified key authorization through
 `RELAY_KEY_AUTHORIZER_URL`. Its bounded HTTP adapter nonce-binds each decision,
-requires the authorizer to attest the matching WokeNet network and finalized
+requires the authorizer to attest the matching DroolNet network and finalized
 checkpoint, accepts only a very short freshness window, rejects redirects and
 oversized responses, and fails closed on timeout or any malformed result. The
 authorizer readiness endpoint is wired into relay `/readyz`. A second shipped
@@ -75,7 +75,7 @@ Environment:
 
 - `RELAY_HOST` defaults to `127.0.0.1`
 - `RELAY_PORT` defaults to `4200`
-- `RELAY_ID` defaults to `wokesocial-relay`
+- `RELAY_ID` defaults to `wetdrool-relay`
 - `RELAY_ALLOWED_ORIGINS` is a comma-separated HTTP(S) origin allowlist; empty denies browser `Origin` headers while still allowing non-browser clients
 - `REDIS_URL` is authenticated; nonlocal deployments require a nonlocal `rediss://` endpoint
 - `RATE_LIMIT_KEY_SECRET` is one private canonical base64url 32-byte HMAC key, identical across replicas and stable through rolling deploys
@@ -95,10 +95,10 @@ The key-authorization endpoint accepts this strict JSON request:
 
 ```json
 {
-  "version": "wokesocial-relay-key-authorization-v1",
+  "version": "wetdrool-relay-key-authorization-v1",
   "requestId": "019fa7ee-2b88-7360-888c-64c9897e9969",
-  "identityId": "wokesocialid:v1:wokenet:v1:11111111111111111111111111111111:11111111111111111111111111111111:11111111111111111111111111111111",
-  "keyId": "wokesocialid:v1:wokenet:v1:11111111111111111111111111111111:11111111111111111111111111111111:11111111111111111111111111111111#root/11111111111111111111111111111111",
+  "identityId": "wetdroolid:v1:droolnet:v1:11111111111111111111111111111111:11111111111111111111111111111111:11111111111111111111111111111111",
+  "keyId": "wetdroolid:v1:droolnet:v1:11111111111111111111111111111111:11111111111111111111111111111111:11111111111111111111111111111111#root/11111111111111111111111111111111",
   "purpose": "new-post",
   "issuedAt": "2026-07-28T12:00:00.000Z"
 }
@@ -115,9 +115,9 @@ The subscription-authorization endpoint accepts this separate strict request:
 
 ```json
 {
-  "version": "wokesocial-relay-subscription-authorization-v1",
+  "version": "wetdrool-relay-subscription-authorization-v1",
   "requestId": "019fa7ee-2b88-7360-888c-64c9897e9969",
-  "identityId": "wokesocialid:v1:wokenet:v1:11111111111111111111111111111111:11111111111111111111111111111111:11111111111111111111111111111111",
+  "identityId": "wetdroolid:v1:droolnet:v1:11111111111111111111111111111111:11111111111111111111111111111111:11111111111111111111111111111111",
   "topic": "uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
   "kinds": ["community-update", "new-post"],
   "requestedAt": "2026-07-28T12:00:00.000Z"
@@ -134,12 +134,12 @@ also requires a JSON body containing `"ok": true`.
 ## Local development
 
 ```sh
-pnpm --filter @wokesocial/relay lint
-pnpm --filter @wokesocial/relay typecheck
-pnpm --filter @wokesocial/relay test
-pnpm --filter @wokesocial/relay test:integration
-pnpm --filter @wokesocial/relay build
-pnpm --filter @wokesocial/relay dev
+pnpm --filter @wetdrool/relay lint
+pnpm --filter @wetdrool/relay typecheck
+pnpm --filter @wetdrool/relay test
+pnpm --filter @wetdrool/relay test:integration
+pnpm --filter @wetdrool/relay build
+pnpm --filter @wetdrool/relay dev
 ```
 
 Integration tests use real loopback WebSocket servers and clients. They do not mock socket transport.

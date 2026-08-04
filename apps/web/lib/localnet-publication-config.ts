@@ -1,4 +1,4 @@
-import { networkIdSchema, solanaPublicKeySchema } from '@wokesocial/protocol';
+import { networkIdSchema, solanaPublicKeySchema } from '@wetdrool/protocol';
 
 import { LocalCasConfigurationError, readLocalCasConfig } from './local-cas-config';
 
@@ -37,7 +37,7 @@ export function getLocalnetPublicationConfig(
   if (
     environment.APP_ENV !== 'development' ||
     environment.NODE_ENV === 'production' ||
-    environment.WOKESOCIAL_LOCALNET_WRITES !== '1'
+    environment.WETDROOL_LOCALNET_WRITES !== '1'
   ) {
     return unavailable('Localnet publication requires an explicit development-only write opt-in.');
   }
@@ -58,10 +58,10 @@ export function getLocalnetPublicationConfig(
 
   const rpc = loopbackHttpUrl(environment.NEXT_PUBLIC_SOLANA_RPC_URL);
   const indexer = loopbackHttpUrl(
-    environment.WOKESOCIAL_INDEXER_URL ?? environment.NEXT_PUBLIC_INDEXER_URL,
+    environment.WETDROOL_INDEXER_URL ?? environment.NEXT_PUBLIC_INDEXER_URL,
   );
   const auth = loopbackHttpUrl(
-    environment.WOKESOCIAL_AUTH_URL ?? environment.NEXT_PUBLIC_AUTH_SERVICE_URL,
+    environment.WETDROOL_AUTH_URL ?? environment.NEXT_PUBLIC_AUTH_SERVICE_URL,
   );
   if (rpc === null || indexer === null || auth === null) {
     return unavailable(
@@ -77,12 +77,12 @@ export function getLocalnetPublicationConfig(
     !networkIdSchema.safeParse(networkId).success ||
     !solanaPublicKeySchema.safeParse(programAddress).success
   ) {
-    return unavailable('A canonical WokeNet network ID and Solana program address are required.');
+    return unavailable('A canonical DroolNet network ID and Solana program address are required.');
   }
   const deployment = splitNetworkId(networkId);
   if (deployment === null || deployment.programAddress !== programAddress) {
     return unavailable(
-      'The configured program address does not match the WokeNet deployment identifier.',
+      'The configured program address does not match the DroolNet deployment identifier.',
     );
   }
 
@@ -132,7 +132,7 @@ function loopbackHttpUrl(value: string | undefined): URL | null {
 function splitNetworkId(
   networkId: string,
 ): { readonly genesisHash: string; readonly programAddress: string } | null {
-  const prefix = 'wokenet:v1:';
+  const prefix = 'droolnet:v1:';
   if (!networkId.startsWith(prefix)) return null;
   const coordinates = networkId.slice(prefix.length).split(':');
   if (coordinates.length !== 2) return null;

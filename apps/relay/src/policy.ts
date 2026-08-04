@@ -1,4 +1,4 @@
-export const RELAY_PROTOCOL = 'wokesocial-relay' as const;
+export const RELAY_PROTOCOL = 'wetdrool-relay' as const;
 export const RELAY_PROTOCOL_VERSION = 1 as const;
 export const RELAY_PATH = '/v1/relay' as const;
 export const RELAY_KEY_AUTHORIZATION_MODES = ['locked', 'unverified-local', 'verified'] as const;

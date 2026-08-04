@@ -10,14 +10,14 @@ import type { PortablePayload, SignedEnvelope } from './schemas.js';
 
 export function getObjectId(payload: PortablePayload): string {
   const digest = digestSha256Multibase(canonicalizePayload(payload));
-  return `wokesocialobj:v1:${payload.type}:${digest}`;
+  return `wetdroolobj:v1:${payload.type}:${digest}`;
 }
 
 export function getTypedObjectId(
   objectType: PortableObjectType,
   canonicalPayloadBytes: Uint8Array,
 ): string {
-  return `wokesocialobj:v1:${objectType}:${digestSha256Multibase(canonicalPayloadBytes)}`;
+  return `wetdroolobj:v1:${objectType}:${digestSha256Multibase(canonicalPayloadBytes)}`;
 }
 
 export async function getContentCid(bytes: Uint8Array): Promise<string> {

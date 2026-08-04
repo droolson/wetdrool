@@ -44,7 +44,7 @@ describe('media worker configuration', () => {
       expect(() =>
         parseMediaWorkerConfig({
           ...secureEnvironment,
-          [variableName]: 'postgresql://unrelated:secret@database.test/wokesocial',
+          [variableName]: 'postgresql://unrelated:secret@database.test/wetdrool',
         }),
       ).toThrow(/must not be injected/u);
     }
@@ -54,25 +54,25 @@ describe('media worker configuration', () => {
     expect(
       parseMediaWorkerConfig({
         ...secureEnvironment,
-        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://woke.social:443/,http://localhost:3000',
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://wetdrool.com:443/,http://localhost:3000',
       }).allowedOrigins,
-    ).toEqual(['https://woke.social', 'http://localhost:3000']);
+    ).toEqual(['https://wetdrool.com', 'http://localhost:3000']);
     expect(() =>
       parseMediaWorkerConfig({
         ...secureEnvironment,
-        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://user:secret@woke.social',
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://user:secret@wetdrool.com',
       }),
     ).toThrow();
     expect(() =>
       parseMediaWorkerConfig({
         ...secureEnvironment,
-        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://woke.social/path',
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://wetdrool.com/path',
       }),
     ).toThrow();
     expect(() =>
       parseMediaWorkerConfig({
         ...secureEnvironment,
-        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://sociallywoke.com',
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://droolhouse.com',
       }),
     ).toThrow(/legacy redirect host/);
     expect(() =>
@@ -154,9 +154,9 @@ describe('media worker configuration', () => {
       parseMediaWorkerConfig({
         ...secureEnvironment,
         NODE_ENV: 'production',
-        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://woke.social',
+        MEDIA_WORKER_ALLOWED_ORIGINS: 'https://wetdrool.com',
       }).allowedOrigins,
-    ).toEqual(['https://woke.social']);
+    ).toEqual(['https://wetdrool.com']);
   });
 });
 
@@ -225,7 +225,7 @@ describe('bounded argument-array subprocess runner', () => {
     expect(
       () =>
         new MediaProcessor({
-          temporaryRoot: '/tmp/wokesocial-media-limit-test',
+          temporaryRoot: '/tmp/wetdrool-media-limit-test',
           limits: {
             ...defaultProcessingLimits,
             maximumHlsSegments: 63,

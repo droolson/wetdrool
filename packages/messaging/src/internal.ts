@@ -5,7 +5,7 @@ const ADDRESS_MAX_UTF8_BYTES = 256;
 const ASSERTION_ID_MAX_UTF8_BYTES = 256;
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/u;
 const CONTENT_TYPE_PATTERN = /^[a-z][a-z0-9.+/-]{0,127}$/u;
-const MESSAGE_ID_PATTERN = /^wokesocial-message_[A-Za-z0-9_-]{22}$/u;
+const MESSAGE_ID_PATTERN = /^wetdrool-message_[A-Za-z0-9_-]{22}$/u;
 const MAX_CIPHERTEXT_CHARACTERS = 8 * 1024 * 1024;
 export const MAX_DIRECTORY_BODY_BYTES = 16 * 1024 * 1024;
 export const MAX_PLAINTEXT_BYTES = 1024 * 1024;
@@ -79,17 +79,17 @@ export async function deriveInternalAddress(
   address: SocialDeviceAddress,
 ): Promise<InternalAddress> {
   const external = requireAddress(address);
-  const identityDigest = await digestIdentifier('woke.social/messaging/internal-identity/v1', [
+  const identityDigest = await digestIdentifier('wetdrool.com/messaging/internal-identity/v1', [
     external.identityId,
   ]);
-  const deviceDigest = await digestIdentifier('woke.social/messaging/internal-device/v1', [
+  const deviceDigest = await digestIdentifier('wetdrool.com/messaging/internal-device/v1', [
     external.identityId,
     external.deviceId,
   ]);
   return {
     external: copyAddress(external),
-    userId: `@wokesocial_${encodeBase64Url(identityDigest)}:messaging.invalid`,
-    deviceId: `WOKESOCIAL_${encodeBase64Url(deviceDigest)}`,
+    userId: `@wetdrool_${encodeBase64Url(identityDigest)}:messaging.invalid`,
+    deviceId: `WETDROOL_${encodeBase64Url(deviceDigest)}`,
   };
 }
 
@@ -118,7 +118,7 @@ export function secureMessageId(): string {
   if (typeof cryptoProvider?.getRandomValues !== 'function') {
     throw messagingError('ENGINE_UNAVAILABLE');
   }
-  return `wokesocial-message_${encodeBase64Url(
+  return `wetdrool-message_${encodeBase64Url(
     cryptoProvider.getRandomValues(new Uint8Array(16)),
   )}`;
 }

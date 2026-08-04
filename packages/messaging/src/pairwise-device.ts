@@ -56,9 +56,9 @@ import {
   type UntrustedKeyDirectoryTransport,
 } from './types.js';
 
-const PAIRWISE_EVENT_TYPE = 'woke.social.messaging.pairwise.v1';
-const PAIRWISE_ENVELOPE_PROTOCOL = 'woke.social.messaging.pairwise.v1';
-const PAIRWISE_ENVELOPE_SIGNATURE_DOMAIN = 'woke.social/messaging/pairwise-envelope-signature/v1';
+const PAIRWISE_EVENT_TYPE = 'wetdrool.com.messaging.pairwise.v1';
+const PAIRWISE_ENVELOPE_PROTOCOL = 'wetdrool.com.messaging.pairwise.v1';
+const PAIRWISE_ENVELOPE_SIGNATURE_DOMAIN = 'wetdrool.com/messaging/pairwise-envelope-signature/v1';
 const ENCRYPTED_EVENT_TYPE = 'm.room.encrypted';
 const DIRECTORY_RESPONSE_MAX_BYTES = 16 * 1024 * 1024;
 const DEFAULT_REPLAY_WINDOW_SIZE = 4096;

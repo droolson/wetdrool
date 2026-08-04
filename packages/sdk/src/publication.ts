@@ -21,12 +21,12 @@ import {
   type ProfilePayload,
   type SignedEnvelope,
   verifyEnvelope,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import type {
   MultiProviderStorage,
   ReplicatedPublication,
   StoragePolicy,
-} from '@wokesocial/storage';
+} from '@wetdrool/storage';
 
 import {
   assertFinalized,
@@ -392,7 +392,7 @@ export class PublicationPipeline {
       stored = await this.#storage.publish(verified.canonicalBytes, policy);
 
       stage = 'anchoring';
-      this.#progress('anchoring', 'Submitting the verified reference to WokeNet.', {
+      this.#progress('anchoring', 'Submitting the verified reference to DroolNet.', {
         objectId,
         cid: stored.cid,
       });

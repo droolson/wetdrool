@@ -29,8 +29,8 @@ import {
   type ProfileContent,
   type SignedEnvelope,
   type TombstoneContent,
-} from '@wokesocial/protocol';
-import { LocalContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
+} from '@wetdrool/protocol';
+import { LocalContentAddressedStorage, type StorageReceipt } from '@wetdrool/storage';
 
 import {
   buildIndexerApp,
@@ -59,11 +59,11 @@ import { purgePostgresTestNetworks } from './postgres-test-cleanup.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wetdrool';
 const programId = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 const ZERO_DIGEST = 'uAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const protectedProfileValue = {
@@ -73,12 +73,12 @@ const protectedProfileValue = {
   mediaType: 'application/octet-stream',
   protection: {
     kind: 'encrypted',
-    encryptionFormat: 'wokesocial-sealed-profile-value-v1',
+    encryptionFormat: 'wetdrool-sealed-profile-value-v1',
     keyEnvelope: {
-      id: `wokesocialobj:v1:media-manifest:${ZERO_DIGEST}`,
+      id: `wetdroolobj:v1:media-manifest:${ZERO_DIGEST}`,
     },
     accessPolicy: {
-      id: `wokesocialobj:v1:community-rule-set:${ZERO_DIGEST}`,
+      id: `wetdroolobj:v1:community-rule-set:${ZERO_DIGEST}`,
     },
   },
 } as const satisfies EncryptedContentReference;
@@ -152,7 +152,7 @@ describe('PostgreSQL indexer integration', () => {
 
   it('distinguishes exact duplicates from conflicting immutable event coordinates', async () => {
     await Promise.all([migrate(migrationDatabaseUrl), migrate(migrationDatabaseUrl)]);
-    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkId = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identity = makeIdentity(networkId, 81);
     const projection = new PostgresProjectionStore(databaseUrl);
     const inspection = postgres(databaseUrl, { max: 1 });
@@ -229,7 +229,7 @@ describe('PostgreSQL indexer integration', () => {
 
   it('serializes rebuild before a queued live apply without orphaning raw state', async () => {
     await migrate(migrationDatabaseUrl);
-    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkId = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identity = makeIdentity(networkId, 82);
     const projection = new PostgresProjectionStore(databaseUrl);
     const blocker = postgres(databaseUrl, { max: 1 });
@@ -284,8 +284,8 @@ describe('PostgreSQL indexer integration', () => {
 
   it('allows mutations for different networks to proceed concurrently', async () => {
     await migrate(migrationDatabaseUrl);
-    const networkA = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
-    const networkB = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkA = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkB = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const projection = new PostgresProjectionStore(databaseUrl);
     const blocker = postgres(databaseUrl, { max: 1 });
     const inspection = postgres(databaseUrl, { max: 1 });
@@ -347,7 +347,7 @@ describe('PostgreSQL indexer integration', () => {
     await migrate(migrationDatabaseUrl);
     const inspection = postgres(databaseUrl, { max: 1 });
     const maintenance = postgres(migrationDatabaseUrl, { max: 1 });
-    const explainNetwork = 'wokenet:v1:public-search-explain:program';
+    const explainNetwork = 'droolnet:v1:public-search-explain:program';
 
     try {
       const indexes = await inspection<{ index_name: string; valid: boolean }[]>`
@@ -391,7 +391,7 @@ describe('PostgreSQL indexer integration', () => {
       expect(generated).toEqual([{ count: 8 }]);
 
       const normalized = await inspection<{ value: string }[]>`
-        SELECT wokesocial_public_search_normalize(
+        SELECT wetdrool_public_search_normalize(
           ${'  RIVER\u212A \u00a0\u2003 LAB  '}
         ) AS value
       `;
@@ -414,7 +414,7 @@ describe('PostgreSQL indexer integration', () => {
           root_rotation_count, created_slot, created_at, updated_slot, updated_at
         )
         SELECT
-          'wokesocialid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
+          'wetdroolid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
           ${explainNetwork},
           'public-search-address-' || value,
           'public-search-root-' || value,
@@ -431,7 +431,7 @@ describe('PostgreSQL indexer integration', () => {
           pronouns, content, updated_slot, updated_at
         )
         SELECT
-          'wokesocialid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
+          'wetdroolid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
           'public-search-profile-' || value,
           'bafy-public-search-profile-' || value,
           ${ZERO_DIGEST},
@@ -459,7 +459,7 @@ describe('PostgreSQL indexer integration', () => {
           'public-search-claim-' || value,
           CASE WHEN value = 1 THEN 'river' ELSE 'zz' || lpad(value::text, 4, '0') END,
           ${ZERO_DIGEST},
-          'wokesocialid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
+          'wetdroolid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
           'public-search-root-' || value,
           1,
           true,
@@ -476,7 +476,7 @@ describe('PostgreSQL indexer integration', () => {
         SELECT
           'public-search-post-' || value,
           ${explainNetwork},
-          'wokesocialid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
+          'wetdroolid:v1:' || ${explainNetwork} || ':public-search-address-' || value,
           'bafy-public-search-post-' || value,
           ${ZERO_DIGEST},
           'public-search-root-' || value,
@@ -556,7 +556,7 @@ describe('PostgreSQL indexer integration', () => {
 
   it('keeps public search on isolated bounded read capacity with cancellation', async () => {
     await migrate(migrationDatabaseUrl);
-    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkId = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const projection = new PostgresProjectionStore(databaseUrl, {
       searchConcurrency: 1,
       searchPoolSize: 1,
@@ -614,8 +614,8 @@ describe('PostgreSQL indexer integration', () => {
 
   it('returns search results and checkpoint from one repeatable-read snapshot', async () => {
     await migrate(migrationDatabaseUrl);
-    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
-    const identityId = `wokesocialid:v1:${networkId}:snapshot-address`;
+    const networkId = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const identityId = `wetdroolid:v1:${networkId}:snapshot-address`;
     const objectId = `snapshot-post-${networkId}`;
     const projection = new PostgresProjectionStore(databaseUrl, {
       searchStatementTimeoutMs: 5_000,
@@ -682,16 +682,16 @@ describe('PostgreSQL indexer integration', () => {
 
   it('matches memory and PostgreSQL for canonical handles, NFKC, ties, and adversarial volume', async () => {
     await migrate(migrationDatabaseUrl);
-    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkId = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const postgresProjection = new PostgresProjectionStore(databaseUrl);
     const memoryProjection = new MemoryProjectionStore();
     const inspection = postgres(databaseUrl, { max: 1 });
-    const relevantIdentityId = `wokesocialid:v1:${networkId}:relevant`;
-    const tieAccentIdentityId = `wokesocialid:v1:${networkId}:tie-é`;
-    const tieEmojiIdentityId = `wokesocialid:v1:${networkId}:tie-😀`;
+    const relevantIdentityId = `wetdroolid:v1:${networkId}:relevant`;
+    const tieAccentIdentityId = `wetdroolid:v1:${networkId}:tie-é`;
+    const tieEmojiIdentityId = `wetdroolid:v1:${networkId}:tie-😀`;
     const noiseIdentities = Array.from({ length: 225 }, (_, index) => ({
       identityAddress: `noise-${index}-needle`,
-      identityId: `wokesocialid:v1:${networkId}:noise-${index}-needle`,
+      identityId: `wetdroolid:v1:${networkId}:noise-${index}-needle`,
     }));
     const identities = [
       ...noiseIdentities,
@@ -896,9 +896,9 @@ describe('PostgreSQL indexer integration', () => {
   it('projects verified manifests idempotently and rebuilds from finalized events', async () => {
     await migrate(migrationDatabaseUrl);
 
-    const contentRoot = await mkdtemp(join(tmpdir(), 'wokesocial-indexer-integration-'));
+    const contentRoot = await mkdtemp(join(tmpdir(), 'wetdrool-indexer-integration-'));
     const genesis = bs58.encode(randomBytes(32));
-    const networkId = `wokenet:v1:${genesis}:${programId}` as NetworkId;
+    const networkId = `droolnet:v1:${genesis}:${programId}` as NetworkId;
     const viewer = makeIdentity(networkId, 17);
     const author = makeIdentity(networkId, 29);
     const storage = new LocalContentAddressedStorage({
@@ -1524,7 +1524,7 @@ describe('PostgreSQL indexer integration', () => {
 
   it('atomically quarantines terminal manifests and rebuilds their durable disposition', async () => {
     await migrate(migrationDatabaseUrl);
-    const networkId = `wokenet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
+    const networkId = `droolnet:v1:${bs58.encode(randomBytes(32))}:${programId}` as NetworkId;
     const identity = makeIdentity(networkId, 241);
     const projection = new PostgresProjectionStore(databaseUrl);
     const inspection = postgres(databaseUrl, { max: 1 });
@@ -1536,7 +1536,7 @@ describe('PostgreSQL indexer integration', () => {
       ...eventBase(networkId, 2n, 242, '2026-07-28T16:02:00.000Z'),
       type: 'profile-updated',
       identityId: identity.identityId,
-      objectId: `wokesocialobj:v1:profile:${profileDigest}`,
+      objectId: `wetdroolobj:v1:profile:${profileDigest}`,
       cid: testCid(1),
       payloadHash: profileDigest,
       sequence: 1n,
@@ -1562,7 +1562,7 @@ describe('PostgreSQL indexer integration', () => {
       ...eventBase(networkId, 3n, 243, '2026-07-28T16:03:00.000Z'),
       type: 'profile-updated',
       identityId: identity.identityId,
-      objectId: `wokesocialobj:v1:profile:${rejectedDigest}`,
+      objectId: `wetdroolobj:v1:profile:${rejectedDigest}`,
       cid: testCid(2),
       payloadHash: rejectedDigest,
       sequence: 2n,
@@ -1586,7 +1586,7 @@ describe('PostgreSQL indexer integration', () => {
       ...eventBase(networkId, 4n, 244, '2026-07-28T16:04:00.000Z'),
       type: 'post-published',
       identityId: identity.identityId,
-      objectId: `wokesocialobj:v1:post:${postDigest}`,
+      objectId: `wetdroolobj:v1:post:${postDigest}`,
       cid: testCid(3),
       payloadHash: postDigest,
       sequence: 3n,
@@ -1839,7 +1839,7 @@ function makeIdentity(networkId: NetworkId, keySeed: number): TestIdentity {
   const privateKey = Uint8Array.from({ length: 32 }, (_, index) => (keySeed + index) % 256);
   const publicKey = ed25519.getPublicKey(privateKey);
   const identityAddress = bs58.encode(randomBytes(32));
-  const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+  const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
   return {
     privateKey,
     publicKey,

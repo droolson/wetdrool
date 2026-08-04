@@ -9,7 +9,7 @@ import {
   type NetworkId,
   type PostContent,
   type ProfileContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   MemoryProjectionStore,
@@ -21,8 +21,8 @@ import {
 const genesis = publicKey(1);
 const programId = publicKey(2);
 const identityAddress = publicKey(3);
-const networkId = `wokenet:v1:${genesis}:${programId}` as NetworkId;
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const networkId = `droolnet:v1:${genesis}:${programId}` as NetworkId;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
 const rootAuthority = publicKey(4);
 const configAddress = publicKey(6);
 const retryAt = '2026-07-28T12:05:00.000Z';
@@ -650,7 +650,7 @@ function eventBase(slot: bigint, signatureSeed: number) {
 }
 
 function objectId(type: 'community' | 'profile' | 'post', seed: number): string {
-  return `wokesocialobj:v1:${type}:${digest(seed)}`;
+  return `wetdroolobj:v1:${type}:${digest(seed)}`;
 }
 
 function digest(seed: number): string {

@@ -4,7 +4,7 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
-import { secureRandomBytes } from '@wokesocial/crypto';
+import { secureRandomBytes } from '@wetdrool/crypto';
 
 import { validateKeyBundle } from './bundle-validator.js';
 import { CeremonyManager } from './ceremony-manager.js';

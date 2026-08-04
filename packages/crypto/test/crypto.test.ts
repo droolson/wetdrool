@@ -29,7 +29,7 @@ describe('secure randomness', () => {
     expect(second).toHaveLength(32);
     expect(first).not.toEqual(second);
     expect(identifiers.size).toBe(16);
-    expect([...identifiers][0]).toMatch(/^wokesocial_[A-Za-z0-9_-]{22}$/u);
+    expect([...identifiers][0]).toMatch(/^wetdrool_[A-Za-z0-9_-]{22}$/u);
   });
 
   it('rejects unsafe lengths and ambiguous prefixes', () => {
@@ -44,11 +44,11 @@ describe('domain-separated SHA-256 and HKDF-SHA-256', () => {
   it('matches a stable framed SHA-256 vector and separates domains', async () => {
     const data = new TextEncoder().encode('portable social data');
     const digest = await sha256({
-      domain: 'wokesocial/protocol/content-reference',
+      domain: 'wetdrool/protocol/content-reference',
       data,
     });
     const other = await sha256({
-      domain: 'wokesocial/messaging/content-reference',
+      domain: 'wetdrool/messaging/content-reference',
       data,
     });
 
@@ -60,7 +60,7 @@ describe('domain-separated SHA-256 and HKDF-SHA-256', () => {
     const input = {
       inputKeyMaterial: bytes(1, 32),
       salt: bytes(101, 32),
-      domain: 'wokesocial/messaging/conversation-key',
+      domain: 'wetdrool/messaging/conversation-key',
       context: new TextEncoder().encode('conversation:fixture-1:key-version:3'),
       length: 32,
     } as const;
@@ -82,7 +82,7 @@ describe('domain-separated SHA-256 and HKDF-SHA-256', () => {
       hkdfSha256({
         inputKeyMaterial: bytes(0, 15),
         salt: bytes(0, 16),
-        domain: 'wokesocial/test/key',
+        domain: 'wetdrool/test/key',
         length: 32,
       }),
     ).rejects.toThrow(CryptoInputError);
@@ -94,7 +94,7 @@ describe('AES-256-GCM sealed envelopes', () => {
   const nonce = bytes(201, 12);
   const plaintext = new TextEncoder().encode('Only the intended conversation can open this.');
   const context = new TextEncoder().encode('conversation:fixture-1:message:42');
-  const domain = 'wokesocial/messaging/message';
+  const domain = 'wetdrool/messaging/message';
 
   it('matches a stable vector and round-trips authenticated plaintext', async () => {
     const envelope = await sealAes256Gcm({ key, nonce, plaintext, context, domain });
@@ -173,7 +173,7 @@ describe('passkey PRF account-key wrapping', () => {
       encryptedKey: {
         version: 1,
         algorithm: 'A256GCM',
-        domain: 'wokesocial/auth/account-key-bundle',
+        domain: 'wetdrool/auth/account-key-bundle',
         nonce: 'ERITFBUWFxgZGhsc',
         ciphertext: 'iVMEfep3Pck1Wy_0U0TV6JSr8hsfYaewDl9vv0gvwARcBTWg0r4tnPL56Yp8L2ym',
       },

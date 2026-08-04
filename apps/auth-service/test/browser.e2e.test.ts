@@ -16,7 +16,7 @@ describe('real browser WebAuthn ceremony', () => {
     const store = new MemoryAuthStore();
     const service = new AuthService({
       store,
-      rpName: 'WokeSocial Browser Gate',
+      rpName: 'WetDrool Browser Gate',
       rpId: 'localhost',
       origin,
     });
@@ -74,9 +74,9 @@ describe('real browser WebAuthn ceremony', () => {
         async function rootBundle(credential: PublicKeyCredential) {
           const encoder = new TextEncoder();
           const fields = [
-            encoder.encode('wokesocial.crypto/v1'),
+            encoder.encode('wetdrool.crypto/v1'),
             encoder.encode('sha256'),
-            encoder.encode('wokesocial/auth/passkey-credential-binding'),
+            encoder.encode('wetdrool/auth/passkey-credential-binding'),
             encodeLength(1),
             new Uint8Array(credential.rawId),
           ];
@@ -97,7 +97,7 @@ describe('real browser WebAuthn ceremony', () => {
             encryptedKey: {
               version: 1,
               algorithm: 'A256GCM',
-              domain: 'wokesocial/auth/account-key-bundle',
+              domain: 'wetdrool/auth/account-key-bundle',
               nonce: encode(nonce.buffer as ArrayBuffer),
               ciphertext: encode(ciphertext.buffer as ArrayBuffer),
             },

@@ -3,9 +3,9 @@ import {
   assertNodeTlsVerificationPolicy,
   assertPostgresTlsPolicy,
   isLocalOrUnspecifiedHostname,
-} from '@wokesocial/config';
-import { parseTrustedProxyCidrs } from '@wokesocial/config/trusted-proxy';
-import { networkIdSchema, solanaPublicKeySchema } from '@wokesocial/protocol';
+} from '@wetdrool/config';
+import { parseTrustedProxyCidrs } from '@wetdrool/config/trusted-proxy';
+import { networkIdSchema, solanaPublicKeySchema } from '@wetdrool/protocol';
 import { z } from 'zod';
 
 import { SOCIAL_PROTOCOL_EVENT_LAYOUT } from './anchor-events.js';
@@ -188,7 +188,7 @@ const indexerEnvironmentSchema = z.object({
   APP_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
   CONTENT_STORAGE_PATH: z.string().min(1).default('.local/content'),
   DATABASE_URL: postgresUrlSchema.default(
-    'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial',
+    'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool',
   ),
   INDEXER_BATCH_SIZE: z.coerce.number().int().min(1).max(1_000).default(100),
   INDEXER_DEPLOYMENT_SLOT: z.coerce.number().int().nonnegative().default(0),

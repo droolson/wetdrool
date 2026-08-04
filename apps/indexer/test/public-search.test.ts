@@ -12,7 +12,7 @@ describe('deterministic public search ranking', () => {
   const people: readonly PublicSearchCandidate[] = [
     {
       kind: 'person',
-      identityId: 'wokesocialid:v1:wokenet:v1:genesis:program:river',
+      identityId: 'wetdroolid:v1:droolnet:v1:genesis:program:river',
       displayName: 'River Chen',
       bio: 'Building portable social infrastructure.',
       handle: 'river',
@@ -20,7 +20,7 @@ describe('deterministic public search ranking', () => {
     },
     {
       kind: 'person',
-      identityId: 'wokesocialid:v1:wokenet:v1:genesis:program:riverside',
+      identityId: 'wetdroolid:v1:droolnet:v1:genesis:program:riverside',
       displayName: 'Riverside Lab',
       bio: '',
       handle: 'riverside',

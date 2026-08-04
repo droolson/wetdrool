@@ -8,20 +8,20 @@ import { describe, expect, it } from 'vitest';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_ADMIN_DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool';
 const migrationDirectory = join(dirname(fileURLToPath(import.meta.url)), '../migrations');
 
 describe('0013 identity deactivation migration', () => {
   it('backfills a retained deactivation and its exact sequence provenance from 0012', async () => {
     const schema = `indexer_0013_${randomBytes(8).toString('hex')}`;
     const sql = postgres(databaseUrl, { max: 1, onnotice: () => undefined });
-    const networkId = 'wokenet:v1:migration-genesis:migration-program';
-    const identityId = `wokesocialid:v1:${networkId}:migration-identity`;
+    const networkId = 'droolnet:v1:migration-genesis:migration-program';
+    const identityId = `wetdroolid:v1:${networkId}:migration-identity`;
     const createdAt = new Date('2026-07-28T12:00:01.000Z');
 
     try {
       await sql.unsafe(`CREATE SCHEMA "${schema}"`);
-      await sql.unsafe(`SET search_path TO "${schema}", wokesocial_indexer, public`);
+      await sql.unsafe(`SET search_path TO "${schema}", wetdrool_indexer, public`);
       const files = (await readdir(migrationDirectory))
         .filter((file) => /^\d+_[a-z0-9_]+\.sql$/u.test(file))
         .sort();
@@ -157,13 +157,13 @@ describe('0013 identity deactivation migration', () => {
   ])('rolls back the migration for a retained $name', async (fixture) => {
     const schema = `indexer_0013_invalid_${randomBytes(8).toString('hex')}`;
     const sql = postgres(databaseUrl, { max: 1, onnotice: () => undefined });
-    const networkId = 'wokenet:v1:migration-invalid-genesis:migration-invalid-program';
-    const identityId = `wokesocialid:v1:${networkId}:migration-invalid-identity`;
+    const networkId = 'droolnet:v1:migration-invalid-genesis:migration-invalid-program';
+    const identityId = `wetdroolid:v1:${networkId}:migration-invalid-identity`;
     const createdAt = new Date('2026-07-28T12:00:01.000Z');
 
     try {
       await sql.unsafe(`CREATE SCHEMA "${schema}"`);
-      await sql.unsafe(`SET search_path TO "${schema}", wokesocial_indexer, public`);
+      await sql.unsafe(`SET search_path TO "${schema}", wetdrool_indexer, public`);
       const files = (await readdir(migrationDirectory))
         .filter((file) => /^\d+_[a-z0-9_]+\.sql$/u.test(file))
         .sort();

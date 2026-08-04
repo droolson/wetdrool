@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import { loadComposerDraft } from '@/lib/composer-draft';
 import { createLocalDeviceExport, serializeLocalDeviceExport } from '@/lib/local-export';
@@ -34,7 +34,7 @@ function HydratedLocalExport() {
     const payload = serializeLocalDeviceExport(createLocalDeviceExport(preferences, draft));
     const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
     const link = document.createElement('a');
-    link.download = 'wokesocial-device-export.json';
+    link.download = 'wetdrool-device-export.json';
     link.href = url;
     link.click();
     URL.revokeObjectURL(url);

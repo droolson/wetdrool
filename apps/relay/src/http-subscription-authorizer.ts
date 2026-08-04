@@ -5,7 +5,7 @@ import {
   identityIdSchema,
   networkIdSchema,
   unsigned64Schema,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import { z } from 'zod';
 
 import { HttpAuthorizerClient, parseHttpAuthorizerEndpoint } from './http-authorizer-client.js';
@@ -24,7 +24,7 @@ const authorizationInputSchema = z
   .strict();
 const authorizationResponseSchema = z
   .object({
-    version: z.literal('wokesocial-relay-subscription-authorization-v1'),
+    version: z.literal('wetdrool-relay-subscription-authorization-v1'),
     requestId: z.uuid(),
     authorized: z.boolean(),
     finalized: z.literal(true),
@@ -81,7 +81,7 @@ export class HttpRelaySubscriptionAuthorizer {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            version: 'wokesocial-relay-subscription-authorization-v1',
+            version: 'wetdrool-relay-subscription-authorization-v1',
             requestId,
             identityId: parsedInput.data.identityId,
             topic: parsedInput.data.topic,

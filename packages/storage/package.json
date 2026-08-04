@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/storage",
+  "name": "@wetdrool/storage",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Replaceable content-addressed storage adapters for WokeSocial",
+  "description": "Replaceable content-addressed storage adapters for WetDrool",
   "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {
@@ -23,7 +23,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@wokesocial/protocol": "workspace:*",
+    "@wetdrool/protocol": "workspace:*",
     "multiformats": "14.0.5"
   },
   "devDependencies": {

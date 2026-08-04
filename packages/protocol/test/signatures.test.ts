@@ -22,7 +22,7 @@ describe('signed envelopes', () => {
     const envelope = signPayload(payload, privateKey);
     const verified = await verifyEnvelope(canonicalizeEnvelope(envelope), () => true);
 
-    expect(verified.objectId).toMatch(/^wokesocialobj:v1:post:/u);
+    expect(verified.objectId).toMatch(/^wetdroolobj:v1:post:/u);
     expect(verified.cid).toMatch(/^bafk/u);
     expect(verified.envelope).toEqual(envelope);
   });
@@ -38,7 +38,7 @@ describe('signed envelopes', () => {
         expect(request).toMatchObject({
           algorithm: 'Ed25519',
           keyId: payload.signingKey,
-          purpose: 'wokesocial-portable-object-v1',
+          purpose: 'wetdrool-portable-object-v1',
         });
         return ed25519.sign(request.message, privateKey);
       },

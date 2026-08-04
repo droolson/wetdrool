@@ -3,8 +3,8 @@ import { createHash, randomBytes } from 'node:crypto';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   ManifestVerifier,
@@ -18,22 +18,22 @@ import { migrate } from '../src/migrate.js';
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wetdrool';
 
 describe('PostgreSQL handle projection integration', () => {
   it('rolls back invalid claims, releases exactly, and rebuilds a reclaim', async () => {
     await migrate(migrationDatabaseUrl);
 
     const networkId =
-      `wokenet:v1:${bs58.encode(randomBytes(32))}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
+      `droolnet:v1:${bs58.encode(randomBytes(32))}:${SOCIAL_PROTOCOL_EVENT_LAYOUT.programId}` as NetworkId;
     const firstAddress = publicKey(101);
     const secondAddress = publicKey(102);
-    const firstIdentityId = `wokesocialid:v1:${networkId}:${firstAddress}`;
-    const secondIdentityId = `wokesocialid:v1:${networkId}:${secondAddress}`;
+    const firstIdentityId = `wetdroolid:v1:${networkId}:${firstAddress}`;
+    const secondIdentityId = `wetdroolid:v1:${networkId}:${secondAddress}`;
     const firstAuthority = publicKey(103);
     const secondAuthority = publicKey(104);
     const handleClaimAddress = publicKey(105);

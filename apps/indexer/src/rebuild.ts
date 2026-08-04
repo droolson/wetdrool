@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { networkIdSchema } from '@wokesocial/protocol';
-import { LocalContentAddressedStorage } from '@wokesocial/storage';
+import { networkIdSchema } from '@wetdrool/protocol';
+import { LocalContentAddressedStorage } from '@wetdrool/storage';
 import postgres from 'postgres';
 
 import {

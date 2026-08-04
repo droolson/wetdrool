@@ -4,7 +4,7 @@ import { parseMobileRuntimeConfig, runtimeEndpointLabel } from '../src/runtime-c
 
 const genesisHash = '4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB';
 const programId = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
-const deploymentId = `wokenet:v1:${genesisHash}:${programId}`;
+const deploymentId = `droolnet:v1:${genesisHash}:${programId}`;
 
 describe('parseMobileRuntimeConfig', () => {
   it('defaults to Solana devnet without inventing a program deployment', () => {
@@ -24,9 +24,9 @@ describe('parseMobileRuntimeConfig', () => {
       parseMobileRuntimeConfig({
         EXPO_PUBLIC_SOLANA_CHAIN: 'solana:devnet',
         EXPO_PUBLIC_SOLANA_RPC_URL: 'https://rpc.example.test/solana?key=public',
-        EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID: deploymentId,
-        EXPO_PUBLIC_WOKESOCIAL_INDEXER_URL: 'https://indexer.example.test/operator/',
-        EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID: programId,
+        EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID: deploymentId,
+        EXPO_PUBLIC_WETDROOL_INDEXER_URL: 'https://indexer.example.test/operator/',
+        EXPO_PUBLIC_WETDROOL_PROGRAM_ID: programId,
       }),
     ).toEqual({
       kind: 'ready',
@@ -46,13 +46,13 @@ describe('parseMobileRuntimeConfig', () => {
   it('rejects mismatched and partial deployment configuration', () => {
     expect(
       parseMobileRuntimeConfig({
-        EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID: deploymentId,
+        EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID: deploymentId,
       }),
     ).toMatchObject({ kind: 'invalid' });
     expect(
       parseMobileRuntimeConfig({
-        EXPO_PUBLIC_WOKESOCIAL_DEPLOYMENT_ID: deploymentId.replace(programId, genesisHash),
-        EXPO_PUBLIC_WOKESOCIAL_PROGRAM_ID: programId,
+        EXPO_PUBLIC_WETDROOL_DEPLOYMENT_ID: deploymentId.replace(programId, genesisHash),
+        EXPO_PUBLIC_WETDROOL_PROGRAM_ID: programId,
       }),
     ).toMatchObject({ kind: 'invalid' });
   });
@@ -60,7 +60,7 @@ describe('parseMobileRuntimeConfig', () => {
   it('rejects an indexer that cannot be bound to a configured deployment', () => {
     expect(
       parseMobileRuntimeConfig({
-        EXPO_PUBLIC_WOKESOCIAL_INDEXER_URL: 'https://indexer.example.test',
+        EXPO_PUBLIC_WETDROOL_INDEXER_URL: 'https://indexer.example.test',
       }),
     ).toMatchObject({ kind: 'invalid' });
   });
@@ -81,7 +81,7 @@ describe('parseMobileRuntimeConfig', () => {
     ).toMatchObject({ kind: 'ready' });
   });
 
-  it('rejects retired WokeNet RPC and network variables', () => {
+  it('rejects retired DroolNet RPC and network variables', () => {
     expect(
       parseMobileRuntimeConfig({
         EXPO_PUBLIC_WOKENET_RPC_URL: 'https://retired.example.test',

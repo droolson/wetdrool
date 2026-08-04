@@ -34,8 +34,8 @@ Repository controls can support compliance; they cannot establish it alone.
   recommender-system, and risk-assessment obligations in served regions.
 - Electronic communications, encrypted messaging, metadata retention,
   interception requests, export controls, and cryptography restrictions.
-- The current absence of a `$WOKE` mint and permanent quarantine of the legacy
-  lamport payment ABI. If `$WOKE` remains in scope: the exact SPL/Token-2022
+- The current absence of a `$DROOL` mint and permanent quarantine of the legacy
+  lamport payment ABI. If `$DROOL` remains in scope: the exact SPL/Token-2022
   mint and authorities, extensions, supply/distribution/tokenomics,
   replacement ABI and migration, noncustodial tips/subscriptions, consumer
   disclosures, refunds, sanctions, AML/money-transmission boundaries, tax
@@ -81,4 +81,4 @@ distribution, or child-safety duties are unresolved, or while the public
 product contradicts its deletion, encryption, moderation, decentralization, or
 privacy disclosures. The current non-release Android scaffold is not evidence
 of store approval, and the portable SOL/SPL asset schema is not evidence that a
-`$WOKE` mint or payment product exists.
+`$DROOL` mint or payment product exists.

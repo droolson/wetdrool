@@ -1,8 +1,8 @@
 import { pathToFileURL } from 'node:url';
 
-import { LocalContentAddressedStorage } from '@wokesocial/storage';
-import { parseRateLimitRuntimeConfig } from '@wokesocial/config/rate-limit';
-import { createRuntimeRateLimiter, type RuntimeRateLimiterOptions } from '@wokesocial/rate-limit';
+import { LocalContentAddressedStorage } from '@wetdrool/storage';
+import { parseRateLimitRuntimeConfig } from '@wetdrool/config/rate-limit';
+import { createRuntimeRateLimiter, type RuntimeRateLimiterOptions } from '@wetdrool/rate-limit';
 
 import { buildMediaWorkerApp } from './app.js';
 import { ClamdScanner } from './clamd-scanner.js';

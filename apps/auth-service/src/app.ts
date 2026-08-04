@@ -5,8 +5,8 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
-import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
-import { createFastifyRateLimitStore, type RateLimiter } from '@wokesocial/rate-limit';
+import { createTrustedProxyPolicy } from '@wetdrool/config/trusted-proxy';
+import { createFastifyRateLimitStore, type RateLimiter } from '@wetdrool/rate-limit';
 
 import { installAuthErrorHandler } from './http-errors.js';
 import {
@@ -53,7 +53,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
         ? false
         : {
             level: 'info',
-            base: { service: '@wokesocial/auth-service' },
+            base: { service: '@wetdrool/auth-service' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -103,7 +103,7 @@ export async function buildAuthApp(options: AuthAppOptions): Promise<FastifyInst
 
   app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
-    service: '@wokesocial/auth-service',
+    service: '@wetdrool/auth-service',
     replaceable: true,
     canonical: false,
     storage: options.service.store.kind,

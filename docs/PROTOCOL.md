@@ -1,4 +1,4 @@
-# WokeSocial Protocol: WokeNet on Solana
+# WetDrool Protocol: DroolNet on Solana
 
 ## Document status
 
@@ -7,7 +7,7 @@
 - **Conformance vectors:** TypeScript unit fixtures exist; shared
   Rust/TypeScript golden vectors are not created
 - **Development-localnet program ID:** `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`
-- **Public WokeNet deployment:** None; tests use a disposable Solana local
+- **Public DroolNet deployment:** None; tests use a disposable Solana local
   validator
 - **Last verified:** 2026-07-29
 
@@ -71,13 +71,13 @@ machine-readable registry and implementation must agree.
 
 ### Network identifier
 
-A WokeNet deployment is identified by:
+A DroolNet deployment is identified by:
 
 ```text
-wokenet:v1:<base58-genesis-hash>:<base58-program-id>
+droolnet:v1:<base58-genesis-hash>:<base58-program-id>
 ```
 
-The literal `wokenet:v1` binds the application protocol namespace and version;
+The literal `droolnet:v1` binds the application protocol namespace and version;
 it does not name a separate blockchain. Human labels such as `localnet`,
 `devnet`, or `mainnet-beta` are display/configuration hints, not cryptographic
 deployment identifiers. Clients MUST compare the observed Solana genesis hash
@@ -89,7 +89,7 @@ identifiers are invalid and MUST NOT be silently reinterpreted.
 An identity URI is:
 
 ```text
-wokesocialid:v1:wokenet:v1:<base58-genesis-hash>:<base58-program-id>:<base58-identity-pda>
+wetdroolid:v1:droolnet:v1:<base58-genesis-hash>:<base58-program-id>:<base58-identity-pda>
 ```
 
 The identity PDA remains stable when its root authority rotates. Wallet
@@ -103,7 +103,7 @@ is derived from its canonical unsigned payload:
 
 ```text
 digest = SHA-256(JCS(payload))
-id     = wokesocialobj:v1:<object-type>:<base64url-no-padding(digest)>
+id     = wetdroolobj:v1:<object-type>:<base64url-no-padding(digest)>
 ```
 
 The `object-type` segment MUST match `payload.type`. References to a portable
@@ -157,13 +157,13 @@ Every signed portable object payload has these common fields:
 
 ```json
 {
-  "protocol": "wokesocial",
+  "protocol": "wetdrool",
   "protocolVersion": "1.0",
   "schemaVersion": 1,
   "type": "post",
-  "network": "wokenet:v1:<genesis-hash>:<program-id>",
-  "author": "wokesocialid:v1:wokenet:v1:<genesis-hash>:<program-id>:<identity-pda>",
-  "signingKey": "wokesocialid:v1:wokenet:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
+  "network": "droolnet:v1:<genesis-hash>:<program-id>",
+  "author": "wetdroolid:v1:droolnet:v1:<genesis-hash>:<program-id>:<identity-pda>",
+  "signingKey": "wetdroolid:v1:droolnet:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
   "createdAt": "2026-07-28T12:00:00.000Z",
   "nonce": "u<base64url-16-random-bytes>",
   "critical": [],
@@ -187,7 +187,7 @@ the payload:
   "payload": {},
   "proof": {
     "algorithm": "Ed25519",
-    "keyId": "wokesocialid:v1:wokenet:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
+    "keyId": "wetdroolid:v1:droolnet:v1:<genesis-hash>:<program-id>:<identity-pda>#delegation/<base58-public-key>",
     "payloadHash": "u<base64url-sha256>",
     "signature": "u<base64url-signature>"
   }
@@ -202,7 +202,7 @@ The proof procedure is:
 
    ```json
    {
-     "domain": "woke.social/protocol/signed-object",
+     "domain": "wetdrool.com/protocol/signed-object",
      "version": 1,
      "algorithm": "Ed25519",
      "keyId": "<payload.signingKey>",
@@ -288,19 +288,19 @@ Consumers MUST download bytes, enforce size limits, recompute the content
 identifier, then verify the signed envelope. A successful HTTP response or
 provider receipt alone is insufficient.
 
-The `"protocol": "wokesocial"` and `"network": "wokenet:v1:..."` values are the
-frozen WokeSocial and WokeNet prelaunch v1 wire identifiers. They were renamed
+The `"protocol": "wetdrool"` and `"network": "droolnet:v1:..."` values are the
+frozen WetDrool and DroolNet prelaunch v1 wire identifiers. They were renamed
 before launch, so their current forms are canonical rather than old-brand
-compatibility exceptions. `sociallywoke.com` is only a legacy redirect hostname
+compatibility exceptions. `droolhouse.com` is only a legacy redirect hostname
 and is never an application origin.
 
-## WokeNet program model
+## DroolNet program model
 
-WokeNet is the WokeSocial Anchor program and associated portable protocol
+DroolNet is the WetDrool Anchor program and associated portable protocol
 deployed to Solana. Solana defines the account, PDA, SBF, transaction, fee, and
-validator runtime. WokeNet is not a fork, validator, or separate ledger. See
-[ADR-0009](DECISIONS/0009-wokenet-on-solana.md).
-This repository does not ship or operate Firedancer, Agave, a WokeNet RPC
+validator runtime. DroolNet is not a fork, validator, or separate ledger. See
+[ADR-0009](DECISIONS/0009-droolnet-on-solana.md).
+This repository does not ship or operate Firedancer, Agave, a DroolNet RPC
 network, or validator topology.
 
 ### PDA derivation
@@ -308,7 +308,7 @@ network, or validator topology.
 Every v1 PDA begins with two seeds:
 
 ```text
-b"wokesocial", [0x01]
+b"wetdrool", [0x01]
 ```
 
 All integer seeds use fixed-width little-endian bytes. All digest seeds are full
@@ -334,7 +334,7 @@ unbounded seeds.
 | Governance proposal | `b"proposal"`, `community_pda`, `proposal_manifest_sha256[32]` | Implemented | Immutable policy reference, eligible-member-count snapshot, bounded voting window, strategy/threshold snapshot, checked tallies, and terminal outcome |
 | Governance vote | `b"vote"`, `proposal_pda`, `voter_identity_pda` | Implemented | One immutable vote per eligible identity and proposal; no token or wealth input |
 | Payment configuration | `b"payment_config"` | Legacy, quarantined | Paused-by-default lamport ABI; cannot execute or be unpaused |
-| Creator offering | `b"subscription_offering"`, `creator_identity_pda`, `offering_nonce[16]` | Legacy, quarantined | Historical weekly offering and split layout; not `$WOKE` |
+| Creator offering | `b"subscription_offering"`, `creator_identity_pda`, `offering_nonce[16]` | Legacy, quarantined | Historical weekly offering and split layout; not `$DROOL` |
 | Payment receipt | `b"payment_receipt"`, `payer_identity_pda`, `receipt_nonce[16]` | Legacy, quarantined | Historical replay/accounting layout; not deployable payment evidence |
 | Entitlement | `b"subscription_entitlement"`, `offering_pda`, `beneficiary_identity_pda` | Legacy, quarantined | Historical paid-through layout; cannot grant product access |
 
@@ -364,20 +364,20 @@ enforcement.
 Unicode is fully supported in display names. Unicode handles may be introduced
 only with a separately versioned normalization and confusable-defense design.
 
-The version-1 `.woke` presentation namespace builds on these handle accounts.
+The version-1 `.drool` presentation namespace builds on these handle accounts.
 An anonymous registration candidate is derived as
-`anon_ || crockford-base32(SHA-256("wokesocial:woke-name:random:v1\0" ||
-identity.origin_authority)[0..10])`, followed by the presentation-only `.woke`
+`anon_ || crockford-base32(SHA-256("wetdrool:woke-name:random:v1\0" ||
+identity.origin_authority)[0..10])`, followed by the presentation-only `.drool`
 suffix. The program independently re-derives any `anon_` claim from the
 identity's immutable origin authority; an observer therefore cannot claim a
 different identity's deterministic anonymous name. Rotation and guardian
 recovery update the current root without renaming the identity.
 
-This implemented primitive does not make `.woke` a DNS suffix or a native
+This implemented primitive does not make `.drool` a DNS suffix or a native
 Solana address. Fresh development-localnet registration sends `create_identity`
 then `claim_handle` atomically and verifies both account creations and events.
 The noncanonical open-indexer resolver and strict client bind the finalized
-claim to the stable identity, current root authority, exact WokeNet deployment,
+claim to the stable identity, current root authority, exact DroolNet deployment,
 and a covering checkpoint. Public-cluster execution, value-transfer
 confirmation UX, and custom-name settlement remain incomplete.
 See [ADR-0012](DECISIONS/0012-woke-name-namespace.md).
@@ -391,13 +391,13 @@ See [ADR-0012](DECISIONS/0012-woke-name-namespace.md).
 | Social graph | `follow`, `unfollow`, `follow_delegated`, `unfollow_delegated` | Implemented: root variants remain stable; delegated variants require the exact follower identity/delegate account, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; all variants reject self-follow, validate relationships, and use checked actor/edge sequences |
 | Content | `publish_post`, `tombstone_post`, `publish_post_delegated`, `tombstone_post_delegated` | Implemented: root variants remain stable; delegated variants require the exact author identity/delegate account, current root-rotation epoch, `post` scope, inclusive slot expiry, and non-revoked state; all variants preserve immutable post PDAs, hash/URI bounds, checked author sequences, and one tombstone PDA |
 | Delegation | `create_delegation`, `revoke_delegation` | Implemented: closed scopes, expiry, explicit revocation, checked state/identity sequence, and invalidation on any root-rotation epoch change |
-| Handles / `.woke` names | `claim_handle`, `release_handle` | Implemented predeployment primitive: current-root authority, exact normalized string plus full SHA-256 PDA seed, checked identity sequence on both transitions, collision detection, release to the current root authority, and bounded 3–30-byte state. Reserved `anon_` claims must match the deterministic v1 derivation from immutable origin authority. The SDK/application atomically register fresh identity+claim, migrate identity-only accounts, and strictly verify indexer resolution to the current root. Public-cluster execution, cross-surface destination UX, and custom-name policy remain incomplete |
+| Handles / `.drool` names | `claim_handle`, `release_handle` | Implemented predeployment primitive: current-root authority, exact normalized string plus full SHA-256 PDA seed, checked identity sequence on both transitions, collision detection, release to the current root authority, and bounded 3–30-byte state. Reserved `anon_` claims must match the deterministic v1 derivation from immutable origin authority. The SDK/application atomically register fresh identity+claim, migrate identity-only accounts, and strictly verify indexer resolution to the current root. Public-cluster execution, cross-surface destination UX, and custom-name policy remain incomplete |
 | Recovery | `configure_recovery_policy`, `disable_recovery_policy`, `request_recovery`, `approve_recovery`, `cancel_recovery`, `execute_recovery` | Implemented onchain primitive: root-only policy administration, guardian-created requests and distinct approvals, current-root cancellation, checked delay/threshold, arbitrary executor, required target-root signature, and rotation-epoch delegation invalidation |
 | Public blocks | `set_block`, `set_block_delegated` | Implemented: root variant remains stable; delegated variant requires exact identity, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; both reject self-block and reuse a checked actor/edge state |
 | Communities | `create_community`, `update_community_governance`, `join_community`, `leave_community`, `moderate_community_membership` | Implemented predeployment subset: member identity root or current `community` delegate authorizes join/leave for public or unlisted open communities; creator identity root or current `community` delegate may remove/ban an existing member; bans are terminal; every transition commits a signed membership-v2 manifest and exact optimistic sequences |
 | Reactions | `set_reaction`, `set_reaction_delegated` | Implemented: root variant remains stable; delegated variant requires exact identity, current root-rotation epoch, `social` scope, inclusive slot expiry, and non-revoked state; both enforce four closed reaction codes, target-post validation, tombstone rejection on add, reusable remove/re-add state, and checked sequences |
 | Governance proposals/votes | `create_proposal`, `cast_vote`, `finalize_proposal` | Implemented conservative subset: one active member/one immutable vote, full-digest proposal uniqueness, numeric eligibility snapshot, checked actor/membership/proposal/community sequences, bounded slots, fixed strategy-compatible quorum/approval, and permissionless one-time finalization |
-| Legacy payments (quarantined) | `initialize_payment_config`, `update_payment_config`, `rotate_payment_authority`, `create_subscription_offering`, `retire_subscription_offering`, `send_woke_tip`, `settle_subscription` | Historical lamport ABI with regression tests. It must remain paused, cannot execute or be unpaused, and is not `$WOKE`. A future asset requires a real mint and new mint-aware ABI |
+| Legacy payments (quarantined) | `initialize_payment_config`, `update_payment_config`, `rotate_payment_authority`, `create_subscription_offering`, `retire_subscription_offering`, `send_woke_tip`, `settle_subscription` | Historical lamport ABI with regression tests. It must remain paused, cannot execute or be unpaused, and is not `$DROOL`. A future asset requires a real mint and new mint-aware ABI |
 
 ### Delayed guardian recovery
 
@@ -463,7 +463,7 @@ strategy in the current program as an exact object:
 ```
 
 The strategy commitment is SHA-256 over the UTF-8 domain
-`wokenet:community-governance-strategy:v1`, one NUL separator, and the RFC 8785
+`droolnet:community-governance-strategy:v1`, one NUL separator, and the RFC 8785
 canonical JSON bytes of that object. Its hex digest is
 `9de45b0312c44a78da4c3d46b282a8888aec660d42242a0d7613834b94357571`;
 the portable multibase base64url form is
@@ -732,7 +732,7 @@ and relevant enum variants against the generated IDL. It ingests all six
 recovery events into deterministic memory and PostgreSQL policy/request
 projections. Those projections are explicitly non-canonical: a projected
 `pending` request means no terminal event was observed and is not an assertion
-that the current WokeNet accounts still make the request executable.
+that the current DroolNet accounts still make the request executable.
 `IdentityDeactivated` is decoded and materialized exactly by both memory and
 PostgreSQL projections. It advances only the current active identity at the
 next sequence and records immutable deactivation provenance. Historical
@@ -750,7 +750,7 @@ terminal outcome, permissionless finalizer, sequence, and slot. The quarantined
 legacy payment flows emit seven versioned events covering configuration,
 authority, offering, tip, and subscription transitions. Their projections
 retain raw finalized-event provenance for migration/regression purposes and
-must not assert a usable `$WOKE` asset, current paid access, or permission to
+must not assert a usable `$DROOL` asset, current paid access, or permission to
 execute the legacy ABI.
 Current names and layouts remain experimental until the wider cross-language
 conformance fixtures are stabilized.
@@ -761,12 +761,12 @@ conformance fixtures are stabilized.
 
 | Object | Canonical representation | Required signer/authority | Revision rule | Deletion semantics |
 | --- | --- | --- | --- | --- |
-| Identity | WokeNet identity account and events | Root authority or valid recovery execution | Monotonic state version | Root-authorized v1 deactivation is one-way and leaves the account/history intact; identity URI is never reassigned |
+| Identity | DroolNet identity account and events | Root authority or valid recovery execution | Monotonic state version | Root-authorized v1 deactivation is one-way and leaves the account/history intact; identity URI is never reassigned |
 | Profile | Signed profile manifest plus latest onchain reference | `profile` delegation or root | New immutable manifest points to previous ID | Tombstone/suppress old profile; history may remain replicated |
-| Handle claim | WokeNet PDA | Identity authority | Release then new claim under anti-impersonation policy | Release does not erase history |
-| Delegation | WokeNet account/event | Root or scoped recovery authority | Add/revoke; never mutate a key into broader scope | Revocation retained in replay history |
-| Follow edge | WokeNet PDA/event for public portable follows | `social` delegation or root | Create/remove idempotently | Removal event closes active edge; history remains |
-| Block edge | Optional public WokeNet edge; otherwise encrypted private export | `social` delegation or root | Create/remove | Official clients enforce active edge; private lists remain private |
+| Handle claim | DroolNet PDA | Identity authority | Release then new claim under anti-impersonation policy | Release does not erase history |
+| Delegation | DroolNet account/event | Root or scoped recovery authority | Add/revoke; never mutate a key into broader scope | Revocation retained in replay history |
+| Follow edge | DroolNet PDA/event for public portable follows | `social` delegation or root | Create/remove idempotently | Removal event closes active edge; history remains |
+| Block edge | Optional public DroolNet edge; otherwise encrypted private export | `social` delegation or root | Create/remove | Official clients enforce active edge; private lists remain private |
 | Mute preference | Encrypted client data/export only | User device | Mutable local preference | Local/provider purge |
 | Post | Signed post manifest plus optional onchain reference | `post` delegation or root | Immutable | Author tombstone and provider deletion requests |
 | Post revision | Signed post with `revisionOf` and `previousRevision` | Same identity as original | Append-only chain; forks explicitly represented | Tombstone any revision or logical thread |
@@ -776,21 +776,21 @@ conformance fixtures are stabilized.
 | Reaction | Signed interaction; optional onchain PDA | `social` delegation | Replace/retract explicitly | Retraction/removal |
 | Bookmark | Encrypted private client data/export by default | User device | Mutable | Local/provider purge; never public by default |
 | Media manifest | Signed portable manifest | `post` delegation or referenced post author | New rendition manifest references predecessor | Tombstone plus provider deletion where possible |
-| Community | WokeNet root plus signed metadata | Community creation permission/root authority | Monotonic config version | Deactivate; identifier not reassigned |
-| Community membership | WokeNet account/event plus schema-v2 signed manifest for eligible public membership; encrypted/authenticated design still required for protected membership | Member identity for join/leave; community creator identity for remove/ban, each through root or current scoped delegation | Exact action/state/role transition with immutable replacement lineage and optimistic sequences; `banned` is terminal | Leave/remove/ban retain public Solana history; no public roster or identity-bearing convenience response |
+| Community | DroolNet root plus signed metadata | Community creation permission/root authority | Monotonic config version | Deactivate; identifier not reassigned |
+| Community membership | DroolNet account/event plus schema-v2 signed manifest for eligible public membership; encrypted/authenticated design still required for protected membership | Member identity for join/leave; community creator identity for remove/ban, each through root or current scoped delegation | Exact action/state/role transition with immutable replacement lineage and optimistic sequences; `banned` is terminal | Leave/remove/ban retain public Solana history; no public roster or identity-bearing convenience response |
 | Community role | Onchain permission commitment plus signed role document | Authorized community admin | New version/hash | Retire role; audit events remain |
 | Community rule set | Signed policy object referenced onchain | Authorized community admin | Immutable revision chain | Replace/tombstone; prior signed rules remain auditable |
 | Moderation label | Signed provider assertion | Key authorized by named provider | Superseding assertion or expiry | Retraction label; consumers apply policy |
 | Report | Encrypted operator record; optional non-sensitive receipt hash | Reporting user | Append-only evidence choices and status | Retention policy and reporter deletion rights where lawful |
 | Appeal | Encrypted operator/community record; optional receipt | Affected identity | Append-only decision trail | Retention policy; never expose sensitive evidence publicly |
-| Governance proposal | WokeNet root plus signed proposal body | Community creator root or current `community` delegation | Immutable terms; a different full manifest digest is a new proposal | No current cancel/close path; terminal record remains |
-| Governance vote | WokeNet vote state/event | Snapshot-eligible active member root or current `social`/`community` delegation | Immutable one-per-identity vote; replacement is not supported | Vote and finalized tally history retained |
+| Governance proposal | DroolNet root plus signed proposal body | Community creator root or current `community` delegation | Immutable terms; a different full manifest digest is a new proposal | No current cancel/close path; terminal record remains |
+| Governance vote | DroolNet vote state/event | Snapshot-eligible active member root or current `social`/`community` delegation | Immutable one-per-identity vote; replacement is not supported | Vote and finalized tally history retained |
 | Future creator offering | Signed terms plus an optional replacement-ABI commitment | Future approved `payment` delegation or root | New terms version; no retroactive rewrite | Retire offering; legacy offering records remain non-entitling |
 | Future subscription entitlement | Replacement-ABI settlement or independently verifiable approved receipt | Future program-validated payer/recipient | Period-specific | Expiry/refund status; legacy entitlement records never grant access |
-| Future tip receipt | Replacement WokeNet program event | Payer | Immutable | Cannot erase approved settlement; quarantined legacy events are regression data only |
+| Future tip receipt | Replacement DroolNet program event | Payer | Immutable | Cannot erase approved settlement; quarantined legacy events are regression data only |
 | Event | Signed social-event manifest; future paid-ticket settlement requires the approved mint-aware ABI | `post`/community authority | Immutable revisions | Cancel/tombstone; future payment/refund metadata retained |
 | Notification preference | Encrypted client/operator preference | User device/session | Mutable | Immediate local/provider purge |
-| Deletion tombstone | Signed object and, for anchored content, WokeNet PDA/event | Original author or defined community authority | Immutable; correction is a separate scoped assertion | Official clients/indexers suppress named targets |
+| Deletion tombstone | Signed object and, for anchored content, DroolNet PDA/event | Original author or defined community authority | Immutable; correction is a separate scoped assertion | Official clients/indexers suppress named targets |
 
 Public membership and block visibility are explicit choices. A client MUST NOT
 publish a private membership, bookmark, mute, or block list merely to improve
@@ -810,7 +810,7 @@ Portable profile history has two readable shapes within protocol version
 current creation surface emits only schema v2, whose protected optional profile
 and location values must use encrypted references.
 
-Each WokeNet deployment fixes one immutable
+Each DroolNet deployment fixes one immutable
 `INDEXER_PROFILE_V2_ACTIVATION_SLOT`. A historical profile-update event without
 the appended schema commitment may reference a legacy schema-v1 profile only
 before that slot. An event with an explicit commitment must declare schema v2
@@ -820,7 +820,7 @@ rebuild use the same event-slot gate. The portable reader remains able to
 decode v1 so historical IDs and signatures do not change, but that
 compatibility is not permission to publish a new v1 profile.
 
-The current WokeSocial program requires
+The current WetDrool program requires
 `profile_schema_version = CURRENT_PROFILE_SCHEMA_VERSION = 2` in both root and
 delegated update instructions and appends the value to
 `ProfileReferenceUpdated`. The legacy event prefix remains decodable only for
@@ -900,7 +900,7 @@ portable-payload union:
     "transcript": null
   },
   "processing": {
-    "profile": "wokesocial-media-v1",
+    "profile": "wetdrool-media-v1",
     "metadataStripped": true,
     "processor": "self"
   },
@@ -919,7 +919,7 @@ rendition is independently hashed and bounded.
 ```json
 {
   "target": {
-    "id": "wokesocialobj:v1:post:ujOrBjnUJaGYhNMmIlg-7sf4OeeDi5JvznJnZo_DF6PM",
+    "id": "wetdroolobj:v1:post:ujOrBjnUJaGYhNMmIlg-7sf4OeeDi5JvznJnZo_DF6PM",
     "cid": "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
   },
   "reason": "author-deleted",
@@ -1020,7 +1020,7 @@ Deletion has three distinct effects:
    providers that support it.
 
 Deletion cannot guarantee removal from independent replicas, screenshots,
-archives, a public WokeNet ledger, or permanent storage. Clients must present this limit
+archives, a public DroolNet ledger, or permanent storage. Clients must present this limit
 before permanent publication. A tombstoned object must not reappear after an
 indexer rebuild.
 
@@ -1059,7 +1059,7 @@ For profile history, conformance also requires a published, immutable
 per-network `INDEXER_PROFILE_V2_ACTIVATION_SLOT`. Live ingestion and every
 rebuild must accept legacy schema v1 only before that event slot and require
 schema v2 at or after it. Two indexers that use different cutoffs are not
-conformant projections of the same WokeNet history.
+conformant projections of the same DroolNet history.
 
 ## Relay protocol boundary
 
@@ -1168,7 +1168,7 @@ offline caching remain outside this implemented subset.
 
 ## Payments: quarantined legacy ABI and future replacement
 
-No `$WOKE` mint exists. SOL and lamports are not `$WOKE`.
+No `$DROOL` mint exists. SOL and lamports are not `$DROOL`.
 
 The portable signed-object asset schema is separate from executable program
 instructions. It accepts `{ kind: "sol" }` for SOL or exact SPL token metadata
@@ -1200,7 +1200,7 @@ Any future mint-aware payment instructions and receipts MUST:
 
 The current program retains a deliberately narrow historical subset that used
 System Program lamport transfers for direct tips and one-week creator
-subscription accounting. It does not implement `$WOKE`, SPL/Token-2022
+subscription accounting. It does not implement `$DROOL`, SPL/Token-2022
 transfers, delegated payment signing, linked-wallet payment sources, gifts,
 monthly or annual periods, automatic renewal, escrow, refund execution,
 receipt/account closing, paid communities, paid events, or deployable payment
@@ -1224,7 +1224,7 @@ balance changes. The retained IDL events are:
 
 The four payment account domains are:
 
-| Account | PDA seeds after `["wokesocial", 1]` | Allocated bytes | Historical local-validator rent-exempt minimum |
+| Account | PDA seeds after `["wetdrool", 1]` | Allocated bytes | Historical local-validator rent-exempt minimum |
 | --- | --- | ---: | ---: |
 | `PaymentConfig` | `["payment_config"]` | 133 | 1,816,560 lamports |
 | `CreatorSubscriptionOffering` | `["subscription_offering", creator_identity, offering_nonce]` | 622 | 5,220,000 lamports |
@@ -1270,7 +1270,7 @@ bound. The quarantine prevents new transitions, and any retained historical
 record must not grant product access. A replacement mint-aware ABI must define
 new receipt and entitlement semantics.
 
-A future `$WOKE` implementation additionally requires a real mint record,
+A future `$DROOL` implementation additionally requires a real mint record,
 reviewed mint/freeze authorities and extensions, distribution/tokenomics/legal
 review, updated SDK/indexer/UI behavior, devnet rehearsal, adversarial tests,
 independent audit, and explicit release approval.
@@ -1371,8 +1371,8 @@ fixtures independently in each test suite is insufficient.
 | Anchor program and IDL | Experimental local implementation | The generated IDL and TypeScript type contain 43 instructions, 33 events, and 19 account families under development program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`; member-signed membership replaces the old setter, and legacy, identity-deactivation, recovery, membership, and quarantined payment layouts/discriminators are checked against the build |
 | Account-size and transaction-cost analysis | Implemented for the current local subset | Serialization tests assert all 19 account layouts. The local-validator harness enforces transaction-size, compute, balance-conservation, substitution, replay, recovery, governance, and legacy payment bounds. These measurements are local Solana evidence only |
 | Local-validator tests | Experimental local coverage | Flows cover root and delegated identity/social actions, handles, governance, delayed guardian recovery, and fail-closed legacy-payment quarantine including rejected bootstrap/execute/rotation/unpause with unchanged state and balances. No successful payment flow exists; the full cross-language, passkey/email product, future mint-aware, devnet, and mainnet-beta matrix remains incomplete |
-| Public Solana deployment | Not performed | No WokeNet program is recorded on devnet or mainnet-beta |
-| `$WOKE` mint and mint-aware ABI | Not implemented | No mint exists; the legacy lamport ABI cannot execute or be unpaused |
+| Public Solana deployment | Not performed | No DroolNet program is recorded on devnet or mainnet-beta |
+| `$DROOL` mint and mint-aware ABI | Not implemented | No mint exists; the legacy lamport ABI cannot execute or be unpaused |
 | SDK verification path | Partial | Operation-scoped signed provider-neutral publication plus 11 IDL-aligned builders, including exact join/leave/remove/ban membership construction, one-way identity deactivation, and quarantined legacy payment builders, exact-byte version-0/legacy transaction compilation, detached-signature verification, bounded strict Solana RPC parsing, same-byte broadcast/rebroadcast, finalized transaction confirmation, and injected finalized-account verification use explicit endpoint/genesis/program context. A complete generated client, flagship wallet/Mobile Wallet Adapter membership integration, executable-artifact attestation, replacement mint-aware ABI, and product wallet UX remain absent |
 | Storage adapters and local CID verification | Implemented subset | Memory/local CAS, multi-provider quorum, IPFS HTTP/Kubo, and Arweave-compatible permanent-storage adapters are tested; no funded live Arweave uploader is configured |
 | Rebuildable indexer | Experimental connected implementation | Finalized Solana RPC ingestion, exhaustive decoding/projection of all 33 current-IDL events, network-scoped checkpoints and identity references, canonical onchain profile-v2, community-v2, and member-signed membership-v2 commitments, exact CID/URI validation, accepted/pending/terminal disposition, checkpoint-independent bounded hydration, one-way identity deactivation with historical-only late profile hydration, privacy-safe verified community discovery and exact-address membership status, non-gating tombstone metadata, suppression-aware destructive replay, read APIs including the bounded noncanonical feed mapping, PostgreSQL durability, and 18 ordered migrations are implemented. The membership endpoint has no roster or identity fields. Fork/reorg, independent-provider reconciliation, and production-scale rebuilds above 50,000 events remain incomplete |

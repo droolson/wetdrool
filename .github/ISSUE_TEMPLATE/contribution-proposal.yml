@@ -1,11 +1,11 @@
 name: Contribution proposal
-description: Propose a bounded, non-security contribution to WokeSocial or WokeNet.
+description: Propose a bounded, non-security contribution to WetDrool or DroolNet.
 title: 'proposal: '
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you for helping build WokeSocial. Keep proposals focused on one user,
+        Thank you for helping build WetDrool. Keep proposals focused on one user,
         contributor, protocol, or operator outcome.
 
         Do not include vulnerabilities, credentials, private keys, passkey material,

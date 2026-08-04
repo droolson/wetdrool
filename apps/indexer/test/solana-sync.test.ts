@@ -20,8 +20,8 @@ import {
   type PostContent,
   type ProfileContent,
   type SignedEnvelope,
-} from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
+} from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage, type StorageReceipt } from '@wetdrool/storage';
 
 import {
   decodeAnchorEventLog,
@@ -47,12 +47,12 @@ import { TEST_CID } from './cid-fixtures.js';
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
 const genesisHash = publicKey(7);
-const networkId = `wokenet:v1:${genesisHash}:${programId}` as NetworkId;
+const networkId = `droolnet:v1:${genesisHash}:${programId}` as NetworkId;
 const configAddress = publicKey(6);
 const identityAddress = publicKey(9);
 const privateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const rootAuthority = bs58.encode(ed25519.getPublicKey(privateKey));
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
 const identity = createPayloadBuilderIdentity(
   networkId,
   identityId,
@@ -238,7 +238,7 @@ describe('Solana sync configuration', () => {
 
     expect(() =>
       readIndexerConfig({
-        INDEXER_NETWORK_ID: `wokenet:v1:${genesisHash}:${publicKey(88)}`,
+        INDEXER_NETWORK_ID: `droolnet:v1:${genesisHash}:${publicKey(88)}`,
         NEXT_PUBLIC_PROGRAM_ID: programId,
       }),
     ).toThrow('network program ID must match');
@@ -1026,7 +1026,7 @@ async function storeLegacyProfile(storage: MemoryContentAddressedStorage): Promi
   readonly receipt: StorageReceipt;
 }> {
   const payload = legacyProfilePayloadSchema.parse({
-    protocol: 'wokesocial',
+    protocol: 'wetdrool',
     protocolVersion: '1.0',
     schemaVersion: 1,
     network: networkId,

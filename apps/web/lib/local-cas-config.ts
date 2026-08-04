@@ -16,7 +16,7 @@ export class LocalCasConfigurationError extends Error {
 }
 
 export function readLocalCasConfig(environment: Environment = process.env): LocalCasConfig | null {
-  const mode = environment.WOKESOCIAL_LOCAL_CAS_MODE?.trim();
+  const mode = environment.WETDROOL_LOCAL_CAS_MODE?.trim();
   if (!mode) {
     return null;
   }
@@ -38,9 +38,9 @@ export function readLocalCasConfig(environment: Environment = process.env): Loca
     );
   }
 
-  const allowedOrigin = parseLocalOrigin(environment.WOKESOCIAL_LOCAL_CAS_ORIGIN);
+  const allowedOrigin = parseLocalOrigin(environment.WETDROOL_LOCAL_CAS_ORIGIN);
   const rootDirectory = parseStorageRoot(environment.CONTENT_STORAGE_PATH);
-  const maximumObjectBytes = parseMaximumObjectBytes(environment.WOKESOCIAL_LOCAL_CAS_MAX_BYTES);
+  const maximumObjectBytes = parseMaximumObjectBytes(environment.WETDROOL_LOCAL_CAS_MAX_BYTES);
 
   return {
     allowedOrigin,
@@ -61,7 +61,7 @@ function parseLocalOrigin(value: string | undefined): string {
   const rawValue = value?.trim();
   if (!rawValue) {
     throw new LocalCasConfigurationError(
-      'WOKESOCIAL_LOCAL_CAS_ORIGIN is required in localnet mode.',
+      'WETDROOL_LOCAL_CAS_ORIGIN is required in localnet mode.',
     );
   }
 
@@ -70,7 +70,7 @@ function parseLocalOrigin(value: string | undefined): string {
     origin = new URL(rawValue);
   } catch {
     throw new LocalCasConfigurationError(
-      'WOKESOCIAL_LOCAL_CAS_ORIGIN must be an absolute URL origin.',
+      'WETDROOL_LOCAL_CAS_ORIGIN must be an absolute URL origin.',
     );
   }
 
@@ -85,7 +85,7 @@ function parseLocalOrigin(value: string | undefined): string {
     origin.origin !== rawValue
   ) {
     throw new LocalCasConfigurationError(
-      'WOKESOCIAL_LOCAL_CAS_ORIGIN must be an exact loopback HTTP origin.',
+      'WETDROOL_LOCAL_CAS_ORIGIN must be an exact loopback HTTP origin.',
     );
   }
 
@@ -114,14 +114,14 @@ function parseMaximumObjectBytes(value: string | undefined): number {
   }
   if (!/^[1-9][0-9]{0,6}$/u.test(rawValue)) {
     throw new LocalCasConfigurationError(
-      'WOKESOCIAL_LOCAL_CAS_MAX_BYTES must be a positive decimal integer.',
+      'WETDROOL_LOCAL_CAS_MAX_BYTES must be a positive decimal integer.',
     );
   }
 
   const maximumObjectBytes = Number(rawValue);
   if (maximumObjectBytes > LOCAL_CAS_MAXIMUM_ALLOWED_BYTES) {
     throw new LocalCasConfigurationError(
-      `WOKESOCIAL_LOCAL_CAS_MAX_BYTES must not exceed ${LOCAL_CAS_MAXIMUM_ALLOWED_BYTES}.`,
+      `WETDROOL_LOCAL_CAS_MAX_BYTES must not exceed ${LOCAL_CAS_MAXIMUM_ALLOWED_BYTES}.`,
     );
   }
   return maximumObjectBytes;

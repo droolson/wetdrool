@@ -60,20 +60,20 @@ probe_service() {
 }
 
 probe_service \
-  wokesocial_auth_runtime "$AUTH_DATABASE_RUNTIME_PASSWORD" \
-  wokesocial_auth_migration "$AUTH_DATABASE_MIGRATION_PASSWORD" \
-  wokesocial_auth auth_schema_migrations \
-  wokesocial_indexer schema_migrations
+  wetdrool_auth_runtime "$AUTH_DATABASE_RUNTIME_PASSWORD" \
+  wetdrool_auth_migration "$AUTH_DATABASE_MIGRATION_PASSWORD" \
+  wetdrool_auth auth_schema_migrations \
+  wetdrool_indexer schema_migrations
 
 probe_service \
-  wokesocial_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
-  wokesocial_indexer_migration "$INDEXER_DATABASE_MIGRATION_PASSWORD" \
-  wokesocial_indexer schema_migrations \
-  wokesocial_moderation moderation_schema_migrations
+  wetdrool_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
+  wetdrool_indexer_migration "$INDEXER_DATABASE_MIGRATION_PASSWORD" \
+  wetdrool_indexer schema_migrations \
+  wetdrool_moderation moderation_schema_migrations
 
 psql_as \
-  wokesocial_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
-  "INSERT INTO wokesocial_indexer.protocol_events (
+  wetdrool_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
+  "INSERT INTO wetdrool_indexer.protocol_events (
      network_id, transaction_signature, transaction_index, log_index, slot,
      block_time, event_type, event_body
    ) VALUES (
@@ -81,17 +81,17 @@ psql_as \
      '2026-07-28T00:00:00.000Z', 'protocol-initialized', '{}'::jsonb
    )"
 expect_failure \
-  wokesocial_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
-  "UPDATE wokesocial_indexer.protocol_events
+  wetdrool_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
+  "UPDATE wetdrool_indexer.protocol_events
    SET event_body = '{\"forged\":true}'::jsonb
    WHERE network_id = '__privilege_probe_network'"
 expect_failure \
-  wokesocial_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
-  "DELETE FROM wokesocial_indexer.protocol_events
+  wetdrool_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
+  "DELETE FROM wetdrool_indexer.protocol_events
    WHERE network_id = '__privilege_probe_network'"
 expect_failure \
-  wokesocial_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
-  "INSERT INTO wokesocial_indexer.protocol_events (
+  wetdrool_indexer_runtime "$INDEXER_DATABASE_RUNTIME_PASSWORD" \
+  "INSERT INTO wetdrool_indexer.protocol_events (
      network_id, transaction_signature, transaction_index, log_index, slot,
      block_time, event_type, event_body
    ) VALUES (
@@ -100,49 +100,49 @@ expect_failure \
      '{\"reinserted\":true}'::jsonb
    )"
 psql_as \
-  wokesocial_indexer_migration "$INDEXER_DATABASE_MIGRATION_PASSWORD" \
-  "DELETE FROM wokesocial_indexer.protocol_events
+  wetdrool_indexer_migration "$INDEXER_DATABASE_MIGRATION_PASSWORD" \
+  "DELETE FROM wetdrool_indexer.protocol_events
    WHERE network_id = '__privilege_probe_network'"
 
 probe_service \
-  wokesocial_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
-  wokesocial_moderation_migration "$MODERATION_DATABASE_MIGRATION_PASSWORD" \
-  wokesocial_moderation moderation_schema_migrations \
-  wokesocial_auth auth_schema_migrations
+  wetdrool_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
+  wetdrool_moderation_migration "$MODERATION_DATABASE_MIGRATION_PASSWORD" \
+  wetdrool_moderation moderation_schema_migrations \
+  wetdrool_auth auth_schema_migrations
 
 expect_failure \
-  wokesocial_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
-  "DELETE FROM wokesocial_moderation.moderation_cases WHERE false"
+  wetdrool_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
+  "DELETE FROM wetdrool_moderation.moderation_cases WHERE false"
 psql_as \
-  wokesocial_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
-  "UPDATE wokesocial_moderation.moderation_cases SET updated_at = updated_at WHERE false"
+  wetdrool_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
+  "UPDATE wetdrool_moderation.moderation_cases SET updated_at = updated_at WHERE false"
 psql_as \
-  wokesocial_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
-  "SELECT object_id FROM wokesocial_moderation.moderation_public_objects WHERE false FOR UPDATE"
+  wetdrool_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
+  "SELECT object_id FROM wetdrool_moderation.moderation_public_objects WHERE false FOR UPDATE"
 
 psql_as \
-  wokesocial_moderation_migration "$MODERATION_DATABASE_MIGRATION_PASSWORD" \
-  "INSERT INTO wokesocial_moderation.moderation_public_objects (
+  wetdrool_moderation_migration "$MODERATION_DATABASE_MIGRATION_PASSWORD" \
+  "INSERT INTO wetdrool_moderation.moderation_public_objects (
      object_id, cid, canonical_bytes, author_id, subject_key, received_at
    ) VALUES (
      '__privilege_probe_public_object', 'bafk-probe', decode('00', 'hex'),
      'probe-author', 'probe-subject', now()
    )"
 expect_failure \
-  wokesocial_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
-  "UPDATE wokesocial_moderation.moderation_public_objects
+  wetdrool_moderation_runtime "$MODERATION_DATABASE_RUNTIME_PASSWORD" \
+  "UPDATE wetdrool_moderation.moderation_public_objects
    SET canonical_bytes = decode('01', 'hex')
    WHERE object_id = '__privilege_probe_public_object'"
 psql_as \
-  wokesocial_moderation_migration "$MODERATION_DATABASE_MIGRATION_PASSWORD" \
-  "SELECT set_config('wokesocial.retention_delete', 'on', false);
-   DELETE FROM wokesocial_moderation.moderation_public_objects
+  wetdrool_moderation_migration "$MODERATION_DATABASE_MIGRATION_PASSWORD" \
+  "SELECT set_config('wetdrool.retention_delete', 'on', false);
+   DELETE FROM wetdrool_moderation.moderation_public_objects
    WHERE object_id = '__privilege_probe_public_object'"
 
 retention_function_count="$(
   PGPASSWORD="$MODERATION_DATABASE_RUNTIME_PASSWORD" psql \
     --host postgres \
-    --username wokesocial_moderation_runtime \
+    --username wetdrool_moderation_runtime \
     --dbname "$POSTGRES_DB" \
     --tuples-only \
     --no-align \
@@ -150,7 +150,7 @@ retention_function_count="$(
       SELECT count(*)
       FROM pg_proc AS procedure
       JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
-      WHERE namespace.nspname = 'wokesocial_moderation'
+      WHERE namespace.nspname = 'wetdrool_moderation'
         AND procedure.proname = 'moderation_apply_retention'
     "
 )"
@@ -162,19 +162,19 @@ fi
 role_policy_violation_count="$(
   PGPASSWORD="$AUTH_DATABASE_RUNTIME_PASSWORD" psql \
     --host postgres \
-    --username wokesocial_auth_runtime \
+    --username wetdrool_auth_runtime \
     --dbname "$POSTGRES_DB" \
     --tuples-only \
     --no-align \
     --command "
       WITH service_roles(role_name) AS (
         VALUES
-          ('wokesocial_auth_runtime'),
-          ('wokesocial_auth_migration'),
-          ('wokesocial_indexer_runtime'),
-          ('wokesocial_indexer_migration'),
-          ('wokesocial_moderation_runtime'),
-          ('wokesocial_moderation_migration')
+          ('wetdrool_auth_runtime'),
+          ('wetdrool_auth_migration'),
+          ('wetdrool_indexer_runtime'),
+          ('wetdrool_indexer_migration'),
+          ('wetdrool_moderation_runtime'),
+          ('wetdrool_moderation_migration')
       )
       SELECT
         (
@@ -208,7 +208,7 @@ fi
 extension_count="$(
   PGPASSWORD="$INDEXER_DATABASE_MIGRATION_PASSWORD" psql \
     --host postgres \
-    --username wokesocial_indexer_migration \
+    --username wetdrool_indexer_migration \
     --dbname "$POSTGRES_DB" \
     --tuples-only \
     --no-align \
@@ -216,11 +216,11 @@ extension_count="$(
       SELECT count(*)
       FROM pg_extension
       WHERE extname IN ('pg_trgm', 'btree_gin')
-        AND extnamespace = 'wokesocial_indexer'::regnamespace
+        AND extnamespace = 'wetdrool_indexer'::regnamespace
     "
 )"
 if [ "$extension_count" != "2" ]; then
-  echo 'Required indexer extensions are not isolated in wokesocial_indexer.' >&2
+  echo 'Required indexer extensions are not isolated in wetdrool_indexer.' >&2
   exit 1
 fi
 

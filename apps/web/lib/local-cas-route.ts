@@ -1,4 +1,4 @@
-import type { ContentAddressedStorage } from '@wokesocial/storage';
+import type { ContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   LOCAL_CAS_CONTENT_TYPE,
@@ -312,11 +312,11 @@ function isLoopbackForwardedAddress(value: string | null): boolean {
 
 function hasSecretMaterialHeaders(headers: Headers): boolean {
   return [
-    'x-wokesocial-private-key',
-    'x-wokesocial-prf',
-    'x-wokesocial-prf-output',
-    'x-wokesocial-recovery-material',
-    'x-wokesocial-seed',
+    'x-wetdrool-private-key',
+    'x-wetdrool-prf',
+    'x-wetdrool-prf-output',
+    'x-wetdrool-recovery-material',
+    'x-wetdrool-seed',
   ].some((name) => headers.has(name));
 }
 

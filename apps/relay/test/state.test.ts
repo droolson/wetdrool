@@ -102,9 +102,9 @@ describe('bounded relay state', () => {
     metrics.activeConnections = 2;
     metrics.acceptedEvents = 4;
     const output = metrics.prometheus('relay-public-id', 1, 'verified');
-    expect(output).toContain('wokesocial_relay_active_connections 2');
-    expect(output).toContain('wokesocial_relay_accepted_events_total 4');
-    expect(output).not.toContain('wokesocialid:');
+    expect(output).toContain('wetdrool_relay_active_connections 2');
+    expect(output).toContain('wetdrool_relay_accepted_events_total 4');
+    expect(output).not.toContain('wetdroolid:');
   });
 });
 
@@ -118,7 +118,7 @@ describe('relay environment configuration', () => {
     ).toEqual({
       host: '127.0.0.1',
       port: 4200,
-      relayId: 'wokesocial-relay',
+      relayId: 'wetdrool-relay',
       allowedOrigins: ['https://social.example', 'http://127.0.0.1:3000'],
       dangerouslyAllowUnverifiedLocalMode: false,
       trustedProxyCidrs: [],
@@ -145,9 +145,9 @@ describe('relay environment configuration', () => {
     expect(
       parseRelayConfig({
         ...mode,
-        RELAY_ALLOWED_ORIGINS: 'https://woke.social',
+        RELAY_ALLOWED_ORIGINS: 'https://wetdrool.com',
       }).allowedOrigins,
-    ).toEqual(['https://woke.social']);
+    ).toEqual(['https://wetdrool.com']);
   });
 
   it.each(['127.0.0.1', '[::1]', '[::ffff:7f00:1]', '[::]', 'app.localhost'])(
@@ -177,7 +177,7 @@ describe('relay environment configuration', () => {
     for (const variableName of ['MODERATION_DATABASE_MIGRATION_URL', 'MODERATION_DATABASE_URL']) {
       expect(() =>
         parseRelayConfig({
-          [variableName]: 'postgresql://unrelated:secret@database.test/wokesocial',
+          [variableName]: 'postgresql://unrelated:secret@database.test/wetdrool',
         }),
       ).toThrow(/must not be injected/u);
     }
@@ -325,7 +325,7 @@ describe('relay environment configuration', () => {
       parseRelayConfig({ RELAY_ALLOWED_ORIGINS: 'https://user:secret@relay.example' }),
     ).toThrow();
     expect(() =>
-      parseRelayConfig({ RELAY_ALLOWED_ORIGINS: 'https://www.sociallywoke.com' }),
+      parseRelayConfig({ RELAY_ALLOWED_ORIGINS: 'https://www.droolhouse.com' }),
     ).toThrow(/legacy redirect host/);
     expect(() =>
       parseRelayConfig({ RELAY_ALLOWED_ORIGINS: 'https://WWW.SOCIALLYWOKE.COM..' }),

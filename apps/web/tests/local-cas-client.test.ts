@@ -1,4 +1,4 @@
-import { getContentCid } from '@wokesocial/protocol';
+import { getContentCid } from '@wetdrool/protocol';
 import { describe, expect, it, vi } from 'vitest';
 
 import { LocalCasBrowserClient, LocalCasBrowserClientError } from '../lib/local-cas-client';
@@ -151,7 +151,7 @@ describe('local CAS browser client', () => {
   });
 
   it('rejects absolute or protocol-relative endpoint overrides', () => {
-    for (const endpoint of ['https://woke.social/api/localnet/cas', '//remote.example/cas']) {
+    for (const endpoint of ['https://wetdrool.com/api/localnet/cas', '//remote.example/cas']) {
       expect(() => new LocalCasBrowserClient({ endpoint })).toThrow(LocalCasBrowserClientError);
     }
   });
@@ -171,7 +171,7 @@ function resultFor(
       policy: { permanence: 'deletion-compatible' },
       provider: 'local-filesystem',
       providerVersion: '1',
-      schema: 'wokesocial.local-cas-receipt.v1',
+      schema: 'wetdrool.local-cas-receipt.v1',
       verified: true,
     },
   };

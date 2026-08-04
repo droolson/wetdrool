@@ -34,7 +34,7 @@ const base58PublicKey = z
   .string()
   .regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, 'must be a base58-encoded public key');
 const optionalPublicKey = z.preprocess(emptyToUndefined, base58PublicKey.optional());
-const legacyRedirectHostnames = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const legacyRedirectHostnames = new Set(['droolhouse.com', 'www.droolhouse.com']);
 const retiredNetworkEnvironmentKeys = new Map([
   ['NEXT_PUBLIC_WOKENET', 'NEXT_PUBLIC_SOLANA_CLUSTER'],
   ['NEXT_PUBLIC_WOKENET_RPC_URL', 'NEXT_PUBLIC_SOLANA_RPC_URL'],
@@ -160,7 +160,7 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
       protocolUrl(['postgres:', 'postgresql:']).optional(),
     ),
     DATABASE_URL: protocolUrl(['postgres:', 'postgresql:']).default(
-      'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial',
+      'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool',
     ),
     INDEXER_HOST: z.string().min(1).default('127.0.0.1'),
     INDEXER_BATCH_SIZE: z.coerce.number().int().min(1).max(10_000).default(100),
@@ -178,7 +178,7 @@ export const serverEnvironmentSchema = publicEnvironmentSchema
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     NODE_TLS_REJECT_UNAUTHORIZED: optionalString,
     OTEL_EXPORTER_OTLP_ENDPOINT: optionalUrl,
-    OTEL_SERVICE_NAMESPACE: z.string().min(1).default('wokesocial'),
+    OTEL_SERVICE_NAMESPACE: z.string().min(1).default('wetdrool'),
     REDIS_URL: protocolUrl(['redis:', 'rediss:']).default(
       'redis://:local-development-only@127.0.0.1:6379',
     ),

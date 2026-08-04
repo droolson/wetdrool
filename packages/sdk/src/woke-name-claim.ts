@@ -11,21 +11,21 @@ import {
   utf8,
   wokeHandleSchema,
   type RandomWokeName,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import type { WokeAccountCommitment, WokeProgramAccountSnapshot } from './identity-publication.js';
 import {
-  createWokeNetContext,
+  createDroolNetContext,
   deriveWokeProtocolConfigAddress,
   WOKENET_SYSTEM_PROGRAM_ADDRESS,
-  type ValidatedWokeNetContext,
+  type ValidatedDroolNetContext,
   type WokeInstruction,
-  type WokeNetContext,
+  type DroolNetContext,
 } from './woke-payments.js';
 
 const ACCOUNT_VERSION = 1;
 const U64_MAX = 18_446_744_073_709_551_615n;
-const PDA_PREFIX = utf8('wokesocial');
+const PDA_PREFIX = utf8('wetdrool');
 const PDA_VERSION = Uint8Array.of(ACCOUNT_VERSION);
 const HANDLE_SEED = utf8('handle');
 const CLAIM_HANDLE_DISCRIMINATOR = Uint8Array.of(93, 142, 47, 111, 164, 134, 99, 181);
@@ -61,7 +61,7 @@ export interface BuildClaimRandomWokeNameInput {
 
 export interface BuiltClaimRandomWokeNameInstruction {
   readonly kind: 'claim-random-woke-name';
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly configAddress: string;
   readonly identityAddress: string;
   readonly originAuthority: string;
@@ -94,10 +94,10 @@ export interface WokeNameClaimAccountRecord {
  * `anon_…` value.
  */
 export async function buildClaimRandomWokeNameInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildClaimRandomWokeNameInput,
 ): Promise<BuiltClaimRandomWokeNameInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const configAddress = await deriveWokeProtocolConfigAddress(context);
   const originAuthority = parseAddress(input.originAuthority, 'identity origin authority');
   const rootAuthority = parseAddress(input.rootAuthority, 'current identity root authority');

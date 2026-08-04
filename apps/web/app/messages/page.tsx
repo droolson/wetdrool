@@ -1,46 +1,61 @@
 import type { Metadata } from 'next';
+import { ButtonLink, StatusBadge } from '@wetdrool/ui';
 
-import { ProductState } from '@/components/product-state';
+import { AppPageHeader } from '@/components/app-page-header';
+import { getE2eeCapabilityReport } from '@/lib/e2ee-status';
 
 export const metadata: Metadata = {
   title: 'Messages',
-  description: 'Private messaging safety and encryption readiness without simulated conversations.',
+  description: 'Private pairwise E2EE status — no simulated inbox.',
 };
 
 export default function MessagesPage() {
+  const e2ee = getE2eeCapabilityReport();
+
   return (
-    <ProductState
-      actionHref="/messages/group"
-      actionLabel="Inspect group-message readiness"
-      cards={[
-        {
-          copy: 'Message bodies, attachments, reactions, and read state must be end-to-end encrypted before leaving a device.',
-          eyebrow: 'Encryption',
-          footer: 'No server-readable fallback',
-          title: 'Private means ciphertext',
-          tone: 'plum',
-        },
-        {
-          copy: 'Each conversation can show device changes, safety-number status, retention, and disappearing-message policy.',
-          eyebrow: 'Assurance',
-          footer: 'Key changes are visible',
-          title: 'Trust can be inspected',
-          tone: 'coral',
-        },
-        {
-          copy: 'Blocks stop new envelopes, reports separate evidence by consent, and unknown senders begin behind a request boundary.',
-          eyebrow: 'Consent',
-          footer: 'No forced inbox access',
-          title: 'A door you can close',
-          tone: 'sky',
-        },
-      ]}
-      detail="No authenticated messaging identity, prekey service, encrypted store, or relay session is configured. This page will not create sample chats or imply end-to-end encryption."
-      eyebrow="Private conversations"
-      intro="Messaging is not a styled text box. It needs audited key agreement, device verification, encrypted storage, abuse controls, and honest delivery state."
-      stateEyebrow="Messaging locked"
-      stateTitle="Encryption adapters are required first."
-      title="Private by construction."
-    />
+    <div className="product-page page-shell">
+      <AppPageHeader
+        actions={<StatusBadge tone="degraded">E2EE package · web not wired</StatusBadge>}
+        eyebrow="Private messages"
+        title="Private by construction."
+      >
+        <p>
+          Protocol <code className="inline-identifier">{e2ee.protocol}</code>. Server-readable
+          fallback: <strong>{String(e2ee.serverReadableFallback)}</strong>. Private by default:{' '}
+          <strong>{String(e2ee.privateByDefault)}</strong>.
+        </p>
+      </AppPageHeader>
+
+      <section className="e2ee-status" aria-labelledby="e2ee-status-title">
+        <h2 id="e2ee-status-title">Capability report</h2>
+        <dl className="e2ee-status__grid">
+          <div>
+            <dt>Pairwise</dt>
+            <dd>
+              <StatusBadge tone="pending">{e2ee.pairwise}</StatusBadge>
+            </dd>
+          </div>
+          <div>
+            <dt>Group rooms</dt>
+            <dd>
+              <StatusBadge tone="unavailable">{e2ee.groupRooms}</StatusBadge>
+            </dd>
+          </div>
+        </dl>
+        <ul className="e2ee-status__details">
+          {e2ee.details.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+        <div className="hero__actions">
+          <ButtonLink href="/settings/privacy" variant="secondary">
+            Privacy controls
+          </ButtonLink>
+          <ButtonLink href="/messages/group" variant="quiet">
+            Group readiness
+          </ButtonLink>
+        </div>
+      </section>
+    </div>
   );
 }

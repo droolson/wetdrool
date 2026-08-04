@@ -20,7 +20,7 @@ describe('feed-service HTTP contract', () => {
       expect(readiness.statusCode).toBe(200);
       expect(openapi.json()).toMatchObject({
         openapi: '3.1.0',
-        'x-wokesocial-policy': {
+        'x-wetdrool-policy': {
           canonicalAuthority: false,
           verifiesProjectionSignatures: false,
           infersSensitiveTraits: false,
@@ -36,7 +36,7 @@ describe('feed-service HTTP contract', () => {
       expect(policy.headers['content-security-policy']).toContain("default-src 'none'");
       expect(provider.statusCode).toBe(200);
       expect(provider.json()).toMatchObject({
-        protocol: 'wokesocial-feed-provider',
+        protocol: 'wetdrool-feed-provider',
         protocolVersion: 1,
         canonical: false,
         assurance: { clientMustReapplySafetyControls: true },
@@ -262,12 +262,12 @@ describe('feed-service origin configuration', () => {
   it('normalizes exact origins and rejects the redirect-only legacy host', () => {
     expect(
       parseFeedServiceConfig({
-        FEED_SERVICE_CORS_ORIGINS: 'https://woke.social:443/, http://localhost:3000',
+        FEED_SERVICE_CORS_ORIGINS: 'https://wetdrool.com:443/, http://localhost:3000',
       }).allowedOrigins,
-    ).toEqual(['https://woke.social', 'http://localhost:3000']);
+    ).toEqual(['https://wetdrool.com', 'http://localhost:3000']);
     expect(() =>
       parseFeedServiceConfig({
-        FEED_SERVICE_CORS_ORIGINS: 'https://sociallywoke.com',
+        FEED_SERVICE_CORS_ORIGINS: 'https://droolhouse.com',
       }),
     ).toThrow(/legacy redirect host/);
     expect(() =>
@@ -298,7 +298,7 @@ describe('feed-service origin configuration', () => {
     for (const variableName of ['AUTH_DATABASE_MIGRATION_URL', 'AUTH_DATABASE_URL']) {
       expect(() =>
         parseFeedServiceConfig({
-          [variableName]: 'postgresql://unrelated:secret@database.test/wokesocial',
+          [variableName]: 'postgresql://unrelated:secret@database.test/wetdrool',
         }),
       ).toThrow(/must not be injected/u);
     }

@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/messaging",
+  "name": "@wetdrool/messaging",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Fail-closed pairwise E2EE adapter for WokeSocial devices",
+  "description": "Fail-closed pairwise E2EE adapter for WetDrool devices",
   "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "node": ">=20.19.0"

@@ -3,13 +3,13 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import { createTrustedProxyPolicy } from '@wetdrool/config/trusted-proxy';
 import {
   RATE_LIMIT_BACKEND_UNAVAILABLE,
   RATE_LIMITER_CLOSED,
   createFastifyRateLimitStore,
   type RateLimiter,
-} from '@wokesocial/rate-limit';
+} from '@wetdrool/rate-limit';
 
 import { FeedCursorError, publicFeedPolicy, rankFeed } from './engine.js';
 import { openApiDocument } from './openapi.js';
@@ -35,7 +35,7 @@ export async function buildFeedServiceApp(
         ? false
         : {
             level: 'info',
-            base: { service: '@wokesocial/feed-service' },
+            base: { service: '@wetdrool/feed-service' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -89,7 +89,7 @@ export async function buildFeedServiceApp(
 
   app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
-    service: '@wokesocial/feed-service',
+    service: '@wetdrool/feed-service',
     policyVersion: FEED_POLICY_VERSION,
   }));
 

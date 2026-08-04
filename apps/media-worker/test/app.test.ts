@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { buildMediaWorkerApp } from '../src/app.js';
@@ -57,7 +57,7 @@ describe('media worker HTTP API', () => {
     const { app } = await makeApp({ locked: true });
     expect((await app.inject({ method: 'GET', url: '/healthz' })).json()).toEqual({
       ok: true,
-      service: '@wokesocial/media-worker',
+      service: '@wetdrool/media-worker',
       canonical: false,
       signsForUsers: false,
     });
@@ -309,18 +309,18 @@ describe('media worker HTTP API', () => {
   });
 
   it('allows browser bearer authorization only for validated exact CORS origins', async () => {
-    const { app } = await makeApp({ allowedOrigins: ['https://woke.social'] });
+    const { app } = await makeApp({ allowedOrigins: ['https://wetdrool.com'] });
     const preflight = await app.inject({
       method: 'OPTIONS',
       url: '/v1/uploads',
       headers: {
-        origin: 'https://woke.social',
+        origin: 'https://wetdrool.com',
         'access-control-request-method': 'POST',
         'access-control-request-headers': 'authorization, content-type',
       },
     });
     expect(preflight.statusCode).toBe(204);
-    expect(preflight.headers['access-control-allow-origin']).toBe('https://woke.social');
+    expect(preflight.headers['access-control-allow-origin']).toBe('https://wetdrool.com');
     expect(preflight.headers['access-control-allow-headers']).toContain('authorization');
 
     const rejectedRoot = await createTestRoot();

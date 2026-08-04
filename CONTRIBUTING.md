@@ -1,6 +1,6 @@
-# Contributing to WokeSocial
+# Contributing to WetDrool
 
-WokeSocial is actively looking for contributors.
+WetDrool is actively looking for contributors.
 
 We are building an inclusive social platform for everyone, with a portable
 protocol layer on Solana. Contributions are welcome from people of every
@@ -12,7 +12,7 @@ read it before joining project discussions.
 
 ## Repository access
 
-The GitHub repository, `AlexBTC420/wokesocial`, is currently private. It is not
+The GitHub repository, `AlexBTC420/wetdrool`, is currently private. It is not
 yet an open public issue tracker or public fork target. Access is invite-only.
 Prospective contributors who already have a direct channel to
 [@AlexBTC420](https://github.com/AlexBTC420) may request access and an initial
@@ -131,7 +131,7 @@ troubleshooting.
 ## Engineering conventions
 
 - Applications live in `apps/*`; shared TypeScript packages live in
-  `packages/*`; the WokeNet program lives in `programs/social_protocol`.
+  `packages/*`; the DroolNet program lives in `programs/social_protocol`.
 - Shared protocol schemas are defined once and imported by clients and
   services.
 - PostgreSQL indexers are rebuildable projections. Redis is disposable
@@ -144,12 +144,12 @@ troubleshooting.
   a safe local example in `.env.example`.
 - Production and shared configurations fail closed. Local bypasses must be
   explicit, development-only, and loopback-only.
-- Use WokeSocial for the product, WokeNet for the protocol/program layer, and
-  Solana for the chain. WokeNet is not a separate blockchain or validator
+- Use WetDrool for the product, DroolNet for the protocol/program layer, and
+  Solana for the chain. DroolNet is not a separate blockchain or validator
   network.
-- Never call SOL or lamports `$WOKE`. No `$WOKE` mint exists, and the legacy
+- Never call SOL or lamports `$DROOL`. No `$DROOL` mint exists, and the legacy
   payment ABI remains quarantined.
-- `woke.social` is the canonical origin. Legacy hostnames are redirect-only.
+- `wetdrool.com` is the canonical origin. Legacy hostnames are redirect-only.
 
 ## Tests and evidence
 
@@ -234,5 +234,5 @@ For commercial or government production licensing, open an issue titled
 `Commercial / Government License Request` — do not use a normal contribution PR
 for that.
 
-Thank you for helping build WokeSocial with care, rigor, and respect for the
+Thank you for helping build WetDrool with care, rigor, and respect for the
 people who will depend on it.

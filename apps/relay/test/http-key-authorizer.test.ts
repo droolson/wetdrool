@@ -9,7 +9,7 @@ const networkId = alice.identityId.split(':').slice(2, -1).join(':');
 function authorizationResponse(overrides: Record<string, unknown> = {}) {
   return new Response(
     JSON.stringify({
-      version: 'wokesocial-relay-key-authorization-v1',
+      version: 'wetdrool-relay-key-authorization-v1',
       requestId,
       authorized: true,
       finalized: true,
@@ -62,7 +62,7 @@ describe('HTTP relay key authorizer', () => {
   it.each([
     { requestId: '22222222-2222-4222-8222-222222222222' },
     { finalized: false },
-    { networkId: networkId.replace('wokenet:v1:', 'wokenet:v1:1') },
+    { networkId: networkId.replace('droolnet:v1:', 'droolnet:v1:1') },
     { evaluatedAt: new Date(testNow.getTime() - 31_000).toISOString() },
     { expiresAt: new Date(testNow.getTime() + 16_000).toISOString() },
     {

@@ -232,12 +232,12 @@ CREATE OR REPLACE FUNCTION accept_pending_manifest_event(
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, wokesocial_indexer
+SET search_path = pg_catalog, wetdrool_indexer
 AS $$
 DECLARE
   affected_rows integer;
 BEGIN
-  UPDATE wokesocial_indexer.protocol_events
+  UPDATE wetdrool_indexer.protocol_events
   SET manifest_pending = false
   WHERE network_id = p_network_id
     AND transaction_signature = p_transaction_signature
@@ -269,12 +269,12 @@ CREATE OR REPLACE FUNCTION reject_pending_manifest_event(
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, wokesocial_indexer
+SET search_path = pg_catalog, wetdrool_indexer
 AS $$
 DECLARE
   affected_rows integer;
 BEGIN
-  UPDATE wokesocial_indexer.protocol_events
+  UPDATE wetdrool_indexer.protocol_events
   SET
     manifest_pending = false,
     terminal_manifest_failure_code = p_terminal_failure_code
@@ -307,14 +307,14 @@ REVOKE UPDATE, DELETE ON TABLE protocol_events FROM PUBLIC;
 
 DO $manifest_ingestion_runtime_acl$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'wokesocial_indexer_runtime') THEN
-    REVOKE UPDATE, DELETE ON TABLE protocol_events FROM wokesocial_indexer_runtime;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'wetdrool_indexer_runtime') THEN
+    REVOKE UPDATE, DELETE ON TABLE protocol_events FROM wetdrool_indexer_runtime;
     GRANT EXECUTE ON FUNCTION accept_pending_manifest_event(
       text, text, integer, integer, numeric, timestamptz, text, jsonb
-    ) TO wokesocial_indexer_runtime;
+    ) TO wetdrool_indexer_runtime;
     GRANT EXECUTE ON FUNCTION reject_pending_manifest_event(
       text, text, integer, integer, numeric, timestamptz, text, jsonb, text
-    ) TO wokesocial_indexer_runtime;
+    ) TO wetdrool_indexer_runtime;
   END IF;
 END
 $manifest_ingestion_runtime_acl$;

@@ -1,1 +1,1 @@
-export * from '@wokesocial/indexer-client/transport';
+export * from '@wetdrool/indexer-client/transport';

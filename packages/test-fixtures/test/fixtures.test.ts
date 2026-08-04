@@ -5,7 +5,7 @@ import {
   identityIdSchema,
   networkIdSchema,
   verifyEnvelope,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import { describe, expect, it } from 'vitest';
 
 import { createProtocolFixtureSet, TEST_FIXTURE_WARNING } from '../src/index.js';
@@ -20,10 +20,10 @@ describe('canonical protocol fixtures', () => {
     expect(first.warning).toBe(TEST_FIXTURE_WARNING);
     expect(first.participants.alice.privateKey).not.toBe(second.participants.alice.privateKey);
     expect(networkIdSchema.parse(first.network)).toBe(first.network);
-    expect(first.network.startsWith('wokenet:v1:')).toBe(true);
+    expect(first.network.startsWith('droolnet:v1:')).toBe(true);
     for (const participant of Object.values(first.participants)) {
       expect(identityIdSchema.parse(participant.author)).toBe(participant.author);
-      expect(participant.author.startsWith(`wokesocialid:v1:${first.network}:`)).toBe(true);
+      expect(participant.author.startsWith(`wetdroolid:v1:${first.network}:`)).toBe(true);
     }
 
     first.participants.alice.privateKey[0] = 255;
@@ -82,27 +82,27 @@ describe('canonical protocol fixtures', () => {
       ),
     ).toEqual({
       aliceProfileV1: {
-        objectId: 'wokesocialobj:v1:profile:uXkdJJqsNndfcFsSA9vg-NFqZgNm-xi5E3Pf0wdgvhVY',
+        objectId: 'wetdroolobj:v1:profile:uXkdJJqsNndfcFsSA9vg-NFqZgNm-xi5E3Pf0wdgvhVY',
         cid: 'bafkreicm6agizzet73qfterxlhsuxqn3aoq63r3547nbhgsfwepsqtuxk4',
       },
       aliceProfile: {
-        objectId: 'wokesocialobj:v1:profile:uYest1swDczVAkR-TAm939husRUn0kvPna_DKvdlSyvs',
+        objectId: 'wetdroolobj:v1:profile:uYest1swDczVAkR-TAm939husRUn0kvPna_DKvdlSyvs',
         cid: 'bafkreideebtdlal4m7rwoffvfjaf37f4x2khbk3w3hhroked7i7otewbti',
       },
       bobProfile: {
-        objectId: 'wokesocialobj:v1:profile:uYJbmmQbX8UJirf8B1GYhYCKfo52axkbQiptDNRE63Ek',
+        objectId: 'wetdroolobj:v1:profile:uYJbmmQbX8UJirf8B1GYhYCKfo52axkbQiptDNRE63Ek',
         cid: 'bafkreigalscswut4q73wtvc6zb4xoj3tczxcfk7ewnohapfhjkmekm4gna',
       },
       alicePost: {
-        objectId: 'wokesocialobj:v1:post:ujOrBjnUJaGYhNMmIlg-7sf4OeeDi5JvznJnZo_DF6PM',
+        objectId: 'wetdroolobj:v1:post:ujOrBjnUJaGYhNMmIlg-7sf4OeeDi5JvznJnZo_DF6PM',
         cid: 'bafkreic6xffmw3ilnmexjvcbkieyqzgph5ojpjoyhqeu2lba7nldeopbtq',
       },
       bobReply: {
-        objectId: 'wokesocialobj:v1:post:u_OZR8l8RhcESaYXgN_vuC5s9xvX4xJ7a6ueM0ZiOR4E',
+        objectId: 'wetdroolobj:v1:post:u_OZR8l8RhcESaYXgN_vuC5s9xvX4xJ7a6ueM0ZiOR4E',
         cid: 'bafkreidvng2clbgtbdvz5w6zgb7576cwu2xqw3n7tjvqbgr7oyxwwdvmfi',
       },
       bobReplyTombstone: {
-        objectId: 'wokesocialobj:v1:tombstone:u155GDfJ2uHii6pyd6dhzwaBW-ztFiGh765oBTXO8VxY',
+        objectId: 'wetdroolobj:v1:tombstone:u155GDfJ2uHii6pyd6dhzwaBW-ztFiGh765oBTXO8VxY',
         cid: 'bafkreif52zmvjvxrvbascjr4rtzqonavcxz7j6zzdmrtfiazwvuzz2pbby',
       },
     });

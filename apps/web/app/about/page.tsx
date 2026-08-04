@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { ButtonLink, SectionHeading } from '@wokesocial/ui';
+import { ButtonLink, SectionHeading } from '@wetdrool/ui';
 
 export const metadata: Metadata = {
   title: 'About',
-  description: 'The values, inclusion commitments, and product posture behind WokeSocial.',
+  description: 'The values, inclusion commitments, and product posture behind WetDrool.',
 };
 
 const INCLUSION_COMMITMENTS = [
@@ -19,13 +19,13 @@ export default function AboutPage() {
   return (
     <article className="editorial-page">
       <header className="editorial-hero page-shell">
-        <p className="section-kicker">About WokeSocial</p>
+        <p className="section-kicker">About WetDrool</p>
         <h1>
           A place to be fully seen—
           <em>without being fully exposed.</em>
         </h1>
         <p>
-          WokeSocial is an inclusive social network for everyone. Its ambition is simple to say and
+          WetDrool is an inclusive social network for everyone. Its ambition is simple to say and
           hard to fake: make a beautiful public square whose people can leave with their identity,
           relationships, and choices intact.
         </p>
@@ -44,7 +44,7 @@ export default function AboutPage() {
           </p>
           <p>
             Decentralization alone does not solve harassment, exclusion, or confusing technology.
-            WokeSocial pairs portable protocol state with layered moderation, consent controls,
+            WetDrool pairs portable protocol state with layered moderation, consent controls,
             clear recovery, and an interface that does not turn ordinary people into blockchain
             operators.
           </p>

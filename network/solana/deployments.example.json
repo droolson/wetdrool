@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "chain": "solana",
-  "protocol": "wokenet",
+  "protocol": "droolnet",
   "deployments": {
     "localnet": {
       "status": "development-only",

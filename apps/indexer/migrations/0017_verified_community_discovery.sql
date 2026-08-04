@@ -177,20 +177,20 @@ CREATE INDEX IF NOT EXISTS communities_public_directory
 ALTER TABLE communities
   ADD COLUMN IF NOT EXISTS search_name text
   GENERATED ALWAYS AS (
-    wokesocial_public_search_normalize(COALESCE(content ->> 'name', ''))
+    wetdrool_public_search_normalize(COALESCE(content ->> 'name', ''))
   ) STORED,
   ADD COLUMN IF NOT EXISTS search_slug text
   GENERATED ALWAYS AS (
-    wokesocial_public_search_normalize(COALESCE(content ->> 'slug', ''))
+    wetdrool_public_search_normalize(COALESCE(content ->> 'slug', ''))
   ) STORED,
   ADD COLUMN IF NOT EXISTS search_description text
   GENERATED ALWAYS AS (
-    wokesocial_public_search_normalize(COALESCE(content ->> 'description', ''))
+    wetdrool_public_search_normalize(COALESCE(content ->> 'description', ''))
   ) STORED,
   ADD COLUMN IF NOT EXISTS search_description_prefix text
   GENERATED ALWAYS AS (
     left(
-      wokesocial_public_search_normalize(COALESCE(content ->> 'description', '')),
+      wetdrool_public_search_normalize(COALESCE(content ->> 'description', '')),
       512
     )
   ) STORED;
@@ -263,12 +263,12 @@ CREATE OR REPLACE FUNCTION accept_pending_manifest_event(
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, wokesocial_indexer
+SET search_path = pg_catalog, wetdrool_indexer
 AS $$
 DECLARE
   affected_rows integer;
 BEGIN
-  UPDATE wokesocial_indexer.protocol_events
+  UPDATE wetdrool_indexer.protocol_events
   SET manifest_pending = false
   WHERE network_id = p_network_id
     AND transaction_signature = p_transaction_signature
@@ -300,12 +300,12 @@ CREATE OR REPLACE FUNCTION reject_pending_manifest_event(
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, wokesocial_indexer
+SET search_path = pg_catalog, wetdrool_indexer
 AS $$
 DECLARE
   affected_rows integer;
 BEGIN
-  UPDATE wokesocial_indexer.protocol_events
+  UPDATE wetdrool_indexer.protocol_events
   SET
     manifest_pending = false,
     terminal_manifest_failure_code = p_terminal_failure_code

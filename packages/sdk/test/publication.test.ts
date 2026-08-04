@@ -20,8 +20,8 @@ import {
   type PostContent,
   type PortablePayload,
   type ProfileContent,
-} from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage, MultiProviderStorage } from '@wokesocial/storage';
+} from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage, MultiProviderStorage } from '@wetdrool/storage';
 
 import {
   deriveWokeCommunityAddress,
@@ -40,14 +40,14 @@ const publicKey = ed25519.getPublicKey(privateKey);
 const genesis = bs58.encode(Uint8Array.from({ length: 32 }, () => 7));
 const program = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 const identityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 9));
-const network = `wokenet:v1:${genesis}:${program}` as NetworkId;
-const author = `wokesocialid:v1:wokenet:v1:${genesis}:${program}:${identityPda}`;
+const network = `droolnet:v1:${genesis}:${program}` as NetworkId;
+const author = `wetdroolid:v1:droolnet:v1:${genesis}:${program}:${identityPda}`;
 const identity = createPayloadBuilderIdentity(network, author, publicKey, 'root');
 const delegatedIdentity = createPayloadBuilderIdentity(network, author, publicKey, 'delegation');
 const otherPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 33);
 const otherPublicKey = ed25519.getPublicKey(otherPrivateKey);
 const otherIdentityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 10));
-const otherAuthor = `wokesocialid:v1:wokenet:v1:${genesis}:${program}:${otherIdentityPda}`;
+const otherAuthor = `wetdroolid:v1:droolnet:v1:${genesis}:${program}:${otherIdentityPda}`;
 const otherIdentity = createPayloadBuilderIdentity(network, otherAuthor, otherPublicKey);
 const content: PostContent = {
   format: 'plain',
@@ -90,15 +90,15 @@ const protectedValueReference = {
   cid: `b${'a'.repeat(30)}`,
   digest: protectedValueDigest,
   bytes: 128,
-  mediaType: 'application/wokesocial-encrypted-profile-value+json',
+  mediaType: 'application/wetdrool-encrypted-profile-value+json',
   protection: {
     kind: 'encrypted' as const,
-    encryptionFormat: 'wokesocial-aes-256-gcm-v1',
+    encryptionFormat: 'wetdrool-aes-256-gcm-v1',
     keyEnvelope: {
-      id: `wokesocialobj:v1:key-envelope:${protectedValueDigest}`,
+      id: `wetdroolobj:v1:key-envelope:${protectedValueDigest}`,
     },
     accessPolicy: {
-      id: `wokesocialobj:v1:access-policy:${protectedValueDigest}`,
+      id: `wetdroolobj:v1:access-policy:${protectedValueDigest}`,
     },
   },
 };
@@ -770,7 +770,7 @@ describe('publication pipeline', () => {
           replacement: {
             sequence: 2,
             replaces: {
-              id: `wokesocialobj:v1:community:${protectedValueDigest}`,
+              id: `wetdroolobj:v1:community:${protectedValueDigest}`,
             },
           },
         },

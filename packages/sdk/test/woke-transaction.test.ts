@@ -37,7 +37,7 @@ const manifestHash = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const refundPolicyHash = Uint8Array.from({ length: 32 }, (_, index) => 255 - index);
 
 const context = {
-  endpoint: 'https://rpc.network.woke.social',
+  endpoint: 'https://rpc.network.wetdrool.com',
   genesisHash: key(7),
   programAddress: key(8),
 } as const;
@@ -206,7 +206,7 @@ function installMockRpc(
   vi.stubGlobal(
     'fetch',
     vi.fn(async (requestUrl: string | URL | Request, init?: RequestInit) => {
-      expect(String(requestUrl)).toBe('https://rpc.network.woke.social/');
+      expect(String(requestUrl)).toBe('https://rpc.network.wetdrool.com/');
       expect(init).toMatchObject({
         cache: 'no-store',
         credentials: 'omit',
@@ -384,7 +384,7 @@ function executionLimits() {
   } as const;
 }
 
-describe('WokeNet transaction execution', () => {
+describe('DroolNet transaction execution', () => {
   it('compiles an ordered instruction set into one atomic signed transaction', async () => {
     const built = await builtTip();
     installMockRpc(built, {
@@ -455,7 +455,7 @@ describe('WokeNet transaction execution', () => {
     });
 
     expect(result).toMatchObject({
-      context: { ...context, endpoint: 'https://rpc.network.woke.social/' },
+      context: { ...context, endpoint: 'https://rpc.network.wetdrool.com/' },
       finalized: true,
       version: 0,
       feePayer: signerAddress,
@@ -481,7 +481,7 @@ describe('WokeNet transaction execution', () => {
     expect(operationSigner).toHaveBeenCalledOnce();
     const signingRequest = operationSigner.mock.calls[0]?.[0];
     expect(signingRequest).toMatchObject({
-      purpose: 'wokenet-transaction-v1',
+      purpose: 'droolnet-transaction-v1',
       version: 0,
       feePayer: signerAddress,
       instructionProgramAddress: context.programAddress,

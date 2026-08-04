@@ -196,7 +196,7 @@ async function ensureAnchor(temporaryDirectory) {
 }
 
 await mkdir(toolchainRoot, { recursive: true });
-const temporaryDirectory = await mkdtemp(join(tmpdir(), 'wokesocial-toolchain-'));
+const temporaryDirectory = await mkdtemp(join(tmpdir(), 'wetdrool-toolchain-'));
 try {
   await ensureRust(temporaryDirectory);
   await ensureAgave(temporaryDirectory);

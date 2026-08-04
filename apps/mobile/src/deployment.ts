@@ -31,7 +31,7 @@ export async function verifySolanaDeployment(
   if (config.deployment === null) {
     return {
       detail:
-        'No public WokeSocial Solana program deployment is configured. Wallet connection remains available, but protocol reads and writes stay disabled.',
+        'No public WetDrool Solana program deployment is configured. Wallet connection remains available, but protocol reads and writes stay disabled.',
       kind: 'unconfigured',
     };
   }
@@ -46,19 +46,19 @@ export async function verifySolanaDeployment(
     if (genesisHash !== config.deployment.expectedGenesisHash) {
       return {
         detail:
-          'The configured Solana RPC belongs to a different genesis than the WokeNet deployment ID.',
+          'The configured Solana RPC belongs to a different genesis than the DroolNet deployment ID.',
         kind: 'rejected',
       };
     }
     if (programAccount === null) {
       return {
-        detail: 'The configured WokeSocial program account does not exist on this Solana cluster.',
+        detail: 'The configured WetDrool program account does not exist on this Solana cluster.',
         kind: 'rejected',
       };
     }
     if (!programAccount.executable) {
       return {
-        detail: 'The configured WokeSocial program account is not executable.',
+        detail: 'The configured WetDrool program account is not executable.',
         kind: 'rejected',
       };
     }

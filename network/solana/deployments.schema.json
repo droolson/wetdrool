@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://woke.social/schemas/solana-deployments-v1.json",
-  "title": "WokeNet Solana deployments",
+  "$id": "https://wetdrool.com/schemas/solana-deployments-v1.json",
+  "title": "DroolNet Solana deployments",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "chain", "protocol", "deployments", "wokeToken"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "chain": { "const": "solana" },
-    "protocol": { "const": "wokenet" },
+    "protocol": { "const": "droolnet" },
     "deployments": {
       "type": "object",
       "additionalProperties": false,

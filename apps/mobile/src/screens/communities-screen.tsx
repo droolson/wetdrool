@@ -1,4 +1,4 @@
-import type { PublicVerifiedCommunity } from '@wokesocial/indexer-client';
+import type { PublicVerifiedCommunity } from '@wetdrool/indexer-client';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -89,7 +89,7 @@ export function CommunitiesScreen({
           Find your people, with proof.
         </Text>
         <Text style={styles.intro}>
-          Public community manifests from the configured WokeSocial program. Names are friendly;
+          Public community manifests from the configured WetDrool program. Names are friendly;
           Solana addresses remain the stable route.
         </Text>
       </View>

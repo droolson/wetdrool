@@ -1,14 +1,14 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { networkIdSchema } from '@wokesocial/protocol';
+import { networkIdSchema } from '@wetdrool/protocol';
 
 import { readIndexerConfig } from './config.js';
 import { rebuildFromDurableLedger } from './rebuild.js';
 
 export const INDEXER_REBUILD_HELP = `Usage:
-  pnpm --filter @wokesocial/indexer rebuild:projection --network <network-id>
-  pnpm --filter @wokesocial/indexer rebuild:projection --network <network-id> --apply --confirm <token>
+  pnpm --filter @wetdrool/indexer rebuild:projection --network <network-id>
+  pnpm --filter @wetdrool/indexer rebuild:projection --network <network-id> --apply --confirm <token>
 
 The default is a read-only dry run. Apply mode validates the complete durable
 raw-event ledger in an isolated in-memory projection before atomically replacing

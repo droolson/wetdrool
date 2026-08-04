@@ -127,7 +127,7 @@ describe('moderation restricted-data encryption', () => {
       env: {
         ...process.env,
         APP_ENV: 'development',
-        MODERATION_DATABASE_URL: 'postgresql://moderation_runtime@localhost/wokesocial',
+        MODERATION_DATABASE_URL: 'postgresql://moderation_runtime@localhost/wetdrool',
         MODERATION_DATA_KEYS: malformed,
         MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE: '0',
         NODE_ENV: 'development',

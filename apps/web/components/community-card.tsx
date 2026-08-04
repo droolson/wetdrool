@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import type {
   CommunitySearchMatch,

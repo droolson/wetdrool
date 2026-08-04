@@ -1,16 +1,16 @@
 {
-  "name": "wokenet",
+  "name": "wetdrool",
   "version": "0.0.0",
   "private": true,
-  "description": "WokeSocial social platform and portable WokeNet protocol for Solana.",
+  "description": "WetDrool / Droolhouse \u2014 18+ adult social dApp with DroolNet protocol on Solana, $DROOL economy, livestreams, and AI companions.",
   "license": "SEE LICENSE IN LICENSE",
-  "homepage": "https://woke.social",
+  "homepage": "https://wetdrool.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AlexBTC420/wokesocial.git"
+    "url": "git+https://github.com/canadasfemboy/wetdrool.git"
   },
   "bugs": {
-    "url": "https://github.com/AlexBTC420/wokesocial/issues"
+    "url": "https://github.com/canadasfemboy/wetdrool/issues"
   },
   "packageManager": "pnpm@11.2.2",
   "engines": {
@@ -24,7 +24,7 @@
     "dev:check": "node scripts/dev.mjs --check",
     "domain:check": "node scripts/check-canonical-domain.mjs",
     "domain:probe": "node scripts/probe-production-domain-redirect.mjs",
-    "env:check": "pnpm --filter @wokesocial/config env:check",
+    "env:check": "pnpm --filter @wetdrool/config env:check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "infra:config": "node scripts/infra.mjs config",
@@ -35,7 +35,7 @@
     "infra:up": "node scripts/infra.mjs up",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",
-    "measure:performance": "pnpm --filter @wokesocial/web measure:performance",
+    "measure:performance": "pnpm --filter @wetdrool/web measure:performance",
     "preflight": "node scripts/preflight.mjs",
     "security:audit": "pnpm audit --audit-level moderate",
     "security:secrets": "node scripts/run-gitleaks.mjs",

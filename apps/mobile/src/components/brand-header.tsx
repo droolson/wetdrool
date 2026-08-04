@@ -10,7 +10,7 @@ export function BrandHeader(): React.JSX.Element {
       </View>
       <View style={styles.copy}>
         <Text accessibilityRole="header" style={styles.wordmark}>
-          woke.social
+          wetdrool.com
         </Text>
         <Text style={styles.subline}>Human connection, anchored on Solana.</Text>
       </View>

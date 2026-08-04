@@ -1,4 +1,4 @@
-import type { PasskeyWrappedKeyBundle } from '@wokesocial/crypto';
+import type { PasskeyWrappedKeyBundle } from '@wetdrool/crypto';
 
 import {
   decodeBase64Url,
@@ -11,7 +11,7 @@ const CSRF_STORAGE_VERSION = 'v1';
 const ACCOUNT_ID_PATTERN = /^acct_[A-Za-z0-9_-]{22}$/u;
 const CEREMONY_ID_PATTERN = /^cer_[A-Za-z0-9_-]{22}$/u;
 const CREDENTIAL_ID_PATTERN = /^[A-Za-z0-9_-]{2,1364}$/u;
-const LEGACY_REDIRECT_HOSTS = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const LEGACY_REDIRECT_HOSTS = new Set(['droolhouse.com', 'www.droolhouse.com']);
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{22,86}$/u;
 const AUTHENTICATOR_TRANSPORTS = new Set([
   'ble',
@@ -95,7 +95,7 @@ export class AuthApiClient {
     this.baseUrl = normalizeBaseUrl(options.baseUrl);
     this.#fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.#storage = options.tokenStorage ?? browserSessionStorage();
-    this.#storageKey = `wokesocial.auth.csrf.${CSRF_STORAGE_VERSION}:${encodeURIComponent(this.baseUrl)}`;
+    this.#storageKey = `wetdrool.auth.csrf.${CSRF_STORAGE_VERSION}:${encodeURIComponent(this.baseUrl)}`;
     let stored: string | null = null;
     try {
       stored = this.#storage.getItem(this.#storageKey);

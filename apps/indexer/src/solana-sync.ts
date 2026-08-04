@@ -1,4 +1,4 @@
-import { networkIdSchema } from '@wokesocial/protocol';
+import { networkIdSchema } from '@wetdrool/protocol';
 
 import {
   AnchorEventDecodingError,
@@ -130,7 +130,7 @@ export class SolanaSyncWorker {
         networkId: this.options.networkId,
         programId: this.options.programId,
       },
-      'finalized WokeNet ingestion started',
+      'finalized DroolNet ingestion started',
     );
     while (!signal.aborted) {
       try {
@@ -142,7 +142,7 @@ export class SolanaSyncWorker {
             fromSlot: result.fromSlot.toString(),
             finalizedTip: result.finalizedTip.toString(),
           },
-          'finalized WokeNet ingestion poll completed',
+          'finalized DroolNet ingestion poll completed',
         );
       } catch (error) {
         if (signal.aborted) {
@@ -150,7 +150,7 @@ export class SolanaSyncWorker {
         }
         this.options.logger?.error?.(
           { error: errorMessage(error) },
-          'finalized WokeNet ingestion poll failed',
+          'finalized DroolNet ingestion poll failed',
         );
       }
       await this.#sleep(this.options.pollIntervalMilliseconds, signal);
@@ -358,7 +358,7 @@ export class SolanaSyncWorker {
                     logIndex: log.logIndex,
                     failureCode: error.code,
                   },
-                  'WokeNet manifest event was terminally quarantined',
+                  'DroolNet manifest event was terminally quarantined',
                 );
               }
               continue;
@@ -485,7 +485,7 @@ export class SolanaSyncWorker {
           failureCode: 'manifest-unavailable',
           attempts,
         },
-        'WokeNet manifest hydration was deferred without blocking finalized ingestion',
+        'DroolNet manifest hydration was deferred without blocking finalized ingestion',
       );
     }
     return deferred;
@@ -521,7 +521,7 @@ export class SolanaSyncWorker {
         failureCode: failureCode(error),
         attempts: rescheduled.attempts,
       },
-      'WokeNet pending manifest hydration will retry without blocking finalized ingestion',
+      'DroolNet pending manifest hydration will retry without blocking finalized ingestion',
     );
     return true;
   }
@@ -727,7 +727,7 @@ export class SolanaSyncWorker {
         failureCode: failureCode(input.error),
         attempts,
       },
-      'WokeNet ingestion item moved to the retryable dead-letter queue',
+      'DroolNet ingestion item moved to the retryable dead-letter queue',
     );
   }
 
@@ -805,7 +805,7 @@ function parseNetworkId(networkId: string): {
   const [, , genesisHash, programId] = parsed.success ? parsed.data.split(':') : [];
   if (genesisHash === undefined || programId === undefined) {
     throw new SolanaSyncConfigurationError(
-      'Network ID must be wokenet:v1:<32-byte-genesis-hash>:<32-byte-program-id>.',
+      'Network ID must be droolnet:v1:<32-byte-genesis-hash>:<32-byte-program-id>.',
     );
   }
   return { genesisHash, programId };
@@ -914,7 +914,7 @@ function errorMessage(error: unknown): string {
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted === true) {
-    throw signal.reason instanceof Error ? signal.reason : new Error('WokeNet sync aborted.');
+    throw signal.reason instanceof Error ? signal.reason : new Error('DroolNet sync aborted.');
   }
 }
 

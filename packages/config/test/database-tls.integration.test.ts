@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 const probePath = resolve(import.meta.dirname, 'fixtures/postgres-tls-probe.ts');
-const containerName = `codex-wokenet-postgres-tls-${process.pid}-${randomBytes(4).toString('hex')}`;
+const containerName = `codex-droolnet-postgres-tls-${process.pid}-${randomBytes(4).toString('hex')}`;
 const databasePassword = randomBytes(24).toString('base64url');
 const postgresImage = 'postgres:18.4-bookworm';
 
@@ -23,7 +23,7 @@ describe.sequential(
   'verified PostgreSQL TLS transport',
   () => {
     beforeAll(async () => {
-      certificateDirectory = await mkdtemp(join(tmpdir(), 'wokenet-postgres-tls-'));
+      certificateDirectory = await mkdtemp(join(tmpdir(), 'droolnet-postgres-tls-'));
       trustedCertificate = join(certificateDirectory, 'server.crt');
       mismatchCertificate = join(certificateDirectory, 'mismatch.crt');
       generateCertificate('localhost', 'server');
@@ -35,11 +35,11 @@ describe.sequential(
         '--name',
         containerName,
         '-e',
-        'POSTGRES_USER=wokesocial',
+        'POSTGRES_USER=wetdrool',
         '-e',
         `POSTGRES_PASSWORD=${databasePassword}`,
         '-e',
-        'POSTGRES_DB=wokesocial',
+        'POSTGRES_DB=wetdrool',
         '-p',
         '127.0.0.1::5432',
         postgresImage,
@@ -107,9 +107,9 @@ describe.sequential(
         '-v',
         'ON_ERROR_STOP=1',
         '-U',
-        'wokesocial',
+        'wetdrool',
         '-d',
-        'wokesocial',
+        'wetdrool',
         '-c',
         'SELECT pg_reload_conf()',
       ]);
@@ -186,9 +186,9 @@ function configureServerCertificate(basename: string): void {
     '-v',
     'ON_ERROR_STOP=1',
     '-U',
-    'wokesocial',
+    'wetdrool',
     '-d',
-    'wokesocial',
+    'wetdrool',
     '-c',
     "ALTER SYSTEM SET ssl = 'on'",
     '-c',
@@ -221,7 +221,7 @@ async function waitForPostgres(): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = spawnSync(
       'docker',
-      ['exec', containerName, 'pg_isready', '-U', 'wokesocial', '-d', 'wokesocial'],
+      ['exec', containerName, 'pg_isready', '-U', 'wetdrool', '-d', 'wetdrool'],
       {
         cwd: repositoryRoot,
         encoding: 'utf8',
@@ -267,7 +267,7 @@ function readPublishedPort(): number {
 }
 
 function databaseUrl(hostname: string): string {
-  const url = new URL('postgresql://wokesocial@localhost/wokesocial');
+  const url = new URL('postgresql://wetdrool@localhost/wetdrool');
   url.password = databasePassword;
   url.hostname = hostname;
   url.port = String(port);

@@ -1,7 +1,7 @@
-# WokeSocial moderation service
+# WetDrool moderation service
 
 This package is a replaceable, non-authoritative moderation provider for
-WokeSocial. It verifies signed public moderation labels, accepts signed
+WetDrool. It verifies signed public moderation labels, accepts signed
 restricted reports and appeals, and maintains a durable operator case ledger.
 It does not edit signed user content or make a moderation provider’s decision
 universal protocol truth.
@@ -62,7 +62,7 @@ Restricted data uses Node’s AES-256-GCM implementation with:
 - a random 96-bit nonce and 128-bit authentication tag;
 - envelope version `1` and an explicit key ID;
 - authenticated associated data bound to
-  `woke.social/moderation/aes-256-gcm/v1`, the record type, and the exact record
+  `wetdrool.com/moderation/aes-256-gcm/v1`, the record type, and the exact record
   ID;
 - strict canonical unpadded base64url parsing; and
 - a versioned key ring containing at most 16 keys.
@@ -225,7 +225,7 @@ evidence, note, or object identifier is returned.
 | `MODERATION_CLOSED_CASE_RETENTION_MS` | `31536000000` | 1 day–10 years |
 | `MODERATION_TRANSPARENCY_MINIMUM_CELL_SIZE` | `5` | 3–100 |
 
-Staging and production remote origins must use HTTPS. `https://woke.social` is
+Staging and production remote origins must use HTTPS. `https://wetdrool.com` is
 the canonical web origin. Both legacy redirect-only hostnames are explicitly
 rejected as application origins. Staging and production database URLs must
 contain exactly one `sslmode=verify-full`, and process-wide TLS verification
@@ -238,10 +238,10 @@ Start local PostgreSQL using the repository infrastructure, configure a local
 database URL and a throwaway 32-byte key, then run:
 
 ```sh
-MODERATION_DATABASE_MIGRATION_URL='postgresql://moderation_migration@localhost/wokesocial' \
-pnpm --filter @wokesocial/moderation-service migrate
+MODERATION_DATABASE_MIGRATION_URL='postgresql://moderation_migration@localhost/wetdrool' \
+pnpm --filter @wetdrool/moderation-service migrate
 MODERATION_DANGEROUSLY_ALLOW_UNVERIFIED_LOCAL_MODE=1 \
-  pnpm --filter @wokesocial/moderation-service dev
+  pnpm --filter @wetdrool/moderation-service dev
 ```
 
 The migration runner:
@@ -280,11 +280,11 @@ backup/point-in-time restore or a reviewed forward corrective migration.
 From the repository root:
 
 ```sh
-pnpm --filter @wokesocial/moderation-service lint
-pnpm --filter @wokesocial/moderation-service typecheck
-pnpm --filter @wokesocial/moderation-service test
-pnpm --filter @wokesocial/moderation-service test:integration
-pnpm --filter @wokesocial/moderation-service build
+pnpm --filter @wetdrool/moderation-service lint
+pnpm --filter @wetdrool/moderation-service typecheck
+pnpm --filter @wetdrool/moderation-service test
+pnpm --filter @wetdrool/moderation-service test:integration
+pnpm --filter @wetdrool/moderation-service build
 pnpm audit --prod
 ```
 

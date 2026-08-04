@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
-import { ButtonLink, SectionHeading, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, SectionHeading, StatusBadge } from '@wetdrool/ui';
 
 export const metadata: Metadata = {
   title: 'Protocol',
   description:
-    'How WokeSocial separates verifiable protocol state from replaceable service conveniences.',
+    'How WetDrool separates verifiable protocol state from replaceable service conveniences.',
 };
 
 const LAYERS = [
   {
     number: '01',
-    title: 'WokeNet proof',
+    title: 'DroolNet proof',
     label: 'Compact and verifiable',
     copy: 'Identity roots, delegations, selected public relationships, hashes, references, governance state, payments, and tombstones belong in compact protocol state—not raw media or private information.',
   },
@@ -47,7 +47,7 @@ export default function ProtocolPage() {
         </div>
         <div>
           <p>
-            WokeSocial separates durable protocol facts from fast, replaceable services. That makes
+            WetDrool separates durable protocol facts from fast, replaceable services. That makes
             the network independently verifiable without asking every screen to feel like a block
             explorer.
           </p>

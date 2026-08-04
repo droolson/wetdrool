@@ -3,11 +3,11 @@ import {
   type IndexerFetch,
   type ProjectedFeedRequest,
   type ProjectedFeedResult,
-} from '@wokesocial/indexer-client/projected-feed';
+} from '@wetdrool/indexer-client/projected-feed';
 
 import { describeEndpoint, getIndexerBaseUrl, ProviderConfigurationError } from './provider-config';
 
-export * from '@wokesocial/indexer-client/projected-feed';
+export * from '@wetdrool/indexer-client/projected-feed';
 
 const webFetch: IndexerFetch = (input, init) =>
   fetch(input, {
@@ -34,7 +34,7 @@ export async function getProjectedFeed(
   if (!base) {
     return {
       detail:
-        'Set WOKESOCIAL_INDEXER_URL to a compatible indexer base URL. No posts are substituted from another feed.',
+        'Set WETDROOL_INDEXER_URL to a compatible indexer base URL. No posts are substituted from another feed.',
       kind: 'degraded',
       reason: 'unconfigured',
     };

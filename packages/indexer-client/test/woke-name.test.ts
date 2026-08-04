@@ -1,22 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { digestSha256Multibase, utf8 } from '@wokesocial/protocol';
+import { digestSha256Multibase, utf8 } from '@wetdrool/protocol';
 
 import { parseWokeNameResolution, resolveWokeName } from '../src/woke-name.js';
 import { IndexerPayloadError } from '../src/contract.js';
 
 const NETWORK =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const IDENTITY_ADDRESS = '8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
 const ROOT = '11111111111111111111111111111111';
 const CLAIM = 'SysvarRent111111111111111111111111111111111';
-const NAME = 'river_chen.woke';
+const NAME = 'river_chen.drool';
 const HANDLE = 'river_chen';
 
 function resolution(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     canonical: false,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     network: NETWORK,
     namespace: 'woke',
     namespaceVersion: 1,
@@ -29,7 +29,7 @@ function resolution(overrides: Record<string, unknown> = {}): Record<string, unk
       semantics: 'current-identity-root-authority',
     },
     identity: {
-      identityId: `wokesocialid:v1:${NETWORK}:${IDENTITY_ADDRESS}`,
+      identityId: `wetdroolid:v1:${NETWORK}:${IDENTITY_ADDRESS}`,
       identityAddress: IDENTITY_ADDRESS,
       rootAuthority: ROOT,
       rootRotationCount: '1',
@@ -47,13 +47,13 @@ function resolution(overrides: Record<string, unknown> = {}): Record<string, unk
     meta: {
       checkpointSlot: 45,
       indexedAt: '2026-07-29T12:01:00.000Z',
-      source: 'WokeNet open indexer',
+      source: 'DroolNet open indexer',
     },
     ...overrides,
   };
 }
 
-describe('.woke resolver contract', () => {
+describe('.drool resolver contract', () => {
   it('accepts a checkpoint-covered claim and current rotated Solana root', () => {
     expect(parseWokeNameResolution(resolution(), { name: NAME, network: NETWORK })).toMatchObject({
       name: NAME,

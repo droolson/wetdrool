@@ -41,12 +41,12 @@ describe('memory projection ordering and feed disclosure policy', () => {
 describe('opaque composite feed cursors', () => {
   const post = {
     createdAt: '2026-07-28T12:00:02.000Z',
-    objectId: `wokesocialobj:v1:post:u${'A'.repeat(43)}`,
+    objectId: `wetdroolobj:v1:post:u${'A'.repeat(43)}`,
   };
   const networkId = projectionSecurityNetworkId(80);
   const otherNetworkId = projectionSecurityNetworkId(81);
-  const firstViewerIdentityId = `wokesocialid:v1:${networkId}:11111111111111111111111111111111`;
-  const secondViewerIdentityId = `wokesocialid:v1:${networkId}:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4yJAaDJwM`;
+  const firstViewerIdentityId = `wetdroolid:v1:${networkId}:11111111111111111111111111111111`;
+  const secondViewerIdentityId = `wetdroolid:v1:${networkId}:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4yJAaDJwM`;
   const chronologicalScope = {
     networkId,
     mode: 'chronological',
@@ -113,7 +113,7 @@ describe('opaque composite feed cursors', () => {
       'utf8',
     ).toString('base64url');
     const wrongRecipe = Buffer.from(
-      JSON.stringify({ ...payload, recipe: 'wokenet-open-indexer-feed-v0' }),
+      JSON.stringify({ ...payload, recipe: 'droolnet-open-indexer-feed-v0' }),
       'utf8',
     ).toString('base64url');
     const expanded = Buffer.from(JSON.stringify({ ...payload, extra: true }), 'utf8').toString(

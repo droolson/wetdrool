@@ -3,14 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   communityGovernanceStrategyCommitment,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import { getCommunityDetail, getCommunityDirectory } from '../lib/community';
 
 const NETWORK_ID =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const IDENTITY_ID =
-  'wokesocialid:v1:wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
+  'wetdroolid:v1:droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
 const COMMUNITY_ADDRESS = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const DIGEST = `u${'A'.repeat(43)}`;
 const CID = 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm';
@@ -51,7 +51,7 @@ const COMMUNITY = {
   manifestHash: DIGEST,
   manifestVerified: true,
   networkId: NETWORK_ID,
-  objectId: `wokesocialobj:v1:community:${DIGEST}`,
+  objectId: `wetdroolobj:v1:community:${DIGEST}`,
   schemaVersion: 2,
   signingKeyId: `${IDENTITY_ID}#root/${'1'.repeat(32)}`,
   updatedAt: '2026-07-28T12:01:00.000Z',
@@ -62,13 +62,13 @@ const COMMUNITY = {
 const META = {
   checkpointSlot: 50,
   indexedAt: '2026-07-28T12:02:00.000Z',
-  source: 'WokeNet open indexer',
+  source: 'DroolNet open indexer',
 } as const;
 
 const originalEnvironment = {
   INDEXER_NETWORK_ID: process.env['INDEXER_NETWORK_ID'],
   WOKENET_NETWORK_ID: process.env['WOKENET_NETWORK_ID'],
-  WOKESOCIAL_INDEXER_URL: process.env['WOKESOCIAL_INDEXER_URL'],
+  WETDROOL_INDEXER_URL: process.env['WETDROOL_INDEXER_URL'],
 };
 
 function restoreEnvironment(): void {
@@ -88,7 +88,7 @@ describe.sequential('web community provider wrapper', () => {
   });
 
   it('degrades honestly when the server-only network scope is absent', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     delete process.env['WOKENET_NETWORK_ID'];
     delete process.env['INDEXER_NETWORK_ID'];
     const fetch = vi.fn<typeof globalThis.fetch>();
@@ -103,7 +103,7 @@ describe.sequential('web community provider wrapper', () => {
   });
 
   it('rejects an invalid address or cursor before reading or contacting a provider', async () => {
-    delete process.env['WOKESOCIAL_INDEXER_URL'];
+    delete process.env['WETDROOL_INDEXER_URL'];
     delete process.env['WOKENET_NETWORK_ID'];
     const fetch = vi.fn<typeof globalThis.fetch>();
     vi.stubGlobal('fetch', fetch);
@@ -120,7 +120,7 @@ describe.sequential('web community provider wrapper', () => {
   });
 
   it('requests an explicitly scoped public directory without exposing path secrets', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] =
+    process.env['WETDROOL_INDEXER_URL'] =
       'https://indexer.example/operator/?access_token=not-forwarded';
     process.env['WOKENET_NETWORK_ID'] = NETWORK_ID;
     const fetch = vi.fn<typeof globalThis.fetch>(async () =>
@@ -130,7 +130,7 @@ describe.sequential('web community provider wrapper', () => {
         meta: META,
         network: NETWORK_ID,
         nextCursor: null,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         recipe: 'community-directory-v1',
       }),
     );
@@ -152,7 +152,7 @@ describe.sequential('web community provider wrapper', () => {
   });
 
   it('maps exact-address 404 to a privacy-preserving not-found state', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     process.env['WOKENET_NETWORK_ID'] = NETWORK_ID;
     const fetch = vi.fn<typeof globalThis.fetch>(async () =>
       Response.json({ error: { code: 'not-found' } }, { status: 404 }),
@@ -165,14 +165,14 @@ describe.sequential('web community provider wrapper', () => {
   });
 
   it('accepts exact verified detail and rejects a provider-added membership roster', async () => {
-    process.env['WOKESOCIAL_INDEXER_URL'] = 'https://indexer.example/';
+    process.env['WETDROOL_INDEXER_URL'] = 'https://indexer.example/';
     process.env['WOKENET_NETWORK_ID'] = NETWORK_ID;
     const readyResponse = {
       canonical: false,
       community: COMMUNITY,
       meta: META,
       network: NETWORK_ID,
-      projection: 'wokenet-open-indexer',
+      projection: 'droolnet-open-indexer',
     } as const;
     const fetch = vi
       .fn<typeof globalThis.fetch>()

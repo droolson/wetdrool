@@ -1,4 +1,4 @@
-import { ButtonLink, StatePanel } from '@wokesocial/ui';
+import { ButtonLink, StatePanel } from '@wetdrool/ui';
 
 export default function NotFound() {
   return (
@@ -6,7 +6,7 @@ export default function NotFound() {
       <StatePanel
         action={
           <ButtonLink href="/" variant="secondary">
-            Return to WokeSocial
+            Return to WetDrool
           </ButtonLink>
         }
         eyebrow="404"

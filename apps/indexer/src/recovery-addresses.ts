@@ -1,7 +1,7 @@
 import { address, getProgramDerivedAddress } from '@solana/kit';
 import bs58 from 'bs58';
 
-const PDA_PREFIX = Uint8Array.from(Buffer.from('wokesocial', 'ascii'));
+const PDA_PREFIX = Uint8Array.from(Buffer.from('wetdrool', 'ascii'));
 const PDA_VERSION = Uint8Array.of(1);
 const RECOVERY_POLICY_SEED = Uint8Array.from(Buffer.from('recovery_policy', 'ascii'));
 const RECOVERY_REQUEST_SEED = Uint8Array.from(Buffer.from('recovery_request', 'ascii'));

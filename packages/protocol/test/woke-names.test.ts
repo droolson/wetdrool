@@ -11,39 +11,39 @@ import {
   wokeNameSchema,
 } from '../src/index.js';
 
-describe('.woke namespace', () => {
+describe('.drool namespace', () => {
   it('canonicalizes UI forms to one exact onchain handle', () => {
     expect(canonicalizeWokeName('Alex_BTC420')).toEqual({
       namespace: 'woke',
       version: 1,
       handle: 'alex_btc420',
-      name: 'alex_btc420.woke',
+      name: 'alex_btc420.drool',
     });
-    expect(canonicalizeWokeName('@alex_btc420.woke')).toEqual(canonicalizeWokeName('alex_btc420'));
-    expect(wokeNameSchema.parse('alex_btc420.woke')).toBe('alex_btc420.woke');
+    expect(canonicalizeWokeName('@alex_btc420.drool')).toEqual(canonicalizeWokeName('alex_btc420'));
+    expect(wokeNameSchema.parse('alex_btc420.drool')).toBe('alex_btc420.drool');
   });
 
   it.each([
-    ' alex.woke',
-    'alex.woke ',
-    'álеx.woke',
-    'ａｌｅｘ.woke',
-    '@@alex.woke',
-    'alex..woke',
-    'ab.woke',
-    'alex__btc.woke',
-    '_alex.woke',
-    'alex_.woke',
+    ' alex.drool',
+    'alex.drool ',
+    'álеx.drool',
+    'ａｌｅｘ.drool',
+    '@@alex.drool',
+    'alex..drool',
+    'ab.drool',
+    'alex__btc.drool',
+    '_alex.drool',
+    'alex_.drool',
   ])('rejects ambiguous, confusable, or invalid input: %s', (input) => {
     expect(() => canonicalizeWokeName(input)).toThrow();
   });
 
   it('keeps anonymous and safety namespaces unavailable to custom claims', () => {
-    expect(() => assertCustomWokeNameAllowed('anon_0123456789abcdef.woke')).toThrow(/reserved/u);
-    expect(() => assertCustomWokeNameAllowed('support.woke')).toThrow(/reserved/u);
-    expect(assertCustomWokeNameAllowed('alexbtc420.woke').handle).toBe('alexbtc420');
-    expect(isReservedCustomWokeName('security.woke')).toBe(true);
-    expect(isReservedCustomWokeName('independent_artist.woke')).toBe(false);
+    expect(() => assertCustomWokeNameAllowed('anon_0123456789abcdef.drool')).toThrow(/reserved/u);
+    expect(() => assertCustomWokeNameAllowed('support.drool')).toThrow(/reserved/u);
+    expect(assertCustomWokeNameAllowed('alexbtc420.drool').handle).toBe('alexbtc420');
+    expect(isReservedCustomWokeName('security.drool')).toBe(true);
+    expect(isReservedCustomWokeName('independent_artist.drool')).toBe(false);
   });
 
   it('derives a stable 80-bit anonymous name from public root material only', () => {
@@ -55,7 +55,7 @@ describe('.woke namespace', () => {
       derivation: 'solana-root-sha256-crockford80-v1',
       entropyBits: WOKE_RANDOM_HANDLE_ENTROPY_BITS,
       handle: 'anon_a8rvm9ryz0phc719',
-      name: 'anon_a8rvm9ryz0phc719.woke',
+      name: 'anon_a8rvm9ryz0phc719.drool',
     });
     expect(deriveRandomWokeName('11111111111111111111111111111111')).toEqual(derived);
     expect(wokeNameSchema.parse(derived.name)).toBe(derived.name);

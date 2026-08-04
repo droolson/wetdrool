@@ -10,7 +10,7 @@ const rankRequestJsonSchema = z.toJSONSchema(rankRequestSchema, {
 export const openApiDocument = {
   openapi: '3.1.0',
   info: {
-    title: 'WokeSocial Replaceable Feed API',
+    title: 'WetDrool Replaceable Feed API',
     version: '0.1.0',
     description:
       'Deterministically ranks signed projection summaries without claiming canonical authority or verifying content authenticity.',
@@ -113,7 +113,7 @@ export const openApiDocument = {
       },
     },
   },
-  'x-wokesocial-policy': {
+  'x-wetdrool-policy': {
     version: FEED_POLICY_VERSION,
     weights: FEED_POLICY,
     canonicalAuthority: false,

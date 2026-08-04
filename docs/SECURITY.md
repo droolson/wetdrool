@@ -4,7 +4,7 @@ Last reviewed: 2026-07-29
 
 ## Document status
 
-This document defines the security requirements for WokeSocial and WokeNet. It is a design
+This document defines the security requirements for WetDrool and DroolNet. It is a design
 contract, not evidence that a control exists.
 
 Status terms used throughout the project:
@@ -49,11 +49,11 @@ after the [official ClamAV security release](https://blog.clamav.net/2026/07/).
 
 ## Security objectives
 
-WokeSocial is designed to preserve:
+WetDrool is designed to preserve:
 
 1. User control of identity, keys, social graph, content, and provider choice.
 2. Confidentiality and authenticity of private messages and restricted content.
-3. Integrity of signed manifests, WokeNet state, moderation labels, and indexer
+3. Integrity of signed manifests, DroolNet state, moderation labels, and indexer
    projections.
 4. Availability during a failure or compromise of any single RPC, gateway,
    indexer, relay, cache, or storage provider.
@@ -70,7 +70,7 @@ The following are explicitly not security assumptions:
 - TLS makes content returned by a third party authentic.
 - A database row is canonical protocol state.
 - IPFS guarantees availability or deletion.
-- A simulated Solana transaction invoking WokeNet is necessarily the transaction
+- A simulated Solana transaction invoking DroolNet is necessarily the transaction
   a wallet signs.
 - A disposable Solana local-validator test proves public-cluster deployment,
   provider independence, production authority, or release readiness.
@@ -82,7 +82,7 @@ The security boundary includes:
 
 - Browser and the non-release Seeker Android client foundation.
 - Wallet adapters, passkey authenticators, delegated device keys, and recovery.
-- WokeNet’s Solana programs, program upgrade authority,
+- DroolNet’s Solana programs, program upgrade authority,
   transaction construction, and sponsorship.
 - Solana cluster/genesis selection, external RPC providers, commitment/finality
   handling, public deployment records, and program authority.
@@ -123,7 +123,7 @@ risks.
 
 | Class | Examples | Allowed locations | Required handling |
 | --- | --- | --- | --- |
-| Public protocol data | Program IDs, public keys, public follows, signed public manifests | Solana/WokeNet program state, content providers, public APIs, caches | Version, sign, hash, validate, and document permanence |
+| Public protocol data | Program IDs, public keys, public follows, signed public manifests | Solana/DroolNet program state, content providers, public APIs, caches | Version, sign, hash, validate, and document permanence |
 | Public but deletable-by-policy content | Ordinary post bodies and media | Deletion-capable providers and indexer projections by default | Explicit storage policy, tombstones, provider deletion requests, no permanence claim |
 | Restricted content | Paid, private-community, or audience-limited content | Encrypted blobs and authorized client storage | Encrypt before upload; never colocate public decryption keys |
 | Private communications | Message bodies, attachments, safety numbers | End-to-end encrypted envelopes and encrypted local storage | No server plaintext; minimize metadata; explicit report disclosure |
@@ -142,9 +142,9 @@ The credential-bound WebAuthn-PRF account-key wrapper, exact-origin/RP
 user-verifying ceremonies, durable one-time challenge/session service,
 atomic credential/wrapper registration, same-root service-passkey list/add/revoke,
 authentication/session issuance that is atomic against revocation,
-current-epoch WokeNet delegation enforcement, and delayed guardian-threshold
+current-epoch DroolNet delegation enforcement, and delayed guardian-threshold
 recovery program are implemented and tested. Protocol-identity creation from
-the browser, WokeNet delegation/device-authority inventory, email assistance,
+the browser, DroolNet delegation/device-authority inventory, email assistance,
 recovery notifications/product UX, and sponsorship remain **Planned** unless
 explicitly identified.
 
@@ -157,7 +157,7 @@ explicitly identified.
 - Passkeys MUST be WebAuthn credentials bound to the exact production RP ID and
   approved origins. Development and production credential namespaces MUST be
   separate.
-- A WebAuthn assertion MUST NOT be presented as a WokeNet transaction or
+- A WebAuthn assertion MUST NOT be presented as a DroolNet transaction or
   portable-object signature. A compatible PRF result may wrap a locally
   generated Ed25519 key as
   specified by
@@ -208,7 +208,7 @@ UX, email assistance, and independent review remain launch gates.
 
 ### Operator and program authority
 
-- Production WokeNet program upgrade authority MUST be a publicly documented multisig with
+- Production DroolNet program upgrade authority MUST be a publicly documented multisig with
   independent signers, hardware-backed keys, quorum, and a time-delayed review
   process.
 - No application hot wallet may control production program upgrades or user
@@ -221,7 +221,7 @@ UX, email assistance, and independent review remain launch gates.
   verification MUST have reproducible runbooks and independently retained
   evidence.
 
-## Solana transaction, RPC, and WokeNet program security
+## Solana transaction, RPC, and DroolNet program security
 
 The repository contains partial local implementation and tests. Public
 deployment, production signing UX, independent review, and release evidence
@@ -271,7 +271,7 @@ The legacy lamport-denominated payment ABI is permanently quarantined. Clients,
 sponsors, and release tooling MUST reject attempts to execute or unpause it, and
 legacy accounts/events MUST never grant entitlements. Portable signed metadata
 may truthfully describe `{ kind: "sol" }` or an exact SPL asset; it MUST reject
-`{ kind: "woke" }`. Any future `$WOKE` path requires a reviewed SPL or
+`{ kind: "woke" }`. Any future `$DROOL` path requires a reviewed SPL or
 Token-2022 mint, a new mint-aware ABI, exact token-account constraints, explicit
 migration, and independent audit.
 
@@ -281,7 +281,7 @@ transaction-shape allowlists, simulation, daily loss ceilings, and an emergency
 disable switch. Sponsorship MUST remain optional and replaceable, pay only the
 Solana transaction network fee, and reject the quarantined payment ABI.
 
-Public WokeNet deployment evidence MUST additionally:
+Public DroolNet deployment evidence MUST additionally:
 
 - publish the exact Solana cluster, observed genesis hash, program ID,
   deployment slot, program-data address, executable artifact hash, source
@@ -402,7 +402,7 @@ retention/replay state, fail-closed key authorization, metadata-safe logs, and
 real-loopback tests. The pairwise-only adapter selected by ADR-0007 now
 delegates actual Olm ratchets, signatures, key agreement, and authenticated
 encryption to pinned Apache-2.0 Matrix Rust crypto WASM. Its 13 independent
-two-device cases cover current WokeSocial device binding,
+two-device cases cover current WetDrool device binding,
 encryption/decryption, replay/corruption/wrong-device rejection,
 revocation/rotation, fixed errors, plaintext absence from directory/relay
 artifacts, canonical sender-device signatures before stateful Olm processing,
@@ -414,7 +414,7 @@ persistence, browser WASM/CSP packaging, durable replay state, pre-key
 retransmission, attachments, safety UX, deployed relay integration, and
 independent review remain **Planned**.
 
-- WokeSocial MUST use a maintained, independently reviewed messaging protocol
+- WetDrool MUST use a maintained, independently reviewed messaging protocol
   and library; custom cryptographic constructions are forbidden.
 - One-to-one production messaging requires authenticated device keys, forward
   secrecy where supported, replay protection, key rotation, safety-number UX,
@@ -470,10 +470,10 @@ All items in this section are **Planned**.
   and code scanning before release.
 - Generate an SBOM and provenance for release artifacts. Sign immutable artifacts
   where the selected registry supports verification.
-- WokeNet releases MUST use reproducible/verifiable social-program builds and
+- DroolNet releases MUST use reproducible/verifiable social-program builds and
   publish source revisions, toolchains, SBF hashes, Solana genesis/program
   identifiers, deployment slot, program-data address, and authorities.
-- WokeSocial Android releases MUST publish source revision, dependency lock,
+- WetDrool Android releases MUST publish source revision, dependency lock,
   build environment, package ID, version, APK hash, signing-certificate digest,
   reproducibility result, and distribution channel.
 - Dependency updates MUST be reviewed for install scripts, maintainer changes,
@@ -507,7 +507,7 @@ No row is satisfied until evidence is linked from a release report.
 | --- | --- | --- |
 | Source and dependency integrity | Frozen clean install, lockfile review, secret/dependency/code scans, SBOM | Partial: frozen install, exact patched overrides, a no-known-vulnerability audit result, and pinned CI/Gitleaks workflows exist; SBOM/release provenance and complete scan evidence remain |
 | Web/API security | Header test, CSP report review, authz/CSRF/SSRF/XSS/SQLi tests, rate-limit tests | Partial: read-only indexer rate limiting and basic headers exist; the full adversarial/CSP suite does not |
-| WokeNet program and deployment security | Formatting, Clippy, unit and Solana local-validator tests, reproducible SBF artifact, deployed-byte/authority verification, devnet rehearsal, independent audit findings resolved | Partial: SBF/local-validator evidence exists; no devnet/mainnet-beta deployment, verifiable public release, production authority, or independent audit exists |
+| DroolNet program and deployment security | Formatting, Clippy, unit and Solana local-validator tests, reproducible SBF artifact, deployed-byte/authority verification, devnet rehearsal, independent audit findings resolved | Partial: SBF/local-validator evidence exists; no devnet/mainnet-beta deployment, verifiable public release, production authority, or independent audit exists |
 | Transaction safety | Golden instruction decodes, substitution tests, simulation comparison tests, wallet/MWA UX review | Partial: exact account/data tests, substitution/allocation/replay tests, exact-byte version-0/legacy compilation, detached-signature verification, bounded strict RPC simulation/status parsing, fee and balance reconciliation, same-byte broadcast/rebroadcast, finalized transaction confirmation, and finalized-account proof validation exist; flagship signer flows, MWA transaction-intent testing, executable-artifact attestation, future mint-aware receipt/entitlement orchestration, and sponsorship policy remain open |
 | Seeker Android release | Device matrix, intent/deep-link/callback tests, permission/privacy review, reproducible signed APK, signing provenance, update/rollback drill, store review | Partial foundation only: Expo/React Native source, MWA connection boundary, deployment checks, read-only feed, and unit tests exist; release evidence does not |
 | Identity and recovery | WebAuthn origin tests, nonce/replay tests, delegation/revocation/recovery abuse tests | Partial: real browser WebAuthn, durable challenges/sessions, delegation epochs, and delayed guardian recovery adversarial paths pass; protocol onboarding, email/notification UX, full device lifecycle, and review remain |
@@ -549,7 +549,7 @@ The following remain explicit blockers until implementation and evidence exist:
 
 - No clean independent-machine release attestation, SBOM, signed artifacts,
   verifiable social-program deployment, or reproducible signed Android release.
-- No WokeNet program deployment is recorded on Solana devnet or mainnet-beta;
+- No DroolNet program deployment is recorded on Solana devnet or mainnet-beta;
   public deployed-byte, authority, provider-diversity, failover, and incident
   evidence is absent.
 - The latest available Node 22.23.1 pin is awaiting the announced HIGH-severity

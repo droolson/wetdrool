@@ -1,1 +1,1 @@
-export * from '@wokesocial/indexer-client/contract';
+export * from '@wetdrool/indexer-client/contract';

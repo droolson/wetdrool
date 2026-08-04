@@ -1,9 +1,9 @@
 import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId } from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
-import { createProtocolFixtureSet } from '@wokesocial/test-fixtures';
+import { encodeMultibaseBase64Url, type NetworkId } from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
+import { createProtocolFixtureSet } from '@wetdrool/test-fixtures';
 
 import {
   decodeRawProtocolEventRow,
@@ -20,9 +20,9 @@ import { parseRebuildCliArguments, rebuildConfirmationToken } from '../src/rebui
 
 const genesisHash = publicKey(1);
 const programId = publicKey(2);
-const networkId = `wokenet:v1:${genesisHash}:${programId}` as NetworkId;
+const networkId = `droolnet:v1:${genesisHash}:${programId}` as NetworkId;
 const identityAddress = publicKey(3);
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
 const rootAuthority = publicKey(4);
 
 describe('indexer rebuild command', () => {
@@ -353,7 +353,7 @@ describe('indexer rebuild command', () => {
         ...baseEvent(3n, 13),
         type: 'post-published',
         identityId,
-        objectId: `wokesocialobj:v1:post:${digest(14)}`,
+        objectId: `wetdroolobj:v1:post:${digest(14)}`,
         cid: TEST_CID,
         payloadHash: digest(15),
         sequence: 1n,
@@ -384,7 +384,7 @@ describe('indexer rebuild command', () => {
       type: 'post-published',
       identityId,
       postReference,
-      objectId: `wokesocialobj:v1:post:${digest(42)}`,
+      objectId: `wetdroolobj:v1:post:${digest(42)}`,
       cid: TEST_CID,
       payloadHash: digest(43),
       sequence: 1n,
@@ -505,7 +505,7 @@ describe('indexer rebuild command', () => {
       ...baseEvent(3n, 45),
       type: 'profile-updated',
       identityId,
-      objectId: `wokesocialobj:v1:profile:${digest(46)}`,
+      objectId: `wetdroolobj:v1:profile:${digest(46)}`,
       cid: TEST_CID,
       payloadHash: digest(47),
       sequence: 1n,
@@ -515,7 +515,7 @@ describe('indexer rebuild command', () => {
       ...baseEvent(4n, 48),
       type: 'profile-updated',
       identityId,
-      objectId: `wokesocialobj:v1:profile:${digest(49)}`,
+      objectId: `wetdroolobj:v1:profile:${digest(49)}`,
       cid: TEST_CID,
       payloadHash: digest(50),
       sequence: 2n,
@@ -592,7 +592,7 @@ describe('indexer rebuild command', () => {
       ...baseEvent(3n, 13),
       type: 'post-published',
       identityId,
-      objectId: `wokesocialobj:v1:post:${digest(14)}`,
+      objectId: `wetdroolobj:v1:post:${digest(14)}`,
       cid: TEST_CID,
       payloadHash: digest(15),
       sequence: 1n,
@@ -634,7 +634,7 @@ describe('indexer rebuild command', () => {
       IndexerRebuildError,
     );
 
-    const otherNetworkId = `wokenet:v1:${publicKey(20)}:${programId}` as NetworkId;
+    const otherNetworkId = `droolnet:v1:${publicKey(20)}:${programId}` as NetworkId;
     const firstEvent = durableEvents()[0];
     if (firstEvent === undefined) {
       throw new Error('Expected a durable event fixture.');
@@ -695,7 +695,7 @@ describe('indexer rebuild command', () => {
       type: 'post-published',
       identityId,
       postReference,
-      objectId: `wokesocialobj:v1:post:${digest(32)}`,
+      objectId: `wetdroolobj:v1:post:${digest(32)}`,
       cid: TEST_CID,
       payloadHash: digest(33),
       sequence: 1n,

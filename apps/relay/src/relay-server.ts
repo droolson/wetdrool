@@ -12,8 +12,8 @@ import WebSocket, { WebSocketServer, type RawData } from 'ws';
 import {
   createTrustedProxyPolicy,
   type TrustedProxyPolicy,
-} from '@wokesocial/config/trusted-proxy';
-import type { RateLimiter } from '@wokesocial/rate-limit';
+} from '@wetdrool/config/trusted-proxy';
+import type { RateLimiter } from '@wetdrool/rate-limit';
 
 import {
   RELAY_PATH,
@@ -331,7 +331,7 @@ export class RelayServer {
     if (pathname === '/healthz') {
       sendJson(response, 200, {
         ok: true,
-        service: '@wokesocial/relay',
+        service: '@wetdrool/relay',
         advisory: true,
         canonical: false,
         relayId: this.#relayId,
@@ -1076,7 +1076,7 @@ export function createPrivacySafeJsonLogger(): RelayLogger {
     process.stdout.write(
       `${JSON.stringify({
         level,
-        service: '@wokesocial/relay',
+        service: '@wetdrool/relay',
         message,
         ...context,
         timestamp: new Date().toISOString(),

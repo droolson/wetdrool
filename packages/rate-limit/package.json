@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/rate-limit",
+  "name": "@wetdrool/rate-limit",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Fail-closed distributed rate limiting for WokeSocial services",
+  "description": "Fail-closed distributed rate limiting for WetDrool services",
   "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {

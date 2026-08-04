@@ -3,13 +3,13 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
-import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import { createTrustedProxyPolicy } from '@wetdrool/config/trusted-proxy';
 import {
   RATE_LIMIT_BACKEND_UNAVAILABLE,
   RATE_LIMITER_CLOSED,
   createFastifyRateLimitStore,
   type RateLimiter,
-} from '@wokesocial/rate-limit';
+} from '@wetdrool/rate-limit';
 
 import { mediaWorkerOriginSchema } from './config.js';
 import { MediaWorkerError } from './errors.js';
@@ -69,7 +69,7 @@ export async function buildMediaWorkerApp(
         ? false
         : {
             level: 'info',
-            base: { service: '@wokesocial/media-worker' },
+            base: { service: '@wetdrool/media-worker' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -137,7 +137,7 @@ export async function buildMediaWorkerApp(
 
   app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
-    service: '@wokesocial/media-worker',
+    service: '@wetdrool/media-worker',
     canonical: false,
     signsForUsers: false,
   }));

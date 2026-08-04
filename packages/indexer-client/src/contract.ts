@@ -12,9 +12,9 @@ import {
   timestampSchema,
   unsigned64Schema,
   type CommunityContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
-/** Strict consumer-facing types and parsers for WokeSocial indexer payloads. */
+/** Strict consumer-facing types and parsers for WetDrool indexer payloads. */
 
 export type VerificationState = 'invalid' | 'pending' | 'verified';
 export type Finality = 'confirmed' | 'finalized' | 'processed';
@@ -275,7 +275,7 @@ function canonicalProtocolValue<T>(schema: ProtocolSchema<T>, value: unknown, la
 }
 
 function identityBelongsToNetwork(identityId: string, network: string): boolean {
-  return identityId.startsWith(`wokesocialid:v1:${network}:`);
+  return identityId.startsWith(`wetdroolid:v1:${network}:`);
 }
 
 function parseBodyReference(value: unknown): IndexedPost['bodyReference'] {
@@ -448,7 +448,7 @@ export function parseVerifiedCommunity(
   );
   if (!identityBelongsToNetwork(creatorIdentityId, networkId)) {
     throw new IndexerPayloadError(
-      'A verified community creator belongs to a different WokeNet Solana deployment.',
+      'A verified community creator belongs to a different DroolNet Solana deployment.',
     );
   }
   const latestActionAuthority = canonicalProtocolValue(
@@ -477,7 +477,7 @@ export function parseVerifiedCommunity(
     'community.manifestHash',
   );
   const objectId = canonicalProtocolValue(objectIdSchema, community.objectId, 'community.objectId');
-  if (objectId !== `wokesocialobj:v1:community:${manifestHash}`) {
+  if (objectId !== `wetdroolobj:v1:community:${manifestHash}`) {
     throw new IndexerPayloadError(
       'A verified community object ID must bind to its anchored manifest hash.',
     );
@@ -819,7 +819,7 @@ function parseSearchItem(value: unknown, network: string): SearchItem {
       );
       if (!identityBelongsToNetwork(identityId, network)) {
         throw new IndexerPayloadError(
-          'A person search result belongs to a different WokeNet Solana deployment.',
+          'A person search result belongs to a different DroolNet Solana deployment.',
         );
       }
       return {
@@ -851,7 +851,7 @@ function parseSearchItem(value: unknown, network: string): SearchItem {
       );
       if (!identityBelongsToNetwork(postAuthor, network)) {
         throw new IndexerPayloadError(
-          'A post search result belongs to a different WokeNet Solana deployment.',
+          'A post search result belongs to a different DroolNet Solana deployment.',
         );
       }
       if (
@@ -861,7 +861,7 @@ function parseSearchItem(value: unknown, network: string): SearchItem {
         post.verification.anchor?.finality !== 'finalized'
       ) {
         throw new IndexerPayloadError(
-          'A post search result requires valid proofs and a finalized WokeNet anchor.',
+          'A post search result requires valid proofs and a finalized DroolNet anchor.',
         );
       }
       return { kind, matchedBy, post: { ...post, visibility: 'public' } };
@@ -874,7 +874,7 @@ function parseSearchItem(value: unknown, network: string): SearchItem {
       const community = parseVerifiedCommunity(item.community, 'public') as PublicVerifiedCommunity;
       if (community.networkId !== network) {
         throw new IndexerPayloadError(
-          'A community search result belongs to a different WokeNet Solana deployment.',
+          'A community search result belongs to a different DroolNet Solana deployment.',
         );
       }
       return {

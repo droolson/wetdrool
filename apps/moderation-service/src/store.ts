@@ -7,7 +7,7 @@ import {
   type ModerationSubject,
   type ReportPayload,
   type SignedEnvelope,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import { ModerationServiceError } from './errors.js';
 import {

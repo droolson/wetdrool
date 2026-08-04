@@ -1,4 +1,4 @@
-# WokeSocial Delivery Roadmap
+# WetDrool Delivery Roadmap
 
 **Status:** Active implementation roadmap  
 **Last updated:** 2026-07-29
@@ -11,7 +11,7 @@ foundation and experimental subsets across phases 2–4:
 
 - project-local pinned toolchains, healthy PostgreSQL/Redis/Kubo services, and
   the initial migration;
-- an SBF-built WokeNet program subset tested against a disposable Solana local
+- an SBF-built DroolNet program subset tested against a disposable Solana local
   validator using development program ID
   `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD`;
 - TypeScript protocol, storage, SDK, and indexer subsets with PostgreSQL and Kubo
@@ -37,9 +37,9 @@ foundation and experimental subsets across phases 2–4:
   chronological feed and verified community discovery, honest failure states,
   focused tests, and Android export metadata.
 
-WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+DroolNet is the WetDrool protocol and smart-contract deployment layer on
 Solana. It is not a separate chain, Solana fork, validator implementation, or
-RPC network, and it ships no Firedancer/Agave topology. No `$WOKE` mint exists;
+RPC network, and it ships no Firedancer/Agave topology. No `$DROOL` mint exists;
 the legacy lamport-denominated payment ABI
 is quarantined and cannot execute or be unpaused.
 
@@ -47,7 +47,7 @@ The existing Solana local-validator vertical slice is verified locally. No
 devnet/mainnet-beta deployment, token creation, verified Seeker-device run,
 signed APK, Android publication, or expenditure is authorized by this roadmap.
 The canonical public
-origin is `https://woke.social`; `sociallywoke.com` is redirect-only.
+origin is `https://wetdrool.com`; `droolhouse.com` is redirect-only.
 [`../TASKS.md`](../TASKS.md) is the checkbox-level evidence record.
 
 ## 2. Status vocabulary
@@ -68,7 +68,7 @@ The planned dependency chain follows the required implementation sequence:
 flowchart LR
     P0["Phase 0: audit and decisions"] --> P1["Phase 1: foundation"]
     P1 --> V["First complete vertical slice"]
-    V --> P2["Phase 2: WokeNet protocol"]
+    V --> P2["Phase 2: DroolNet protocol"]
     P2 --> P3["Phase 3: manifests, storage, indexer, feeds"]
     P3 --> P4["Phase 4: flagship social experience"]
     P4 --> P5["Phase 5: moderation and governance"]
@@ -91,14 +91,14 @@ The first complete vertical slice spans Phases 1–3. It has priority over broad
 | --- | --- | --- | --- |
 | 0 | Repository audit, product/specification baseline, architecture and ADR decisions, dependency plan | Verified baseline | Required documents reviewed; decisions recorded; no unsupported implementation claims |
 | 1 | Monorepo, design system, local infrastructure, documentation foundation | In progress; implemented local subset verified | Clean install; real setup/dev/test/build commands; local dependencies healthy |
-| 2 | WokeNet identity, profile, delegation, follows, communities, post references | Experimental Solana local-program subset; no public deployment | Anchor/Rust local-validator checks; account/PDA/cost documentation matches code; verified devnet deployment remains open |
+| 2 | DroolNet identity, profile, delegation, follows, communities, post references | Experimental Solana local-program subset; no public deployment | Anchor/Rust local-validator checks; account/PDA/cost documentation matches code; verified devnet deployment remains open |
 | 3 | Signed manifests, storage adapters, publication, open indexer, feeds | Experimental connected subset with consumer-safe home, bounded chronological/public-following feeds, exact community-manifest verification, privacy-safe community directory/detail, `public-match-v2`, and verified local CAS → Solana → indexer → replay text publication; local Solana slice verified | Complete object/event breadth; alternate-provider reconciliation; operator conformance |
 | 4 | Complete flagship core social experience | Complete route surface plus local-state, consumer-safe home, strict chronological pagination, community discovery/detail, public following preview, and a passkey-first development-localnet text composer with durable ambiguous-transaction recovery and restored proof UI. Community membership/join, authenticated following, public-cluster transactions, media upload/playback, recommendation-provider integration, cross-device safety, and offline caching remain open | Essential browser flows and accessible responsive states pass |
 | 5 | Moderation, reports, appeals, blocklists, governance, safety center | Signed provider and one-member-one-vote program subsets implemented | Permission, evidence privacy, tombstone, appeal, and audit tests pass |
 | 6 | Passkeys, recovery, sponsorship, device management, Seeker Android | Key wrapping, replaceable relying-party service, durable ceremonies/sessions, atomic credential/wrapper registration, same-root service-passkey list/add/revoke, browser registration/sign-in, a verified development-localnet passkey identity/text-publication flow, and a non-release Android/MWA read foundation are implemented. Delegation lifecycle, recovery, sponsorship, public-cluster/mobile transaction flow, device evidence, and release remain open | Recovery/delegation and sponsor anti-abuse tests pass; custody design reviewed; reproducible signed APK verified |
 | 7 | E2EE messages and relay infrastructure | Relay plus pairwise real-WASM adapter implemented; volatile storage/browser integration keep messaging non-production | One-to-one E2EE and metadata tests pass; group path remains Experimental until gated |
 | 8 | Media pipeline, vertical video, stories, events, livestream architecture | Hardened resumable media-worker subset implemented; flagship upload, stories/events/live product flows remain open | Real processing/storage/accessibility/expiry tests pass |
-| 9 | Future `$WOKE` tips, subscriptions, entitlements, paid memberships/events | No mint exists; legacy lamport ABI quarantined and cannot execute or be unpaused | Real SPL/Token-2022 mint, new mint-aware ABI, migration, devnet rehearsal, adversarial tests, legal/security review, and no custody |
+| 9 | Future `$DROOL` tips, subscriptions, entitlements, paid memberships/events | No mint exists; legacy lamport ABI quarantined and cannot execute or be unpaused | Real SPL/Token-2022 mint, new mint-aware ABI, migration, devnet rehearsal, adversarial tests, legal/security review, and no custody |
 | 10 | Security, accessibility, performance, resilience, deployment, independent operation | Planned | All completion gates and independent migration tests pass |
 
 ## 5. Phase 0 — audit, specifications, and decisions
@@ -115,8 +115,8 @@ The first complete vertical slice spans Phases 1–3. It has priority over broad
 - Compatible pinned Node, pnpm, TypeScript, Next.js, Rust, Anchor, Solana, and
   Android build-tool versions
 - Onchain/offchain boundary and public/private relationship treatment
-- WebAuthn-to-WokeNet custody and signing model
-- `$WOKE` mint/token-program/authority/tokenomics decision and replacement
+- WebAuthn-to-DroolNet custody and signing model
+- `$DROOL` mint/token-program/authority/tokenomics decision and replacement
   mint-aware payment ABI; no legacy lamport relabeling
 - Canonical manifest serialization, hashing, signature, and identifier rules
 - PDA seeds, account sizing, compute and cost budget
@@ -169,7 +169,7 @@ This milestone is the highest-priority proof of architecture.
 1. Create an identity.
 2. Create or update an inclusive profile.
 3. Publish a canonically serialized, signed text-post manifest to local content-addressed storage.
-4. Anchor its hash and reference through the WokeNet program.
+4. Anchor its hash and reference through the DroolNet program.
 5. Ingest and verify the event.
 6. Display the verified post in the web feed.
 7. Follow another identity.
@@ -199,7 +199,7 @@ This proof does not satisfy devnet/mainnet-beta deployment, Seeker Android,
 token-mint, or production evidence and does not complete the broader product,
 protocol, provider, or security gates.
 
-## 8. Phase 2 — WokeNet protocol
+## 8. Phase 2 — DroolNet protocol
 
 ### Planned outcomes
 
@@ -303,7 +303,7 @@ the phase exit criteria.
 - Passkey-first account path — credential-bound PRF key wrapping, replaceable
   WebAuthn service, durable one-time ceremony/session state, ciphertext-only
   sync, and real-browser registration/discoverable sign-in implemented;
-  finalized WokeNet protocol onboarding remains open
+  finalized DroolNet protocol onboarding remains open
 - Complete the existing non-release Android client foundation for Solana Seeker
   with Mobile Wallet Adapter transaction signing, lifecycle, and device evidence
 - Reproducible Android release build, controlled signing, signed-APK
@@ -342,7 +342,7 @@ implements signed advisory envelopes, short bounded retention, metadata-safe
 logs/metrics, origin and rate controls, reconnect, deduplication, and endpoint
 failover. A shipped bounded HTTP adapter can connect the relay entrypoint to a
 replaceable finalized-state authorizer and binds each decision to its nonce,
-  WokeNet deployment identifier, finalized checkpoint, and short expiry; an
+  DroolNet deployment identifier, finalized checkpoint, and short expiry; an
   independent
 authorizer deployment remains open. A separate shipped adapter applies the same
 bounded finalized-state contract to opaque-topic subscriptions, and community
@@ -350,7 +350,7 @@ delivery stops when its short-lived grant expires; an operator still must deploy
 the policy/membership authority and its finalized projection. The
 pairwise-only adapter now delegates real Olm ratchets and
 authenticated encryption to pinned Matrix Rust crypto WASM, binds device keys
-to current WokeSocial authorization, verifies sender-signed outer metadata
+to current WetDrool authorization, verifies sender-signed outer metadata
 before stateful Olm processing, and passes 13 independent-device adversarial
 cases. It is not production messaging: state/replay history is
 volatile, browser packaging and relay integration are absent, attachment and
@@ -396,7 +396,7 @@ and the flagship browser does not yet perform the publication flow.
 - Preserve truthful portable payment metadata: `{ kind: "sol" }` or exact SPL
   metadata is accepted and `{ kind: "woke" }` is rejected; this never enables
   the legacy ABI
-- Define a real `$WOKE` SPL/Token-2022 mint, authorities, extensions,
+- Define a real `$DROOL` SPL/Token-2022 mint, authorities, extensions,
   distribution, tokenomics, and legal posture
 - Replace the legacy instructions with a new mint-aware ABI and explicit
   migration/version boundary
@@ -457,7 +457,7 @@ The roadmap must ultimately verify:
 11. Encrypted message
 12. Feed algorithm switch
 13. Block and mute
-14. Future mint-aware `$WOKE` creator tip on Solana devnet
+14. Future mint-aware `$DROOL` creator tip on Solana devnet
 15. Data export
 16. Delegated-key rotation
 17. Migration to another indexer and relay
@@ -492,7 +492,7 @@ Passing one phase does not waive later regression checks.
 ### Critical path
 
 Pinned Solana/Anchor toolchains → protocol serialization and identity → local
-storage publication → WokeNet program reference → finalized indexer
+storage publication → DroolNet program reference → finalized indexer
 verification/rebuild → web feed → portable provider configuration → devnet
 rehearsal → hardening.
 
@@ -520,13 +520,13 @@ The following must remain **Experimental** or **Externally blocked** until their
 | Sponsored transactions | Funded sponsor and anti-abuse operational limits |
 | Child-safety escalation | Jurisdiction, trained operators, specialist/legal review |
 | Production legal policies | Qualified legal review for actual operator and regions |
-| WokeNet Solana devnet deployment | Verifiable program build, exact genesis/program/deployment-slot record, funded deployer, reviewed authority, finalized RPC evidence, and rehearsal |
-| WokeNet Solana mainnet-beta deployment | Devnet gate, independent security audit, multisig authority, legal/operations approval, and explicit funded action |
-| `$WOKE` mint and replacement payment ABI | Real SPL/Token-2022 mint, reviewed authorities/tokenomics/legal posture, new ABI/migration, SDK/indexer/UI updates, devnet tests, and audit |
+| DroolNet Solana devnet deployment | Verifiable program build, exact genesis/program/deployment-slot record, funded deployer, reviewed authority, finalized RPC evidence, and rehearsal |
+| DroolNet Solana mainnet-beta deployment | Devnet gate, independent security audit, multisig authority, legal/operations approval, and explicit funded action |
+| `$DROOL` mint and replacement payment ABI | Real SPL/Token-2022 mint, reviewed authorities/tokenomics/legal posture, new ABI/migration, SDK/indexer/UI updates, devnet tests, and audit |
 | Solana Seeker Android app | Complete the existing non-release MWA connection/deployment/read-only-feed foundation with transaction flows, device tests, reproducible build, controlled signing, signed-APK provenance, secure update/rollback, and distribution approval |
 | Production DNS/TLS | Domain-owner action and deployment target |
-| `.woke` custom-name settlement | ADR-0012 fixes deterministic anonymous allocation and program-enforced `anon_` anti-front-running; atomic localnet registration, legacy migration, and strict current-root resolution are implemented. Cross-surface destination UX, public-cluster evidence, reserved-name governance, commit/reveal, expiry/cooldown/transfer/recovery rules, disputes, and economics review remain required |
-| Point redemption to SOL or `$WOKE` | Auditable ledger, reserve and fraud model, tax/consumer/securities review, noncustodial settlement, devnet tests, and audit |
+| `.drool` custom-name settlement | ADR-0012 fixes deterministic anonymous allocation and program-enforced `anon_` anti-front-running; atomic localnet registration, legacy migration, and strict current-root resolution are implemented. Cross-surface destination UX, public-cluster evidence, reserved-name governance, commit/reveal, expiry/cooldown/transfer/recovery rules, disputes, and economics review remain required |
+| Point redemption to SOL or `$DROOL` | Auditable ledger, reserve and fraud model, tax/consumer/securities review, noncustodial settlement, devnet tests, and audit |
 | Creator-item marketplace | Portable avatar format, rights/moderation operations, refund and entitlement design, payment review, and real integration tests |
 | Minimal-disclosure verification | On-device or attested ephemeral processing, non-persistence proof, bias and appeal evaluation, biometric/age-assurance review, and independent audit |
 | Open-model AI platform | Actual-hardware evaluation, licensed data, replaceable inference, safety/privacy evaluation, and capacity operations |
@@ -539,7 +539,7 @@ An external dependency does not block unrelated local implementation and tests.
 ### Build
 
 - Clean install succeeds.
-- All production applications and WokeNet programs build; local, devnet, and
+- All production applications and DroolNet programs build; local, devnet, and
   mainnet-beta artifacts remain separately identified.
 - Generated clients are current.
 - No unresolved type errors.
@@ -607,11 +607,11 @@ roster/identity fields.
 The next product milestone is the missing wallet-backed join/leave journey
 across the flagship client and community UI. It must select the exact protocol
 identity; sign the membership-v2 manifest; show deployment, intent, fees/rent,
-sequence snapshots, and absence of a `$WOKE` transfer; simulate; obtain wallet
+sequence snapshots, and absence of a `$DROOL` transfer; simulate; obtain wallet
 approval; wait for finalized account confirmation and an indexer checkpoint;
 and never imply membership from an optimistic or provider-only response.
 
-A verified WokeNet deployment rehearsal on Solana devnet remains a release
+A verified DroolNet deployment rehearsal on Solana devnet remains a release
 gate, not the current product-build focus: it still requires a reproducible
 program build, exact genesis/program/deployment record, reviewed authority,
 finalized indexing, signed-manifest anchoring, feed display, follow, tombstone
@@ -621,5 +621,5 @@ In parallel, the next mobile milestone is to take the existing native Seeker
 Android read-only feed/community foundation through exact Mobile Wallet Adapter
 membership transaction-intent handling, approved device/emulator evidence, and
 a reproducible unsigned development APK. Production signing and distribution
-remain separate gated work. `$WOKE` work cannot resume through the legacy ABI;
+remain separate gated work. `$DROOL` work cannot resume through the legacy ABI;
 it starts with an approved mint and new mint-aware protocol design.

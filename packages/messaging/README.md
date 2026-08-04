@@ -1,4 +1,4 @@
-# `@wokesocial/messaging`
+# `@wetdrool/messaging`
 
 This package is the narrow, pairwise-only adapter selected by ADR-0007. It
 delegates the ratchet, key agreement, authenticated encryption, and device-key
@@ -6,7 +6,7 @@ signing to the pinned Apache-2.0
 `@matrix-org/matrix-sdk-crypto-wasm@18.4.0` engine. It does not implement a
 cryptographic primitive or libolm compatibility layer.
 
-The public API uses WokeSocial identity/device addresses. Matrix-shaped IDs,
+The public API uses WetDrool identity/device addresses. Matrix-shaped IDs,
 engine request objects, and engine state stay inside the adapter. Create a
 device with `createPairwiseDevice`; the concrete implementation and its
 constructor are not runtime exports. The factory returns the public
@@ -14,7 +14,7 @@ constructor are not runtime exports. The factory returns the public
 
 A replaceable key-directory transport receives only an operation label and
 opaque bytes. The directory is untrusted: every engine device key is
-independently matched to a current WokeSocial device-authorization assertion
+independently matched to a current WetDrool device-authorization assertion
 before a key claim, encryption, stateful decryption, or plaintext release.
 Authorization is checked before and after sensitive operations so a mid-flight
 revocation or rotation fails closed. The local device is subject to the same
@@ -24,12 +24,12 @@ metadata.
 ## Envelope authentication
 
 The version-one protocol namespace is
-`woke.social.messaging.pairwise.v1`. Each outer envelope has an Ed25519
+`wetdrool.com.messaging.pairwise.v1`. Each outer envelope has an Ed25519
 signature made by the sender's Matrix `OlmMachine` device key. The exact signed
 message is:
 
 ```text
-woke.social/messaging/pairwise-envelope-signature/v1
+wetdrool.com/messaging/pairwise-envelope-signature/v1
 <RFC 8785 canonical JSON of version, protocol, algorithm, messageId, sender,
 recipient, and ciphertext>
 ```
@@ -108,6 +108,6 @@ repository does not yet contain a production browser packaging integration.
 
 ## License
 
-The WokeSocial adapter is licensed under the [MIT License](LICENSE). The pinned
+The WetDrool adapter is licensed under the [MIT License](LICENSE). The pinned
 Matrix Rust crypto WebAssembly dependency remains Apache-2.0 licensed; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for provenance.

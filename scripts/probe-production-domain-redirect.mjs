@@ -15,7 +15,7 @@ const buildId = resolve(webRoot, '.next/BUILD_ID');
 
 await access(buildId).catch(() => {
   throw new Error(
-    'The production web build is missing. Run `pnpm --filter @wokesocial/web build`.',
+    'The production web build is missing. Run `pnpm --filter @wetdrool/web build`.',
   );
 });
 
@@ -46,34 +46,34 @@ try {
 
   await expectRedirect(
     port,
-    'sociallywoke.com',
+    'droolhouse.com',
     '/people/%E2%9C%93?tab=following&empty=',
-    'https://woke.social/people/%E2%9C%93?tab=following&empty=',
+    'https://wetdrool.com/people/%E2%9C%93?tab=following&empty=',
   );
   await expectRedirect(
     port,
-    'www.sociallywoke.com:443',
+    'www.droolhouse.com:443',
     '/settings?section=privacy',
-    'https://woke.social/settings?section=privacy',
+    'https://wetdrool.com/settings?section=privacy',
   );
   await expectRedirect(
     port,
-    'sociallywoke.com.',
+    'droolhouse.com.',
     '/people/trailing-dot?tab=following',
-    'https://woke.social/people/trailing-dot?tab=following',
+    'https://wetdrool.com/people/trailing-dot?tab=following',
   );
   await expectRedirect(
     port,
-    'www.sociallywoke.com..:443',
+    'www.droolhouse.com..:443',
     '/settings?section=security',
-    'https://woke.social/settings?section=security',
+    'https://wetdrool.com/settings?section=security',
   );
-  await expectPassThrough(port, 'woke.social');
-  await expectPassThrough(port, 'sociallywoke.com.example');
-  await expectPassThrough(port, 'sociallywoke.com..example');
+  await expectPassThrough(port, 'wetdrool.com');
+  await expectPassThrough(port, 'droolhouse.com.example');
+  await expectPassThrough(port, 'droolhouse.com..example');
 
   process.stdout.write(
-    'Production domain probe passed: exact legacy hosts redirect permanently to woke.social.\n',
+    'Production domain probe passed: exact legacy hosts redirect permanently to wetdrool.com.\n',
   );
 } finally {
   await stopServer(server);
@@ -104,7 +104,7 @@ async function waitUntilReady(child, portNumber, capturedOutput) {
       );
     }
     try {
-      const response = await httpRequest(portNumber, 'woke.social', '/');
+      const response = await httpRequest(portNumber, 'wetdrool.com', '/');
       if (response.statusCode === 200) return;
     } catch {
       // The listener is not ready yet.

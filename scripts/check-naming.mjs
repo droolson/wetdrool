@@ -96,16 +96,16 @@ const forbiddenContent = [
 
 const violations = [];
 const repositoryDirectory = basename(repositoryRoot);
-const canonicalLocalDirectory = repositoryDirectory === 'wokenet';
+const canonicalLocalDirectory = repositoryDirectory === 'droolnet';
 const canonicalGithubCheckout =
-  repositoryDirectory === 'wokesocial' &&
+  repositoryDirectory === 'wetdrool' &&
   process.env['GITHUB_ACTIONS'] === 'true' &&
-  process.env['GITHUB_REPOSITORY'] === 'wokesocial/wokesocial' &&
+  process.env['GITHUB_REPOSITORY'] === 'wetdrool/wetdrool' &&
   resolve(process.env['GITHUB_WORKSPACE'] ?? '') === repositoryRoot;
 if (!canonicalLocalDirectory && !canonicalGithubCheckout) {
   violations.push({
     path: '.',
-    label: `local repository directory must be named wokenet, found ${repositoryDirectory}`,
+    label: `local repository directory must be named droolnet, found ${repositoryDirectory}`,
   });
 }
 
@@ -143,7 +143,7 @@ if (violations.length > 0) {
   process.exitCode = 1;
 } else {
   process.stdout.write(
-    'Naming policy is consistent: WokeSocial is the platform; WokeNet is its Solana deployment namespace and repository.\n',
+    'Naming policy is consistent: WetDrool is the platform; DroolNet is its Solana deployment namespace and repository.\n',
   );
 }
 

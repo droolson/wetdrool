@@ -12,13 +12,13 @@ export function StatusBadge({
   tone = 'neutral',
   ...props
 }: StatusBadgeProps) {
-  const classes = ['wokesocial-status', `wokesocial-status--${tone}`, className]
+  const classes = ['wetdrool-status', `wetdrool-status--${tone}`, className]
     .filter(Boolean)
     .join(' ');
 
   return (
     <span className={classes} {...props}>
-      <span className="wokesocial-status__dot" aria-hidden="true" />
+      <span className="wetdrool-status__dot" aria-hidden="true" />
       {children}
     </span>
   );

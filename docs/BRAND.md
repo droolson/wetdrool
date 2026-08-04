@@ -11,7 +11,7 @@ foundation exists but is not a release app and has no verified signed-APK/store
 artifact. Full product-state coverage, mobile parity, originality/legal review,
 and production asset packaging remain open.
 
-WokeSocial should feel bold, joyful, intelligent, defiant, welcoming, human,
+WetDrool should feel bold, joyful, intelligent, defiant, welcoming, human,
 contemporary, and trustworthy. The experience is open to everyone without
 treating anyone's identity as a decorative motif or restricting the network to
 a particular group.
@@ -48,7 +48,7 @@ predictable.
 - Warm without forced cheerfulness.
 - Firm about consent and abuse prevention.
 - Never imply that blockchain makes a risky action safe or reversible.
-- Never label SOL or lamports as `$WOKE`, imply a `$WOKE` mint exists, or present
+- Never label SOL or lamports as `$DROOL`, imply a `$DROOL` mint exists, or present
   the quarantined legacy payment ABI as usable. Portable SOL/SPL metadata must
   name the real asset.
 - Never imply that a Seeker build, signed APK, signing provenance, device

@@ -6,7 +6,7 @@ import { alice, publicTopic, testNow } from './fixtures.js';
 
 const requestId = '11111111-1111-4111-8111-111111111111';
 const networkId = alice.identityId.split(':').slice(2, -1).join(':');
-const alternateNetworkId = `wokenet:v1:${bs58.encode(
+const alternateNetworkId = `droolnet:v1:${bs58.encode(
   Uint8Array.from({ length: 32 }, () => 8),
 )}:${bs58.encode(Uint8Array.from({ length: 32 }, () => 9))}`;
 const authorizationInput = {
@@ -25,7 +25,7 @@ function authorizationResponse(
 ): Response {
   return new Response(
     JSON.stringify({
-      version: 'wokesocial-relay-subscription-authorization-v1',
+      version: 'wetdrool-relay-subscription-authorization-v1',
       requestId,
       authorized: true,
       finalized: true,
@@ -77,7 +77,7 @@ describe('HTTP relay subscription authorizer', () => {
       expect(headers.get('content-type')).toBe('application/json');
       expect(headers.get('authorization')).toBe(`Bearer ${'S'.repeat(32)}`);
       expect(JSON.parse(String(init?.body))).toEqual({
-        version: 'wokesocial-relay-subscription-authorization-v1',
+        version: 'wetdrool-relay-subscription-authorization-v1',
         requestId,
         identityId: alice.identityId,
         topic: publicTopic,
@@ -121,7 +121,7 @@ describe('HTTP relay subscription authorizer', () => {
       },
     ],
     ['negative decision', { authorized: false }],
-    ['wrong contract version', { version: 'wokesocial-relay-subscription-authorization-v2' }],
+    ['wrong contract version', { version: 'wetdrool-relay-subscription-authorization-v2' }],
     ['unexpected response field', { unexpected: true }],
   ])('fails closed for %s', async (_label, overrides) => {
     const fetch = vi.fn<typeof globalThis.fetch>(async () => authorizationResponse(overrides));

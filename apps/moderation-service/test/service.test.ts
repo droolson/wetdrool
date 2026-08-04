@@ -1,4 +1,4 @@
-import { getObjectId } from '@wokesocial/protocol';
+import { getObjectId } from '@wetdrool/protocol';
 import { describe, expect, it } from 'vitest';
 
 import { ModerationServiceError } from '../src/errors.js';
@@ -142,10 +142,10 @@ describe('moderation object service', () => {
   it('rejects appeals for decisions not present in this provider store', async () => {
     const service = verifiedService();
     await expect(
-      service.ingestAppeal(makeAppeal({ id: `wokesocialobj:v1:report:u${'D'.repeat(43)}` })),
+      service.ingestAppeal(makeAppeal({ id: `wetdroolobj:v1:report:u${'D'.repeat(43)}` })),
     ).rejects.toBeInstanceOf(ModerationServiceError);
     await expect(
-      service.ingestAppeal(makeAppeal({ id: `wokesocialobj:v1:report:u${'E'.repeat(43)}` })),
+      service.ingestAppeal(makeAppeal({ id: `wetdroolobj:v1:report:u${'E'.repeat(43)}` })),
     ).rejects.toMatchObject({ code: 'appeal-decision-not-found' });
   });
 

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { ComposerUnavailable } from '@/components/composer-unavailable';
 import { FeedTabs, type FeedKind } from '@/components/feed-tabs';
@@ -10,7 +10,7 @@ import { formatUtcDate } from '@/lib/presentation';
 
 export const metadata: Metadata = {
   title: 'Home',
-  description: 'A typed, honest feed view backed by the configured WokeSocial indexer.',
+  description: 'A typed, honest feed view backed by the configured WetDrool indexer.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -88,12 +88,12 @@ export default async function HomePage({
     <div className="home-page page-shell">
       <header className="app-page-header">
         <div>
-          <p className="section-kicker">Your network</p>
-          <h1>Home, with the receipts.</h1>
+          <p className="section-kicker">Home</p>
+          <h1>Feed</h1>
         </div>
         <p>
-          This foundation accepts only the typed indexer contract. It shows the indexer’s
-          verification claims and proof metadata without inventing posts when the service is absent.
+          Typed indexer view only — verified claims when connected, honest empty or degraded
+          states when not. No invented posts.
         </p>
       </header>
 
@@ -179,7 +179,7 @@ export default async function HomePage({
             <p className="section-kicker">Publishing</p>
             <h2>Intentionally locked</h2>
             <p>
-              A real post needs canonical serialization, signing, storage, WokeNet confirmation, and
+              A real post needs canonical serialization, signing, storage, DroolNet confirmation, and
               indexing. The UI will not skip those steps for appearances.
             </p>
           </section>

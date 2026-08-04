@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 import postgres, { type Sql } from 'postgres';
 
-import { assertNodeTlsVerificationPolicy, assertPostgresTlsPolicy } from '@wokesocial/config';
+import { assertNodeTlsVerificationPolicy, assertPostgresTlsPolicy } from '@wetdrool/config';
 import {
   assertMigrationLedgerIntegrity,
   calculateMigrationChecksum,
-} from '@wokesocial/config/migration-integrity';
+} from '@wetdrool/config/migration-integrity';
 
 const MIGRATION_LOCK_NAMESPACE = 0x574f4b45;
 const MIGRATION_LOCK_RESOURCE = 0x4d4f4452;

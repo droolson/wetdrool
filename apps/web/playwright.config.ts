@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const port = Number(process.env.WOKESOCIAL_WEB_PORT ?? '3000');
+const port = Number(process.env.WETDROOL_WEB_PORT ?? '3000');
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${port}`;
-const authPort = Number(process.env.WOKESOCIAL_AUTH_PORT ?? '4300');
+const authPort = Number(process.env.WETDROOL_AUTH_PORT ?? '4300');
 const authServiceURL = `http://localhost:${authPort}`;
 
 export default defineConfig({
@@ -29,13 +29,13 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: `WOKESOCIAL_WEB_ORIGIN=${baseURL} WOKESOCIAL_AUTH_PORT=${authPort} pnpm --filter @wokesocial/auth-service exec tsx ../web/e2e/auth-service-fixture.ts`,
+          command: `WETDROOL_WEB_ORIGIN=${baseURL} WETDROOL_AUTH_PORT=${authPort} pnpm --filter @wetdrool/auth-service exec tsx ../web/e2e/auth-service-fixture.ts`,
           reuseExistingServer: false,
           timeout: 120_000,
           url: `${authServiceURL}/healthz`,
         },
         {
-          command: `WOKESOCIAL_AUTH_URL=${authServiceURL} pnpm dev --webpack --port ${port}`,
+          command: `WETDROOL_AUTH_URL=${authServiceURL} pnpm dev --webpack --port ${port}`,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
           url: baseURL,

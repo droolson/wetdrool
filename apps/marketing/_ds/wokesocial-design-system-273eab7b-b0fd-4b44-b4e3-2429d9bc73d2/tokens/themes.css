@@ -1,5 +1,5 @@
 /* Semantic tokens. Product code and components reference ONLY these.
-   Dark is the default theme: the $WOKE mark is a mint drawing on near-black,
+   Dark is the default theme: the $DROOL mark is a mint drawing on near-black,
    and mint only reads as luminous against ink. Light and high-contrast are
    opt-in via data-theme on <html> and are equally specified — neither is a
    filter over the other. */
@@ -47,7 +47,7 @@
   --ws-brand-subtle-border: rgba(207, 240, 236, 0.26);
   --ws-brand-on-subtle: #cff0ec;
 
-  /* Accents. The signal gradient marks WokeSocial's own voice: brand moments,
+  /* Accents. The signal gradient marks WetDrool's own voice: brand moments,
      selection, progress, verification. It is never a background for body text. */
   --ws-accent-violet: #a87eff;
   --ws-accent-violet-fill: #8c52ff;

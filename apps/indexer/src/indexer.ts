@@ -17,7 +17,7 @@ import {
   type VerifiedManifest,
 } from './projection.js';
 
-const tracer = trace.getTracer('@wokesocial/indexer');
+const tracer = trace.getTracer('@wetdrool/indexer');
 
 export interface IndexResult {
   readonly event: ProtocolEvent;
@@ -39,8 +39,8 @@ export class OpenIndexer {
     return tracer.startActiveSpan('indexer.ingest', async (span) => {
       try {
         const event = protocolEventSchema.parse(input);
-        span.setAttribute('wokesocial.event_type', event.type);
-        span.setAttribute('wokesocial.slot', event.slot.toString());
+        span.setAttribute('wetdrool.event_type', event.type);
+        span.setAttribute('wetdrool.slot', event.slot.toString());
         const verified = await this.verifyEvent(event);
         const applied = await this.projection.apply(verified.event, verified.manifest);
         return { event: verified.event, applied };

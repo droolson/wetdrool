@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { getIdentityProfile, type IdentityProfileView } from '@/lib/identity-profile';
@@ -44,11 +44,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             </ButtonLink>
           }
           eyebrow="Not an identity ID"
-          title="This identifier is not a portable WokeSocial identity."
+          title="This identifier is not a portable WetDrool identity."
           tone="empty"
         >
           <p>
-            Profile routes resolve exact <code>wokesocialid:v1</code> identifiers. Use search to
+            Profile routes resolve exact <code>wetdroolid:v1</code> identifiers. Use search to
             find people by name or handle instead of guessing an identifier.
           </p>
         </StatePanel>
@@ -115,9 +115,9 @@ function ConnectedProfile({
       >
         <p className="profile-name-line">
           {view.handle === null ? (
-            'No active .woke name'
+            'No active .drool name'
           ) : (
-            <code className="inline-identifier">{view.handle}.woke</code>
+            <code className="inline-identifier">{view.handle}.drool</code>
           )}
           {publicPronouns.length > 0
             ? ` · ${publicPronouns.map((entry) => entry.value).join(' · ')}`
@@ -143,7 +143,7 @@ function ConnectedProfile({
             {view.identity.deactivatedAt === undefined
               ? 'Historical public posts remain verifiable, but no new identity action can be authorized.'
               : `Deactivated ${formatUtcDate(view.identity.deactivatedAt)}. Historical public posts remain verifiable, but no new identity action can be authorized.`}{' '}
-            A deactivated identity resolves no <code>.woke</code> name.
+            A deactivated identity resolves no <code>.drool</code> name.
           </p>
         </StatePanel>
       )}
@@ -248,7 +248,7 @@ function ConnectedProfile({
           </div>
         </dl>
         <p className="profile-receipt__note">
-          This page is a noncanonical projection read. A displayed <code>.woke</code> name is the
+          This page is a noncanonical projection read. A displayed <code>.drool</code> name is the
           projection’s canonical active claim, never a native Solana address; destination proofs
           come from the strict name resolver before any signature.
         </p>

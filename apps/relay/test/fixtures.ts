@@ -1,5 +1,5 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
-import { encodeMultibaseBase64Url, signingKeyIdFor, type IdentityId } from '@wokesocial/protocol';
+import { encodeMultibaseBase64Url, signingKeyIdFor, type IdentityId } from '@wetdrool/protocol';
 import bs58 from 'bs58';
 
 import {
@@ -17,7 +17,7 @@ import {
 export const testNow = new Date('2026-07-28T16:00:00.000Z');
 const genesis = bs58.encode(Uint8Array.from({ length: 32 }, () => 2));
 const program = bs58.encode(Uint8Array.from({ length: 32 }, () => 3));
-const network = `wokenet:v1:${genesis}:${program}`;
+const network = `droolnet:v1:${genesis}:${program}`;
 
 export interface TestIdentity {
   readonly identityId: IdentityId;
@@ -48,7 +48,7 @@ export function makeSubscription(
 ): SignedSubscription {
   const now = input.now ?? testNow;
   const unsigned = unsignedSubscriptionSchema.parse({
-    protocol: 'wokesocial-relay',
+    protocol: 'wetdrool-relay',
     version: 1,
     action: 'subscribe',
     identity: identity.identityId,
@@ -103,7 +103,7 @@ export function makeEvent(
       : []),
   ];
   const common = {
-    protocol: 'wokesocial-relay',
+    protocol: 'wetdrool-relay',
     version: 1,
     identity: identity.identityId,
     keyId: identity.keyId,
@@ -154,7 +154,7 @@ export function makeEvent(
           kind,
           payload: {
             messageId: 'message-1',
-            mediaType: 'application/wokesocial-e2ee+json',
+            mediaType: 'application/wetdrool-e2ee+json',
             cipherSuite: 'x25519-xchacha20-poly1305',
             senderKeyId: identity.keyId,
             ciphertext: encodeMultibaseBase64Url(Uint8Array.from([1, 2, 3, 4])).slice(1),
@@ -168,7 +168,7 @@ export function makeEvent(
             sessionId: 'stream-1',
             sequence: 1,
             signalType: 'offer',
-            mediaType: 'application/wokesocial-e2ee+json',
+            mediaType: 'application/wetdrool-e2ee+json',
             encryptedMetadata: encodeMultibaseBase64Url(Uint8Array.from([5, 6, 7])).slice(1),
           },
         };
@@ -193,7 +193,7 @@ function testIdentity(seed: number, addressSeed: number): TestIdentity {
   const privateKey = Uint8Array.from({ length: 32 }, (_, index) => (seed + index * 13) & 0xff);
   const publicKey = ed25519.getPublicKey(privateKey);
   const identityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => addressSeed));
-  const identityId = `wokesocialid:v1:${network}:${identityAddress}` as IdentityId;
+  const identityId = `wetdroolid:v1:${network}:${identityAddress}` as IdentityId;
   return {
     identityId,
     privateKey,
@@ -214,5 +214,5 @@ function testIdentityForExistingId(seed: number, identityId: IdentityId): TestId
 }
 
 function objectId(type: string, character: string): string {
-  return `wokesocialobj:v1:${type}:u${character.repeat(43)}`;
+  return `wetdroolobj:v1:${type}:u${character.repeat(43)}`;
 }

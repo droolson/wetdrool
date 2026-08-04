@@ -13,8 +13,8 @@ import { readPublicationEvidence } from '../../tests/vertical-slice/publication-
 const PROGRAM_ID = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const POSTGRES_IMAGE =
   'postgres:18.4-alpine3.24@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15';
-const POSTGRES_DATABASE = 'wokesocial_vertical';
-const POSTGRES_ADMIN_USER = 'wokesocial_vertical';
+const POSTGRES_DATABASE = 'wetdrool_vertical';
+const POSTGRES_ADMIN_USER = 'wetdrool_vertical';
 const POSTGRES_ADMIN_PASSWORD = 'vertical-slice-local-only';
 const INDEXER_RUNTIME_PASSWORD = 'vertical-indexer-runtime-only';
 const INDEXER_MIGRATION_PASSWORD = 'vertical-indexer-migration-only';
@@ -23,9 +23,9 @@ const EXPECTED_AGAVE_VERSION = '2.3.0';
 const EXPECTED_ANCHOR_VERSION = '0.32.1';
 const SUCCESS_TIMEOUT_MS = 90_000;
 const FIRST_BROWSER_POST =
-  'A passkey-signed WokeSocial post survived an ambiguous local-validator response.';
+  'A passkey-signed WetDrool post survived an ambiguous local-validator response.';
 const SECOND_BROWSER_POST =
-  'The same discoverable passkey reused one WokeNet identity for this second post.';
+  'The same discoverable passkey reused one DroolNet identity for this second post.';
 // The browser E2E deliberately replaces its one-time account seed with a
 // public canary. Genesis-funding that canary's public key keeps the proof
 // deterministic on macOS, where Agave 2.3's RPC attempts to connect to its
@@ -188,14 +188,14 @@ async function main() {
   await runChecked('Anchor SBF build', anchorBinary, ['build'], { env: chainEnv });
   await runChecked('Anchor event decoder drift check', 'pnpm', [
     '--filter',
-    '@wokesocial/indexer',
+    '@wetdrool/indexer',
     'check:anchor-events',
   ]);
   await runChecked('Production application build', 'pnpm', [
     '--filter',
-    '@wokesocial/indexer...',
+    '@wetdrool/indexer...',
     '--filter',
-    '@wokesocial/web...',
+    '@wetdrool/web...',
     'build',
   ]);
   await runChecked('Playwright Chromium installation', process.execPath, [
@@ -320,12 +320,12 @@ async function main() {
   if (typeof genesisHash !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]+$/u.test(genesisHash)) {
     throw new Error('Local validator returned an invalid genesis hash.');
   }
-  const networkId = `wokenet:v1:${genesisHash}:${PROGRAM_ID}`;
+  const networkId = `droolnet:v1:${genesisHash}:${PROGRAM_ID}`;
 
   step('Starting an isolated disposable PostgreSQL projection');
   const database = await startPostgres();
-  const databaseUrl = `postgresql://wokesocial_indexer_runtime:${INDEXER_RUNTIME_PASSWORD}@127.0.0.1:${database.port}/${POSTGRES_DATABASE}`;
-  const databaseMigrationUrl = `postgresql://wokesocial_indexer_migration:${INDEXER_MIGRATION_PASSWORD}@127.0.0.1:${database.port}/${POSTGRES_DATABASE}`;
+  const databaseUrl = `postgresql://wetdrool_indexer_runtime:${INDEXER_RUNTIME_PASSWORD}@127.0.0.1:${database.port}/${POSTGRES_DATABASE}`;
+  const databaseMigrationUrl = `postgresql://wetdrool_indexer_migration:${INDEXER_MIGRATION_PASSWORD}@127.0.0.1:${database.port}/${POSTGRES_DATABASE}`;
 
   step('Publishing canonical signed manifests and finalized protocol transactions');
   await runChecked(
@@ -533,7 +533,7 @@ async function verifyProductionWeb(environment, webPort, webUrl, indexerUrl, fix
     {
       env: {
         ...environment,
-        WOKESOCIAL_INDEXER_URL: indexerUrl,
+        WETDROOL_INDEXER_URL: indexerUrl,
       },
     },
   );
@@ -574,13 +574,13 @@ async function startDevelopmentPublicationWeb(options) {
   const auth = spawnLogged(
     'publication-auth',
     'pnpm',
-    ['--filter', '@wokesocial/auth-service', 'exec', 'tsx', '../web/e2e/auth-service-fixture.ts'],
+    ['--filter', '@wetdrool/auth-service', 'exec', 'tsx', '../web/e2e/auth-service-fixture.ts'],
     {
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        WOKESOCIAL_AUTH_PORT: String(options.authPort),
-        WOKESOCIAL_WEB_ORIGIN: options.developmentWebUrl,
+        WETDROOL_AUTH_PORT: String(options.authPort),
+        WETDROOL_WEB_ORIGIN: options.developmentWebUrl,
       },
     },
   );
@@ -617,11 +617,11 @@ async function startDevelopmentPublicationWeb(options) {
         NEXT_PUBLIC_SOLANA_RPC_URL: options.rpcUrl,
         NODE_ENV: 'development',
         WOKENET_NETWORK_ID: options.networkId,
-        WOKESOCIAL_AUTH_URL: options.authUrl,
-        WOKESOCIAL_INDEXER_URL: options.indexerUrl,
-        WOKESOCIAL_LOCALNET_WRITES: '1',
-        WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-        WOKESOCIAL_LOCAL_CAS_ORIGIN: options.developmentWebUrl,
+        WETDROOL_AUTH_URL: options.authUrl,
+        WETDROOL_INDEXER_URL: options.indexerUrl,
+        WETDROOL_LOCALNET_WRITES: '1',
+        WETDROOL_LOCAL_CAS_MODE: 'localnet',
+        WETDROOL_LOCAL_CAS_ORIGIN: options.developmentWebUrl,
       },
     },
   );
@@ -700,7 +700,7 @@ function startIndexer(environment) {
 }
 
 async function startPostgres() {
-  state.containerName = `wokesocial-vertical-${process.pid}-${randomUUID().slice(0, 8)}`;
+  state.containerName = `wetdrool-vertical-${process.pid}-${randomUUID().slice(0, 8)}`;
   const result = await capture('docker', [
     'run',
     '--detach',
@@ -756,7 +756,7 @@ async function startPostgres() {
   if (health !== 'healthy') {
     throw new Error('Disposable PostgreSQL did not become healthy within 60 seconds.');
   }
-  const provisioningPath = '/tmp/wokesocial-provision-service-roles.sql';
+  const provisioningPath = '/tmp/wetdrool-provision-service-roles.sql';
   await runChecked('PostgreSQL role provisioning source copy', 'docker', [
     'cp',
     join(repositoryRoot, 'infra', 'postgres', 'provision-service-roles.sql'),
@@ -904,7 +904,7 @@ async function assertCommunityContracts(indexerUrl, detail, fixture) {
   const community = detail?.community;
   if (
     detail?.canonical !== false ||
-    detail?.projection !== 'wokenet-open-indexer' ||
+    detail?.projection !== 'droolnet-open-indexer' ||
     detail?.network !== fixture.networkId ||
     Object.hasOwn(detail, 'memberships') ||
     community?.networkId !== fixture.networkId ||
@@ -942,7 +942,7 @@ async function assertCommunityContracts(indexerUrl, detail, fixture) {
   );
   if (
     directory?.canonical !== false ||
-    directory?.projection !== 'wokenet-open-indexer' ||
+    directory?.projection !== 'droolnet-open-indexer' ||
     directory?.recipe !== 'community-directory-v1' ||
     directory?.network !== fixture.networkId ||
     Object.hasOwn(directory, 'memberships') ||
@@ -1035,7 +1035,7 @@ function assertMembershipContract(status, fixture) {
   ].sort();
   if (
     status?.canonical !== false ||
-    status?.projection !== 'wokenet-open-indexer' ||
+    status?.projection !== 'droolnet-open-indexer' ||
     status?.network !== fixture.networkId ||
     Object.keys(membership ?? {})
       .sort()
@@ -1058,7 +1058,7 @@ function assertMembershipContract(status, fixture) {
     typeof membership?.updatedAt !== 'string' ||
     !Number.isFinite(Date.parse(membership.updatedAt)) ||
     !/^(0|[1-9]\d*)$/u.test(membership?.updatedSlot ?? '') ||
-    proof?.kind !== 'wokesocial-program-event' ||
+    proof?.kind !== 'wetdrool-program-event' ||
     proof?.finality !== 'finalized' ||
     proof?.slot !== membership.updatedSlot ||
     proof?.transactionSignature !== fixture.transactionSignatures.at(-1) ||

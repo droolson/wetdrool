@@ -6,12 +6,12 @@ import {
   assertPostgresTlsPolicy,
   isLocalOrUnspecifiedHostname,
   isLoopbackHostname,
-} from '@wokesocial/config';
-import { parseTrustedProxyCidrs } from '@wokesocial/config/trusted-proxy';
+} from '@wetdrool/config';
+import { parseTrustedProxyCidrs } from '@wetdrool/config/trusted-proxy';
 
 import { parseModerationKeyRingJson } from './encryption.js';
 
-const LEGACY_REDIRECT_HOSTS = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const LEGACY_REDIRECT_HOSTS = new Set(['droolhouse.com', 'www.droolhouse.com']);
 const PUBLIC_LOCAL_MODERATION_DATA_KEY = new Uint8Array(32).fill(1);
 const originSchema = z.url().superRefine((value, context) => {
   const url = new URL(value);

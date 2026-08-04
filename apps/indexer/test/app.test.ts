@@ -22,10 +22,10 @@ import {
   type ProfileContent,
   type CommunityContent,
   type SignedEnvelope,
-} from '@wokesocial/protocol';
-import { RateLimitBackendUnavailableError, type RateLimiter } from '@wokesocial/rate-limit';
-import { MemoryContentAddressedStorage, type StorageReceipt } from '@wokesocial/storage';
-import { createProtocolFixtureSet } from '@wokesocial/test-fixtures';
+} from '@wetdrool/protocol';
+import { RateLimitBackendUnavailableError, type RateLimiter } from '@wetdrool/rate-limit';
+import { MemoryContentAddressedStorage, type StorageReceipt } from '@wetdrool/storage';
+import { createProtocolFixtureSet } from '@wetdrool/test-fixtures';
 
 import {
   buildIndexerApp,
@@ -49,8 +49,8 @@ const publicKey = ed25519.getPublicKey(privateKey);
 const genesisHash = bs58.encode(Uint8Array.from({ length: 32 }, () => 21));
 const programId = bs58.encode(Uint8Array.from({ length: 32 }, () => 22));
 const identityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 23));
-const networkId = `wokenet:v1:${genesisHash}:${programId}` as NetworkId;
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const networkId = `droolnet:v1:${genesisHash}:${programId}` as NetworkId;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
 const builderIdentity = createPayloadBuilderIdentity(networkId, identityId, publicKey, 'root');
 const transactionSignature = (seed: number) =>
   bs58.encode(Uint8Array.from({ length: 64 }, () => seed));
@@ -131,13 +131,13 @@ describe('indexer HTTP contract', () => {
         meta: {
           checkpointSlot: 18,
           indexedAt: expect.any(String),
-          source: 'WokeNet open indexer',
+          source: 'DroolNet open indexer',
         },
         network: networkId,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         proof: {
           finality: 'finalized',
-          kind: 'wokesocial-program-event',
+          kind: 'wetdrool-program-event',
           logIndex: 1,
           slot: '18',
           transactionIndex: 3,
@@ -390,7 +390,7 @@ describe('indexer HTTP contract', () => {
       expect(feedResponse.json()).toMatchObject({
         meta: {
           checkpointSlot: 3,
-          source: 'WokeNet open indexer',
+          source: 'DroolNet open indexer',
         },
         posts: [
           {
@@ -659,7 +659,7 @@ describe('indexer HTTP contract', () => {
 
       const unknown = await app.inject({
         method: 'GET',
-        url: `/v1/identities/${encodeURIComponent(`wokesocialid:v1:${networkId}:${bs58.encode(Uint8Array.from({ length: 32 }, () => 29))}`)}/profile`,
+        url: `/v1/identities/${encodeURIComponent(`wetdroolid:v1:${networkId}:${bs58.encode(Uint8Array.from({ length: 32 }, () => 29))}`)}/profile`,
       });
       expect(unknown.statusCode).toBe(404);
 
@@ -761,7 +761,7 @@ describe('indexer HTTP contract', () => {
       expect(crossRecipeCursor.json()).toMatchObject({
         error: { code: 'invalid-feed-cursor' },
       });
-      const foreignViewer = `wokesocialid:v1:${projectionSecurityNetworkId(
+      const foreignViewer = `wetdroolid:v1:${projectionSecurityNetworkId(
         151,
       )}:11111111111111111111111111111111`;
       const crossNetworkViewer = await app.inject({
@@ -1136,7 +1136,7 @@ describe('indexer HTTP contract', () => {
       expect(community.statusCode).toBe(200);
       expect(community.json()).toMatchObject({
         canonical: false,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         network: networkId,
         community: {
           communityAddress,
@@ -1182,7 +1182,7 @@ describe('indexer HTTP contract', () => {
       expect(oversizedDirectory.statusCode).toBe(400);
       expect(directory.json()).toMatchObject({
         canonical: false,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         recipe: 'community-directory-v1',
         network: networkId,
         communities: [{ communityAddress: newestPublic.address, manifestVerified: true }],
@@ -1202,7 +1202,7 @@ describe('indexer HTTP contract', () => {
         communities: [{ communityAddress }],
         nextCursor: null,
       });
-      const foreignNetwork = `wokenet:v1:${bs58.encode(
+      const foreignNetwork = `droolnet:v1:${bs58.encode(
         Uint8Array.from({ length: 32 }, () => 51),
       )}:${programId}`;
       const crossNetworkCursor = await app.inject({

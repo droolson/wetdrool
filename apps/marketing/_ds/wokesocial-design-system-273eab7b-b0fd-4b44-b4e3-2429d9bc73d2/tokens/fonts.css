@@ -1,5 +1,5 @@
-/* WokeSocial webfonts.
-   SUBSTITUTION NOTE: the wokenet codebase specifies the licensed desktop faces
+/* WetDrool webfonts.
+   SUBSTITUTION NOTE: the droolnet codebase specifies the licensed desktop faces
    'Avenir Next' (UI) and 'Iowan Old Style' (display). Neither ships webfont
    binaries in the repo, so this system substitutes the closest open variable
    equivalents from Google Fonts. Replace these @import lines with self-hosted
@@ -31,7 +31,7 @@
   /* Intentional addition: no mono was declared in the codebase, but provenance,
      content hashes and developer surfaces need one. */
   --ws-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  /* Brand text only — the header wordmark and the $WOKE lockup. Comic Sans MS is
+  /* Brand text only — the header wordmark and the $DROOL lockup. Comic Sans MS is
      the face the supplied artwork is drawn from. Comic Neue is the fallback for
      Linux/Android, where Comic Sans MS is not installed. NEVER use this family
      for UI, body, headings or long-form text. */

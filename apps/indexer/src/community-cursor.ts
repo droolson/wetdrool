@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { networkIdSchema, solanaPublicKeySchema } from '@wokesocial/protocol';
+import { networkIdSchema, solanaPublicKeySchema } from '@wetdrool/protocol';
 import { z } from 'zod';
 
 import type { CommunityDirectoryCursor } from './models.js';
@@ -9,7 +9,7 @@ export const COMMUNITY_DIRECTORY_RECIPE = 'community-directory-v1' as const;
 export const MAX_COMMUNITY_CURSOR_LENGTH = 512;
 export const SOLANA_U64_MAX = 18_446_744_073_709_551_615n;
 
-const COMMUNITY_CURSOR_SCOPE_DOMAIN = 'wokenet:indexer:community-directory-cursor-scope:v1';
+const COMMUNITY_CURSOR_SCOPE_DOMAIN = 'droolnet:indexer:community-directory-cursor-scope:v1';
 
 const cursorPayloadSchema = z
   .object({

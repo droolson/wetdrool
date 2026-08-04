@@ -31,18 +31,18 @@ describe('deriveSiteSubdomain', () => {
     expect(deriveSiteSubdomain('alexbtc420')).toEqual({
       handle: 'alexbtc420',
       label: 'alexbtc420',
-      host: 'alexbtc420.woke.social',
-      email: 'alexbtc420@woke.social',
+      host: 'alexbtc420.wetdrool.com',
+      email: 'alexbtc420@wetdrool.com',
     });
     expect(deriveSiteSubdomain('anon_7n044tsjxrfm5e23')).toEqual({
       handle: 'anon_7n044tsjxrfm5e23',
       label: 'anon-7n044tsjxrfm5e23',
-      host: 'anon-7n044tsjxrfm5e23.woke.social',
-      email: 'anon_7n044tsjxrfm5e23@woke.social',
+      host: 'anon-7n044tsjxrfm5e23.wetdrool.com',
+      email: 'anon_7n044tsjxrfm5e23@wetdrool.com',
     });
     // Handles never contain '-', so the underscore mapping cannot collide.
     expect(deriveSiteSubdomain('a_b').label).toBe('a-b');
-    expect(deriveSiteSubdomain('river_chen.woke').handle).toBe('river_chen');
+    expect(deriveSiteSubdomain('river_chen.drool').handle).toBe('river_chen');
     // ASCII case folds to the canonical lowercase handle instead of failing.
     expect(deriveSiteSubdomain('River').label).toBe('river');
   });
@@ -99,7 +99,7 @@ describe('prepareSiteGenerationRequest', () => {
       kind: 'site-generation',
       model: 'qwen3-coder-next',
       preset: 'crypto-project',
-      subdomain: 'anon-7n044tsjxrfm5e23.woke.social',
+      subdomain: 'anon-7n044tsjxrfm5e23.wetdrool.com',
       brief: {
         title: 'Woke Protocol',
         tagline: 'Portable identity.',

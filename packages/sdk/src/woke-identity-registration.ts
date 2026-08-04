@@ -19,7 +19,7 @@ import {
   type WOKE_HANDLE_CLAIM_ACCOUNT_SPACE,
   type WokeNameClaimAccountRecord,
 } from './woke-name-claim.js';
-import type { ValidatedWokeNetContext, WokeInstruction, WokeNetContext } from './woke-payments.js';
+import type { ValidatedDroolNetContext, WokeInstruction, DroolNetContext } from './woke-payments.js';
 import type {
   WokeTransactionSimulationSnapshot,
   WokeTransactionSimulationVerifier,
@@ -52,7 +52,7 @@ export interface BuildPrimaryWokeIdentityRegistrationInput {
 
 export interface BuiltPrimaryWokeIdentityRegistration {
   readonly kind: 'register-primary-identity-with-random-name';
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly identity: BuiltCreateWokeIdentityInstruction;
   readonly nameClaim: BuiltClaimRandomWokeNameInstruction;
   readonly instructions: readonly [WokeInstruction, WokeInstruction];
@@ -82,7 +82,7 @@ export type WokeIdentityRegistrationReconciliation =
  * `create_identity`, then the identity-bound anonymous `claim_handle`.
  */
 export async function buildPrimaryWokeIdentityRegistration(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildPrimaryWokeIdentityRegistrationInput,
 ): Promise<BuiltPrimaryWokeIdentityRegistration> {
   const identity = await buildCreatePrimaryWokeIdentityInstruction(contextInput, input);
@@ -380,11 +380,11 @@ function accountRequest(
 
 function assertReader(reader: WokeProgramAccountReader): void {
   if (reader === null || typeof reader !== 'object' || typeof reader.readAccount !== 'function') {
-    throw registrationError('invalid-reader', 'A WokeNet program account reader is required.');
+    throw registrationError('invalid-reader', 'A DroolNet program account reader is required.');
   }
 }
 
-function sameContext(left: ValidatedWokeNetContext, right: ValidatedWokeNetContext): boolean {
+function sameContext(left: ValidatedDroolNetContext, right: ValidatedDroolNetContext): boolean {
   return (
     left.endpoint === right.endpoint &&
     left.genesisHash === right.genesisHash &&

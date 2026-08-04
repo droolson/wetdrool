@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/moderation-service",
+  "name": "@wetdrool/moderation-service",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Replaceable, non-authoritative WokeSocial moderation label, report, and appeal service",
+  "description": "Replaceable, non-authoritative WetDrool moderation label, report, and appeal service",
   "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-static.mjs",
@@ -20,15 +20,15 @@
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/rate-limit": "11.1.0",
-    "@wokesocial/config": "workspace:*",
-    "@wokesocial/protocol": "workspace:*",
-    "@wokesocial/rate-limit": "workspace:*",
+    "@wetdrool/config": "workspace:*",
+    "@wetdrool/protocol": "workspace:*",
+    "@wetdrool/rate-limit": "workspace:*",
     "fastify": "5.10.0",
     "postgres": "3.4.9",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@wokesocial/test-fixtures": "workspace:*",
+    "@wetdrool/test-fixtures": "workspace:*",
     "@types/node": "22.20.1",
     "tsx": "4.23.1",
     "vitest": "4.1.10"

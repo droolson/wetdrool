@@ -19,11 +19,11 @@ const validEnvironment = {
   INDEXER_HOST: '::1',
   MODERATION_HOST: '[::1]',
   RELAY_HOST: '127.0.0.1',
-  DATABASE_URL: 'postgresql://developer:password@127.0.0.1:5432/wokesocial',
-  AUTH_DATABASE_URL: 'postgresql://developer:password@localhost:5432/wokesocial',
-  AUTH_DATABASE_MIGRATION_URL: 'postgresql://auth_migration:password@localhost:5432/wokesocial',
+  DATABASE_URL: 'postgresql://developer:password@127.0.0.1:5432/wetdrool',
+  AUTH_DATABASE_URL: 'postgresql://developer:password@localhost:5432/wetdrool',
+  AUTH_DATABASE_MIGRATION_URL: 'postgresql://auth_migration:password@localhost:5432/wetdrool',
   MODERATION_DATABASE_MIGRATION_URL:
-    'postgresql://moderation_migration:password@127.0.0.1:5432/wokesocial',
+    'postgresql://moderation_migration:password@127.0.0.1:5432/wetdrool',
   NEXT_PUBLIC_SOLANA_CLUSTER: 'localnet',
   SOLANA_RPC_URLS: 'http://127.0.0.1:8899,http://localhost:8899',
 };
@@ -54,7 +54,7 @@ describe('local development plan', () => {
       () =>
         assertSafeLocalDevelopmentEnvironment({
           ...validEnvironment,
-          DATABASE_URL: 'postgresql://operator:secret@production-db.example/wokesocial',
+          DATABASE_URL: 'postgresql://operator:secret@production-db.example/wetdrool',
         }),
       /DATABASE_URL must target loopback/u,
     );
@@ -63,7 +63,7 @@ describe('local development plan', () => {
         assertSafeLocalDevelopmentEnvironment({
           ...validEnvironment,
           AUTH_DATABASE_MIGRATION_URL:
-            'postgresql://auth_migration:secret@production-db.example/wokesocial',
+            'postgresql://auth_migration:secret@production-db.example/wetdrool',
         }),
       /AUTH_DATABASE_MIGRATION_URL must target loopback/u,
     );
@@ -72,7 +72,7 @@ describe('local development plan', () => {
         assertSafeLocalDevelopmentEnvironment({
           ...validEnvironment,
           MODERATION_DATABASE_MIGRATION_URL:
-            'postgresql://moderation_migration:secret@production-db.example/wokesocial',
+            'postgresql://moderation_migration:secret@production-db.example/wetdrool',
         }),
       /MODERATION_DATABASE_MIGRATION_URL must target loopback/u,
     );
@@ -182,8 +182,8 @@ describe('local development plan', () => {
         encoding: 'utf8',
         env: {
           AUTH_DATABASE_RUNTIME_PASSWORD: 'sentinel-auth-runtime-password',
-          AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wokesocial',
-          MODERATION_DATABASE_URL: 'postgresql://moderation:secret@localhost/wokesocial',
+          AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wetdrool',
+          MODERATION_DATABASE_URL: 'postgresql://moderation:secret@localhost/wetdrool',
           POSTGRES_PASSWORD: 'sentinel-bootstrap-password',
           RATE_LIMIT_KEY_SECRET: 'sentinel-rate-limit-key',
           REDIS_URL: 'redis://:sentinel-redis-password@localhost:6379',
@@ -193,7 +193,7 @@ describe('local development plan', () => {
     );
     assert.equal(child.status, 0, child.stderr);
     assert.deepEqual(JSON.parse(child.stdout), {
-      auth: 'postgresql://auth:secret@localhost/wokesocial',
+      auth: 'postgresql://auth:secret@localhost/wetdrool',
       safe: 'retained',
     });
     assert.doesNotMatch(child.stdout + child.stderr, /sentinel-/u);
@@ -219,7 +219,7 @@ describe('local development plan', () => {
       {
         encoding: 'utf8',
         env: {
-          AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wokesocial',
+          AUTH_DATABASE_URL: 'postgresql://auth:secret@localhost/wetdrool',
           RATE_LIMIT_KEY_SECRET: 'sentinel-rate-limit-key',
           REDIS_URL: 'redis://:sentinel-redis-password@localhost:6379',
           SAFE_RUNTIME_VALUE: 'retained',
@@ -243,7 +243,7 @@ describe('local development plan', () => {
       'run',
       'dev',
       '--env-mode=loose',
-      '--filter=!@wokesocial/media-worker',
+      '--filter=!@wetdrool/media-worker',
     ]);
   });
 

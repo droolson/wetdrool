@@ -89,7 +89,7 @@ describe('RedisFixedWindowRateLimiter', () => {
 
     expect(first).toBe(same);
     expect(new Set([first, otherNamespace, otherKey, otherKeyMaterial]).size).toBe(4);
-    expect(first).toMatch(/^wokesocial:rate-limit:v1:[A-Za-z0-9_-]{43}:[A-Za-z0-9_-]{43}$/u);
+    expect(first).toMatch(/^wetdrool:rate-limit:v1:[A-Za-z0-9_-]{43}:[A-Za-z0-9_-]{43}$/u);
     expect(first).not.toContain('http');
     expect(first).not.toContain('person');
     expect(first).not.toContain('example.com');
@@ -97,7 +97,7 @@ describe('RedisFixedWindowRateLimiter', () => {
 
   it('accepts the maximum deployment and service prefix admitted by runtime config', () => {
     const maximumIdentifier = `a${'b'.repeat(62)}`;
-    const prefix = `wokesocial:rate-limit:v1:${maximumIdentifier}:${maximumIdentifier}`;
+    const prefix = `wetdrool:rate-limit:v1:${maximumIdentifier}:${maximumIdentifier}`;
     expect(
       deriveRateLimitRedisKey({
         secret,
@@ -197,7 +197,7 @@ describe('RedisFixedWindowRateLimiter', () => {
       expect(serialized).not.toContain(rawNamespace);
       expect(serialized).not.toContain(rawKey);
       expect(call.keys[0]).toMatch(
-        /^wokesocial:rate-limit:v1:[A-Za-z0-9_-]{43}:[A-Za-z0-9_-]{43}$/u,
+        /^wetdrool:rate-limit:v1:[A-Za-z0-9_-]{43}:[A-Za-z0-9_-]{43}$/u,
       );
     }
   });
@@ -328,7 +328,7 @@ describe('RedisFixedWindowRateLimiter', () => {
     expect(REDIS_RATE_LIMIT_READINESS_LUA).toContain("redis.call('PTTL', key)");
     expect(REDIS_RATE_LIMIT_READINESS_LUA).toContain("redis.call('GET', key)");
     expect(transport.evalCalls[0]?.keys[0]).toMatch(
-      /^wokesocial:rate-limit:v1:[A-Za-z0-9_-]{43}:[A-Za-z0-9_-]{43}$/u,
+      /^wetdrool:rate-limit:v1:[A-Za-z0-9_-]{43}:[A-Za-z0-9_-]{43}$/u,
     );
 
     transport.nextEvalResult = [1, 1, -1, 1, 1];

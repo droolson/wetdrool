@@ -57,7 +57,7 @@ export interface PayloadSigningRequest {
    * bytes without prefixing, hashing, or replacing them.
    */
   readonly message: Uint8Array;
-  readonly purpose: 'wokesocial-portable-object-v1';
+  readonly purpose: 'wetdrool-portable-object-v1';
 }
 
 export type PayloadSigner = (request: PayloadSigningRequest) => Uint8Array | Promise<Uint8Array>;
@@ -169,7 +169,7 @@ export async function signPayloadWithSigner(
         algorithm: 'Ed25519',
         keyId: payload.signingKey,
         message: Uint8Array.from(exactMessage),
-        purpose: 'wokesocial-portable-object-v1',
+        purpose: 'wetdrool-portable-object-v1',
       }),
     );
   } catch (error) {

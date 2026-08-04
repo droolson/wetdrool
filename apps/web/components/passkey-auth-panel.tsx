@@ -1,7 +1,7 @@
 'use client';
 
-import { deriveRandomWokeName } from '@wokesocial/protocol';
-import { ButtonLink } from '@wokesocial/ui';
+import { deriveRandomWokeName } from '@wetdrool/protocol';
+import { ButtonLink } from '@wetdrool/ui';
 import bs58 from 'bs58';
 import { useEffect, useState } from 'react';
 
@@ -242,7 +242,7 @@ function KeyOutcome({ result }: { readonly result: BrowserAuthFlowResult }) {
           {anonymousIdentity === undefined ? null : (
             <>
               <div>
-                <dt>Anonymous .woke candidate</dt>
+                <dt>Anonymous .drool candidate</dt>
                 <dd className="inline-identifier">{anonymousIdentity.name}</dd>
               </div>
               <div>
@@ -259,7 +259,7 @@ function KeyOutcome({ result }: { readonly result: BrowserAuthFlowResult }) {
         {anonymousIdentity === undefined ? null : (
           <p>
             This collision-resistant candidate contains no email or legal identity. It becomes a
-            portable WokeNet name only after the matching identity and handle claim finalize on
+            portable DroolNet name only after the matching identity and handle claim finalize on
             Solana; it is never a native Solana address.
           </p>
         )}

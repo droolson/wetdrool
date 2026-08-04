@@ -4,7 +4,7 @@ import {
   type ModerationSubject,
   type SignedEnvelope,
   verifyEnvelope,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import { z } from 'zod';
 
 import { ModerationServiceError } from './errors.js';

@@ -16,19 +16,19 @@ import { createTestDevice, TestAuthorizationResolver, TestKeyDirectory } from '.
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const aliceAddress = {
-  identityId: 'did:wokesocial:alice',
+  identityId: 'did:wetdrool:alice',
   deviceId: 'alice-phone-1',
 } as const;
 const bobAddress = {
-  identityId: 'did:wokesocial:bob',
+  identityId: 'did:wetdrool:bob',
   deviceId: 'bob-phone-1',
 } as const;
 const bobRotatedAddress = {
-  identityId: 'did:wokesocial:bob',
+  identityId: 'did:wetdrool:bob',
   deviceId: 'bob-phone-2',
 } as const;
 const charlieAddress = {
-  identityId: 'did:wokesocial:charlie',
+  identityId: 'did:wetdrool:charlie',
   deviceId: 'charlie-phone-1',
 } as const;
 
@@ -55,7 +55,7 @@ function expectCode(
     (error: unknown) => {
       expect(error).toBeInstanceOf(PairwiseMessagingError);
       expect((error as PairwiseMessagingError).code).toBe(code);
-      expect((error as Error).message).not.toContain('did:wokesocial:');
+      expect((error as Error).message).not.toContain('did:wetdrool:');
     },
   );
 }
@@ -149,7 +149,7 @@ describe('real matrix-rust-sdk WASM pairwise adapter', () => {
       'curve25519PublicKey',
       'ed25519PublicKey',
     ]);
-    expect(JSON.stringify(binding)).not.toContain('@wokesocial_');
+    expect(JSON.stringify(binding)).not.toContain('@wetdrool_');
     expect(JSON.stringify(binding)).not.toContain('messaging.invalid');
   });
 
@@ -168,7 +168,7 @@ describe('real matrix-rust-sdk WASM pairwise adapter', () => {
       contentType: 'text/plain',
     });
     expect(JSON.stringify(envelope)).not.toContain(plaintext);
-    expect(envelope.protocol).toBe('woke.social.messaging.pairwise.v1');
+    expect(envelope.protocol).toBe('wetdrool.com.messaging.pairwise.v1');
     expect(envelope.signature).toMatchObject({ algorithm: 'ed25519' });
     expect(envelope.signature.value).toMatch(/^[A-Za-z0-9+/]{86}$/u);
     expect(directory.transcript.map((entry) => entry.body).join('\n')).not.toContain(plaintext);
@@ -242,7 +242,7 @@ describe('real matrix-rust-sdk WASM pairwise adapter', () => {
     });
     const changedMessageId = {
       ...envelope,
-      messageId: 'wokesocial-message_AAAAAAAAAAAAAAAAAAAAAA',
+      messageId: 'wetdrool-message_AAAAAAAAAAAAAAAAAAAAAA',
     };
     const changedSender = {
       ...envelope,
@@ -428,10 +428,10 @@ describe('real matrix-rust-sdk WASM pairwise adapter', () => {
     const directory = new TestKeyDirectory();
     const resolver = new TestAuthorizationResolver();
     const invalidAddresses: SocialDeviceAddress[] = [
-      { identityId: 'did:wokesocial:invalid-\ud800', deviceId: 'phone' },
-      { identityId: 'did:wokesocial:invalid-\udfff', deviceId: 'phone' },
-      { identityId: 'did:wokesocial:valid', deviceId: 'phone-\ud800' },
-      { identityId: 'did:wokesocial:valid', deviceId: 'phone-\udfff' },
+      { identityId: 'did:wetdrool:invalid-\ud800', deviceId: 'phone' },
+      { identityId: 'did:wetdrool:invalid-\udfff', deviceId: 'phone' },
+      { identityId: 'did:wetdrool:valid', deviceId: 'phone-\ud800' },
+      { identityId: 'did:wetdrool:valid', deviceId: 'phone-\udfff' },
     ];
 
     for (const address of invalidAddresses) {

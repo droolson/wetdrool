@@ -11,11 +11,11 @@ import { actionInput, operator } from './ledger-fixtures.js';
 const databaseUrl =
   process.env['MODERATION_INTEGRATION_DATABASE_URL'] ??
   process.env['MODERATION_DATABASE_URL'] ??
-  'postgresql://wokesocial_moderation_runtime:local-moderation-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_moderation_runtime:local-moderation-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['MODERATION_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['MODERATION_DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_moderation_migration:local-moderation-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_moderation_migration:local-moderation-migration-only@127.0.0.1:5432/wetdrool';
 const sql = postgres(databaseUrl, { max: 2, onnotice: () => undefined });
 const migrationSql = postgres(migrationDatabaseUrl, { max: 1, onnotice: () => undefined });
 const key = Uint8Array.from({ length: 32 }, (_, index) => index + 31);
@@ -443,7 +443,7 @@ describe('PostgreSQL moderation case ledger', () => {
 
 async function cleanup(reportIds: readonly string[], publicIds: readonly string[]): Promise<void> {
   await migrationSql.begin(async (transaction) => {
-    await transaction`SELECT set_config('wokesocial.retention_delete', 'on', true)`;
+    await transaction`SELECT set_config('wetdrool.retention_delete', 'on', true)`;
     if (reportIds.length > 0) {
       await transaction`
         DELETE FROM moderation_access_events

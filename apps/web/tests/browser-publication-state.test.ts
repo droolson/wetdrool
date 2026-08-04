@@ -3,7 +3,7 @@ import {
   decodeMultibaseBase64Url,
   signPayload,
   signingKeyIdFor,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { describe, expect, it } from 'vitest';
 
@@ -33,8 +33,8 @@ import {
 } from '../lib/post-publication-intent';
 
 const SOLANA_KEY = '11111111111111111111111111111111';
-const NETWORK = `wokenet:v1:${SOLANA_KEY}:${SOLANA_KEY}`;
-const IDENTITY = `wokesocialid:v1:${NETWORK}:${SOLANA_KEY}`;
+const NETWORK = `droolnet:v1:${SOLANA_KEY}:${SOLANA_KEY}`;
+const IDENTITY = `wetdroolid:v1:${NETWORK}:${SOLANA_KEY}`;
 const PRIVATE_KEY = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const ROOT_SIGNING_KEY = signingKeyIdFor(IDENTITY, ed25519.getPublicKey(PRIVATE_KEY), 'root');
 

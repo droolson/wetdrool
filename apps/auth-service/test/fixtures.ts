@@ -3,7 +3,7 @@ import {
   wrapPasskeyAccountKey,
   type PasskeyAccountKeyKind,
   type PasskeyWrappedKeyBundle,
-} from '@wokesocial/crypto';
+} from '@wetdrool/crypto';
 
 import type {
   AuthenticationVerificationInput,

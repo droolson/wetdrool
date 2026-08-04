@@ -8,7 +8,7 @@ import {
   readLocalCasConfig,
 } from '../lib/local-cas-config';
 
-const STORAGE_ROOT = '/tmp/wokesocial-local-cas';
+const STORAGE_ROOT = '/tmp/wetdrool-local-cas';
 const DEVELOPMENT_ENVIRONMENT = {
   APP_ENV: 'development',
   NODE_ENV: 'test',
@@ -21,8 +21,8 @@ describe('local CAS configuration', () => {
       readLocalCasConfig({
         ...DEVELOPMENT_ENVIRONMENT,
         CONTENT_STORAGE_PATH: STORAGE_ROOT,
-        WOKESOCIAL_LOCAL_CAS_MODE: 'production',
-        WOKESOCIAL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
+        WETDROOL_LOCAL_CAS_MODE: 'production',
+        WETDROOL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
       }),
     ).toThrow(LocalCasConfigurationError);
   });
@@ -32,8 +32,8 @@ describe('local CAS configuration', () => {
       readLocalCasConfig({
         ...DEVELOPMENT_ENVIRONMENT,
         CONTENT_STORAGE_PATH: STORAGE_ROOT,
-        WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-        WOKESOCIAL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
+        WETDROOL_LOCAL_CAS_MODE: 'localnet',
+        WETDROOL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
       }),
     ).toEqual({
       allowedOrigin: 'http://localhost:3000',
@@ -45,9 +45,9 @@ describe('local CAS configuration', () => {
       readLocalCasConfig({
         ...DEVELOPMENT_ENVIRONMENT,
         CONTENT_STORAGE_PATH: STORAGE_ROOT,
-        WOKESOCIAL_LOCAL_CAS_MAX_BYTES: '4096',
-        WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-        WOKESOCIAL_LOCAL_CAS_ORIGIN: 'http://[::1]:3000',
+        WETDROOL_LOCAL_CAS_MAX_BYTES: '4096',
+        WETDROOL_LOCAL_CAS_MODE: 'localnet',
+        WETDROOL_LOCAL_CAS_ORIGIN: 'http://[::1]:3000',
       }),
     ).toMatchObject({
       allowedOrigin: 'http://[::1]:3000',
@@ -66,8 +66,8 @@ describe('local CAS configuration', () => {
       readLocalCasConfig({
         ...DEVELOPMENT_ENVIRONMENT,
         CONTENT_STORAGE_PATH: STORAGE_ROOT,
-        WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-        WOKESOCIAL_LOCAL_CAS_ORIGIN: origin,
+        WETDROOL_LOCAL_CAS_MODE: 'localnet',
+        WETDROOL_LOCAL_CAS_ORIGIN: origin,
       }),
     ).toThrow(/exact loopback HTTP origin/u);
   });
@@ -78,8 +78,8 @@ describe('local CAS configuration', () => {
         readLocalCasConfig({
           ...DEVELOPMENT_ENVIRONMENT,
           CONTENT_STORAGE_PATH: rootDirectory,
-          WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-          WOKESOCIAL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
+          WETDROOL_LOCAL_CAS_MODE: 'localnet',
+          WETDROOL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
         }),
       ).toThrow(LocalCasConfigurationError);
     }
@@ -91,15 +91,15 @@ describe('local CAS configuration', () => {
       { APP_ENV: 'staging' },
       { NODE_ENV: 'production' },
       { VERCEL_ENV: 'preview' },
-      { WOKESOCIAL_LOCAL_CAS_MAX_BYTES: '1000001' },
-      { WOKESOCIAL_LOCAL_CAS_MAX_BYTES: '1e3' },
+      { WETDROOL_LOCAL_CAS_MAX_BYTES: '1000001' },
+      { WETDROOL_LOCAL_CAS_MAX_BYTES: '1e3' },
     ]) {
       expect(() =>
         readLocalCasConfig({
           ...DEVELOPMENT_ENVIRONMENT,
           CONTENT_STORAGE_PATH: STORAGE_ROOT,
-          WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-          WOKESOCIAL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
+          WETDROOL_LOCAL_CAS_MODE: 'localnet',
+          WETDROOL_LOCAL_CAS_ORIGIN: 'http://localhost:3000',
           ...environment,
         }),
       ).toThrow(LocalCasConfigurationError);

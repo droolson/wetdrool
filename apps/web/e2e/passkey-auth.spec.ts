@@ -1,7 +1,7 @@
 import { expect, test, type BrowserContext, type CDPSession, type Page } from '@playwright/test';
 
-const AUTH_SERVICE_URL = `http://localhost:${process.env.WOKESOCIAL_AUTH_PORT ?? '4300'}`;
-const SESSION_COOKIE_NAME = '__Host-wokesocial-session';
+const AUTH_SERVICE_URL = `http://localhost:${process.env.WETDROOL_AUTH_PORT ?? '4300'}`;
+const SESSION_COOKIE_NAME = '__Host-wetdrool-session';
 
 interface ObservedRequest {
   readonly body: unknown;
@@ -47,7 +47,7 @@ test('registers ciphertext atomically, logs out, and signs in discoverably', asy
   ).toBeVisible();
   await expect(page.getByText('Not created', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Fail-closed fallback')).toHaveCount(0);
-  const anonymousName = page.getByText(/^anon_[0-9a-hjkmnp-tv-z]{16}\.woke$/u);
+  const anonymousName = page.getByText(/^anon_[0-9a-hjkmnp-tv-z]{16}\.drool$/u);
   await expect(anonymousName).toBeVisible();
   const registeredAnonymousName = await anonymousName.innerText();
   await expect(

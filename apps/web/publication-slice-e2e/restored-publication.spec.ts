@@ -20,7 +20,7 @@ test('renders both durable-ledger-restored posts through feed and detail routes'
       readonly transactionSignature: string;
     }[];
   };
-  expect(evidence.schema).toBe('wokesocial.vertical-slice.publication-evidence.v2');
+  expect(evidence.schema).toBe('wetdrool.vertical-slice.publication-evidence.v2');
   expect(evidence.posts).toHaveLength(2);
 
   const feedResponse = await page.goto('/home');

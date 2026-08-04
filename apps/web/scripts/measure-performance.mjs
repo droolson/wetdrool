@@ -16,7 +16,7 @@ let browser;
 let stoppingServer = false;
 
 if (!existsSync(buildId)) {
-  throw new Error('Production build is missing. Run `pnpm --filter @wokesocial/web build` first.');
+  throw new Error('Production build is missing. Run `pnpm --filter @wetdrool/web build` first.');
 }
 if (!existsSync(nextCli)) {
   throw new Error(`Next.js CLI is missing at ${nextCli}.`);
@@ -57,18 +57,18 @@ try {
       const context = await browser.newContext();
       const page = await context.newPage();
       await page.addInitScript(() => {
-        globalThis.__wokesocialPerformance = { cls: 0, lcpMs: 0 };
+        globalThis.__wetdroolPerformance = { cls: 0, lcpMs: 0 };
         if (PerformanceObserver.supportedEntryTypes.includes('largest-contentful-paint')) {
           new PerformanceObserver((list) => {
             const entries = list.getEntries();
             const latest = entries.at(-1);
-            if (latest) globalThis.__wokesocialPerformance.lcpMs = latest.startTime;
+            if (latest) globalThis.__wetdroolPerformance.lcpMs = latest.startTime;
           }).observe({ buffered: true, type: 'largest-contentful-paint' });
         }
         if (PerformanceObserver.supportedEntryTypes.includes('layout-shift')) {
           new PerformanceObserver((list) => {
             for (const entry of list.getEntries()) {
-              if (!entry.hadRecentInput) globalThis.__wokesocialPerformance.cls += entry.value;
+              if (!entry.hadRecentInput) globalThis.__wetdroolPerformance.cls += entry.value;
             }
           }).observe({ buffered: true, type: 'layout-shift' });
         }
@@ -88,9 +88,9 @@ try {
             throw new Error('Navigation timing entry is unavailable.');
           }
           return {
-            cls: globalThis.__wokesocialPerformance.cls,
+            cls: globalThis.__wetdroolPerformance.cls,
             domContentLoadedMs: navigation.domContentLoadedEventEnd,
-            lcpMs: globalThis.__wokesocialPerformance.lcpMs,
+            lcpMs: globalThis.__wetdroolPerformance.lcpMs,
             loadMs: navigation.loadEventEnd,
             ttfbMs: navigation.responseStart,
           };

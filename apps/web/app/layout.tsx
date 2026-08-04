@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import '@wokesocial/ui/styles.css';
+import '@wetdrool/ui/styles.css';
 
 import { ConnectivityNotice } from '@/components/connectivity-notice';
+import { GrokChatDock } from '@/components/grok-chat-dock';
 import { MobileDock } from '@/components/mobile-dock';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -13,15 +14,16 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_ORIGIN),
   title: {
-    default: 'WokeSocial — Own your voice',
-    template: '%s · WokeSocial',
+    default: 'WetDrool — Get freaky. Own your keys.',
+    template: '%s · WetDrool',
   },
   description:
-    'A social network designed for portable identity, safer conversation, and algorithms people can question.',
+    '18+ adult social dApp on Solana — livestreams, NSFW/SFW video, AI companions, .drool vanity, and $DROOL.',
   openGraph: {
-    description: 'Portable identity. Safer conversation. Algorithms people can question.',
-    siteName: 'WokeSocial',
-    title: 'WokeSocial — Own your voice',
+    description:
+      'Euphoric 18+ social. Portable identity. AI companions. Points that never outrun ads.',
+    siteName: 'WetDrool',
+    title: 'WetDrool — Get freaky. Own your keys.',
     type: 'website',
   },
   robots: {
@@ -31,17 +33,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
+  colorScheme: 'dark light',
   themeColor: [
-    { color: '#f8f5ef', media: '(prefers-color-scheme: light)' },
-    { color: '#151019', media: '(prefers-color-scheme: dark)' },
+    { color: '#0a0a0b', media: '(prefers-color-scheme: dark)' },
+    { color: '#0a0a0b', media: '(prefers-color-scheme: light)' },
   ],
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className="anytype-shell">
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>
@@ -51,6 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           {children}
         </main>
         <MobileDock />
+        <GrokChatDock />
         <SiteFooter />
       </body>
     </html>

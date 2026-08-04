@@ -6,7 +6,7 @@ import type { Phase2Context } from "./phase2_test_helpers";
 
 const { PublicKey, SystemProgram, Transaction } = web3;
 
-const PDA_PREFIX = Buffer.from("wokesocial");
+const PDA_PREFIX = Buffer.from("wetdrool");
 const PDA_VERSION = Buffer.from([1]);
 const PAYMENT_CONFIG_SEED = Buffer.from("payment_config");
 const SUBSCRIPTION_OFFERING_SEED = Buffer.from("subscription_offering");

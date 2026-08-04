@@ -23,7 +23,7 @@ const PROTOCOL_VERSION = 1;
 const NONCE_BYTES = 16;
 const HASH_BYTES = 32;
 
-const PDA_PREFIX = ascii('wokesocial');
+const PDA_PREFIX = ascii('wetdrool');
 const PDA_VERSION = Uint8Array.of(ACCOUNT_VERSION);
 const CONFIG_SEED = ascii('config');
 const IDENTITY_SEED = ascii('identity');
@@ -98,19 +98,19 @@ export class WokePaymentError extends Error {
  * endpoint, one genesis hash, and one deployed program. There are
  * intentionally no cluster defaults.
  */
-export interface WokeNetContext {
+export interface DroolNetContext {
   readonly endpoint: string;
   readonly genesisHash: string;
   readonly programAddress: string;
 }
 
-export interface ValidatedWokeNetContext extends WokeNetContext {
+export interface ValidatedDroolNetContext extends DroolNetContext {
   readonly endpoint: string;
   readonly genesisHash: string;
   readonly programAddress: string;
 }
 
-export function createWokeNetContext(input: WokeNetContext): ValidatedWokeNetContext {
+export function createDroolNetContext(input: DroolNetContext): ValidatedDroolNetContext {
   let endpoint: URL;
   try {
     endpoint = new URL(input.endpoint);
@@ -131,8 +131,8 @@ export function createWokeNetContext(input: WokeNetContext): ValidatedWokeNetCon
     );
   }
 
-  const genesisHash = parseAddress(input.genesisHash, 'WokeNet genesis hash');
-  const programAddress = parseAddress(input.programAddress, 'WokeSocial protocol program');
+  const genesisHash = parseAddress(input.genesisHash, 'DroolNet genesis hash');
+  const programAddress = parseAddress(input.programAddress, 'WetDrool protocol program');
   if (
     genesisHash === WOKENET_SYSTEM_PROGRAM_ADDRESS ||
     programAddress === WOKENET_SYSTEM_PROGRAM_ADDRESS ||
@@ -140,7 +140,7 @@ export function createWokeNetContext(input: WokeNetContext): ValidatedWokeNetCon
   ) {
     throw new WokePaymentError(
       'invalid-context',
-      'The WokeNet genesis hash and program address must be non-default values.',
+      'The DroolNet genesis hash and program address must be non-default values.',
     );
   }
   return Object.freeze({
@@ -157,7 +157,7 @@ export interface WokeRecipientSplitInput {
 }
 
 export interface WokeNativePaymentInput {
-  readonly context: WokeNetContext;
+  readonly context: DroolNetContext;
   readonly payerIdentity: string;
   readonly payerAuthority: string;
   readonly feeDestination: string;
@@ -183,7 +183,7 @@ export interface WokeNativeTransfer {
 
 export interface WokeNativePaymentPlan {
   readonly asset: 'SOL';
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly payerIdentity: string;
   readonly payerAuthority: string;
   readonly feeDestination: string;
@@ -197,13 +197,13 @@ export interface WokeNativePaymentPlan {
 }
 
 /**
- * Mirrors `calculate_legacy_lamport_payment_allocation` in the WokeSocial protocol program.
+ * Mirrors `calculate_legacy_lamport_payment_allocation` in the WetDrool protocol program.
  * All arithmetic is checked in the same unsigned-128 intermediate domain.
  */
 export function calculateWokeNativePaymentPlan(
   input: WokeNativePaymentInput,
 ): WokeNativePaymentPlan {
-  const context = createWokeNetContext(input.context);
+  const context = createDroolNetContext(input.context);
   const payerIdentity = parseAddress(input.payerIdentity, 'payer identity');
   const payerAuthority = parseAddress(input.payerAuthority, 'payer authority');
   const feeDestination = parseAddress(input.feeDestination, 'fee destination');
@@ -311,16 +311,16 @@ export function calculateWokeNativePaymentPlan(
   };
 }
 
-export async function deriveWokeProtocolConfigAddress(context: WokeNetContext): Promise<string> {
+export async function deriveWokeProtocolConfigAddress(context: DroolNetContext): Promise<string> {
   return (await derivePda(context, [PDA_PREFIX, PDA_VERSION, CONFIG_SEED])).address;
 }
 
-export async function deriveWokePaymentConfigAddress(context: WokeNetContext): Promise<string> {
+export async function deriveWokePaymentConfigAddress(context: DroolNetContext): Promise<string> {
   return (await derivePda(context, [PDA_PREFIX, PDA_VERSION, PAYMENT_CONFIG_SEED])).address;
 }
 
 export async function deriveWokeIdentityAddress(
-  context: WokeNetContext,
+  context: DroolNetContext,
   originAuthority: string,
   identityNonce: Uint8Array,
 ): Promise<string> {
@@ -338,7 +338,7 @@ export async function deriveWokeIdentityAddress(
 }
 
 export async function deriveWokeSubscriptionOfferingAddress(
-  context: WokeNetContext,
+  context: DroolNetContext,
   creatorIdentity: string,
   offeringNonce: Uint8Array,
 ): Promise<string> {
@@ -356,7 +356,7 @@ export async function deriveWokeSubscriptionOfferingAddress(
 }
 
 export async function deriveWokePaymentReceiptAddress(
-  context: WokeNetContext,
+  context: DroolNetContext,
   payerIdentity: string,
   receiptNonce: Uint8Array,
 ): Promise<string> {
@@ -364,15 +364,15 @@ export async function deriveWokePaymentReceiptAddress(
 }
 
 export async function deriveWokeSubscriptionEntitlementAddress(
-  context: WokeNetContext,
+  context: DroolNetContext,
   offeringAddress: string,
   beneficiaryIdentity: string,
 ): Promise<string> {
   return (await deriveEntitlementPda(context, offeringAddress, beneficiaryIdentity)).address;
 }
 
-export async function deriveWokeProgramDataAddress(context: WokeNetContext): Promise<string> {
-  const parsed = createWokeNetContext(context);
+export async function deriveWokeProgramDataAddress(context: DroolNetContext): Promise<string> {
+  const parsed = createDroolNetContext(context);
   const [programData] = await getProgramDerivedAddress({
     programAddress: UPGRADEABLE_LOADER_ADDRESS,
     seeds: [addressBytes(parsed.programAddress)],
@@ -392,15 +392,15 @@ export interface DeactivateWokeIdentityInput {
 }
 
 /**
- * Builds the root-authorized, one-way WokeSocial identity-retirement
+ * Builds the root-authorized, one-way WetDrool identity-retirement
  * instruction. This builder does not submit the transaction or imply content
  * deletion; callers must present that irreversible distinction to the user.
  */
 export async function buildDeactivateWokeIdentityInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: DeactivateWokeIdentityInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const identity = parseAddress(input.identity, 'identity');
   const rootAuthority = parseAddress(input.rootAuthority, 'identity root authority');
   const expectedIdentitySequence = parseIncrementableU64(
@@ -434,10 +434,10 @@ export interface InitializeWokePaymentConfigInput {
 }
 
 export async function buildInitializeWokePaymentConfigInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: InitializeWokePaymentConfigInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const upgradeAuthority = parseAddress(input.upgradeAuthority, 'upgrade authority');
   const paymentAuthority = parseAddress(input.paymentAuthority, 'payment authority');
   const feeDestination = parseAddress(input.feeDestination, 'fee destination');
@@ -474,10 +474,10 @@ export interface UpdateWokePaymentConfigInput {
 }
 
 export async function buildUpdateWokePaymentConfigInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: UpdateWokePaymentConfigInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const authority = parseAddress(input.authority, 'payment authority');
   const feeDestination = parseAddress(input.feeDestination, 'fee destination');
   const policySequence = parseIncrementableU64(
@@ -515,10 +515,10 @@ export interface RotateWokePaymentAuthorityInput {
 }
 
 export async function buildRotateWokePaymentAuthorityInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: RotateWokePaymentAuthorityInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const currentAuthority = parseAddress(input.currentAuthority, 'current payment authority');
   const newAuthority = parseAddress(input.newAuthority, 'new payment authority');
   if (currentAuthority === newAuthority) {
@@ -565,10 +565,10 @@ export interface BuiltWokeSubscriptionOfferingInstruction {
 }
 
 export async function buildCreateWokeSubscriptionOfferingInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: CreateWokeSubscriptionOfferingInput,
 ): Promise<BuiltWokeSubscriptionOfferingInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const creatorIdentity = parseAddress(input.creatorIdentity, 'creator identity');
   const rootAuthority = parseAddress(input.rootAuthority, 'creator root authority');
   const payer = parseAddress(input.payer, 'offering rent payer');
@@ -655,10 +655,10 @@ export interface RetireWokeSubscriptionOfferingInput {
 }
 
 export async function buildRetireWokeSubscriptionOfferingInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: RetireWokeSubscriptionOfferingInput,
 ): Promise<WokeInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const creatorIdentity = parseAddress(input.creatorIdentity, 'creator identity');
   const rootAuthority = parseAddress(input.rootAuthority, 'creator root authority');
   const nonce = parseNonce(input.offeringNonce, 'offering nonce');
@@ -704,7 +704,7 @@ export interface SendWokeTipInput {
 }
 
 interface WokeSettlementBase {
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly instruction: WokeInstruction;
   readonly plan: WokeNativePaymentPlan;
   readonly configAddress: string;
@@ -723,10 +723,10 @@ export interface BuiltWokeTipInstruction extends WokeSettlementBase {
 }
 
 export async function buildSendWokeTipInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: SendWokeTipInput,
 ): Promise<BuiltWokeTipInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const receiptNonce = parseNonce(input.receiptNonce, 'receipt nonce');
   const rentPayer = parseAddress(input.rentPayer, 'receipt rent payer');
   const paymentPolicySequence = parseU64(
@@ -849,10 +849,10 @@ export interface BuiltWokeSubscriptionSettlementInstruction extends WokeSettleme
 }
 
 export async function buildSettleWokeSubscriptionInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: SettleWokeSubscriptionInput,
 ): Promise<BuiltWokeSubscriptionSettlementInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const creatorIdentity = parseAddress(input.creatorIdentity, 'creator identity');
   const creatorDestination = parseAddress(input.creatorDestination, 'creator destination');
   const offeringNonce = parseNonce(input.offeringNonce, 'offering nonce');
@@ -1042,7 +1042,7 @@ export type WokeSettlementEvent = WokeTipSettledEvent | WokeSubscriptionSettledE
 /**
  * A deliberately simulation-only shape. Callers must parse every System
  * Program `Transfer` opcode from `simulateTransaction` and every payment event
- * emitted by the WokeSocial program. System account-creation opcodes are not
+ * emitted by the WetDrool program. System account-creation opcodes are not
  * transfers and must not be included.
  */
 export interface WokePaymentSimulation {
@@ -1070,7 +1070,7 @@ export function assertWokePaymentSimulationMatches(
   ) {
     throw new WokePaymentError(
       'context-mismatch',
-      'The simulation is not bound to the approved WokeNet endpoint, genesis, and program.',
+      'The simulation is not bound to the approved DroolNet endpoint, genesis, and program.',
     );
   }
   if (simulation.error !== null) {
@@ -1466,7 +1466,7 @@ function assertFinalizedEnvelope<T>(
   ) {
     throw new WokePaymentError(
       'context-mismatch',
-      'The finalized account proof is not bound to the approved WokeNet Solana deployment.',
+      'The finalized account proof is not bound to the approved DroolNet Solana deployment.',
     );
   }
   parseU64(account.slot, 'finalized account slot');
@@ -1650,7 +1650,7 @@ function parseEntitlementSnapshot(snapshot: WokeEntitlementSnapshot): {
 }
 
 async function deriveReceiptPda(
-  context: WokeNetContext,
+  context: DroolNetContext,
   payerIdentity: string,
   receiptNonce: Uint8Array,
 ): Promise<{ address: string; bump: number }> {
@@ -1666,7 +1666,7 @@ async function deriveReceiptPda(
 }
 
 async function deriveEntitlementPda(
-  context: WokeNetContext,
+  context: DroolNetContext,
   offeringAddress: string,
   beneficiaryIdentity: string,
 ): Promise<{ address: string; bump: number }> {
@@ -1682,10 +1682,10 @@ async function deriveEntitlementPda(
 }
 
 async function derivePda(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   seeds: readonly Uint8Array[],
 ): Promise<{ address: string; bump: number }> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const [derivedAddress, bump] = await getProgramDerivedAddress({
     programAddress: address(context.programAddress),
     seeds: [...seeds],
@@ -1694,7 +1694,7 @@ async function derivePda(
 }
 
 function instruction(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   accounts: readonly AccountMeta[],
   data: Uint8Array,
 ): WokeInstruction {
@@ -1751,7 +1751,7 @@ function parseU64(value: bigint, label: string): bigint {
   if (typeof value !== 'bigint' || value < 0n || value > U64_MAX) {
     throw new WokePaymentError(
       'amount-out-of-range',
-      `The ${label} must fit WokeNet's unsigned 64-bit range.`,
+      `The ${label} must fit DroolNet's unsigned 64-bit range.`,
     );
   }
   return value;
@@ -1762,7 +1762,7 @@ function parseIncrementableU64(value: bigint, label: string): bigint {
   if (parsed === U64_MAX) {
     throw new WokePaymentError(
       'amount-out-of-range',
-      `The ${label} cannot be incremented in the WokeSocial program.`,
+      `The ${label} cannot be incremented in the WetDrool program.`,
     );
   }
   return parsed;
@@ -1782,7 +1782,7 @@ function checkedU128(value: bigint, label: string): bigint {
   if (value < 0n || value > U128_MAX) {
     throw new WokePaymentError(
       'amount-out-of-range',
-      `The ${label} exceeds the WokeSocial program's unsigned 128-bit arithmetic domain.`,
+      `The ${label} exceeds the WetDrool program's unsigned 128-bit arithmetic domain.`,
     );
   }
   return value;
@@ -1826,7 +1826,7 @@ function parseManifestUri(value: string): string {
   if (extractWokeManifestCid(value) === undefined) {
     throw new WokePaymentError(
       'invalid-wire-value',
-      'The manifest URI does not satisfy the WokeSocial protocol URI policy.',
+      'The manifest URI does not satisfy the WetDrool protocol URI policy.',
     );
   }
   return value;

@@ -14,7 +14,7 @@ describe('community governance commitment', () => {
     });
 
     expect(COMMUNITY_SCHEMA_VERSION).toBe(2);
-    expect(COMMUNITY_GOVERNANCE_STRATEGY_DOMAIN).toBe('wokenet:community-governance-strategy:v1');
+    expect(COMMUNITY_GOVERNANCE_STRATEGY_DOMAIN).toBe('droolnet:community-governance-strategy:v1');
     expect(commitment).toEqual({
       governanceVersion: 1,
       digest: 'uneRbAxLESnjaTD1GsoKoiIrsZg1CJCoNdhODS5Q1dXE',

@@ -24,10 +24,10 @@ describe('WebAuthn ceremony service', () => {
     expect(issued.accountId).toMatch(/^acct_[A-Za-z0-9_-]{22}$/u);
     expect(issued.ceremonyId).toMatch(/^cer_[A-Za-z0-9_-]{22}$/u);
     expect(issued.options).toMatchObject({
-      rp: { id: 'localhost', name: 'WokeSocial Test' },
+      rp: { id: 'localhost', name: 'WetDrool Test' },
       user: {
         name: issued.accountId,
-        displayName: 'WokeSocial account',
+        displayName: 'WetDrool account',
       },
       attestation: 'none',
       authenticatorSelection: {
@@ -372,7 +372,7 @@ function serviceFixture(store: MemoryAuthStore = new MemoryAuthStore()): Service
       store,
       verifier,
       now,
-      rpName: 'WokeSocial Test',
+      rpName: 'WetDrool Test',
       rpId: 'localhost',
       origin: 'http://localhost:4300',
     }),

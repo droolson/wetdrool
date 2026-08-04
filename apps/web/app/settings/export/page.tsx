@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { InfoCard, StatusBadge } from '@wokesocial/ui';
+import { InfoCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { LocalExportPanel } from '@/components/local-export-panel';

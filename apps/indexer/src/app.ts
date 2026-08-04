@@ -3,13 +3,13 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { z } from 'zod';
 
-import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import { createTrustedProxyPolicy } from '@wetdrool/config/trusted-proxy';
 import {
   RATE_LIMIT_BACKEND_UNAVAILABLE,
   RATE_LIMITER_CLOSED,
   createFastifyRateLimitStore,
   type RateLimiter,
-} from '@wokesocial/rate-limit';
+} from '@wetdrool/rate-limit';
 import {
   canonicalizeWokeName,
   handleSchema,
@@ -17,7 +17,7 @@ import {
   networkIdSchema,
   objectIdSchema,
   solanaPublicKeySchema,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   COMMUNITY_DIRECTORY_RECIPE,
@@ -361,12 +361,12 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
           },
         };
       }
-      if (!viewerIdentityId.startsWith(`wokesocialid:v1:${networkId}:`)) {
+      if (!viewerIdentityId.startsWith(`wetdroolid:v1:${networkId}:`)) {
         void reply.code(400);
         return {
           error: {
             code: 'invalid-query',
-            message: 'The following viewer must belong to the resolved WokeNet Solana deployment.',
+            message: 'The following viewer must belong to the resolved DroolNet Solana deployment.',
             issues: [
               {
                 path: 'viewer',
@@ -419,7 +419,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     const authorHandles = await canonicalAuthorHandles(options.projection, page);
     return {
       canonical: false,
-      projection: 'wokenet-open-indexer',
+      projection: 'droolnet-open-indexer',
       recipe: OPEN_INDEXER_FEED_RECIPE,
       mode: parsed.data.mode,
       network: networkId,
@@ -552,7 +552,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       return {
         error: {
           code: 'invalid-woke-name-query',
-          message: 'A canonical .woke name and explicit WokeNet identifier are required.',
+          message: 'A canonical .drool name and explicit DroolNet identifier are required.',
         },
       };
     }
@@ -565,7 +565,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       return {
         error: {
           code: 'invalid-woke-name-query',
-          message: 'The .woke name is invalid or confusable.',
+          message: 'The .drool name is invalid or confusable.',
         },
       };
     }
@@ -573,7 +573,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     const handle = await options.projection.getHandle(parsedQuery.data.network, wokeName.handle);
     if (handle === undefined) {
       void reply.code(404);
-      return { error: { code: 'not-found', message: 'Active .woke claim was not found.' } };
+      return { error: { code: 'not-found', message: 'Active .drool claim was not found.' } };
     }
     const identity = await options.projection.getIdentity(handle.identityId);
     const checkpoint = await options.projection.checkpoint(parsedQuery.data.network);
@@ -588,18 +588,18 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       return {
         error: {
           code: 'projection-incomplete',
-          message: 'The indexer has not finalized the complete .woke resolution proof.',
+          message: 'The indexer has not finalized the complete .drool resolution proof.',
         },
       };
     }
     if (!identity.active) {
       void reply.code(404);
-      return { error: { code: 'not-found', message: 'Active .woke claim was not found.' } };
+      return { error: { code: 'not-found', message: 'Active .drool claim was not found.' } };
     }
 
     return {
       canonical: false,
-      projection: 'wokenet-open-indexer',
+      projection: 'droolnet-open-indexer',
       network: parsedQuery.data.network,
       namespace: wokeName.namespace,
       namespaceVersion: wokeName.version,
@@ -746,7 +746,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       });
       return {
         canonical: false,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         recipe: COMMUNITY_DIRECTORY_RECIPE,
         network: parsed.data.network,
         meta: responseMetaForCheckpoint(snapshot.checkpoint),
@@ -769,7 +769,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-community-query',
-            message: 'A WokeNet community address and explicit network are required.',
+            message: 'A DroolNet community address and explicit network are required.',
           },
         };
       }
@@ -783,7 +783,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         network: parsedQuery.data.network,
         meta: await responseMeta(options.projection, parsedQuery.data.network),
         community: serializeCommunity(community),
@@ -821,7 +821,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       const membership = snapshot.membership;
       return {
         canonical: false,
-        projection: 'wokenet-open-indexer',
+        projection: 'droolnet-open-indexer',
         network: parsedQuery.data.network,
         meta: responseMetaForCheckpoint(snapshot.checkpoint),
         membership: {
@@ -839,7 +839,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
           updatedAt: membership.updatedAt,
         },
         proof: {
-          kind: 'wokesocial-program-event',
+          kind: 'wetdrool-program-event',
           finality: 'finalized',
           transactionSignature: membership.transactionSignature,
           transactionIndex: membership.transactionIndex ?? null,
@@ -886,7 +886,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'wokenet-account-state',
+        authoritativeSource: 'droolnet-account-state',
         policy: serializeBigInts(policy),
       };
     },
@@ -908,7 +908,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       const requests = await options.projection.getRecoveryRequestsByIdentity(identity.identityId);
       return {
         canonical: false,
-        authoritativeSource: 'wokenet-account-state',
+        authoritativeSource: 'droolnet-account-state',
         eligibilityEvaluated: false,
         identityId: identity.identityId,
         requests: requests.map(serializeBigInts),
@@ -926,7 +926,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-recovery-request-query',
-            message: 'A WokeNet recovery request address and explicit network are required.',
+            message: 'A DroolNet recovery request address and explicit network are required.',
           },
         };
       }
@@ -940,7 +940,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'wokenet-account-state',
+        authoritativeSource: 'droolnet-account-state',
         eligibilityEvaluated: false,
         request: serializeBigInts(recoveryRequest),
       };
@@ -957,7 +957,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-community-query',
-            message: 'A WokeNet community address and explicit network are required.',
+            message: 'A DroolNet community address and explicit network are required.',
           },
         };
       }
@@ -991,7 +991,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-proposal-query',
-            message: 'A WokeNet proposal address and explicit network are required.',
+            message: 'A DroolNet proposal address and explicit network are required.',
           },
         };
       }
@@ -1021,7 +1021,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-proposal-query',
-            message: 'A WokeNet proposal address and explicit network are required.',
+            message: 'A DroolNet proposal address and explicit network are required.',
           },
         };
       }
@@ -1059,7 +1059,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
         return {
           error: {
             code: 'invalid-vote-query',
-            message: 'A WokeNet vote address and explicit network are required.',
+            message: 'A DroolNet vote address and explicit network are required.',
           },
         };
       }
@@ -1083,7 +1083,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     const parsedQuery = networkQuerySchema.safeParse(request.query);
     if (!parsedQuery.success) {
       void reply.code(400);
-      return paymentQueryError('An explicit WokeNet identifier is required.');
+      return paymentQueryError('An explicit DroolNet identifier is required.');
     }
     const paymentConfig = await options.projection.getPaymentConfig(parsedQuery.data.network);
     if (paymentConfig === undefined) {
@@ -1092,7 +1092,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     }
     return {
       canonical: false,
-      authoritativeSource: 'wokenet-account-state',
+      authoritativeSource: 'droolnet-account-state',
       paymentConfig: serializeBigInts(paymentConfig),
     };
   });
@@ -1105,7 +1105,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       if (!parsedParams.success || !parsedQuery.success) {
         void reply.code(400);
         return paymentQueryError(
-          'A WokeNet subscription offering address and explicit network are required.',
+          'A DroolNet subscription offering address and explicit network are required.',
         );
       }
       const offering = await options.projection.getSubscriptionOffering(
@@ -1118,7 +1118,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'wokenet-account-state',
+        authoritativeSource: 'droolnet-account-state',
         offering: serializeBigInts(offering),
       };
     },
@@ -1133,7 +1133,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     if (
       !parsedParams.success ||
       !parsedQuery.success ||
-      !parsedParams.data.identityId.startsWith(`wokesocialid:v1:${parsedQuery.data.network}:`)
+      !parsedParams.data.identityId.startsWith(`wetdroolid:v1:${parsedQuery.data.network}:`)
     ) {
       void reply.code(400);
       return paymentQueryError('The creator identity must belong to the explicit network.');
@@ -1149,7 +1149,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
     );
     return {
       canonical: false,
-      authoritativeSource: 'wokenet-account-state',
+      authoritativeSource: 'droolnet-account-state',
       creatorIdentityId: creator.identityId,
       offerings: offerings.map(serializeBigInts),
     };
@@ -1163,7 +1163,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       if (!parsedParams.success || !parsedQuery.success) {
         void reply.code(400);
         return paymentQueryError(
-          'A WokeNet payment receipt address and explicit network are required.',
+          'A DroolNet payment receipt address and explicit network are required.',
         );
       }
       const receipt = await options.projection.getPaymentReceipt(
@@ -1176,7 +1176,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'wokenet-account-state-and-finalized-events',
+        authoritativeSource: 'droolnet-account-state-and-finalized-events',
         settlementOutcomeInferred: false,
         receipt: serializeBigInts(receipt),
       };
@@ -1191,7 +1191,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       if (!parsedParams.success || !parsedQuery.success) {
         void reply.code(400);
         return paymentQueryError(
-          'A WokeNet subscription entitlement address and explicit network are required.',
+          'A DroolNet subscription entitlement address and explicit network are required.',
         );
       }
       const entitlement = await options.projection.getSubscriptionEntitlement(
@@ -1206,7 +1206,7 @@ export async function buildIndexerApp(options: IndexerAppOptions): Promise<Fasti
       }
       return {
         canonical: false,
-        authoritativeSource: 'wokenet-account-state-and-finalized-events',
+        authoritativeSource: 'droolnet-account-state-and-finalized-events',
         currentEligibilityEvaluated: false,
         entitlement: serializeBigInts(entitlement),
       };
@@ -1342,7 +1342,7 @@ function serializeFeedEntry(entry: FeedEntry, authorHandle: string | null) {
  * Resolves each active author's canonical active handle — the lexically first
  * active claim, matching the person-search convention — once per response. A
  * deactivated identity intentionally resolves to no handle so this projection
- * agrees with fail-closed `.woke` resolution and person discovery.
+ * agrees with fail-closed `.drool` resolution and person discovery.
  */
 async function canonicalAuthorHandles(
   projection: ProjectionStore,
@@ -1407,7 +1407,7 @@ function responseMetaForCheckpoint(checkpoint: bigint | undefined) {
     checkpointSlot:
       checkpoint === undefined ? null : safeInteger(checkpoint, 'projection checkpoint slot'),
     indexedAt: new Date().toISOString(),
-    source: 'WokeNet open indexer',
+    source: 'DroolNet open indexer',
   };
 }
 

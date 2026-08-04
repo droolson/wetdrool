@@ -17,7 +17,7 @@ const suffix = randomBytes(8).toString('hex');
 const deploymentId = `integration-${suffix}`;
 const otherDeploymentId = `integration-other-${suffix}`;
 const serviceId = 'integration-service';
-const redisPrefix = `wokesocial:rate-limit:v1:${deploymentId}:${serviceId}`;
+const redisPrefix = `wetdrool:rate-limit:v1:${deploymentId}:${serviceId}`;
 const rawClientKey = `203.0.113.42:${suffix}`;
 const admin = createClient({
   url: redisUrl,
@@ -37,7 +37,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await Promise.allSettled(limiters.map((limiter) => limiter.close()));
   if (admin.isReady) {
-    const keys = await admin.keys(`wokesocial:rate-limit:v1:*${suffix}*:*`);
+    const keys = await admin.keys(`wetdrool:rate-limit:v1:*${suffix}*:*`);
     if (keys.length > 0) {
       await admin.del(keys);
     }
@@ -137,7 +137,7 @@ describe('node-redis runtime integration', () => {
     const password = `Outage-${suffix}-private`;
     const outageDeployment = `outage-${suffix}`;
     const outageService = 'integration-outage';
-    const prefix = `wokesocial:rate-limit:v1:${outageDeployment}:${outageService}`;
+    const prefix = `wetdrool:rate-limit:v1:${outageDeployment}:${outageService}`;
     await createAclUser(user, password, prefix, [
       '+eval',
       '+get',
@@ -191,7 +191,7 @@ describe('node-redis runtime integration', () => {
     const password = `Acl-${suffix}-private`;
     const aclDeployment = `acl-${suffix}`;
     const aclService = 'integration-acl';
-    const prefix = `wokesocial:rate-limit:v1:${aclDeployment}:${aclService}`;
+    const prefix = `wetdrool:rate-limit:v1:${aclDeployment}:${aclService}`;
     await createAclUser(user, password, prefix, [
       '+eval',
       '+get',
@@ -228,7 +228,7 @@ describe('node-redis runtime integration', () => {
     const password = `Admission-${suffix}-private`;
     const aclDeployment = `admission-${suffix}`;
     const aclService = 'integration-admission';
-    const prefix = `wokesocial:rate-limit:v1:${aclDeployment}:${aclService}`;
+    const prefix = `wetdrool:rate-limit:v1:${aclDeployment}:${aclService}`;
     await createAclUser(user, password, prefix, [
       '+eval',
       '+get',
@@ -307,7 +307,7 @@ function derivedRequestKey(
       secret,
       namespace: `deployment:${deployment}:${namespace}`,
       key,
-      prefix: `wokesocial:rate-limit:v1:${deployment}:${service}`,
+      prefix: `wetdrool:rate-limit:v1:${deployment}:${service}`,
     });
   } finally {
     secret.fill(0);

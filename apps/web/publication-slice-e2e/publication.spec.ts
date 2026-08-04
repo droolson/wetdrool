@@ -5,8 +5,8 @@ import { basename, dirname, isAbsolute, join } from 'node:path';
 
 import { expect, test, type BrowserContext, type Page, type Route } from '@playwright/test';
 import { ed25519 } from '@noble/curves/ed25519.js';
-import { resolveWokeName } from '@wokesocial/indexer-client';
-import { deriveRandomWokeName } from '@wokesocial/protocol';
+import { resolveWokeName } from '@wetdrool/indexer-client';
+import { deriveRandomWokeName } from '@wetdrool/protocol';
 import bs58 from 'bs58';
 
 const AUTH_URL = localHttpOrigin('PUBLICATION_SLICE_AUTH_URL');
@@ -16,8 +16,8 @@ const WEB_URL = localHttpOrigin('PLAYWRIGHT_BASE_URL');
 const EVIDENCE_PATH = runScopedEvidencePath('PUBLICATION_SLICE_EVIDENCE_PATH');
 const FIRST_POST = required('PUBLICATION_SLICE_FIRST_POST');
 const SECOND_POST = required('PUBLICATION_SLICE_SECOND_POST');
-const INTENT_KEY = 'wokesocial:post-publication-intent:v1';
-const EVIDENCE_SCHEMA = 'wokesocial.vertical-slice.publication-evidence.v2';
+const INTENT_KEY = 'wetdrool:post-publication-intent:v1';
+const EVIDENCE_SCHEMA = 'wetdrool.vertical-slice.publication-evidence.v2';
 const MAX_EVIDENCE_BYTES = 32 * 1_024;
 const MAX_SECURITY_SURFACE_BYTES = 4 * 1_024 * 1_024;
 const MAX_SECURITY_AUDIT_BYTES = 64 * 1_024 * 1_024;
@@ -383,7 +383,7 @@ test('publishes, recovers an ambiguous response, and reuses one passkey identity
     );
     expect(wokeNameResolution.kind).toBe('ready');
     if (wokeNameResolution.kind !== 'ready') {
-      throw new Error('The atomic registration did not produce a resolvable .woke name.');
+      throw new Error('The atomic registration did not produce a resolvable .drool name.');
     }
     expect(wokeNameResolution.value.name).toBe(randomWokeName.name);
     expect(wokeNameResolution.value.handle).toBe(randomWokeName.handle);
@@ -542,7 +542,7 @@ async function installInMemorySecretCapture(
   const canary = [...accountSeedCanary];
   await context.addInitScript(
     ({ seedCanary }: { readonly seedCanary: readonly number[] }) => {
-      const captureKey = '__wokesocialE2eSecretAudit';
+      const captureKey = '__wetdroolE2eSecretAudit';
       const state: {
         accountSeedArmed: boolean;
         accountSeeds: Uint8Array[];
@@ -647,7 +647,7 @@ async function installInMemorySecretCapture(
 
   async function evaluate<Result>(method: string): Promise<Result> {
     const response = await client.send('Runtime.evaluate', {
-      expression: `globalThis.__wokesocialE2eSecretAudit?.${method}()`,
+      expression: `globalThis.__wetdroolE2eSecretAudit?.${method}()`,
       returnByValue: true,
     });
     if (response.exceptionDetails !== undefined || response.result.value === undefined) {
@@ -954,7 +954,7 @@ async function readRunServiceLogSurfaces(evidencePath: string): Promise<{
 }
 
 function readDockerLogSurface(containerName: string): SecuritySurface {
-  if (!/^wokesocial-vertical-[0-9]+-[a-f0-9]{8}$/u.test(containerName)) {
+  if (!/^wetdrool-vertical-[0-9]+-[a-f0-9]{8}$/u.test(containerName)) {
     throw new Error('The Docker-log secret audit received an invalid disposable container name.');
   }
   const result = spawnSync('docker', ['logs', containerName], {
@@ -1196,10 +1196,10 @@ async function visiblePublicationEvidence(
     return candidate ?? '';
   };
   return {
-    networkId: value('WokeNet deployment'),
+    networkId: value('DroolNet deployment'),
     rootAuthority: value('Root authority'),
     identityDisposition: value('Identity disposition'),
-    identityId: value('WokeSocial identity ID'),
+    identityId: value('WetDrool identity ID'),
     identityAddress: value('Identity account'),
     postDisposition: value('Post disposition'),
     postReference: value('Post reference account'),

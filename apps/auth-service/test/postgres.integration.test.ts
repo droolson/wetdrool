@@ -24,11 +24,11 @@ import {
 const databaseUrl =
   process.env['AUTH_INTEGRATION_DATABASE_URL'] ??
   process.env['AUTH_DATABASE_URL'] ??
-  'postgresql://wokesocial_auth_runtime:local-auth-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_auth_runtime:local-auth-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['AUTH_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['AUTH_DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_auth_migration:local-auth-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_auth_migration:local-auth-migration-only@127.0.0.1:5432/wetdrool';
 
 describe('PostgreSQL authentication integration', () => {
   it('persists atomic ceremonies, credentials, sessions, and ciphertext lifecycle', async () => {
@@ -40,7 +40,7 @@ describe('PostgreSQL authentication integration', () => {
       store,
       verifier,
       now,
-      rpName: 'WokeSocial Integration',
+      rpName: 'WetDrool Integration',
       rpId: 'localhost',
       origin: 'http://localhost:4300',
     });
@@ -197,7 +197,7 @@ describe('PostgreSQL authentication integration', () => {
       store,
       verifier,
       now,
-      rpName: 'WokeSocial Integration',
+      rpName: 'WetDrool Integration',
       rpId: 'localhost',
       origin: 'http://localhost:4300',
     });

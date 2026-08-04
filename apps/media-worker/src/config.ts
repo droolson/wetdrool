@@ -2,13 +2,13 @@ import { resolve } from 'node:path';
 
 import { z } from 'zod';
 
-import { assertNoMigrationCredentials, isLocalOrUnspecifiedHostname } from '@wokesocial/config';
-import { parseTrustedProxyCidrs } from '@wokesocial/config/trusted-proxy';
+import { assertNoMigrationCredentials, isLocalOrUnspecifiedHostname } from '@wetdrool/config';
+import { parseTrustedProxyCidrs } from '@wetdrool/config/trusted-proxy';
 
 import { maximumUploadBytes } from './schemas.js';
 import { assertStrongEncodedToken } from './static-bearer-authorization.js';
 
-const legacyRedirectHostnames = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const legacyRedirectHostnames = new Set(['droolhouse.com', 'www.droolhouse.com']);
 const localExampleBearerToken = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 function isLegacyRedirectHostname(hostname: string): boolean {

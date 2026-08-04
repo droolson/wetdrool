@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import { encodeMultibaseBase64Url, type NetworkId, type PostContent } from '@wokesocial/protocol';
+import { encodeMultibaseBase64Url, type NetworkId, type PostContent } from '@wetdrool/protocol';
 
 import {
   buildIndexerApp,
@@ -17,14 +17,14 @@ import {
 import { TEST_CID } from './cid-fixtures.js';
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
+const networkId = `droolnet:v1:${publicKey(1)}:${programId}` as NetworkId;
 const configAddress = publicKey(2);
 const identityAddress = publicKey(3);
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
 const rootAuthority = publicKey(4);
 const delegateAuthority = publicKey(5);
 const postReference = publicKey(6);
-const objectId = `wokesocialobj:v1:post:u${'A'.repeat(43)}`;
+const objectId = `wetdroolobj:v1:post:u${'A'.repeat(43)}`;
 const cid = TEST_CID;
 const payloadHash = `u${'B'.repeat(43)}`;
 const postContent: PostContent = {
@@ -50,7 +50,7 @@ describe('identity deactivation projection', () => {
     }
 
     await expect(
-      projection.searchPublic({ networkId, term: 'wokesocialid', limit: 10 }),
+      projection.searchPublic({ networkId, term: 'wetdroolid', limit: 10 }),
     ).resolves.toMatchObject({
       results: [{ kind: 'person', identityId }],
     });
@@ -109,17 +109,17 @@ describe('identity deactivation projection', () => {
           identityId,
           authority: rootAuthority,
           postReference: publicKey(7),
-          objectId: `wokesocialobj:v1:post:u${'C'.repeat(43)}`,
+          objectId: `wetdroolobj:v1:post:u${'C'.repeat(43)}`,
           cid,
           payloadHash,
           sequence: 4n,
         },
-        postManifest(`wokesocialobj:v1:post:u${'C'.repeat(43)}`),
+        postManifest(`wetdroolobj:v1:post:u${'C'.repeat(43)}`),
       ),
     ).rejects.toThrow('inactive');
 
     await expect(
-      projection.searchPublic({ networkId, term: 'wokesocialid', limit: 10 }),
+      projection.searchPublic({ networkId, term: 'wetdroolid', limit: 10 }),
     ).resolves.toMatchObject({ results: [] });
     await expect(
       projection.searchPublic({ networkId, term: 'retirement marker', limit: 10 }),
@@ -246,7 +246,7 @@ describe('identity deactivation projection', () => {
   it('allows an active follower to remove an edge to a retired passive subject', async () => {
     const projection = new MemoryProjectionStore();
     const followerAddress = publicKey(80);
-    const followerId = `wokesocialid:v1:${networkId}:${followerAddress}`;
+    const followerId = `wetdroolid:v1:${networkId}:${followerAddress}`;
     const followerRoot = publicKey(81);
     const events: readonly ProtocolEvent[] = [
       protocolEventSchema.parse({

@@ -112,7 +112,7 @@ curl --fail http://127.0.0.1:4000/readyz
 
 Its image runs as numeric UID/GID `10005`, uses a read-only root filesystem,
 publishes only the loopback HTTP port, and mounts the durable `indexer-content`
-volume read-only at `/var/lib/wokesocial/content`. The separate
+volume read-only at `/var/lib/wetdrool/content`. The separate
 `indexer-migrate` service receives `DATABASE_MIGRATION_URL`; the runtime receives
 only `DATABASE_URL`. The migration command also takes a PostgreSQL advisory lock
 to serialize accidental concurrent jobs.

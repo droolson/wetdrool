@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { PasskeyAccessManager } from '@/components/passkey-access-manager';
@@ -8,14 +8,14 @@ import { SettingsNav } from '@/components/settings-nav';
 export const metadata: Metadata = {
   title: 'Passkeys and devices',
   description:
-    'List, add, and revoke authentication-service passkeys without conflating them with WokeNet authority.',
+    'List, add, and revoke authentication-service passkeys without conflating them with DroolNet authority.',
 };
 
 export const dynamic = 'force-dynamic';
 
 export default function DeviceSettingsPage() {
   const authServiceUrl =
-    process.env['WOKESOCIAL_AUTH_URL'] ??
+    process.env['WETDROOL_AUTH_URL'] ??
     process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
     'http://localhost:4300';
 
@@ -41,7 +41,7 @@ export default function DeviceSettingsPage() {
       <section className="onboarding-ledger" aria-labelledby="passkey-boundary-title">
         <div>
           <p className="section-kicker">Authority boundary</p>
-          <h2 id="passkey-boundary-title">A service passkey is not a WokeNet delegation.</h2>
+          <h2 id="passkey-boundary-title">A service passkey is not a DroolNet delegation.</h2>
         </div>
         <dl>
           <div>
@@ -50,7 +50,7 @@ export default function DeviceSettingsPage() {
           </div>
           <div>
             <dt>Not changed here</dt>
-            <dd>Protocol identity, WokeSocial authority, and onchain delegations</dd>
+            <dd>Protocol identity, WetDrool authority, and onchain delegations</dd>
           </div>
           <div>
             <dt>Revocation policy</dt>

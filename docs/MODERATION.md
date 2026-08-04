@@ -1,4 +1,4 @@
-# WokeSocial Moderation and Safety Model
+# WetDrool Moderation and Safety Model
 
 **Status:** Active specification with an implemented provider subset  
 **Last updated:** 2026-07-29
@@ -24,12 +24,12 @@ community product controls, specialist escalation, transparency exports, and
 independent policy-provider selection remain incomplete. Signed tombstones and
 the indexer’s deletion suppression are separately tested protocol controls.
 
-WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+DroolNet is the WetDrool protocol and smart-contract deployment layer on
 Solana. Onchain moderation references use the exact selected Solana
 genesis/program binding. Local-validator tests are local evidence only; no
-devnet or mainnet-beta deployment is recorded. No `$WOKE` mint exists, and the
+devnet or mainnet-beta deployment is recorded. No `$DROOL` mint exists, and the
 legacy payment ABI is quarantined and irrelevant to moderation authority. The
-canonical public origin is `https://woke.social`; `sociallywoke.com` is
+canonical public origin is `https://wetdrool.com`; `droolhouse.com` is
 redirect-only and must not host a separate moderation policy, report intake,
 appeal flow, or identity namespace.
 
@@ -155,7 +155,7 @@ Roles must use least privilege. Permission scopes include, at minimum:
 
 No moderator may review an appeal of their own action. Administrative override requires a distinct permission and an audit reason.
 
-The current predeployment WokeNet membership instruction is narrower than this
+The current predeployment DroolNet membership instruction is narrower than this
 planned role system. Only the community creator identity's current root or a
 current `community`-scoped delegate can remove or ban an existing membership.
 `remove` is valid only from active; `ban` is valid from active, left, or
@@ -379,7 +379,7 @@ Crisis-resource hooks are supportive and optional. They do not infer a diagnosis
 
 A valid signed public object may exist in several places:
 
-- A Solana-hosted WokeNet program reference or tombstone
+- A Solana-hosted DroolNet program reference or tombstone
 - A deletion-compatible content provider
 - An intentionally permanent provider
 - Operator caches and search indexes

@@ -3,11 +3,11 @@ const networkParameter = {
   in: 'query',
   required: true,
   description:
-    'Canonical WokeNet Solana deployment identifier. The segments bind the Solana genesis and WokeSocial program ID; both must decode to exactly 32 bytes.',
+    'Canonical DroolNet Solana deployment identifier. The segments bind the Solana genesis and WetDrool program ID; both must decode to exactly 32 bytes.',
   schema: {
     type: 'string',
     maxLength: 96,
-    pattern: '^wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$',
+    pattern: '^droolnet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$',
   },
 } as const;
 
@@ -15,7 +15,7 @@ const optionalNetworkParameter = {
   ...networkParameter,
   required: false,
   description:
-    'Optional WokeNet Solana deployment identifier. When omitted, the operator-configured default deployment is used; the request fails closed when neither is available.',
+    'Optional DroolNet Solana deployment identifier. When omitted, the operator-configured default deployment is used; the request fails closed when neither is available.',
 } as const;
 
 const solanaPublicKeyParameterSchema = {
@@ -51,7 +51,7 @@ const searchParameters = [
 export const openApiDocument = {
   openapi: '3.1.0',
   info: {
-    title: 'WokeNet Open Indexer API',
+    title: 'DroolNet Open Indexer API',
     version: '0.1.0',
     description:
       'A rebuildable convenience projection. Responses are not canonical protocol state.',
@@ -76,7 +76,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the configured network’s chronological home feed',
         description:
-          'Returns only public posts whose manifest signature, content hash, and finalized WokeSocial program anchor on Solana were verified during ingestion. Ordering uses finalized event time, never the author-controlled manifest timestamp. Each author carries its canonical active handle—the lexically first active claim, matching person search—or null; a deactivated identity always carries null so this convenience field agrees with fail-closed .woke resolution.',
+          'Returns only public posts whose manifest signature, content hash, and finalized WetDrool program anchor on Solana were verified during ingestion. Ordering uses finalized event time, never the author-controlled manifest timestamp. Each author carries its canonical active handle—the lexically first active claim, matching person search—or null; a deactivated identity always carries null so this convenience field agrees with fail-closed .drool resolution.',
         parameters: [
           {
             name: 'limit',
@@ -109,7 +109,7 @@ export const openApiDocument = {
             name: 'viewer',
             in: 'query',
             description:
-              'Required for following mode. Must be a canonical public WokeSocial identity on the resolved network. It selects a public graph filter and does not prove authentication or ownership.',
+              'Required for following mode. Must be a canonical public WetDrool identity on the resolved network. It selects a public graph filter and does not prove authentication or ownership.',
             schema: { type: 'string', maxLength: 161 },
           },
           {
@@ -165,7 +165,7 @@ export const openApiDocument = {
     },
     '/v1/search': {
       get: {
-        summary: 'Search one explicit WokeNet public projection',
+        summary: 'Search one explicit DroolNet public projection',
         description:
           'Low-level replaceable search endpoint. The successful response echoes the canonical explicit network identifier that scoped every result. Retired identities are suppressed as people without erasing historical signed public posts. The index is rebuildable and is not canonical protocol state.',
         parameters: [networkParameter, ...searchParameters],
@@ -226,7 +226,7 @@ export const openApiDocument = {
       get: {
         summary: 'Resolve an active normalized global handle',
         description:
-          'Returns the current finalized handle-claim projection for one explicit WokeNet identifier. An irreversible identity retirement does not erase that historical active claim; callers can inspect identity security state separately. This convenience projection is rebuildable and is not canonical protocol state.',
+          'Returns the current finalized handle-claim projection for one explicit DroolNet identifier. An irreversible identity retirement does not erase that historical active claim; callers can inspect identity security state separately. This convenience projection is rebuildable and is not canonical protocol state.',
         parameters: [
           {
             name: 'handle',
@@ -248,9 +248,9 @@ export const openApiDocument = {
     },
     '/v1/woke-names/{name}': {
       get: {
-        summary: 'Resolve a .woke name to its current Solana root authority',
+        summary: 'Resolve a .drool name to its current Solana root authority',
         description:
-          'Resolves a finalized WokeNet handle claim on an active stable identity to the identity’s current root authority. The destination follows finalized root rotations, and deactivated identities fail closed as not found. A .woke name is an application namespace, not a native Solana address, and this rebuildable response is not canonical protocol state.',
+          'Resolves a finalized DroolNet handle claim on an active stable identity to the identity’s current root authority. The destination follows finalized root rotations, and deactivated identities fail closed as not found. A .drool name is an application namespace, not a native Solana address, and this rebuildable response is not canonical protocol state.',
         parameters: [
           {
             name: 'name',
@@ -258,7 +258,7 @@ export const openApiDocument = {
             required: true,
             schema: {
               type: 'string',
-              pattern: '^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?\\.woke$',
+              pattern: '^[a-z0-9](?:[a-z0-9_]{1,28}[a-z0-9])?\\.drool$',
             },
           },
           networkParameter,
@@ -268,7 +268,7 @@ export const openApiDocument = {
             description:
               'Finalized claim, stable identity, current Solana root authority, and indexer checkpoint',
           },
-          '400': { description: 'Invalid or confusable .woke name or network' },
+          '400': { description: 'Invalid or confusable .drool name or network' },
           '404': { description: 'No active claim on an active identity exists' },
           '503': { description: 'The projected resolution proof is incomplete' },
         },
@@ -296,7 +296,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one identity’s public profile projection',
         description:
-          'Exact-identifier read of the current identity state, its verified public profile manifest projection when one exists, and its canonical active handle. Only explicitly public profile fields are ever projected; protected fields are filtered at ingestion and never served. A deactivated identity remains readable as honest historical state with active=false and a null handle, matching fail-closed .woke resolution, but this route is not a discovery surface. Responses are noncanonical and gated on a checkpoint covering the identity and profile slots.',
+          'Exact-identifier read of the current identity state, its verified public profile manifest projection when one exists, and its canonical active handle. Only explicitly public profile fields are ever projected; protected fields are filtered at ingestion and never served. A deactivated identity remains readable as honest historical state with active=false and a null handle, matching fail-closed .drool resolution, but this route is not a discovery surface. Responses are noncanonical and gated on a checkpoint covering the identity and profile slots.',
         parameters: [
           {
             name: 'identityId',
@@ -426,7 +426,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read the current projected recovery policy for an identity',
         description:
-          'This is a deterministic finalized-event projection, not authoritative account state. Clients must read and validate the WokeSocial program accounts on Solana before signing or executing recovery instructions.',
+          'This is a deterministic finalized-event projection, not authoritative account state. Clients must read and validate the WetDrool program accounts on Solana before signing or executing recovery instructions.',
         parameters: [
           {
             name: 'identityId',
@@ -466,7 +466,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected recovery request lifecycle',
         description:
-          'This endpoint reports finalized Solana events and never evaluates current on-chain execution eligibility. WokeSocial program account state remains authoritative.',
+          'This endpoint reports finalized Solana events and never evaluates current on-chain execution eligibility. WetDrool program account state remains authoritative.',
         parameters: [
           {
             name: 'recoveryRequestAddress',
@@ -623,7 +623,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one permanent projected payment receipt',
         description:
-          'Returns a finalized-event and WokeSocial program-account projection for one exact Solana deployment. The indexer does not infer a broader settlement or refund outcome and never reports success on its own authority.',
+          'Returns a finalized-event and WetDrool program-account projection for one exact Solana deployment. The indexer does not infer a broader settlement or refund outcome and never reports success on its own authority.',
         parameters: [
           {
             name: 'receiptAddress',
@@ -644,7 +644,7 @@ export const openApiDocument = {
       get: {
         summary: 'Read one projected subscription entitlement',
         description:
-          'Returns the latest finalized projected entitlement state for one exact Solana deployment. Current eligibility is not evaluated; clients must compare time and authoritative WokeSocial program state.',
+          'Returns the latest finalized projected entitlement state for one exact Solana deployment. Current eligibility is not evaluated; clients must compare time and authoritative WetDrool program state.',
         parameters: [
           {
             name: 'entitlementAddress',

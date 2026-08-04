@@ -7,10 +7,10 @@ const mocks = vi.hoisted(() => ({
   parseRateLimitConfig: vi.fn(),
 }));
 
-vi.mock('@wokesocial/config/rate-limit', () => ({
+vi.mock('@wetdrool/config/rate-limit', () => ({
   parseRateLimitRuntimeConfig: mocks.parseRateLimitConfig,
 }));
-vi.mock('@wokesocial/rate-limit', () => ({
+vi.mock('@wetdrool/rate-limit', () => ({
   createRuntimeRateLimiter: mocks.createRateLimiter,
 }));
 vi.mock('../src/app.js', () => ({

@@ -1,9 +1,9 @@
 import { address, getProgramDerivedAddress } from '@solana/kit';
 import bs58 from 'bs58';
 
-import { decodeMultibaseBase64Url } from '@wokesocial/protocol';
+import { decodeMultibaseBase64Url } from '@wetdrool/protocol';
 
-const PDA_PREFIX = Uint8Array.from(Buffer.from('wokesocial', 'ascii'));
+const PDA_PREFIX = Uint8Array.from(Buffer.from('wetdrool', 'ascii'));
 const PDA_VERSION = Uint8Array.of(1);
 const PROPOSAL_SEED = Uint8Array.from(Buffer.from('proposal', 'ascii'));
 const VOTE_SEED = Uint8Array.from(Buffer.from('vote', 'ascii'));

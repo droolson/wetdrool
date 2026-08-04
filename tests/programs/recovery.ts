@@ -21,7 +21,7 @@ import { parsedEvents, waitUntilSlot } from "./governance_test_helpers";
 
 const { Keypair, PublicKey, SystemProgram } = web3;
 
-const PDA_PREFIX = Buffer.from("wokesocial");
+const PDA_PREFIX = Buffer.from("wetdrool");
 const PDA_VERSION = Buffer.from([1]);
 const PROFILE_SCHEMA_VERSION = 2;
 const RECOVERY_POLICY_SEED = Buffer.from("recovery_policy");

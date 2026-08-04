@@ -8,7 +8,7 @@ import {
   PROFILE_SCHEMA_VERSION,
   type SignedEnvelope,
   verifyEnvelope,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import type { ProtocolEvent } from './events.js';
 import type { TerminalManifestFailureCode, VerifiedManifest } from './projection.js';

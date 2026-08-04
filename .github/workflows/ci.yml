@@ -73,13 +73,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      AUTH_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wokesocial_auth_migration:local-auth-migration-only@127.0.0.1:5432/wokesocial
-      AUTH_INTEGRATION_DATABASE_URL: postgresql://wokesocial_auth_runtime:local-auth-runtime-only@127.0.0.1:5432/wokesocial
-      INDEXER_INTEGRATION_ADMIN_DATABASE_URL: postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial
-      INDEXER_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial
-      INDEXER_INTEGRATION_DATABASE_URL: postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial
-      MODERATION_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wokesocial_moderation_migration:local-moderation-migration-only@127.0.0.1:5432/wokesocial
-      MODERATION_INTEGRATION_DATABASE_URL: postgresql://wokesocial_moderation_runtime:local-moderation-runtime-only@127.0.0.1:5432/wokesocial
+      AUTH_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wetdrool_auth_migration:local-auth-migration-only@127.0.0.1:5432/wetdrool
+      AUTH_INTEGRATION_DATABASE_URL: postgresql://wetdrool_auth_runtime:local-auth-runtime-only@127.0.0.1:5432/wetdrool
+      INDEXER_INTEGRATION_ADMIN_DATABASE_URL: postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool
+      INDEXER_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wetdrool_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wetdrool
+      INDEXER_INTEGRATION_DATABASE_URL: postgresql://wetdrool_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wetdrool
+      MODERATION_INTEGRATION_DATABASE_MIGRATION_URL: postgresql://wetdrool_moderation_migration:local-moderation-migration-only@127.0.0.1:5432/wetdrool
+      MODERATION_INTEGRATION_DATABASE_URL: postgresql://wetdrool_moderation_runtime:local-moderation-runtime-only@127.0.0.1:5432/wetdrool
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -104,7 +104,7 @@ jobs:
         run: >-
           docker compose
           --env-file .env.example
-          --project-name wokesocial-ci
+          --project-name wetdrool-ci
           --file infra/compose.yaml
           config --quiet
 
@@ -112,24 +112,24 @@ jobs:
         run: >-
           docker compose
           --env-file .env.example
-          --project-name wokesocial-ci
+          --project-name wetdrool-ci
           --file infra/compose.yaml
           up --detach --wait
 
       - name: Verify dependency commands
         run: |
-          docker compose --project-name wokesocial-ci --file infra/compose.yaml exec -T postgres \
-            pg_isready -U wokesocial -d wokesocial
-          docker compose --project-name wokesocial-ci --file infra/compose.yaml exec -T redis \
+          docker compose --project-name wetdrool-ci --file infra/compose.yaml exec -T postgres \
+            pg_isready -U wetdrool -d wetdrool
+          docker compose --project-name wetdrool-ci --file infra/compose.yaml exec -T redis \
             /bin/sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping'
-          docker compose --project-name wokesocial-ci --file infra/compose.yaml exec -T ipfs \
+          docker compose --project-name wetdrool-ci --file infra/compose.yaml exec -T ipfs \
             ipfs id
 
       - name: Provision isolated service schemas and roles
         run: >-
           docker compose
           --env-file .env.example
-          --project-name wokesocial-ci
+          --project-name wetdrool-ci
           --file infra/compose.yaml
           --profile provision
           run --rm postgres-provision
@@ -146,7 +146,7 @@ jobs:
           role_compose=(
             docker compose
             --env-file .env.example
-            --project-name wokesocial-ci-roles
+            --project-name wetdrool-ci-roles
             --file infra/compose.yaml
           )
           cleanup_role_probe() {
@@ -160,18 +160,18 @@ jobs:
 
           "${role_compose[@]}" --profile provision run --rm postgres-provision
           "${role_compose[@]}" exec -T postgres psql \
-            --username wokesocial \
-            --dbname wokesocial \
+            --username wetdrool \
+            --dbname wetdrool \
             --set ON_ERROR_STOP=1 \
             --command "
               GRANT INSERT, UPDATE, DELETE
-              ON wokesocial_indexer.schema_migrations
-              TO wokesocial_indexer_runtime;
-              UPDATE wokesocial_indexer.schema_migrations
+              ON wetdrool_indexer.schema_migrations
+              TO wetdrool_indexer_runtime;
+              UPDATE wetdrool_indexer.schema_migrations
               SET checksum = repeat('0', 64)
               WHERE version = (
                 SELECT min(version)
-                FROM wokesocial_indexer.schema_migrations
+                FROM wetdrool_indexer.schema_migrations
               );
             "
           if "${role_compose[@]}" --profile privilege-probe run \
@@ -183,11 +183,11 @@ jobs:
             -e PGPASSWORD=local-indexer-runtime-only \
             postgres psql \
             --host 127.0.0.1 \
-            --username wokesocial_indexer_runtime \
-            --dbname wokesocial \
+            --username wetdrool_indexer_runtime \
+            --dbname wetdrool \
             --set ON_ERROR_STOP=1 \
             --command "
-              UPDATE wokesocial_indexer.schema_migrations
+              UPDATE wetdrool_indexer.schema_migrations
               SET checksum = checksum
               WHERE false;
             "; then
@@ -202,19 +202,19 @@ jobs:
         run: |
           docker compose \
             --env-file .env.example \
-            --project-name wokesocial-ci \
+            --project-name wetdrool-ci \
             --file infra/compose.yaml \
             --profile indexer \
             build indexer
           docker compose \
             --env-file .env.example \
-            --project-name wokesocial-ci \
+            --project-name wetdrool-ci \
             --file infra/compose.yaml \
             --profile services \
             build auth-service feed-service
           docker compose \
             --env-file .env.example \
-            --project-name wokesocial-ci \
+            --project-name wetdrool-ci \
             --file infra/compose.yaml \
             --profile services \
             up --detach --no-build --wait auth-service feed-service
@@ -223,11 +223,11 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4100/healthz
           curl --fail --silent --show-error http://127.0.0.1:4100/readyz
           test "$(
-            docker inspect wokesocial-ci-auth-service-1 \
+            docker inspect wetdrool-ci-auth-service-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10001:10001 true healthy'
           test "$(
-            docker inspect wokesocial-ci-feed-service-1 \
+            docker inspect wetdrool-ci-feed-service-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10002:10002 true healthy'
 
@@ -235,13 +235,13 @@ jobs:
         run: |
           docker compose \
             --env-file .env.example \
-            --project-name wokesocial-ci \
+            --project-name wetdrool-ci \
             --file infra/compose.yaml \
             --profile locked-services \
             build relay moderation-service
           docker compose \
             --env-file .env.example \
-            --project-name wokesocial-ci \
+            --project-name wetdrool-ci \
             --file infra/compose.yaml \
             --profile locked-services \
             up --detach --no-build --wait relay moderation-service
@@ -256,11 +256,11 @@ jobs:
               http://127.0.0.1:4400/readyz
           )" = '503'
           test "$(
-            docker inspect wokesocial-ci-relay-1 \
+            docker inspect wetdrool-ci-relay-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10003:10003 true healthy'
           test "$(
-            docker inspect wokesocial-ci-moderation-service-1 \
+            docker inspect wetdrool-ci-moderation-service-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '10004:10004 true healthy'
 
@@ -268,30 +268,30 @@ jobs:
         run: |
           docker compose \
             --env-file .env.example \
-            --project-name wokesocial-ci \
+            --project-name wetdrool-ci \
             --file infra/compose.yaml \
             --profile media \
             build clamav media-worker
           docker compose \
             --env-file .env.example \
-            --project-name wokesocial-ci \
+            --project-name wetdrool-ci \
             --file infra/compose.yaml \
             --profile media \
             up --detach --no-build --wait clamav media-worker
           curl --fail --silent --show-error http://127.0.0.1:4500/healthz
           curl --fail --silent --show-error http://127.0.0.1:4500/readyz
-          docker exec wokesocial-ci-media-worker-1 \
+          docker exec wetdrool-ci-media-worker-1 \
             node scripts/verify-clamd.mjs
           test "$(
-            docker inspect wokesocial-ci-clamav-1 \
+            docker inspect wetdrool-ci-clamav-1 \
               --format '{{json .HostConfig.PortBindings}}'
           )" = '{}'
           test "$(
-            docker inspect wokesocial-ci-clamav-1 \
+            docker inspect wetdrool-ci-clamav-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '1000:1000 true healthy'
           test "$(
-            docker inspect wokesocial-ci-media-worker-1 \
+            docker inspect wetdrool-ci-media-worker-1 \
               --format '{{.Config.User}} {{.HostConfig.ReadonlyRootfs}} {{.State.Health.Status}}'
           )" = '1000:1000 true healthy'
 
@@ -300,7 +300,7 @@ jobs:
         run: >-
           docker compose
           --env-file .env.example
-          --project-name wokesocial-ci
+          --project-name wetdrool-ci
           --file infra/compose.yaml
           --profile services
           --profile locked-services
@@ -312,7 +312,7 @@ jobs:
         run: >-
           docker compose
           --env-file .env.example
-          --project-name wokesocial-ci
+          --project-name wetdrool-ci
           --file infra/compose.yaml
           --profile services
           --profile locked-services

@@ -19,7 +19,7 @@ import {
 
 const { PublicKey, SystemProgram } = web3;
 
-const PDA_PREFIX = Buffer.from("wokesocial");
+const PDA_PREFIX = Buffer.from("wetdrool");
 const PDA_VERSION = Buffer.from([1]);
 const COMMUNITY_SEED = Buffer.from("community");
 const MEMBERSHIP_SEED = Buffer.from("membership");
@@ -35,7 +35,7 @@ export const SCOPE_PROFILE = 1;
 export const SCOPE_SOCIAL = 1 << 2;
 export const SCOPE_COMMUNITY = 1 << 3;
 export const GOVERNANCE_STRATEGY =
-  "wokenet:community-governance-strategy:v1\0" +
+  "droolnet:community-governance-strategy:v1\0" +
   '{"abstainTreatment":"quorum-only","approvalBasisPoints":5001,' +
   '"execution":"outcome-record-only","model":"one-active-member-one-vote",' +
   '"quorumBasisPoints":5000,"version":1}';

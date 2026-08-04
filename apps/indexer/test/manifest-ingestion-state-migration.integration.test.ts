@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_ADMIN_DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool';
 const migrationDirectory = join(dirname(fileURLToPath(import.meta.url)), '../migrations');
 
 describe('0016 manifest-ingestion-state migration', () => {
@@ -55,9 +55,9 @@ describe('0016 manifest-ingestion-state migration', () => {
         'retryable manifest-unavailable dead letter requires an exactly matching pending raw event',
       );
 
-      await sql.unsafe(`SET search_path TO "${exactSchema}", wokesocial_indexer, pg_catalog`);
+      await sql.unsafe(`SET search_path TO "${exactSchema}", wetdrool_indexer, pg_catalog`);
       await sql.unsafe(`CREATE SCHEMA "${exactSchema}"`);
-      await sql.unsafe(`SET search_path TO "${exactSchema}", wokesocial_indexer, pg_catalog`);
+      await sql.unsafe(`SET search_path TO "${exactSchema}", wetdrool_indexer, pg_catalog`);
       for (const file of before0016) {
         await sql.unsafe(await readFile(join(migrationDirectory, file), 'utf8'));
       }
@@ -98,7 +98,7 @@ describe('0016 manifest-ingestion-state migration', () => {
         },
       ]);
     } finally {
-      await sql.unsafe('SET search_path TO wokesocial_indexer, pg_catalog').catch(() => undefined);
+      await sql.unsafe('SET search_path TO wetdrool_indexer, pg_catalog').catch(() => undefined);
       await sql.unsafe(`DROP SCHEMA IF EXISTS "${orphanSchema}" CASCADE`).catch(() => undefined);
       await sql.unsafe(`DROP SCHEMA IF EXISTS "${retrySchema}" CASCADE`).catch(() => undefined);
       await sql.unsafe(`DROP SCHEMA IF EXISTS "${exactSchema}" CASCADE`).catch(() => undefined);
@@ -113,7 +113,7 @@ async function prepareSchemaAt0015(
   migrationFiles: readonly string[],
 ): Promise<void> {
   await sql.unsafe(`CREATE SCHEMA "${schema}"`);
-  await sql.unsafe(`SET search_path TO "${schema}", wokesocial_indexer, pg_catalog`);
+  await sql.unsafe(`SET search_path TO "${schema}", wetdrool_indexer, pg_catalog`);
   for (const file of migrationFiles) {
     await sql.unsafe(await readFile(join(migrationDirectory, file), 'utf8'));
   }

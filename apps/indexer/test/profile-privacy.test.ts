@@ -4,7 +4,7 @@ import type {
   EncryptedContentReference,
   LegacyProfileContent,
   ProfileContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import { projectPublicProfileContent } from '../src/profile-privacy.js';
 import { TEST_CID } from './cid-fixtures.js';
@@ -16,12 +16,12 @@ const encryptedReference = {
   mediaType: 'application/octet-stream',
   protection: {
     kind: 'encrypted',
-    encryptionFormat: 'wokesocial-sealed-profile-value-v1',
+    encryptionFormat: 'wetdrool-sealed-profile-value-v1',
     keyEnvelope: {
-      id: `wokesocialobj:v1:media-manifest:u${'A'.repeat(43)}`,
+      id: `wetdroolobj:v1:media-manifest:u${'A'.repeat(43)}`,
     },
     accessPolicy: {
-      id: `wokesocialobj:v1:community-rule-set:u${'A'.repeat(43)}`,
+      id: `wetdroolobj:v1:community-rule-set:u${'A'.repeat(43)}`,
     },
   },
 } as const satisfies EncryptedContentReference;

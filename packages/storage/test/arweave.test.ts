@@ -56,9 +56,9 @@ describe('Arweave-compatible permanent storage', () => {
     });
     expect(uploadRequests[0]?.tags).toEqual(
       expect.arrayContaining([
-        { name: 'WokeSocial-CID', value: receipt.cid },
+        { name: 'WetDrool-CID', value: receipt.cid },
         {
-          name: 'WokeSocial-SHA256',
+          name: 'WetDrool-SHA256',
           value: receipt.contentSha256,
         },
       ]),

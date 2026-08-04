@@ -15,8 +15,8 @@ import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   type NetworkId,
   type PostContent,
-} from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+} from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   decodeAnchorEventLog,
@@ -33,12 +33,12 @@ import { exerciseModerationAfterMemberDeactivation } from './community-membershi
 
 const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
 const genesisHash = publicKey(70);
-const networkId = `wokenet:v1:${genesisHash}:${programId}` as NetworkId;
+const networkId = `droolnet:v1:${genesisHash}:${programId}` as NetworkId;
 const configAddress = publicKey(71);
 const identityAddress = publicKey(72);
 const memberAddress = publicKey(73);
-const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
-const memberIdentityId = `wokesocialid:v1:${networkId}:${memberAddress}`;
+const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
+const memberIdentityId = `wetdroolid:v1:${networkId}:${memberAddress}`;
 const rootPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const rootAuthority = bs58.encode(ed25519.getPublicKey(rootPrivateKey));
 const memberPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 91);

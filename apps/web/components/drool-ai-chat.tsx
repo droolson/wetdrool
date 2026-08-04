@@ -1,16 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import {
   prepareChatRequest,
-  WOKE_AI_CHAT_DEFAULT_MODEL,
-  WOKE_AI_MODELS,
-  type WokeAiModelId,
-} from '@/lib/woke-ai';
+  DROOL_AI_CHAT_DEFAULT_MODEL,
+  DROOL_AI_MODELS,
+  type DroolAiModelId,
+} from '@/lib/drool-ai';
 
-interface WokeAiChatProps {
+interface DroolAiChatProps {
   readonly runtime:
     | { readonly detail: string; readonly kind: 'unavailable' }
     | { readonly endpoint: string; readonly kind: 'configured' };
@@ -25,11 +25,11 @@ const SUGGESTIONS = [
   'Summarize what my communities discussed today',
   'Explain this Solana transaction like I’m new here',
   'Draft a launch post for my project — honest tone',
-  'What does my .woke name actually prove?',
+  'What does my .drool name actually prove?',
 ] as const;
 
-export function WokeAiChat({ runtime }: WokeAiChatProps) {
-  const [model, setModel] = useState<WokeAiModelId>(WOKE_AI_CHAT_DEFAULT_MODEL);
+export function DroolAiChat({ runtime }: DroolAiChatProps) {
+  const [model, setModel] = useState<DroolAiModelId>(DROOL_AI_CHAT_DEFAULT_MODEL);
   const [input, setInput] = useState('');
   const [transcript, setTranscript] = useState<readonly TranscriptEntry[]>([]);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -39,7 +39,7 @@ export function WokeAiChat({ runtime }: WokeAiChatProps) {
   }, [transcript]);
 
   const selectedModel = useMemo(
-    () => WOKE_AI_MODELS.find((candidate) => candidate.id === model),
+    () => DROOL_AI_MODELS.find((candidate) => candidate.id === model),
     [model],
   );
   const userMessages = useMemo(
@@ -64,8 +64,8 @@ export function WokeAiChat({ runtime }: WokeAiChatProps) {
         role: 'system-notice',
         text:
           runtime.kind === 'configured'
-            ? 'A runtime endpoint is configured, but chat stays disabled until the Woke AI evaluation gates pass. Your message stayed on this device; the exact prepared request is shown below.'
-            : 'No self-hosted Woke AI runtime is connected, so no model reply exists. Your message stayed on this device and was not sent anywhere.',
+            ? 'A runtime endpoint is configured, but chat stays disabled until the Drool AI evaluation gates pass. Your message stayed on this device; the exact prepared request is shown below.'
+            : 'No self-hosted Drool AI runtime is connected, so no model reply exists. Your message stayed on this device and was not sent anywhere.',
       },
     ]);
     setInput('');
@@ -73,7 +73,7 @@ export function WokeAiChat({ runtime }: WokeAiChatProps) {
 
   return (
     <div className="compose-workspace">
-      <section className="compose-form" aria-label="Woke AI chat">
+      <section className="compose-form" aria-label="Drool AI chat">
         <div className="compose-form__status">
           <StatusBadge tone={runtime.kind === 'configured' ? 'pending' : 'unavailable'}>
             {runtime.kind === 'configured' ? 'Runtime configured · gated' : 'Runtime not connected'}
@@ -86,25 +86,25 @@ export function WokeAiChat({ runtime }: WokeAiChatProps) {
         </div>
 
         <div className="field-stack">
-          <label htmlFor="woke-ai-model">Model</label>
+          <label htmlFor="drool-ai-model">Model</label>
           <select
-            id="woke-ai-model"
-            onChange={(event) => setModel(event.target.value as WokeAiModelId)}
+            id="drool-ai-model"
+            onChange={(event) => setModel(event.target.value as DroolAiModelId)}
             value={model}
           >
-            {WOKE_AI_MODELS.map((candidate) => (
+            {DROOL_AI_MODELS.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
                 {candidate.label} — {candidate.role}
               </option>
             ))}
           </select>
           <p className="field-help">
-            {selectedModel?.detail ?? ''} Conversations run on WokeSocial’s own models — nothing is
+            {selectedModel?.detail ?? ''} Conversations run on WetDrool’s own models — nothing is
             forwarded to a third-party provider.
           </p>
         </div>
 
-        <div className="woke-ai-transcript" aria-label="Conversation" role="log">
+        <div className="drool-ai-transcript" aria-label="Conversation" role="log">
           {transcript.length === 0 ? (
             <p className="field-help">
               Nothing has been sent. Messages stay on this device until the runtime is live.
@@ -112,7 +112,7 @@ export function WokeAiChat({ runtime }: WokeAiChatProps) {
           ) : (
             transcript.map((entry, index) => (
               <p
-                className="woke-ai-transcript__entry"
+                className="drool-ai-transcript__entry"
                 data-role={entry.role}
                 key={`${index}:${entry.role}`}
               >
@@ -130,9 +130,9 @@ export function WokeAiChat({ runtime }: WokeAiChatProps) {
             send(input);
           }}
         >
-          <label htmlFor="woke-ai-input">Ask Woke AI</label>
+          <label htmlFor="drool-ai-input">Ask Drool AI</label>
           <textarea
-            id="woke-ai-input"
+            id="drool-ai-input"
             maxLength={4_000}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Ask about your feed, a transaction, a launch, or anything on the platform."
@@ -160,11 +160,11 @@ export function WokeAiChat({ runtime }: WokeAiChatProps) {
         </div>
       </section>
 
-      <aside className="compose-preview" aria-labelledby="woke-ai-request-title">
+      <aside className="compose-preview" aria-labelledby="drool-ai-request-title">
         <div className="compose-preview__heading">
           <div>
             <p className="section-kicker">Prepared contract</p>
-            <h2 id="woke-ai-request-title">Exactly what the runtime will receive</h2>
+            <h2 id="drool-ai-request-title">Exactly what the runtime will receive</h2>
           </div>
           <StatusBadge tone="neutral">No inference performed</StatusBadge>
         </div>

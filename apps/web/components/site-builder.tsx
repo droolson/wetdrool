@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import {
   createEmptySiteBuilderDraft,
@@ -17,7 +17,7 @@ import {
   type SiteBuilderDraft,
   type SitePresetId,
 } from '@/lib/site-builder';
-import { WOKE_AI_MODELS, WOKE_AI_SITE_BUILDER_MODEL } from '@/lib/woke-ai';
+import { DROOL_AI_MODELS, DROOL_AI_SITE_BUILDER_MODEL } from '@/lib/drool-ai';
 
 interface SiteBuilderProps {
   readonly runtime:
@@ -59,7 +59,7 @@ export function SiteBuilder({ runtime }: SiteBuilderProps) {
       return null;
     }
   }, [draft, validation.valid]);
-  const builderModel = WOKE_AI_MODELS.find((model) => model.id === WOKE_AI_SITE_BUILDER_MODEL);
+  const builderModel = DROOL_AI_MODELS.find((model) => model.id === DROOL_AI_SITE_BUILDER_MODEL);
 
   if (!hydrated) {
     return (
@@ -115,11 +115,11 @@ export function SiteBuilder({ runtime }: SiteBuilderProps) {
             <span aria-hidden="true">01</span>
             <div>
               <h2 id="site-subdomain-title">Your subdomain</h2>
-              <p>Every finalized `.woke` handle reserves one exact `woke.social` subdomain.</p>
+              <p>Every finalized `.drool` handle reserves one exact `wetdrool.com` subdomain.</p>
             </div>
           </div>
           <div className="field-stack">
-            <label htmlFor="site-handle">.woke handle</label>
+            <label htmlFor="site-handle">.drool handle</label>
             <input
               aria-describedby={
                 validation.errors.handle ? 'site-handle-help site-handle-error' : 'site-handle-help'
@@ -277,17 +277,17 @@ export function SiteBuilder({ runtime }: SiteBuilderProps) {
           <div className="compose-section__heading">
             <span aria-hidden="true">04</span>
             <div>
-              <h2 id="site-generation-title">Woke AI generation</h2>
+              <h2 id="site-generation-title">Drool AI generation</h2>
               <p>
                 {builderModel === undefined
                   ? 'Self-hosted generation.'
-                  : `Powered by ${builderModel.label} on the self-hosted Woke AI runtime.`}
+                  : `Powered by ${builderModel.label} on the self-hosted Drool AI runtime.`}
               </p>
             </div>
           </div>
           {runtime.kind === 'configured' ? (
             <p className="publication-panel__note">
-              A Woke AI runtime endpoint is configured. Generation remains disabled until the
+              A Drool AI runtime endpoint is configured. Generation remains disabled until the
               runtime passes its evaluation gates and the site-publishing service exists; the
               prepared request below is exactly what it will receive.
             </p>
@@ -372,7 +372,7 @@ function SitePreview({ draft }: { readonly draft: SiteBuilderDraft }) {
         <section aria-label="Community proof preview">
           <h4>Community proof</h4>
           <p>
-            Verified WokeSocial posts and community activity syndicate here with their signatures
+            Verified WetDrool posts and community activity syndicate here with their signatures
             intact.
           </p>
         </section>
@@ -403,7 +403,7 @@ function SitePreview({ draft }: { readonly draft: SiteBuilderDraft }) {
         <h4>{draft.preset === 'personal-blog' ? 'Recent posts' : 'Projects'}</h4>
         <p>
           {draft.preset === 'personal-blog'
-            ? 'Verified WokeSocial posts syndicate here after publishing goes live.'
+            ? 'Verified WetDrool posts syndicate here after publishing goes live.'
             : 'Each project entry links to real artifacts you name in the brief.'}
         </p>
       </section>
@@ -420,7 +420,7 @@ export function SiteBuilderUnavailableNote() {
       tone="empty"
     >
       <p>
-        Wildcard `woke.social` DNS, TLS, and the site-publishing service are not deployed. Drafts
+        Wildcard `wetdrool.com` DNS, TLS, and the site-publishing service are not deployed. Drafts
         stay on this device until then.
       </p>
     </StatePanel>
@@ -432,7 +432,7 @@ export function SiteBuilderInfoCards() {
     <section className="product-card-grid" aria-label="Site builder commitments">
       <InfoCard eyebrow="Ownership" title="Your handle, your subdomain" tone="plum">
         <p>
-          One finalized `.woke` handle maps to exactly one `woke.social` label — deterministically,
+          One finalized `.drool` handle maps to exactly one `wetdrool.com` label — deterministically,
           with no auctions and no squatting.
         </p>
       </InfoCard>
@@ -444,14 +444,14 @@ export function SiteBuilderInfoCards() {
       </InfoCard>
       <InfoCard eyebrow="Self-hosted AI" title="Your models, not a data funnel" tone="sky">
         <p>
-          Generation runs on the self-hosted Woke AI runtime. Briefs are not sent to third-party
+          Generation runs on the self-hosted Drool AI runtime. Briefs are not sent to third-party
           model providers.
         </p>
       </InfoCard>
-      <InfoCard eyebrow="Mail" title="handle@woke.social, encrypted" tone="neutral">
+      <InfoCard eyebrow="Mail" title="handle@wetdrool.com, encrypted" tone="neutral">
         <p>
           The same handle reserves an E2EE inbox keyed to your onchain identity. Mail between
-          WokeSocial identities is end-to-end encrypted; mail to ordinary providers cannot be, and
+          WetDrool identities is end-to-end encrypted; mail to ordinary providers cannot be, and
           the client will say which is which. The mail service is not deployed yet.
         </p>
       </InfoCard>

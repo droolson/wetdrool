@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { ProjectedFeedView } from '@/components/projected-feed-view';
@@ -14,7 +14,7 @@ import {
 export const metadata: Metadata = {
   title: 'Following feed preview',
   description:
-    'Inspect the public posts selected by one WokeSocial identity’s verified follow graph.',
+    'Inspect the public posts selected by one WetDrool identity’s verified follow graph.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -83,14 +83,14 @@ export default async function FollowingFeedPage({
       </nav>
 
       <form action="/feed/following" className="search-bar" method="get">
-        <label htmlFor="following-viewer">Public WokeSocial identity ID</label>
+        <label htmlFor="following-viewer">Public WetDrool identity ID</label>
         <div>
           <input
             autoComplete="off"
             defaultValue={viewerState.viewer}
             id="following-viewer"
             name="viewer"
-            placeholder="wokesocialid:v1:wokenet:v1:…"
+            placeholder="wetdroolid:v1:droolnet:v1:…"
             required
             spellCheck={false}
             type="text"
@@ -98,7 +98,7 @@ export default async function FollowingFeedPage({
           <button type="submit">Inspect public follows</button>
         </div>
         <p>
-          The public identity remains in the address bar, reaches the WokeSocial web operator and
+          The public identity remains in the address bar, reaches the WetDrool web operator and
           your configured indexer, and may appear in their access logs. Never paste a private key,
           recovery secret, or passkey data.
         </p>
@@ -112,7 +112,7 @@ export default async function FollowingFeedPage({
         <dl>
           <div>
             <dt>Viewer scope</dt>
-            <dd>One exact public WokeSocial identity ID, echoed and validated by the response.</dd>
+            <dd>One exact public WetDrool identity ID, echoed and validated by the response.</dd>
           </div>
           <div>
             <dt>Graph</dt>

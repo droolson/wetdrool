@@ -1,5 +1,5 @@
 {
-  "$id": "https://woke.social/protocol/schemas/signed-envelope-v1.schema.json",
+  "$id": "https://wetdrool.com/protocol/schemas/signed-envelope-v1.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
@@ -92,23 +92,23 @@
       ],
       "additionalProperties": false
     },
-    "__schema1": { "type": "string", "const": "wokesocial" },
+    "__schema1": { "type": "string", "const": "wetdrool" },
     "__schema2": { "type": "string", "const": "1.0" },
     "__schema3": { "type": "number", "const": 1 },
     "__schema4": {
       "type": "string",
       "maxLength": 100,
-      "pattern": "^wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
+      "pattern": "^droolnet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
     },
     "__schema5": {
       "type": "string",
       "maxLength": 161,
-      "pattern": "^wokesocialid:v1:wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
+      "pattern": "^wetdroolid:v1:droolnet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+$"
     },
     "__schema6": {
       "type": "string",
       "maxLength": 220,
-      "pattern": "^wokesocialid:v1:wokenet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+#(?:root|delegation)\\/[1-9A-HJ-NP-Za-km-z]+$"
+      "pattern": "^wetdroolid:v1:droolnet:v1:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+:[1-9A-HJ-NP-Za-km-z]+#(?:root|delegation)\\/[1-9A-HJ-NP-Za-km-z]+$"
     },
     "__schema7": { "type": "string" },
     "__schema8": { "type": "string", "pattern": "^u[A-Za-z0-9_-]{22}$" },
@@ -182,7 +182,7 @@
     },
     "__schema20": {
       "type": "string",
-      "pattern": "^wokesocialobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$"
+      "pattern": "^wetdroolobj:v1:[a-z][a-z0-9-]{1,31}:u[A-Za-z0-9_-]{43}$"
     },
     "__schema21": { "$ref": "#/$defs/__schema15" },
     "__schema22": {
@@ -2712,15 +2712,15 @@
     },
     "__schema202": { "type": "string", "enum": ["in-app", "push", "email"] }
   },
-  "title": "WokeSocial signed portable object envelope v1",
-  "description": "Structural interchange schema for every WokeSocial v1 portable object and its Ed25519 proof.",
+  "title": "WetDrool signed portable object envelope v1",
+  "description": "Structural interchange schema for every WetDrool v1 portable object and its Ed25519 proof.",
   "$comment": "JSON Schema validates the protocol-v1 read surface, including frozen schema-version-1 profiles, communities, and community memberships plus their current schema-version-2 shapes. Implementations MUST also apply RFC 8785 canonicalization, signature/hash verification, UTF-8 byte limits, cross-field refinements, intrinsic signing rules, immutable-transition rules, and current external authorization policy from the protocol library. New objects MUST use the current creation schema/builders.",
-  "x-wokesocial-protocol-version": "1.0",
-  "x-wokesocial-schema-versions": [1, 2],
-  "x-wokesocial-current-profile-schema-version": 2,
-  "x-wokesocial-current-community-schema-version": 2,
-  "x-wokesocial-current-community-membership-schema-version": 2,
-  "x-wokesocial-object-types": [
+  "x-wetdrool-protocol-version": "1.0",
+  "x-wetdrool-schema-versions": [1, 2],
+  "x-wetdrool-current-profile-schema-version": 2,
+  "x-wetdrool-current-community-schema-version": 2,
+  "x-wetdrool-current-community-membership-schema-version": 2,
+  "x-wetdrool-object-types": [
     "profile",
     "post",
     "tombstone",

@@ -6,7 +6,7 @@ export const MAX_CONTEXT_BYTES = 64 * 1024;
 
 const DOMAIN_PATTERN = /^[a-z][a-z0-9./:-]{0,127}$/u;
 const PURPOSE_PATTERN = /^[a-z][a-z0-9-]{0,63}$/u;
-const DOMAIN_SEPARATOR = new TextEncoder().encode('wokesocial.crypto/v1');
+const DOMAIN_SEPARATOR = new TextEncoder().encode('wetdrool.crypto/v1');
 
 export function getWebCrypto(): Crypto {
   const provider = globalThis.crypto;

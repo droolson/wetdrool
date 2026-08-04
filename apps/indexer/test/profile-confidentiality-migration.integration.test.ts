@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_ADMIN_DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool';
 const migrationDirectory = join(dirname(fileURLToPath(import.meta.url)), '../migrations');
 
 describe('0012 profile-confidentiality migration', () => {
@@ -17,18 +17,18 @@ describe('0012 profile-confidentiality migration', () => {
     const schema = `indexer_0012_${randomBytes(8).toString('hex')}`;
     const sql = postgres(databaseUrl, { max: 1, onnotice: () => undefined });
     const programId = publicKey();
-    const networkId = `wokenet:v1:${publicKey()}:${programId}`;
+    const networkId = `droolnet:v1:${publicKey()}:${programId}`;
     const identityAddress = publicKey();
-    const identityId = `wokesocialid:v1:${networkId}:${identityAddress}`;
+    const identityId = `wetdroolid:v1:${networkId}:${identityAddress}`;
     const populatedIdentityAddress = publicKey();
-    const populatedIdentityId = `wokesocialid:v1:${networkId}:${populatedIdentityAddress}`;
+    const populatedIdentityId = `wetdroolid:v1:${networkId}:${populatedIdentityAddress}`;
     const protectedIdentityAddress = publicKey();
-    const protectedIdentityId = `wokesocialid:v1:${networkId}:${protectedIdentityAddress}`;
+    const protectedIdentityId = `wetdroolid:v1:${networkId}:${protectedIdentityAddress}`;
     const now = new Date('2026-07-28T20:00:00.000Z');
 
     try {
       await sql.unsafe(`CREATE SCHEMA "${schema}"`);
-      await sql.unsafe(`SET search_path TO "${schema}", wokesocial_indexer, public`);
+      await sql.unsafe(`SET search_path TO "${schema}", wetdrool_indexer, public`);
       const migrationFiles = (await readdir(migrationDirectory))
         .filter((file) => /^\d+_[a-z0-9_]+\.sql$/u.test(file))
         .sort();

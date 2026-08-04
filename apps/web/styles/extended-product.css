@@ -2,7 +2,7 @@
 .feed-family-nav,
 .route-action-strip {
   overflow-x: auto;
-  border-block: 1px solid var(--wokesocial-line);
+  border-block: 1px solid var(--wetdrool-line);
   scrollbar-width: thin;
 }
 
@@ -25,8 +25,8 @@
   min-height: 2.75rem;
   align-items: center;
   padding-inline: 0.9rem;
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-ink-muted);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.78rem;
   font-weight: 740;
   text-decoration: none;
@@ -36,8 +36,8 @@
 .settings-nav a:hover,
 .feed-family-nav a:hover,
 .route-action-strip a:hover {
-  color: var(--wokesocial-ink);
-  background: var(--wokesocial-surface);
+  color: var(--wetdrool-ink);
+  background: var(--wetdrool-surface);
 }
 
 .feed-contract,
@@ -55,10 +55,10 @@
   align-items: start;
   gap: clamp(1.5rem, 5vw, 4rem);
   padding: clamp(1.4rem, 4vw, 2.5rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .feed-contract h2,
@@ -72,7 +72,7 @@
 .developer-contracts h2,
 .deletion-ledger h2 {
   margin: 0.5rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.7rem, 3vw, 2.55rem);
   letter-spacing: -0.04em;
   line-height: 1.05;
@@ -87,9 +87,9 @@
   gap: 1px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-line);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-line);
 }
 
 .feed-contract dl div,
@@ -97,7 +97,7 @@
 .status-summary dl div,
 .event-agenda dl div {
   padding: 1rem;
-  background: var(--wokesocial-canvas-raised);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .feed-contract dt,
@@ -106,7 +106,7 @@
 .event-agenda dt,
 .deletion-ledger dt {
   margin-block-end: 0.4rem;
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -119,7 +119,7 @@
 .event-agenda dd,
 .deletion-ledger dd {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.8rem;
   line-height: 1.5;
 }
@@ -153,8 +153,8 @@
   align-items: start;
   gap: 0.9rem;
   padding-block: 0.9rem;
-  border-block-end: 1px solid var(--wokesocial-line);
-  color: var(--wokesocial-ink-muted);
+  border-block-end: 1px solid var(--wetdrool-line);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.5;
 }
 
@@ -165,8 +165,8 @@
 
 .authority-checklist li > span,
 .recovery-map li > span {
-  color: var(--wokesocial-plum);
-  font-family: var(--wokesocial-font-display);
+  color: var(--wetdrool-plum);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.1rem;
   font-weight: 720;
 }
@@ -184,16 +184,16 @@
   gap: clamp(1.5rem, 6vw, 5rem);
   padding: clamp(1.5rem, 5vw, 3.5rem);
   overflow: hidden;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
   background:
     radial-gradient(
       circle at 12% 12%,
-      color-mix(in srgb, var(--wokesocial-sky) 20%, transparent),
+      color-mix(in srgb, var(--wetdrool-sky) 20%, transparent),
       transparent 20rem
     ),
-    var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+    var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .media-stage__frame {
@@ -202,20 +202,20 @@
   min-height: 22rem;
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--wokesocial-line-strong);
+  border: 1px solid var(--wetdrool-line-strong);
   border-radius: 38% 62% 58% 42% / 52% 40% 60% 48%;
   background:
-    radial-gradient(circle at 70% 24%, var(--wokesocial-citron) 0 7%, transparent 7.5%),
+    radial-gradient(circle at 70% 24%, var(--wetdrool-citron) 0 7%, transparent 7.5%),
     linear-gradient(
       145deg,
-      var(--wokesocial-coral-soft),
-      color-mix(in srgb, var(--wokesocial-plum) 35%, var(--wokesocial-sky))
+      var(--wetdrool-coral-soft),
+      color-mix(in srgb, var(--wetdrool-plum) 35%, var(--wetdrool-sky))
     );
 }
 
 .media-stage__frame span {
   position: absolute;
-  border: 1px solid color-mix(in srgb, var(--wokesocial-ink) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wetdrool-ink) 35%, transparent);
   border-radius: 50%;
 }
 
@@ -227,20 +227,20 @@
 .media-stage__frame span:nth-child(2) {
   width: 25%;
   aspect-ratio: 1;
-  background: color-mix(in srgb, var(--wokesocial-surface-strong) 58%, transparent);
+  background: color-mix(in srgb, var(--wetdrool-surface-strong) 58%, transparent);
 }
 
 .media-stage__frame span:nth-child(3) {
   width: 8%;
   aspect-ratio: 1;
   border: 0;
-  background: var(--wokesocial-citron);
+  background: var(--wetdrool-citron);
 }
 
 .media-stage h2 {
   max-width: 18ch;
   margin: 0.5rem 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2rem, 4vw, 3.4rem);
   letter-spacing: -0.05em;
   line-height: 1;
@@ -248,7 +248,7 @@
 
 .media-stage > div:last-child > p:last-of-type {
   max-width: 44rem;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.65;
 }
 
@@ -263,8 +263,8 @@
   min-height: 2.75rem;
   align-items: center;
   padding-inline: 0.9rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-pill);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-pill);
   font-size: 0.78rem;
   font-weight: 750;
   text-decoration: none;
@@ -273,10 +273,10 @@
 .local-settings-loading {
   min-height: 18rem;
   padding: 2rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-surface);
 }
 
 .local-settings-panel,
@@ -285,16 +285,16 @@
   display: grid;
   gap: 1.25rem;
   padding: clamp(1.35rem, 4vw, 2.5rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
   background:
     linear-gradient(
       135deg,
-      color-mix(in srgb, var(--wokesocial-plum) 5%, transparent),
+      color-mix(in srgb, var(--wetdrool-plum) 5%, transparent),
       transparent 60%
     ),
-    var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+    var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .local-settings-panel__heading {
@@ -308,7 +308,7 @@
 .local-export-panel h2,
 .local-safety-panel h2 {
   margin: 0.45rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.8rem, 4vw, 3rem);
   letter-spacing: -0.045em;
   line-height: 1.02;
@@ -330,9 +330,9 @@
   align-items: center;
   gap: 0.8rem;
   padding: 0.9rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-canvas-raised);
   cursor: pointer;
 }
 
@@ -351,9 +351,9 @@
   position: relative;
   width: 2.8rem;
   height: 1.55rem;
-  border: 1px solid var(--wokesocial-line-strong);
-  border-radius: var(--wokesocial-radius-pill);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line-strong);
+  border-radius: var(--wetdrool-radius-pill);
+  background: var(--wetdrool-surface);
 }
 
 .preference-toggle > span[aria-hidden='true']::after {
@@ -363,18 +363,18 @@
   width: 1.05rem;
   height: 1.05rem;
   border-radius: 50%;
-  background: var(--wokesocial-ink-muted);
+  background: var(--wetdrool-ink-muted);
   content: '';
-  transition: transform var(--wokesocial-duration-fast) var(--wokesocial-ease);
+  transition: transform var(--wetdrool-duration-fast) var(--wetdrool-ease);
 }
 
 .preference-toggle input:checked + span {
-  border-color: var(--wokesocial-plum);
-  background: color-mix(in srgb, var(--wokesocial-plum) 20%, var(--wokesocial-surface));
+  border-color: var(--wetdrool-plum);
+  background: color-mix(in srgb, var(--wetdrool-plum) 20%, var(--wetdrool-surface));
 }
 
 .preference-toggle input:checked + span::after {
-  background: var(--wokesocial-plum);
+  background: var(--wetdrool-plum);
   transform: translateX(1.15rem);
 }
 
@@ -383,7 +383,7 @@
 }
 
 .preference-toggle input:focus-visible + span {
-  outline: 3px solid var(--wokesocial-focus);
+  outline: 3px solid var(--wetdrool-focus);
   outline-offset: 3px;
 }
 
@@ -393,7 +393,7 @@
 }
 
 .preference-toggle small {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.45;
 }
 
@@ -407,7 +407,7 @@
 .local-export-panel > p,
 .local-safety-empty p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.78rem;
   line-height: 1.55;
 }
@@ -421,8 +421,8 @@
 
 .local-safety-empty {
   padding: 1.25rem;
-  border: 1px dashed var(--wokesocial-line-strong);
-  border-radius: var(--wokesocial-radius-md);
+  border: 1px dashed var(--wetdrool-line-strong);
+  border-radius: var(--wetdrool-radius-md);
 }
 
 .local-safety-entries {
@@ -440,9 +440,9 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-sm);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-sm);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .local-safety-entries li > div {
@@ -458,17 +458,17 @@
 }
 
 .local-safety-entries span {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.7rem;
 }
 
 .local-safety-entries button {
   min-height: 2.75rem;
   padding-inline: 0.8rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-danger);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-danger);
+  background: var(--wetdrool-surface);
   font-weight: 720;
   cursor: pointer;
 }
@@ -476,10 +476,10 @@
 .local-filter-notice {
   padding: 0.8rem 1rem;
   margin: 0;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-sm);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-sm);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-surface);
   font-size: 0.76rem;
 }
 
@@ -490,7 +490,7 @@
 
 .recovery-map li p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.8rem;
   line-height: 1.5;
 }
@@ -512,16 +512,16 @@
   flex: 1;
   place-items: center;
   padding: 0.8rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-canvas-raised);
   font-size: 0.78rem;
   font-weight: 740;
   text-align: center;
 }
 
 .group-key-map__steps span:nth-child(even) {
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
 }
 
 .event-agenda dl {
@@ -533,16 +533,16 @@
   background:
     radial-gradient(
       circle at 85% 20%,
-      color-mix(in srgb, var(--wokesocial-citron) 22%, transparent),
+      color-mix(in srgb, var(--wetdrool-citron) 22%, transparent),
       transparent 18rem
     ),
-    var(--wokesocial-surface);
+    var(--wetdrool-surface);
 }
 
 .creator-ledger > p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
-  font-family: var(--wokesocial-font-display);
+  color: var(--wetdrool-ink-muted);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.2rem, 2.5vw, 1.65rem);
   line-height: 1.45;
 }
@@ -559,10 +559,10 @@
 .destructive-noop,
 .status-legend {
   padding: clamp(1.3rem, 4vw, 2.25rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .report-flow h2,
@@ -570,7 +570,7 @@
 .destructive-noop h2,
 .status-legend h2 {
   margin: 0.5rem 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.65rem, 3vw, 2.5rem);
   letter-spacing: -0.04em;
   line-height: 1.05;
@@ -589,15 +589,15 @@
   display: grid;
   gap: 0.2rem;
   padding-block: 0.8rem;
-  border-block-end: 1px solid var(--wokesocial-line);
+  border-block-end: 1px solid var(--wetdrool-line);
   counter-increment: report-step;
 }
 
 .report-flow li strong::before {
   margin-inline-end: 0.6rem;
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   content: '0' counter(report-step);
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
 }
 
 .report-flow li span,
@@ -605,7 +605,7 @@
 .appeal-boundary p,
 .destructive-noop p,
 .status-legend dd {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.8rem;
   line-height: 1.55;
 }
@@ -614,13 +614,13 @@
   display: grid;
   gap: 0.65rem;
   padding: 1rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
 }
 
 .report-form legend {
   padding-inline: 0.4rem;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.25rem;
   font-weight: 700;
 }
@@ -635,10 +635,10 @@
 .report-form button {
   min-height: 2.8rem;
   padding: 0.7rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-sm);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-sm);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .appeal-boundary,
@@ -653,15 +653,15 @@
 .destructive-noop button {
   min-height: 3rem;
   padding-inline: 1rem;
-  border: 1px solid var(--wokesocial-line-strong);
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line-strong);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-canvas-raised);
   font-weight: 740;
 }
 
 .destructive-noop {
-  border-color: color-mix(in srgb, var(--wokesocial-danger) 38%, var(--wokesocial-line));
+  border-color: color-mix(in srgb, var(--wetdrool-danger) 38%, var(--wetdrool-line));
 }
 
 .destructive-noop > p {
@@ -675,14 +675,14 @@
   gap: 1px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-line);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-line);
 }
 
 .deletion-ledger dl div {
   padding: 1rem;
-  background: var(--wokesocial-canvas-raised);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .developer-contracts {
@@ -690,7 +690,7 @@
 }
 
 .developer-contracts > div:first-child > p:last-child {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.6;
 }
 
@@ -703,9 +703,9 @@
   display: grid;
   gap: 0.55rem;
   padding: 1rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .developer-contract-list article > div {
@@ -717,9 +717,9 @@
 
 .developer-contract-list article > div span {
   padding: 0.3rem 0.5rem;
-  border-radius: var(--wokesocial-radius-pill);
+  border-radius: var(--wetdrool-radius-pill);
   color: #17131d;
-  background: var(--wokesocial-citron);
+  background: var(--wetdrool-citron);
   font-size: 0.65rem;
   font-weight: 820;
 }
@@ -732,12 +732,12 @@
 
 .developer-contract-list p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.5;
 }
 
 .developer-contract-list small {
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-weight: 700;
 }
 
@@ -781,12 +781,12 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 0.8rem;
-  border-block: 1px solid var(--wokesocial-line);
+  border-block: 1px solid var(--wetdrool-line);
 }
 
 .discovery-directory > p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.75rem;
   font-weight: 720;
   white-space: nowrap;
@@ -804,8 +804,8 @@
   min-height: 2.75rem;
   align-items: center;
   padding-inline: 0.8rem;
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-plum);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-plum);
   font-size: 0.75rem;
   font-weight: 740;
   text-decoration: none;
@@ -917,12 +917,12 @@
   align-items: end;
   gap: 1rem 2rem;
   padding-block-end: 1rem;
-  border-block-end: 1px solid var(--wokesocial-line);
+  border-block-end: 1px solid var(--wetdrool-line);
 }
 
 .community-directory > header h2 {
   margin: 0.25rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.75rem, 4vw, 2.7rem);
   letter-spacing: -0.04em;
 }
@@ -944,7 +944,7 @@
 .community-governance dt,
 .community-policy-grid dt,
 .community-proof dt {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -979,16 +979,16 @@
   height: 100%;
   gap: 1rem;
   padding: clamp(1.1rem, 3vw, 1.6rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
   background:
     radial-gradient(
       circle at 100% 0,
-      color-mix(in srgb, var(--wokesocial-lilac) 17%, transparent),
+      color-mix(in srgb, var(--wetdrool-lilac) 17%, transparent),
       transparent 13rem
     ),
-    var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+    var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .community-card > header {
@@ -1008,11 +1008,11 @@
   height: 3rem;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid color-mix(in srgb, var(--wokesocial-plum) 25%, var(--wokesocial-line));
+  border: 1px solid color-mix(in srgb, var(--wetdrool-plum) 25%, var(--wetdrool-line));
   border-radius: 1rem;
-  color: var(--wokesocial-plum-deep);
-  background: color-mix(in srgb, var(--wokesocial-lilac) 45%, var(--wokesocial-surface));
-  font-family: var(--wokesocial-font-display);
+  color: var(--wetdrool-plum-deep);
+  background: color-mix(in srgb, var(--wetdrool-lilac) 45%, var(--wetdrool-surface));
+  font-family: var(--wetdrool-font-display);
   font-size: 1.25rem;
   font-weight: 820;
 }
@@ -1024,22 +1024,22 @@
   gap: 0.35rem;
 }
 
-.community-card__badges > span:not(.wokesocial-status) {
+.community-card__badges > span:not(.wetdrool-status) {
   display: inline-flex;
   min-height: 1.8rem;
   align-items: center;
   padding-inline: 0.6rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-pill);
-  color: var(--wokesocial-ink-muted);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-pill);
+  color: var(--wetdrool-ink-muted);
+  background: var(--wetdrool-canvas-raised);
   font-size: 0.67rem;
   font-weight: 760;
 }
 
 .community-card h3 {
   margin: 0.65rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.35rem, 3vw, 1.8rem);
   letter-spacing: -0.025em;
 }
@@ -1051,13 +1051,13 @@
 }
 
 .community-card__slug {
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-size: 0.8rem;
   font-weight: 760;
 }
 
 .community-card__description {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.65;
 }
 
@@ -1071,9 +1071,9 @@
 .community-card__facts div {
   min-width: 0;
   padding: 0.75rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-sm);
-  background: var(--wokesocial-canvas-raised);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-sm);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .community-card__facts dd {
@@ -1089,18 +1089,18 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding-block-start: 0.85rem;
-  border-block-start: 1px solid var(--wokesocial-line);
-  color: var(--wokesocial-ink-muted);
+  border-block-start: 1px solid var(--wetdrool-line);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.75rem;
 }
 
 .community-card > footer a {
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-weight: 800;
 }
 
 .community-card__address {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 0.69rem;
 }
 
@@ -1110,7 +1110,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding-block: 0.8rem;
-  border-block: 1px solid var(--wokesocial-line);
+  border-block: 1px solid var(--wetdrool-line);
   font-size: 0.8rem;
   font-weight: 760;
 }
@@ -1119,11 +1119,11 @@
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
 }
 
 .community-directory__pagination span {
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
 }
 
 .community-privacy-notice,
@@ -1132,15 +1132,15 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.15rem;
-  border: 1px solid color-mix(in srgb, var(--wokesocial-plum) 25%, var(--wokesocial-line));
-  border-radius: var(--wokesocial-radius-md);
-  background: color-mix(in srgb, var(--wokesocial-lilac) 14%, var(--wokesocial-surface));
+  border: 1px solid color-mix(in srgb, var(--wetdrool-plum) 25%, var(--wetdrool-line));
+  border-radius: var(--wetdrool-radius-md);
+  background: color-mix(in srgb, var(--wetdrool-lilac) 14%, var(--wetdrool-surface));
 }
 
 .community-privacy-notice p,
 .community-governance-state p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.55;
 }
 
@@ -1150,17 +1150,17 @@
   grid-template-columns: minmax(16rem, 0.7fr) minmax(0, 1fr);
   gap: clamp(1.5rem, 5vw, 4rem);
   padding: clamp(1.3rem, 4vw, 2.4rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .community-overview h2,
 .community-governance h2,
 .community-policy-grid h2 {
   margin: 0.35rem 0 0.7rem;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.65rem, 3.5vw, 2.6rem);
   letter-spacing: -0.04em;
   line-height: 1.05;
@@ -1171,7 +1171,7 @@
 .community-policy-grid article > p:last-child,
 .community-proof > p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.65;
 }
 
@@ -1182,16 +1182,16 @@
   gap: 1px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-line);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-line);
 }
 
 .community-overview__facts div,
 .community-governance dl div {
   min-width: 0;
   padding: 1rem;
-  background: var(--wokesocial-canvas-raised);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .community-overview__facts dd,
@@ -1204,10 +1204,10 @@
   background:
     radial-gradient(
       circle at 88% 12%,
-      color-mix(in srgb, var(--wokesocial-citron) 19%, transparent),
+      color-mix(in srgb, var(--wetdrool-citron) 19%, transparent),
       transparent 20rem
     ),
-    var(--wokesocial-surface);
+    var(--wetdrool-surface);
 }
 
 .community-policy-grid {
@@ -1219,10 +1219,10 @@
 .community-policy-grid article {
   min-width: 0;
   padding: clamp(1.15rem, 3vw, 1.6rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
-  box-shadow: var(--wokesocial-shadow-sm);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
+  box-shadow: var(--wetdrool-shadow-sm);
 }
 
 .community-policy-grid h2 {
@@ -1238,20 +1238,20 @@
 .community-policy-grid dl div {
   min-width: 0;
   padding-block-start: 0.8rem;
-  border-block-start: 1px solid var(--wokesocial-line);
+  border-block-start: 1px solid var(--wetdrool-line);
 }
 
 .community-proof {
   padding: clamp(1.1rem, 3vw, 1.5rem);
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-lg);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-lg);
+  background: var(--wetdrool-surface);
 }
 
 .community-proof summary {
   min-height: 2.75rem;
   cursor: pointer;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.15rem;
   font-weight: 760;
 }
@@ -1262,15 +1262,15 @@
   gap: 1px;
   margin: 1rem 0;
   overflow: hidden;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-line);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-line);
 }
 
 .community-proof dl div {
   min-width: 0;
   padding: 0.9rem;
-  background: var(--wokesocial-canvas-raised);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .community-proof code {
@@ -1310,7 +1310,7 @@
   }
 }
 
-/* Sites, Woke AI, and launchpad preview surfaces */
+/* Sites, Drool AI, and launchpad preview surfaces */
 
 .site-preset-option {
   border: 1px solid var(--surface-border, rgba(95, 44, 131, 0.2));
@@ -1327,8 +1327,8 @@
 }
 
 .site-preset-option[data-selected='true'] {
-  border-color: var(--wokesocial-plum, #5f2c83);
-  box-shadow: 0 0 0 2px var(--wokesocial-plum, #5f2c83);
+  border-color: var(--wetdrool-plum, #5f2c83);
+  box-shadow: 0 0 0 2px var(--wetdrool-plum, #5f2c83);
 }
 
 .site-preset-option[data-featured='true'] {
@@ -1336,7 +1336,7 @@
 }
 
 .site-preset-option:focus-within {
-  outline: 3px solid var(--wokesocial-sky, #4f9dde);
+  outline: 3px solid var(--wetdrool-sky, #4f9dde);
   outline-offset: 2px;
 }
 
@@ -1365,15 +1365,15 @@
 }
 
 .site-preview[data-accent='coral'] .site-preview__hero h3 {
-  color: var(--wokesocial-coral, #ed6a5a);
+  color: var(--wetdrool-coral, #ed6a5a);
 }
 
 .site-preview[data-accent='plum'] .site-preview__hero h3 {
-  color: var(--wokesocial-plum, #5f2c83);
+  color: var(--wetdrool-plum, #5f2c83);
 }
 
 .site-preview[data-accent='sky'] .site-preview__hero h3 {
-  color: var(--wokesocial-sky, #4f9dde);
+  color: var(--wetdrool-sky, #4f9dde);
 }
 
 .site-preview__footer {
@@ -1387,7 +1387,7 @@
   overflow: auto;
 }
 
-.woke-ai-transcript {
+.drool-ai-transcript {
   border: 1px solid var(--surface-border, rgba(95, 44, 131, 0.2));
   border-radius: 0.9rem;
   display: grid;
@@ -1397,16 +1397,16 @@
   padding: 1rem;
 }
 
-.woke-ai-transcript__entry {
+.drool-ai-transcript__entry {
   margin: 0;
 }
 
-.woke-ai-transcript__entry[data-role='system-notice'] {
+.drool-ai-transcript__entry[data-role='system-notice'] {
   font-size: 0.9rem;
   opacity: 0.85;
 }
 
-.woke-ai-transcript__entry strong {
+.drool-ai-transcript__entry strong {
   display: block;
 }
 

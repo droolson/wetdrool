@@ -3,14 +3,14 @@ import {
   getContentCid,
   mediaManifestContentSchema,
   type MediaManifestContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import {
   MultiProviderStorage,
   type ContentAddressedStorage,
   type StorageHealth,
   type StoragePolicy,
   type StorageReceipt,
-} from '@wokesocial/storage';
+} from '@wetdrool/storage';
 
 import { MediaWorkerError } from './errors.js';
 import type {
@@ -124,7 +124,7 @@ export class MediaPublisher {
     if (processed.waveform !== undefined) {
       waveform = await this.#publishBytes(
         processed.waveform,
-        'application/vnd.wokesocial.waveform+json',
+        'application/vnd.wetdrool.waveform+json',
         policy,
       );
       publications.push(waveform);

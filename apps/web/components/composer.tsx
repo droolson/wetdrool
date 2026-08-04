@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import { BrowserAuthClient } from '@/lib/auth/browser-auth-client';
 import { BrowserAuthError } from '@/lib/auth/errors';
@@ -106,7 +106,7 @@ const PUBLICATION_STEPS = [
     stages: ['authenticating'],
   },
   {
-    label: 'Derive and reconcile the deterministic WokeNet identity.',
+    label: 'Derive and reconcile the deterministic DroolNet identity.',
     stages: ['deriving-identity', 'reconciling-identity'],
   },
   {
@@ -643,9 +643,9 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
           </header>
           <p>
             This adapter asks for fresh passkey verification, may faucet and spend test SOL for
-            local account rent and fees, writes to the configured WokeNet program on a Solana local
+            local account rent and fees, writes to the configured DroolNet program on a Solana local
             validator, verifies local content storage, and waits for an indexer checkpoint. It does
-            not publish globally, transfer $WOKE, or use mainnet funds.
+            not publish globally, transfer $DROOL, or use mainnet funds.
           </p>
           <dl>
             <div>
@@ -1160,7 +1160,7 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
                       className="publication-evidence"
                     >
                       <div className="publication-evidence__wide">
-                        <dt>WokeNet deployment</dt>
+                        <dt>DroolNet deployment</dt>
                         <dd>
                           <code>{destination.disclosure.networkId}</code>
                         </dd>
@@ -1184,14 +1184,14 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
                         </dd>
                       </div>
                       <div className="publication-evidence__wide">
-                        <dt>Anonymous .woke candidate</dt>
+                        <dt>Anonymous .drool candidate</dt>
                         <dd>
                           <code>{destination.disclosure.wokeNameCandidate}</code>
                         </dd>
                       </div>
                     </dl>
                     <p>
-                      A .woke name is WokeNet metadata, never a native Solana address. This
+                      A .drool name is DroolNet metadata, never a native Solana address. This
                       disclosure is bound to the synchronized passkey key and is discarded whenever
                       the session, key, or deployment changes. Signing re-verifies the fresh passkey
                       key against this exact destination and fails closed on any mismatch.
@@ -1318,7 +1318,7 @@ function HydratedComposer({ publicationConfig }: ComposerProps) {
               <p className="publication-panel__note">
                 <span id="localnet-publish-boundary">
                   This can request faucet test SOL and spend it on local rent and transaction fees.
-                  It never transfers $WOKE or production funds.
+                  It never transfers $DROOL or production funds.
                 </span>
               </p>
             </div>
@@ -1335,7 +1335,7 @@ function PublicationEvidence({ result }: { readonly result: LocalnetTextPostPubl
   return (
     <dl className="publication-evidence" aria-label="Verified localnet publication evidence">
       <div className="publication-evidence__wide">
-        <dt>WokeNet deployment</dt>
+        <dt>DroolNet deployment</dt>
         <dd>
           <code>{result.networkId}</code>
         </dd>
@@ -1357,7 +1357,7 @@ function PublicationEvidence({ result }: { readonly result: LocalnetTextPostPubl
         <dd>{result.identity.finalizedSlot.toString()}</dd>
       </div>
       <div className="publication-evidence__wide">
-        <dt>WokeSocial identity ID</dt>
+        <dt>WetDrool identity ID</dt>
         <dd>
           <code>{result.identity.id}</code>
         </dd>
@@ -1608,7 +1608,7 @@ function progressStageCopy(stage: LocalnetTextPostPublicationStage): string {
     case 'authenticating':
       return 'Waiting for a fresh user-verifying passkey approval. Private key material stays inside the callback scope.';
     case 'deriving-identity':
-      return 'Deriving the deterministic primary WokeNet identity from the verified public root.';
+      return 'Deriving the deterministic primary DroolNet identity from the verified public root.';
     case 'reconciling-identity':
       return 'Checking the exact identity account before deciding whether a create transaction is needed.';
     case 'funding':

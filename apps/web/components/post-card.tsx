@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { StatusBadge } from '@wokesocial/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import type { IndexedPost, VerificationState } from '@/lib/indexer';
 import { abbreviate, formatUtcDate, verificationLabel } from '@/lib/presentation';
@@ -33,7 +33,7 @@ export function PostCard({ post, prominent = false }: PostCardProps) {
           <div>
             <p className="post-card__name">{post.author.displayName}</p>
             <p className="post-card__handle">
-              {post.author.handle === null ? 'No active .woke name' : `${post.author.handle}.woke`}
+              {post.author.handle === null ? 'No active .drool name' : `${post.author.handle}.drool`}
             </p>
           </div>
         </div>
@@ -110,7 +110,7 @@ export function PostCard({ post, prominent = false }: PostCardProps) {
             <dd>{proof.contentHashValid ? 'Valid' : 'Not valid'}</dd>
           </div>
           <div>
-            <dt>WokeNet anchor</dt>
+            <dt>DroolNet anchor</dt>
             <dd>
               {proof.anchor
                 ? `Slot ${proof.anchor.slot.toLocaleString('en')} · ${proof.anchor.finality}`

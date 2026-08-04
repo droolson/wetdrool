@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_ADMIN_DATABASE_URL'] ??
-  'postgresql://wokesocial:local-development-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool:local-development-only@127.0.0.1:5432/wetdrool';
 const migrationDirectory = join(dirname(fileURLToPath(import.meta.url)), '../migrations');
 const governanceStrategyHash = 'uwm8vfQxM7tZkfr0DZsEnFVxa4ZgsIPg8DsCn-xbX_HA';
 
@@ -18,14 +18,14 @@ describe('0008 and 0009 network-scope migrations', () => {
     const schema = `indexer_0008_${randomBytes(8).toString('hex')}`;
     const sql = postgres(databaseUrl, { max: 1, onnotice: () => undefined });
     const programId = publicKey();
-    const networkOne = `wokenet:v1:${publicKey()}:${programId}`;
-    const networkTwo = `wokenet:v1:${publicKey()}:${programId}`;
+    const networkOne = `droolnet:v1:${publicKey()}:${programId}`;
+    const networkTwo = `droolnet:v1:${publicKey()}:${programId}`;
     const identityAddress = publicKey();
     const subjectIdentityAddress = publicKey();
-    const identityOne = `wokesocialid:v1:${networkOne}:${identityAddress}`;
-    const identityTwo = `wokesocialid:v1:${networkTwo}:${identityAddress}`;
-    const subjectIdentityOne = `wokesocialid:v1:${networkOne}:${subjectIdentityAddress}`;
-    const subjectIdentityTwo = `wokesocialid:v1:${networkTwo}:${subjectIdentityAddress}`;
+    const identityOne = `wetdroolid:v1:${networkOne}:${identityAddress}`;
+    const identityTwo = `wetdroolid:v1:${networkTwo}:${identityAddress}`;
+    const subjectIdentityOne = `wetdroolid:v1:${networkOne}:${subjectIdentityAddress}`;
+    const subjectIdentityTwo = `wetdroolid:v1:${networkTwo}:${subjectIdentityAddress}`;
     const rootAuthority = publicKey();
     const targetRootAuthority = publicKey();
     const guardianOne = publicKey();
@@ -367,13 +367,13 @@ describe('0008 and 0009 network-scope migrations', () => {
 
       await sql.unsafe(await readFile(join(migrationDirectory, migration0009 as string), 'utf8'));
 
-      const networkThree = `wokenet:v1:${publicKey()}:${programId}`;
+      const networkThree = `droolnet:v1:${publicKey()}:${programId}`;
       const identityThreeAddress = publicKey();
       const subjectIdentityThreeAddress = publicKey();
       const unusedIdentityOneAddress = publicKey();
-      const identityThree = `wokesocialid:v1:${networkThree}:${identityThreeAddress}`;
-      const subjectIdentityThree = `wokesocialid:v1:${networkThree}:${subjectIdentityThreeAddress}`;
-      const unusedIdentityOne = `wokesocialid:v1:${networkOne}:${unusedIdentityOneAddress}`;
+      const identityThree = `wetdroolid:v1:${networkThree}:${identityThreeAddress}`;
+      const subjectIdentityThree = `wetdroolid:v1:${networkThree}:${subjectIdentityThreeAddress}`;
+      const unusedIdentityOne = `wetdroolid:v1:${networkOne}:${unusedIdentityOneAddress}`;
       await sql`
         INSERT INTO identities (
           identity_id, network_id, identity_address, root_authority,
@@ -392,7 +392,7 @@ describe('0008 and 0009 network-scope migrations', () => {
             root_rotation_count, created_slot, created_at, updated_slot, updated_at
           )
           VALUES (
-            ${`wokesocialid:v1:${networkOne}:${mismatchedIdentityAddress}`},
+            ${`wetdroolid:v1:${networkOne}:${mismatchedIdentityAddress}`},
             ${networkThree}, ${mismatchedIdentityAddress}, ${rootAuthority},
             0, 1, ${now}, 1, ${now}
           )

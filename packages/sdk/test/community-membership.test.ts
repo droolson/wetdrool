@@ -10,7 +10,7 @@ import {
   buildModerateCommunityMembershipInstruction,
   deriveWokeCommunityMembershipAddress,
   deriveWokeProtocolConfigAddress,
-  type WokeNetContext,
+  type DroolNetContext,
 } from '../src/index.js';
 
 const key = (byte: number): string => bs58.encode(Uint8Array.from({ length: 32 }, () => byte));
@@ -18,8 +18,8 @@ const manifestHash = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const manifestCid = 'bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku';
 const manifestUri = `ipfs://${manifestCid}`;
 
-const context: WokeNetContext = {
-  endpoint: 'https://rpc.network.woke.social',
+const context: DroolNetContext = {
+  endpoint: 'https://rpc.network.wetdrool.com',
   genesisHash: key(7),
   programAddress: key(8),
 };

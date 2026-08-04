@@ -1,4 +1,4 @@
-import { StatePanel } from '@wokesocial/ui';
+import { StatePanel } from '@wetdrool/ui';
 
 export default function HomeLoading() {
   return (

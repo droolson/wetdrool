@@ -5,9 +5,9 @@ import {
   networkIdSchema,
   solanaPublicKeySchema,
   type ProfilePayload,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
-const PDA_PREFIX = new TextEncoder().encode('wokesocial');
+const PDA_PREFIX = new TextEncoder().encode('wetdrool');
 const PDA_VERSION = Uint8Array.of(1);
 const COMMUNITY_SEED = new TextEncoder().encode('community');
 const MEMBERSHIP_SEED = new TextEncoder().encode('membership');
@@ -135,7 +135,7 @@ export async function deriveWokeCommunityAddress(input: {
 
   const programAddress = networkId.split(':')[3];
   if (programAddress === undefined) {
-    throw new TypeError('WokeNet network or creator identity is malformed.');
+    throw new TypeError('DroolNet network or creator identity is malformed.');
   }
   const [communityAddress] = await getProgramDerivedAddress({
     programAddress: address(programAddress),
@@ -164,7 +164,7 @@ export async function deriveWokeCommunityMembershipAddressForNetwork(input: {
   );
   const programAddress = networkId.split(':')[3];
   if (programAddress === undefined) {
-    throw new TypeError('WokeNet network is malformed.');
+    throw new TypeError('DroolNet network is malformed.');
   }
   const [membershipAddress] = await getProgramDerivedAddress({
     programAddress: address(programAddress),
@@ -184,7 +184,7 @@ export function wokeIdentityAddressFromId(input: {
   readonly identityId: string;
 }): string {
   const networkId = networkIdSchema.parse(input.networkId);
-  return identityAddressForNetwork(networkId, input.identityId, 'WokeSocial identity');
+  return identityAddressForNetwork(networkId, input.identityId, 'WetDrool identity');
 }
 
 function identityAddressForNetwork(
@@ -193,9 +193,9 @@ function identityAddressForNetwork(
   label: string,
 ): string {
   const identityId = identityIdSchema.parse(identityIdInput);
-  const identityPrefix = `wokesocialid:v1:${networkId}:`;
+  const identityPrefix = `wetdroolid:v1:${networkId}:`;
   if (!identityId.startsWith(identityPrefix)) {
-    throw new TypeError(`${label} must belong to the supplied WokeNet network.`);
+    throw new TypeError(`${label} must belong to the supplied DroolNet network.`);
   }
   const identityAddress = identityId.slice(identityPrefix.length);
   return solanaPublicKeySchema.parse(identityAddress);

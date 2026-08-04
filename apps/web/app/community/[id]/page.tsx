@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import {
@@ -13,7 +13,7 @@ import { abbreviate, formatUtcDate } from '@/lib/presentation';
 
 export const metadata: Metadata = {
   title: 'Community',
-  description: 'Inspect a verified WokeSocial community by its Solana address.',
+  description: 'Inspect a verified WetDrool community by its Solana address.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -103,7 +103,7 @@ function CommunityOverview({
           <p className="section-kicker">Bound governance</p>
           <h2 id="community-governance-title">One active member, one vote.</h2>
           <p>
-            The accepted v2 manifest commits to one exact WokeNet strategy. This view does not infer
+            The accepted v2 manifest commits to one exact DroolNet strategy. This view does not infer
             token weights, delegated voting, moderator overrides, or executable proposal effects.
           </p>
         </div>
@@ -223,7 +223,7 @@ function CommunityOverview({
             </dd>
           </div>
           <div>
-            <dt>WokeNet deployment</dt>
+            <dt>DroolNet deployment</dt>
             <dd>
               <code>{community.networkId}</code>
             </dd>
@@ -313,7 +313,7 @@ function CommunityOverview({
         </dl>
         <p>
           Accepted from {result.endpoint}. The index is replaceable; the portable manifest and its
-          WokeNet Solana commitments are the verification boundary.
+          DroolNet Solana commitments are the verification boundary.
         </p>
       </details>
 
@@ -433,7 +433,7 @@ export default async function CommunityPage({ params }: { params: Promise<{ id: 
           eyebrow="No community data accepted"
           title={
             result.reason === 'unconfigured'
-              ? 'Connect an indexer and WokeNet network scope.'
+              ? 'Connect an indexer and DroolNet network scope.'
               : 'The community provider is safely degraded.'
           }
           tone="degraded"

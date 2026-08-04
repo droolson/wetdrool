@@ -8,19 +8,19 @@ import {
 
 import { extractWokeManifestCid } from './manifest-uri.js';
 import {
-  createWokeNetContext,
+  createDroolNetContext,
   deriveWokeProtocolConfigAddress,
   WOKENET_SYSTEM_PROGRAM_ADDRESS,
-  type ValidatedWokeNetContext,
+  type ValidatedDroolNetContext,
   type WokeInstruction,
-  type WokeNetContext,
+  type DroolNetContext,
 } from './woke-payments.js';
 
 const U64_MAX = 18_446_744_073_709_551_615n;
 const MANIFEST_HASH_BYTES = 32;
 const MAX_MANIFEST_URI_BYTES = 200;
 
-const PDA_PREFIX = ascii('wokesocial');
+const PDA_PREFIX = ascii('wetdrool');
 const PDA_VERSION = Uint8Array.of(1);
 const MEMBERSHIP_SEED = ascii('membership');
 const ADDRESS_ENCODER = getAddressEncoder();
@@ -110,11 +110,11 @@ export interface BuiltWokeCommunityMembershipInstruction {
 }
 
 export async function deriveWokeCommunityMembershipAddress(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   communityInput: string,
   memberIdentityInput: string,
 ): Promise<string> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const community = parseAddress(communityInput, 'community');
   const memberIdentity = parseAddress(memberIdentityInput, 'member identity');
   assertNotProtocolProgram(context, [
@@ -140,10 +140,10 @@ export async function deriveWokeCommunityMembershipAddress(
  * signs, submits, or claims finality.
  */
 export async function buildJoinCommunityInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildJoinCommunityInput,
 ): Promise<BuiltWokeCommunityMembershipInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const parsed = await parseMemberAction(context, input);
   const payer = parseAddress(input.payer, 'membership rent payer');
   assertNotProtocolProgram(context, [['membership rent payer', payer]]);
@@ -183,10 +183,10 @@ export async function buildJoinCommunityInstruction(
  * therefore carries neither a payer nor the System Program.
  */
 export async function buildLeaveCommunityInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildMemberCommunityActionInput,
 ): Promise<BuiltWokeCommunityMembershipInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const parsed = await parseMemberAction(context, input);
   assertDistinctProtocolAccounts([
     parsed.config,
@@ -221,10 +221,10 @@ export async function buildLeaveCommunityInstruction(
  * a community authority cannot manufacture a member's join or withdrawal.
  */
 export async function buildModerateCommunityMembershipInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildModerateCommunityMembershipInput,
 ): Promise<BuiltWokeCommunityMembershipInstruction> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   if (input.action !== 'remove' && input.action !== 'ban') {
     throw new WokeMembershipError(
       'invalid-action',
@@ -351,7 +351,7 @@ interface ParsedMemberAction extends CommunityMembershipActionCoordinates {
 }
 
 async function parseMemberAction(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   input: BuildMemberCommunityActionInput,
 ): Promise<ParsedMemberAction> {
   const config = await deriveWokeProtocolConfigAddress(context);
@@ -446,7 +446,7 @@ function parseManifest(input: CommunityMembershipManifestReference): {
   ) {
     throw new WokeMembershipError(
       'invalid-manifest',
-      'The membership manifest URI does not satisfy the bounded WokeSocial URI policy.',
+      'The membership manifest URI does not satisfy the bounded WetDrool URI policy.',
     );
   }
   return {
@@ -503,14 +503,14 @@ function assertDistinctProtocolAccounts(accounts: readonly string[]): void {
 }
 
 function assertNotProtocolProgram(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   accounts: readonly (readonly [label: string, address: string])[],
 ): void {
   const aliased = accounts.find(([, candidate]) => candidate === context.programAddress);
   if (aliased !== undefined) {
     throw new WokeMembershipError(
       'alias',
-      `The ${aliased[0]} cannot alias the WokeSocial protocol program.`,
+      `The ${aliased[0]} cannot alias the WetDrool protocol program.`,
     );
   }
 }
@@ -568,14 +568,14 @@ function assertPayerDoesNotAliasProtocolState(
 }
 
 function optionalDelegationMeta(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   delegation: string | undefined,
 ): AccountMeta {
   return meta(delegation ?? context.programAddress, AccountRole.READONLY);
 }
 
 function instruction(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   accounts: readonly AccountMeta[],
   data: Uint8Array,
 ): WokeInstruction {

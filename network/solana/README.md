@@ -1,19 +1,19 @@
-# WokeNet on Solana
+# DroolNet on Solana
 
-WokeNet is the WokeSocial protocol deployment layer on the Solana blockchain.
+DroolNet is the WetDrool protocol deployment layer on the Solana blockchain.
 It is not a validator implementation, a Solana fork, or a separate consensus
 network.
 
 The onchain application is the Anchor program in
-`programs/social_protocol`. A WokeNet deployment identifier keeps the existing
+`programs/social_protocol`. A DroolNet deployment identifier keeps the existing
 portable form:
 
 ```text
-wokenet:v1:<solana-genesis-hash>:<social-protocol-program-id>
+droolnet:v1:<solana-genesis-hash>:<social-protocol-program-id>
 ```
 
 The first base58 value identifies the Solana cluster genesis and the second
-identifies the deployed WokeSocial program. The `wokenet:v1` prefix is an
+identifies the deployed WetDrool program. The `droolnet:v1` prefix is an
 application namespace; it does not claim a sovereign chain.
 
 ## Deployment status
@@ -22,7 +22,7 @@ application namespace; it does not claim a sovereign chain.
   tests.
 - Solana devnet: not deployed.
 - Solana mainnet-beta: not deployed.
-- `$WOKE`: no mint exists yet. Branded payment actions must remain disabled
+- `$DROOL`: no mint exists yet. Branded payment actions must remain disabled
   until an exact SPL or Token-2022 mint, decimals, authorities, extensions, and
   legal/tokenomics review are recorded.
 

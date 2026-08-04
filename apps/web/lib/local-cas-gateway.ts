@@ -1,9 +1,9 @@
-import { isCanonicalRawSha256Cid, verifyContentCid, verifyEnvelope } from '@wokesocial/protocol';
+import { isCanonicalRawSha256Cid, verifyContentCid, verifyEnvelope } from '@wetdrool/protocol';
 import {
   LocalContentAddressedStorage,
   type ContentAddressedStorage,
   type StorageReceipt,
-} from '@wokesocial/storage';
+} from '@wetdrool/storage';
 
 import { LOCAL_CAS_RECEIPT_SCHEMA, type LocalCasWriteResult } from './local-cas-contract';
 import type { LocalCasConfig } from './local-cas-config';

@@ -1,0 +1,28 @@
+{
+  "name": "@wetdrool/mesh",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "description": "Anytype/any-sync inspired local-first mesh adapters for WetDrool (interfaces first)",
+  "license": "SEE LICENSE IN LICENSE",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist coverage",
+    "lint": "eslint src test",
+    "test": "vitest run --exclude 'dist/**'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}

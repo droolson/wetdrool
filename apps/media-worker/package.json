@@ -1,5 +1,5 @@
 {
-  "name": "@wokesocial/media-worker",
+  "name": "@wetdrool/media-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -23,10 +23,10 @@
   "dependencies": {
     "@fastify/cors": "11.3.0",
     "@fastify/rate-limit": "11.1.0",
-    "@wokesocial/config": "workspace:*",
-    "@wokesocial/protocol": "workspace:*",
-    "@wokesocial/rate-limit": "workspace:*",
-    "@wokesocial/storage": "workspace:*",
+    "@wetdrool/config": "workspace:*",
+    "@wetdrool/protocol": "workspace:*",
+    "@wetdrool/rate-limit": "workspace:*",
+    "@wetdrool/storage": "workspace:*",
     "fastify": "5.10.0",
     "file-type": "22.0.1",
     "sharp": "0.35.3",

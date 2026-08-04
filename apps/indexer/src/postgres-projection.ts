@@ -1,6 +1,6 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres';
 
-import { communityContentSchema, type CommunityMembershipContent } from '@wokesocial/protocol';
+import { communityContentSchema, type CommunityMembershipContent } from '@wetdrool/protocol';
 
 import {
   assertUnambiguousEventOrder,
@@ -775,7 +775,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
       const expectedPreviousObjectId =
         previous[0] === undefined
           ? undefined
-          : `wokesocialobj:v1:community-membership:${previous[0].manifest_hash}`;
+          : `wetdroolobj:v1:community-membership:${previous[0].manifest_hash}`;
       if (
         BigInt(content.replacement.sequence) !== event.membershipStateSequence ||
         content.replacement.replaces?.id !== expectedPreviousObjectId
@@ -1141,7 +1141,7 @@ export class PostgresProjectionStore implements ProjectionStore, IngestionStateS
     const verified =
       manifest === undefined ? undefined : requireManifest(event, manifest, 'community-membership');
     const content = verified?.content as CommunityMembershipContent | undefined;
-    const objectId = `wokesocialobj:v1:community-membership:${event.manifestHash}`;
+    const objectId = `wetdroolobj:v1:community-membership:${event.manifestHash}`;
     if (
       (current === undefined &&
         (event.action !== 'join' ||

@@ -1,11 +1,11 @@
 import Link from 'next/link';
 
 const DOCK_LINKS = [
-  { glyph: 'H', href: '/home', label: 'Home' },
-  { glyph: 'E', href: '/explore', label: 'Explore' },
-  { glyph: '+', href: '/compose', label: 'Compose', primary: true },
-  { glyph: 'N', href: '/notifications', label: 'Notifications' },
-  { glyph: 'M', href: '/messages', label: 'Messages' },
+  { glyph: '▣', href: '/hub', label: 'Hub' },
+  { glyph: '▶', href: '/feeds', label: 'Shorts' },
+  { glyph: '+', href: '/compose', label: 'Post', primary: true },
+  { glyph: '◉', href: '/live', label: 'Live' },
+  { glyph: '◆', href: '/creator/kingofqueens6ix', label: 'Creators' },
 ] as const;
 
 export function MobileDock() {

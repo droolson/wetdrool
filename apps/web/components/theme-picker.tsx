@@ -11,8 +11,8 @@ const THEMES: readonly { label: string; value: Theme }[] = [
   { label: 'Contrast', value: 'contrast' },
 ];
 
-const STORAGE_KEY = 'wokesocial-theme';
-const THEME_CHANGE_EVENT = 'wokesocial-theme-change';
+const STORAGE_KEY = 'wetdrool-theme';
+const THEME_CHANGE_EVENT = 'wetdrool-theme-change';
 
 function isTheme(value: string | null): value is Theme {
   return THEMES.some((theme) => theme.value === value);

@@ -22,15 +22,15 @@ describe('canonical protocol objects', () => {
 
     expect(canonicalizePayload(first)).toEqual(canonicalizePayload(second));
     expect(getObjectId(first)).toBe(getObjectId(second));
-    expect(getObjectId(first)).toMatch(/^wokesocialobj:v1:post:u[A-Za-z0-9_-]{43}$/u);
+    expect(getObjectId(first)).toMatch(/^wetdroolobj:v1:post:u[A-Za-z0-9_-]{43}$/u);
   });
 
-  it('preserves the canonical WokeNet v1 post golden vector', async () => {
+  it('preserves the canonical DroolNet v1 post golden vector', async () => {
     const payload = buildPostPayload(identity, postContent, { createdAt, nonce });
     const envelope = signPayload(payload, privateKey);
 
     expect(getObjectId(payload)).toBe(
-      'wokesocialobj:v1:post:uI2G7vVX5Pxdh6giJ7Zyv8sVQ4-Xz-CK5J_plklQMXbQ',
+      'wetdroolobj:v1:post:uI2G7vVX5Pxdh6giJ7Zyv8sVQ4-Xz-CK5J_plklQMXbQ',
     );
     expect(envelope.proof.payloadHash).toBe('uI2G7vVX5Pxdh6giJ7Zyv8sVQ4-Xz-CK5J_plklQMXbQ');
     expect(envelope.proof.signature).toBe(

@@ -1,10 +1,10 @@
-import { canonicalizeWokeName, WokeNameError } from '@wokesocial/protocol';
+import { canonicalizeWokeName, WokeNameError } from '@wetdrool/protocol';
 
-import { WOKE_AI_SITE_BUILDER_MODEL, type WokeAiSiteGenerationRequest } from './woke-ai';
+import { DROOL_AI_SITE_BUILDER_MODEL, type DroolAiSiteGenerationRequest } from './drool-ai';
 
-export const SITE_BUILDER_DRAFT_STORAGE_KEY = 'wokesocial:site-builder-draft:v1';
+export const SITE_BUILDER_DRAFT_STORAGE_KEY = 'wetdrool:site-builder-draft:v1';
 export const SITE_BUILDER_DRAFT_VERSION = 1 as const;
-export const SITE_SUFFIX = '.woke.social';
+export const SITE_SUFFIX = '.wetdrool.com';
 
 export class SiteSubdomainError extends Error {
   override readonly name = 'SiteSubdomainError';
@@ -18,8 +18,8 @@ export interface SiteSubdomain {
 }
 
 /**
- * Maps a canonical `.woke` handle onto its reserved identity bundle: the
- * `*.woke.social` DNS label and the `handle@woke.social` mail address.
+ * Maps a canonical `.drool` handle onto its reserved identity bundle: the
+ * `*.wetdrool.com` DNS label and the `handle@wetdrool.com` mail address.
  * Handles use `[a-z0-9_]` and can never contain `-`, so replacing `_` with
  * `-` is injective for the DNS label: two different handles can never claim
  * one label. Handles never start or end with `_`, so the label is a valid
@@ -37,14 +37,14 @@ export function deriveSiteSubdomain(handleInput: string): SiteSubdomain {
     if (error instanceof WokeNameError) {
       throw new SiteSubdomainError(error.message);
     }
-    throw new SiteSubdomainError('The handle is not a canonical WokeNet handle.');
+    throw new SiteSubdomainError('The handle is not a canonical DroolNet handle.');
   }
   const label = handle.replaceAll('_', '-');
   return Object.freeze({
     handle,
     label,
     host: `${label}${SITE_SUFFIX}`,
-    email: `${handle}@woke.social`,
+    email: `${handle}@wetdrool.com`,
   });
 }
 
@@ -71,7 +71,7 @@ export const SITE_PRESETS = [
     featured: false,
     headline: 'Your posts, portable and permanent.',
     description:
-      'A clean reading surface that can syndicate your verified WokeSocial posts with an about section and links.',
+      'A clean reading surface that can syndicate your verified WetDrool posts with an about section and links.',
     sections: ['hero', 'recent-posts', 'about', 'links'],
   },
   {
@@ -79,7 +79,7 @@ export const SITE_PRESETS = [
     label: 'Work Portfolio',
     featured: false,
     headline: 'Show the work, keep the receipts.',
-    description: 'Projects, experience, and contact routes with your `.woke` identity up front.',
+    description: 'Projects, experience, and contact routes with your `.drool` identity up front.',
     sections: ['hero', 'projects', 'experience', 'contact'],
   },
 ] as const;
@@ -119,7 +119,7 @@ export interface SiteBuilderValidation {
 export function validateSiteBuilderDraft(draft: SiteBuilderDraft): SiteBuilderValidation {
   const errors: Partial<Record<'handle' | 'prompt' | 'tagline' | 'title', string>> = {};
   if (draft.handle.trim() === '') {
-    errors.handle = 'Enter the .woke handle this site belongs to.';
+    errors.handle = 'Enter the .drool handle this site belongs to.';
   } else {
     try {
       deriveSiteSubdomain(draft.handle);
@@ -127,7 +127,7 @@ export function validateSiteBuilderDraft(draft: SiteBuilderDraft): SiteBuilderVa
       errors.handle =
         error instanceof SiteSubdomainError
           ? error.message
-          : 'The handle is not a canonical WokeNet handle.';
+          : 'The handle is not a canonical DroolNet handle.';
     }
   }
   if (draft.title.trim() === '') errors.title = 'Give the site a title.';
@@ -186,11 +186,11 @@ export function discardSiteBuilderDraft(storage: DraftStorage): void {
 }
 
 /**
- * Builds the exact generation request the Woke AI runtime will receive for
+ * Builds the exact generation request the Drool AI runtime will receive for
  * this draft. Deterministic and pure: the same draft always prepares the same
  * request, so a retry can never silently change what was approved.
  */
-export function prepareSiteGenerationRequest(draft: SiteBuilderDraft): WokeAiSiteGenerationRequest {
+export function prepareSiteGenerationRequest(draft: SiteBuilderDraft): DroolAiSiteGenerationRequest {
   const preset = SITE_PRESETS.find((candidate) => candidate.id === draft.preset);
   if (preset === undefined) {
     throw new SiteSubdomainError('The selected preset is unknown.');
@@ -198,7 +198,7 @@ export function prepareSiteGenerationRequest(draft: SiteBuilderDraft): WokeAiSit
   const subdomain = deriveSiteSubdomain(draft.handle);
   return Object.freeze({
     kind: 'site-generation',
-    model: WOKE_AI_SITE_BUILDER_MODEL,
+    model: DROOL_AI_SITE_BUILDER_MODEL,
     preset: preset.id,
     subdomain: subdomain.host,
     brief: Object.freeze({

@@ -39,7 +39,7 @@ loadEnvFile(environmentFile);
 assertSafeLocalDevelopmentEnvironment(process.env);
 
 run(process.execPath, ['scripts/infra.mjs', 'up']);
-run('pnpm', ['--filter', '@wokesocial/config', 'env:check']);
+run('pnpm', ['--filter', '@wetdrool/config', 'env:check']);
 
 let executedSteps = 0;
 for (const { directory, manifest } of await readWorkspacePackages()) {

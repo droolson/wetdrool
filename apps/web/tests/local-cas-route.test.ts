@@ -2,8 +2,8 @@ import { mkdtemp, readFile, readdir, rm, stat, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { getContentCid } from '@wokesocial/protocol';
-import type { ContentAddressedStorage } from '@wokesocial/storage';
+import { getContentCid } from '@wetdrool/protocol';
+import type { ContentAddressedStorage } from '@wetdrool/storage';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -21,7 +21,7 @@ describe('localnet CAS route', () => {
   let rootDirectory: string;
 
   beforeEach(async () => {
-    rootDirectory = await mkdtemp(join(tmpdir(), 'wokesocial-web-cas-'));
+    rootDirectory = await mkdtemp(join(tmpdir(), 'wetdrool-web-cas-'));
   });
 
   afterEach(async () => {
@@ -45,7 +45,7 @@ describe('localnet CAS route', () => {
         policy: { permanence: 'deletion-compatible' },
         provider: 'local-filesystem',
         providerVersion: '1',
-        schema: 'wokesocial.local-cas-receipt.v1',
+        schema: 'wetdrool.local-cas-receipt.v1',
         verified: true,
       },
     });
@@ -150,10 +150,10 @@ describe('localnet CAS route', () => {
   it('does not accept private-key, seed, recovery, or PRF request fields', async () => {
     const cid = await getContentCid(bytes);
     for (const name of [
-      'x-wokesocial-private-key',
-      'x-wokesocial-prf-output',
-      'x-wokesocial-recovery-material',
-      'x-wokesocial-seed',
+      'x-wetdrool-private-key',
+      'x-wetdrool-prf-output',
+      'x-wetdrool-recovery-material',
+      'x-wetdrool-seed',
     ]) {
       const response = await handleLocalCasWriteRequest(
         requestFor(bytes, cid, { headers: { [name]: 'must-not-cross-http' } }),
@@ -189,7 +189,7 @@ describe('localnet CAS route', () => {
     const remoteConfiguration = await handleLocalCasWriteRequest(requestFor(bytes, cid), {
       environment: {
         ...environment(rootDirectory),
-        WOKESOCIAL_LOCAL_CAS_ORIGIN: 'https://woke.social',
+        WETDROOL_LOCAL_CAS_ORIGIN: 'https://wetdrool.com',
       },
     });
     const remoteRequest = await handleLocalCasWriteRequest(
@@ -338,9 +338,9 @@ function environment(rootDirectory: string, maximumObjectBytes = 262_144): Recor
     APP_ENV: 'development',
     CONTENT_STORAGE_PATH: rootDirectory,
     NODE_ENV: 'test',
-    WOKESOCIAL_LOCAL_CAS_MAX_BYTES: String(maximumObjectBytes),
-    WOKESOCIAL_LOCAL_CAS_MODE: 'localnet',
-    WOKESOCIAL_LOCAL_CAS_ORIGIN: ORIGIN,
+    WETDROOL_LOCAL_CAS_MAX_BYTES: String(maximumObjectBytes),
+    WETDROOL_LOCAL_CAS_MODE: 'localnet',
+    WETDROOL_LOCAL_CAS_ORIGIN: ORIGIN,
   };
 }
 

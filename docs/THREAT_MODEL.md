@@ -4,7 +4,7 @@ Last reviewed: 2026-07-29
 
 ## Status and method
 
-This is the initial design threat model for WokeSocial and WokeNet. The repository now
+This is the initial design threat model for WetDrool and DroolNet. The repository now
 contains a narrow experimental foundation with selected protocol, storage,
 program, indexer, container, and web tests. Those tests provide partial evidence
 for integrity, authorization, and availability mitigations, but the threat model
@@ -34,7 +34,7 @@ The model MUST be updated when:
 
 - User root authorities, wallet keys, passkeys, device keys, recovery
   configuration, and revocation state.
-- WokeNet social-program source/SBF binaries, program-data accounts, upgrade
+- DroolNet social-program source/SBF binaries, program-data accounts, upgrade
   authority, program IDs, exact Solana genesis binding, protocol configuration,
   deployment slot, and deployment attestations.
 - Future mint-aware payment recipients, exact token programs/mints/accounts,
@@ -106,7 +106,7 @@ flowchart LR
     DB["PostgreSQL projection"]
     R["Redis cache / queue"]
     RPC["One or more Solana RPCs"]
-    WN["WokeNet program on Solana"]
+    WN["DroolNet program on Solana"]
     ST["Content-addressed storage providers"]
     REL["Replaceable relays"]
     OP["Operator control plane"]
@@ -179,7 +179,7 @@ release checks remain **Planned** unless linked to evidence elsewhere.
 | MOB-05 | Signing key, update channel, store account, or dependency is compromised | Separated hardware-backed custody, quorum/approval, pinned dependencies, provenance, monitoring, revocation and rollback runbook | Release compromise tabletop and rollback drill |
 | MOB-06 | A spoofable Seeker model hint grants value or privileges | Treat model metadata as presentation-only; require wallet proof and an independently verified entitlement for any future benefit | Spoofed-device and replay tests |
 
-## WokeNet program, Solana RPC, and transaction threats
+## DroolNet program, Solana RPC, and transaction threats
 
 All mitigations below are **Planned**.
 
@@ -188,17 +188,17 @@ All mitigations below are **Planned**.
 | WN-01 | Malicious prompt drains funds or grants unintended authority | Decode allowlisted instructions, show recipients/assets/amounts/fees, reject unknown programs | Golden transaction summaries and adversarial substitution tests |
 | WN-02 | Transaction changes after simulation | Compare the exact compiled message, accounts, instructions, and blockhash immediately before signing | Message mutation and wallet-adapter integration tests |
 | WN-03 | RPC lies about account state, simulation, or confirmation | Multiple configurable RPCs, exact genesis/program-ID checks, finality policy, cross-provider reconciliation | Fault-injected RPC and failover tests |
-| WN-04 | Wrong genesis or lookalike program receives a transaction | Genesis-bound `wokenet:v1` namespace, pinned program IDs, visible network indicator | Wrong-genesis and program-substitution tests |
+| WN-04 | Wrong genesis or lookalike program receives a transaction | Genesis-bound `droolnet:v1` namespace, pinned program IDs, visible network indicator | Wrong-genesis and program-substitution tests |
 | WN-05 | PDA/account substitution bypasses authority | Domain-separated seeds, ownership/signer/has-one constraints, explicit relationships | Account substitution and seed-collision tests |
 | WN-06 | Duplicate initialization or replay creates duplicate effects | Nonces/idempotency state, uniqueness constraints, checked state transitions | Duplicate, stale, and reordered transaction tests |
 | WN-07 | Overflow, underflow, account growth, or compute exhaustion corrupts state | Checked arithmetic, bounded strings/vectors, fixed sizing, compute and transaction-size analysis | Boundary, fuzz/property, and compute-budget tests |
 | WN-08 | Unauthorized close or realloc steals rent or destroys state | Close authority checks, destination checks, lifecycle invariants, tombstones | Unauthorized close/realloc tests |
 | WN-09 | Program upgrade authority compromise deploys malicious code | Independent hardware-backed multisig, delay, verifiable build, public authority monitoring | Key ceremony, binary verification, emergency tabletop |
 | WN-10 | Sponsor is drained or abused as an oracle | Transaction-shape allowlist, subject/action budgets, idempotency, isolated low-balance key, kill switch | Abuse load tests, policy bypass tests, loss-limit drill |
-| WN-11 | A client or sponsor attempts the quarantined lamport ABI, relabels SOL as `$WOKE`, or tries to unpause legacy payments | Permanently fail-closed program policy, client/sponsor denylist, truthful portable asset schema, legacy events never grant access | Attempted execute/unpause, `{kind:"woke"}`, mislabeled-asset, and fake-entitlement tests |
+| WN-11 | A client or sponsor attempts the quarantined lamport ABI, relabels SOL as `$DROOL`, or tries to unpause legacy payments | Permanently fail-closed program policy, client/sponsor denylist, truthful portable asset schema, legacy events never grant access | Attempted execute/unpause, `{kind:"woke"}`, mislabeled-asset, and fake-entitlement tests |
 | WN-12 | A future SPL/Token-2022 mint, token account, recipient, decimals, or extension is substituted | Separately approved mint-aware ABI, exact token-program/mint/account constraints, signed terms, deterministic splits, simulation and finalized receipt verification | Recipient/mint/token-account/extension/rounding/replay tests |
 | WN-13 | A malicious or misconfigured Solana RPC omits transactions or returns incomplete/inconsistent state | Exact genesis/program binding, capability checks, finalized commitment, provider diversity and cross-checking | Submit/simulate/status/history/program-account fault and failover suite |
-| WN-14 | A compromised build or deployment publishes different WokeNet program bytes | Pinned toolchain/dependencies, reproducible SBF build, artifact hash, deployed-byte and program-data verification | Independent build/deployment reproduction and provenance check |
+| WN-14 | A compromised build or deployment publishes different DroolNet program bytes | Pinned toolchain/dependencies, reproducible SBF build, artifact hash, deployed-byte and program-data verification | Independent build/deployment reproduction and provenance check |
 | WN-15 | Wrong Solana cluster, program ID, deployment slot, or upgrade authority is advertised | Signed deployment manifest, exact observed genesis, executable/program-data checks, public authority monitoring | Lookalike-cluster/program and authority-substitution tests |
 | WN-16 | Priority-fee, blockhash, simulation, or commitment handling causes false success or excess spend | Bounded fee policy, fresh blockhash, same-byte signing, finalized confirmation, reconciliation and explicit pending/degraded UI | Expiry, fee-spike, simulation drift, timeout and delayed-finality tests |
 | WN-17 | Solana outage, congestion, reorganization, or provider concentration blocks or delays writes | Multiple RPC providers, cached verified reads, safe write stop, retry/reconciliation policy, transparent status | Provider evacuation, congestion, reorg and degraded-mode exercises |
@@ -206,7 +206,7 @@ All mitigations below are **Planned**.
 | WN-19 | A creator assigns membership without consent, a moderator action is disguised as join/leave, a banned member rejoins, or a stale sequence corrupts governance eligibility | Separate member and creator/scoped-delegate authority paths, exact action/state/role pairs, deterministic PDA, signed membership-v2 manifest, optimistic identity/state/policy/community sequences, terminal ban, proposal membership-sequence snapshot | Root/delegate substitution, self-moderation, invalid transition, stale sequence, response-loss retry, same-slot join/proposal, and post-snapshot rejoin tests |
 
 Residual risk: transaction finality and availability depend on Solana and its
-provider ecosystem, which WokeSocial does not operate or control. Clients must
+provider ecosystem, which WetDrool does not operate or control. Clients must
 expose pending/finalized/degraded states and never claim success early.
 
 ## Manifest, storage, indexer, and feed threats
@@ -326,14 +326,14 @@ The following decisions cannot be silently delegated to implementation:
 
 1. The specific reviewed protocols and libraries for one-to-one and group
    messaging.
-2. Production Solana cluster/program binding, WokeNet program-upgrade and
+2. Production Solana cluster/program binding, DroolNet program-upgrade and
    emergency-authority quorums, signer organizations, delays, and immutability
    criteria.
 3. Recovery guardian model, delay ranges, notification channels, and risk
    acceptance.
 4. Default storage deletion/permanence policy and Arweave consent boundary.
 5. Sponsor loss ceilings and abuse controls.
-6. Whether `$WOKE` remains in scope and, if so, the SPL/Token-2022 mint,
+6. Whether `$DROOL` remains in scope and, if so, the SPL/Token-2022 mint,
    authorities, extensions, supply/distribution/tokenomics, replacement ABI,
    migration, consumer/legal posture, and entitlement rules. No mint or payment
    baseline exists today.

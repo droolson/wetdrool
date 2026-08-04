@@ -11,12 +11,12 @@ import {
 
 import { extractWokeManifestCid } from './manifest-uri.js';
 import {
-  createWokeNetContext,
+  createDroolNetContext,
   deriveWokeProtocolConfigAddress,
   WOKENET_SYSTEM_PROGRAM_ADDRESS,
-  type ValidatedWokeNetContext,
+  type ValidatedDroolNetContext,
   type WokeInstruction,
-  type WokeNetContext,
+  type DroolNetContext,
 } from './woke-payments.js';
 import type {
   WokeTransactionSimulationSnapshot,
@@ -34,7 +34,7 @@ const MAX_EVENT_BASE64_CHARACTERS = 1_024;
 const MAX_LOG_LINES = 1_024;
 const MAX_LOG_LINE_CHARACTERS = 16_384;
 
-const PDA_PREFIX = ascii('wokesocial');
+const PDA_PREFIX = ascii('wetdrool');
 const PDA_VERSION = Uint8Array.of(ACCOUNT_VERSION);
 const IDENTITY_SEED = ascii('identity');
 const POST_SEED = ascii('post');
@@ -87,7 +87,7 @@ export class WokeIdentityPublicationError extends Error {
 }
 
 export interface WokeIdentityCoordinates {
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly configAddress: string;
   readonly identityAddress: string;
   readonly identityBump: number;
@@ -131,7 +131,7 @@ export interface BuildPublishWokePostInput {
 
 export interface BuiltPublishWokePostInstruction {
   readonly kind: 'publish-post';
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly configAddress: string;
   readonly authorIdentity: string;
   readonly expectedAuthorSequence: bigint;
@@ -224,14 +224,14 @@ export type WokePostPublicationReconciliation =
  * already an independent PDA seed.
  */
 export async function derivePrimaryWokeIdentityCoordinates(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   rootAuthorityInput: string,
 ): Promise<WokeIdentityCoordinates> {
   return deriveIdentityCoordinates(contextInput, rootAuthorityInput, PRIMARY_IDENTITY_NONCE);
 }
 
 export async function deriveWokePostReferenceAddress(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   authorIdentityInput: string,
   postNonceInput: Uint8Array,
 ): Promise<string> {
@@ -244,7 +244,7 @@ export async function deriveWokePostReferenceAddress(
  * sign, simulate, submit, or claim that the identity exists.
  */
 export async function buildCreateWokeIdentityInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildCreateWokeIdentityInput,
 ): Promise<BuiltCreateWokeIdentityInstruction> {
   const coordinates = await deriveIdentityCoordinates(
@@ -277,7 +277,7 @@ export async function buildCreateWokeIdentityInstruction(
 }
 
 export async function buildCreatePrimaryWokeIdentityInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildCreatePrimaryWokeIdentityInput,
 ): Promise<BuiltCreateWokeIdentityInstruction> {
   return buildCreateWokeIdentityInstruction(contextInput, {
@@ -292,7 +292,7 @@ export async function buildCreatePrimaryWokeIdentityInstruction(
  * defensively copied from the caller.
  */
 export async function buildPublishWokePostInstruction(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   input: BuildPublishWokePostInput,
 ): Promise<BuiltPublishWokePostInstruction> {
   const coordinates = await derivePostCoordinates(
@@ -428,7 +428,7 @@ export function verifyWokeIdentityAccount(
   ) {
     throw operationError(
       'invalid-account',
-      'The Identity account does not match its deterministic WokeNet coordinates.',
+      'The Identity account does not match its deterministic DroolNet coordinates.',
     );
   }
   return identity;
@@ -652,7 +652,7 @@ export function createWokePostSimulationVerifier(
 }
 
 interface DerivedPostCoordinates {
-  readonly context: ValidatedWokeNetContext;
+  readonly context: ValidatedDroolNetContext;
   readonly authorIdentity: string;
   readonly postNonce: Uint8Array;
   readonly postReferenceAddress: string;
@@ -660,16 +660,16 @@ interface DerivedPostCoordinates {
 }
 
 async function deriveIdentityCoordinates(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   rootAuthorityInput: string,
   nonceInput: Uint8Array,
 ): Promise<WokeIdentityCoordinates> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const originAuthority = parseAddress(rootAuthorityInput, 'identity root authority');
   if (originAuthority === context.programAddress) {
     throw operationError(
       'alias',
-      'The identity root authority cannot alias the WokeSocial protocol program.',
+      'The identity root authority cannot alias the WetDrool protocol program.',
     );
   }
   const identityNonce = parseNonce(nonceInput, 'identity nonce');
@@ -696,16 +696,16 @@ async function deriveIdentityCoordinates(
 }
 
 async function derivePostCoordinates(
-  contextInput: WokeNetContext,
+  contextInput: DroolNetContext,
   authorIdentityInput: string,
   nonceInput: Uint8Array,
 ): Promise<DerivedPostCoordinates> {
-  const context = createWokeNetContext(contextInput);
+  const context = createDroolNetContext(contextInput);
   const authorIdentity = parseAddress(authorIdentityInput, 'post author identity');
   if (authorIdentity === context.programAddress) {
     throw operationError(
       'alias',
-      'The post author identity cannot alias the WokeSocial protocol program.',
+      'The post author identity cannot alias the WetDrool protocol program.',
     );
   }
   const postNonce = parseNonce(nonceInput, 'post nonce');
@@ -768,13 +768,13 @@ function assertCreationAliases(coordinates: WokeIdentityCoordinates, payer: stri
   ) {
     throw operationError(
       'alias',
-      'The identity rent payer cannot alias a WokeSocial protocol account.',
+      'The identity rent payer cannot alias a WetDrool protocol account.',
     );
   }
 }
 
 function assertPostAliases(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   config: string,
   authorIdentity: string,
   postReference: string,
@@ -788,7 +788,7 @@ function assertPostAliases(
   if (state.includes(rootAuthority) || state.includes(payer)) {
     throw operationError(
       'alias',
-      'The post authority and rent payer cannot alias a WokeSocial protocol account.',
+      'The post authority and rent payer cannot alias a WetDrool protocol account.',
     );
   }
 }
@@ -848,7 +848,7 @@ function parseManifest(
   ) {
     throw operationError(
       'invalid-manifest',
-      'The post manifest URI does not satisfy the bounded WokeSocial URI policy.',
+      'The post manifest URI does not satisfy the bounded WetDrool URI policy.',
     );
   }
   return { hash: Uint8Array.from(hashInput), uri: uriInput };
@@ -865,7 +865,7 @@ function parseAccountBytes(value: Uint8Array, expectedLength: number, label: str
 }
 
 function verifyAccountEnvelope(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   expectedAddress: string,
   account: WokeProgramAccountSnapshot,
   minimumCommitment: WokeAccountCommitment,
@@ -883,7 +883,7 @@ function verifyAccountEnvelope(
   ) {
     throw operationError(
       'invalid-account',
-      'The WokeNet account envelope has the wrong address, owner, commitment, slot, or data.',
+      'The DroolNet account envelope has the wrong address, owner, commitment, slot, or data.',
     );
   }
 }
@@ -907,7 +907,7 @@ function commitmentRank(commitment: unknown): number {
 }
 
 function accountRequest(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   accountAddress: string,
 ): WokeProgramAccountReadRequest {
   return Object.freeze({
@@ -924,12 +924,12 @@ async function readAccount(
   request: WokeProgramAccountReadRequest,
 ): Promise<WokeProgramAccountSnapshot | null> {
   if (reader === null || typeof reader !== 'object' || typeof reader.readAccount !== 'function') {
-    throw operationError('invalid-reader', 'A WokeNet program account reader is required.');
+    throw operationError('invalid-reader', 'A DroolNet program account reader is required.');
   }
   return reader.readAccount(request);
 }
 
-function assertSameContext(left: ValidatedWokeNetContext, right: ValidatedWokeNetContext): void {
+function assertSameContext(left: ValidatedDroolNetContext, right: ValidatedDroolNetContext): void {
   if (
     left.endpoint !== right.endpoint ||
     left.genesisHash !== right.genesisHash ||
@@ -937,13 +937,13 @@ function assertSameContext(left: ValidatedWokeNetContext, right: ValidatedWokeNe
   ) {
     throw operationError(
       'invalid-account',
-      'Identity and post coordinates must belong to the same WokeNet context.',
+      'Identity and post coordinates must belong to the same DroolNet context.',
     );
   }
 }
 
 export function assertWokeOperationSimulationBinding(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   simulation: WokeTransactionSimulationSnapshot,
 ): void {
   if (
@@ -960,7 +960,7 @@ export function assertWokeOperationSimulationBinding(
   ) {
     throw operationError(
       'simulation-mismatch',
-      'The simulation is not bound to the approved WokeNet operation context.',
+      'The simulation is not bound to the approved DroolNet operation context.',
     );
   }
 }
@@ -1157,7 +1157,7 @@ export function decodeExactWokeOperationEvents(
     expected.length === 0 ||
     new Set(expected.map((event) => [...event.discriminator].join(','))).size !== expected.length
   ) {
-    throw operationError('invalid-event', 'The expected WokeNet event set is invalid.');
+    throw operationError('invalid-event', 'The expected DroolNet event set is invalid.');
   }
   if (logs === null || !Array.isArray(logs) || logs.length > MAX_LOG_LINES) {
     throw operationError(
@@ -1256,7 +1256,7 @@ function decodeCanonicalBase64(value: string, label: string): Uint8Array {
 }
 
 function instruction(
-  context: ValidatedWokeNetContext,
+  context: ValidatedDroolNetContext,
   accounts: readonly AccountMeta[],
   data: Uint8Array,
 ): WokeInstruction {

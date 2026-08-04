@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { ButtonLink, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { PostCard } from '@/components/post-card';
 import { getPostById } from '@/lib/indexer';

@@ -32,7 +32,7 @@ describe('atomic primary identity registration', () => {
     });
     expect(built.instructions).toEqual([built.identity.instruction, built.nameClaim.instruction]);
     expect(built.nameClaim.expectedIdentitySequence).toBe(0n);
-    expect(built.nameClaim.randomName.name).toMatch(/^anon_[0-9a-hjkmnp-tv-z]{16}\.woke$/u);
+    expect(built.nameClaim.randomName.name).toMatch(/^anon_[0-9a-hjkmnp-tv-z]{16}\.drool$/u);
 
     const simulation = registrationSimulation(built);
     expect(() =>

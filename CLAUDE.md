@@ -7,7 +7,7 @@ different tools.
 
 ## What this repository is
 
-**WokeSocial** is an open, pre-release social platform; **WokeNet** is its
+**WetDrool** is an open, pre-release social platform; **DroolNet** is its
 portable protocol and Anchor smart-contract layer on **Solana**. This is a
 pnpm-plus-Turborepo monorepo containing one Anchor program, eight TypeScript
 apps, ten shared packages, local Docker infrastructure, and heavyweight
@@ -15,21 +15,21 @@ verification tooling.
 
 Terminology is machine-enforced (`pnpm naming:check`):
 
-- **WokeSocial** = the product, flagship web app, services, native clients.
-- **WokeNet** = the protocol/program layer and deployment metadata. It is
+- **WetDrool** = the product, flagship web app, services, native clients.
+- **DroolNet** = the protocol/program layer and deployment metadata. It is
   **not** a blockchain, Solana fork, validator network, or RPC network.
 - **Solana** = the chain. Validators and RPC providers are external.
-- `woke.social` = canonical origin. The legacy hostname (see
+- `wetdrool.com` = canonical origin. The legacy hostname (see
   `docs/DECISIONS/0008-canonical-domain-transition.md`) is redirect-only and
   never an application or WebAuthn origin. `pnpm domain:check` forbids even
   naming the legacy domain outside an explicit allow-list.
-- **`$WOKE` does not exist.** Never call SOL or lamports `$WOKE`. The legacy
+- **`$DROOL` does not exist.** Never call SOL or lamports `$DROOL`. The legacy
   lamport payment ABI is quarantined and must remain fail-closed.
-- The local checkout directory must be named `wokenet` (naming check enforces
+- The local checkout directory must be named `droolnet` (naming check enforces
   this too).
 
 **Honest status is a core value here.** The repo is pre-release: no devnet or
-mainnet-beta deployment, no `$WOKE` mint, no released mobile app.
+mainnet-beta deployment, no `$DROOL` mint, no released mobile app.
 [TASKS.md](TASKS.md) and [FINAL_REPORT.md](FINAL_REPORT.md) record the exact
 verification boundary. Never present a locally verified subset as
 production-ready, never turn a skipped/mocked gate into a success claim, and
@@ -105,20 +105,20 @@ Unit tests are **vitest 4** everywhere (exception: on-chain program tests are
 
 ```sh
 # one file (fastest loop)
-pnpm --filter @wokesocial/protocol exec vitest run test/signatures.test.ts
+pnpm --filter @wetdrool/protocol exec vitest run test/signatures.test.ts
 
 # one case
-pnpm --filter @wokesocial/indexer exec vitest run test/indexer.test.ts -t "substring"
+pnpm --filter @wetdrool/indexer exec vitest run test/indexer.test.ts -t "substring"
 
 # one package's full suite (includes extras like protocol's schema:check)
-pnpm --filter @wokesocial/protocol test
+pnpm --filter @wetdrool/protocol test
 
 # integration file (serial; needs infra up)
-pnpm --filter @wokesocial/indexer exec vitest run --no-file-parallelism test/handles.integration.test.ts
+pnpm --filter @wetdrool/indexer exec vitest run --no-file-parallelism test/handles.integration.test.ts
 
 # web unit vs. browser
-pnpm --filter @wokesocial/web exec vitest run tests/indexer.test.ts
-pnpm --filter @wokesocial/web exec playwright test e2e/smoke.spec.ts --project chromium
+pnpm --filter @wetdrool/web exec vitest run tests/indexer.test.ts
+pnpm --filter @wetdrool/web exec playwright test e2e/smoke.spec.ts --project chromium
 ```
 
 Gotchas:
@@ -134,7 +134,7 @@ Gotchas:
   `DATABASE_URL` → local default.
 - `packages/protocol`'s `test` script runs `schema:check` first (generated
   JSON Schema drift). After changing protocol schemas, run
-  `pnpm --filter @wokesocial/protocol schema:generate`.
+  `pnpm --filter @wetdrool/protocol schema:generate`.
 - `apps/web` has three Playwright configs: default (`e2e/`),
   `vertical-slice.playwright.config.ts`, and
   `publication-slice.playwright.config.ts` (the latter two require env-provided
@@ -151,7 +151,7 @@ Gotchas:
 ```text
 apps/         eight applications (see table)
 packages/     ten shared TypeScript libraries
-programs/social_protocol   the WokeNet Anchor program
+programs/social_protocol   the DroolNet Anchor program
 tests/programs              mocha local-validator program suite
 tests/vertical-slice        connected-slice seed/replay/evidence modules
 scripts/      setup, verification, and orchestration (incl. vertical-slice/run.mjs)
@@ -164,21 +164,21 @@ All service ports bind `127.0.0.1` by default:
 
 | App                       | Package                          | Port | Stack / role                                                                                               |
 | ------------------------- | -------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------- |
-| `apps/web`                | `@wokesocial/web`                | 3000 | Next.js 16 App Router flagship client (~45 routes); no Dockerfile                                          |
-| `apps/indexer`            | `@wokesocial/indexer`            | 4000 | Fastify + PostgreSQL projection of finalized program events; 18 ordered migrations; `@solana/kit` RPC sync |
-| `apps/feed-service`       | `@wokesocial/feed-service`       | 4100 | Stateless deterministic feed ranking; every response `canonical: false`                                    |
-| `apps/relay`              | `@wokesocial/relay`              | 4200 | Raw `node:http` + `ws` advisory transport; locked-by-default; no DB; single replica only                   |
-| `apps/auth-service`       | `@wokesocial/auth-service`       | 4300 | WebAuthn/passkey RP + ciphertext-only key-bundle sync; 5 migrations                                        |
-| `apps/moderation-service` | `@wokesocial/moderation-service` | 4400 | Signed labels/reports/appeals; append-only encrypted case ledger; 3 migrations; locked-by-default          |
-| `apps/media-worker`       | `@wokesocial/media-worker`       | 4500 | Resumable uploads, Sharp/FFmpeg processing, real ClamAV (clamd on private network, port 3310)              |
-| `apps/mobile`             | `@wokesocial/mobile`             | —    | Non-release Expo/React Native Android (Solana Seeker, Mobile Wallet Adapter); read-only                    |
+| `apps/web`                | `@wetdrool/web`                | 3000 | Next.js 16 App Router flagship client (~45 routes); no Dockerfile                                          |
+| `apps/indexer`            | `@wetdrool/indexer`            | 4000 | Fastify + PostgreSQL projection of finalized program events; 18 ordered migrations; `@solana/kit` RPC sync |
+| `apps/feed-service`       | `@wetdrool/feed-service`       | 4100 | Stateless deterministic feed ranking; every response `canonical: false`                                    |
+| `apps/relay`              | `@wetdrool/relay`              | 4200 | Raw `node:http` + `ws` advisory transport; locked-by-default; no DB; single replica only                   |
+| `apps/auth-service`       | `@wetdrool/auth-service`       | 4300 | WebAuthn/passkey RP + ciphertext-only key-bundle sync; 5 migrations                                        |
+| `apps/moderation-service` | `@wetdrool/moderation-service` | 4400 | Signed labels/reports/appeals; append-only encrypted case ledger; 3 migrations; locked-by-default          |
+| `apps/media-worker`       | `@wetdrool/media-worker`       | 4500 | Resumable uploads, Sharp/FFmpeg processing, real ClamAV (clamd on private network, port 3310)              |
+| `apps/mobile`             | `@wetdrool/mobile`             | —    | Non-release Expo/React Native Android (Solana Seeker, Mobile Wallet Adapter); read-only                    |
 
 Packages and their dependency graph (`protocol` is the root; leaves have no
 workspace deps):
 
 | Package                   | Role                                                                                                                                                                                                                                                                         |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/protocol`       | **Single source of truth** for the 29 portable object families: strict Zod schemas, RFC 8785 canonicalization, SHA-256 object IDs / CIDv1 content IDs, Ed25519 domain-separated signatures, authorization + transition rules, `.woke` name derivation, generated JSON Schema |
+| `packages/protocol`       | **Single source of truth** for the 29 portable object families: strict Zod schemas, RFC 8785 canonicalization, SHA-256 object IDs / CIDv1 content IDs, Ed25519 domain-separated signatures, authorization + transition rules, `.drool` name derivation, generated JSON Schema |
 | `packages/storage`        | Content-addressed storage adapters: local CAS, memory, IPFS/Kubo, consent-gated Arweave, multi-provider quorum/failover (→ protocol)                                                                                                                                         |
 | `packages/sdk`            | Publication pipeline (validate→sign→store→anchor→confirm, recoverable receipts, reconcile-before-init), Anchor instruction builders/decoders, strict simulate/broadcast/finalize transaction boundary, provider pools. Never accepts private keys (→ protocol, storage)      |
 | `packages/indexer-client` | Runtime-neutral, strictly validated read client for the indexer API (6 MiB response budget) (→ protocol)                                                                                                                                                                     |
@@ -199,7 +199,7 @@ before protocol/program work.
 
 1. **Verifiable protocol state** — identity roots, delegations, handle claims,
    follow edges, community authority, post references, tombstones. Authority:
-   the WokeNet Anchor program + finalized Solana history. Rebuildable.
+   the DroolNet Anchor program + finalized Solana history. Rebuildable.
 2. **Signed portable objects** — profile/post/community/etc. manifests.
    Authority: valid Ed25519 signatures + authorized key state + content hashes.
    Immutable once published; edits create new revisions with
@@ -222,7 +222,7 @@ layouts, 33 events, 130 errors. Patterns that matter when editing:
 
 - `lib.rs` is thin dispatch; logic lives in `src/instructions/<name>.rs`;
   shared checks in `src/validation.rs`; PDA seeds/bounds in `src/constants.rs`.
-- Every PDA is namespaced `[b"wokesocial", [1], <domain seed>, ...]`.
+- Every PDA is namespaced `[b"wetdrool", [1], <domain seed>, ...]`.
 - Optimistic concurrency: instructions take `expected_*_sequence` args and
   reject stale writes; all arithmetic is checked.
 - Social/membership edge PDAs are **reused, never closed** (an `active` flag +
@@ -257,7 +257,7 @@ Prove forward application _and_ projection rebuild.
 **The vertical slice** (`pnpm test:vertical-slice`,
 `scripts/vertical-slice/run.mjs`) is the flagship end-to-end proof: fresh local
 validator + disposable PostgreSQL → seeded 11-transaction history → production
-indexer + web build → real Chromium registers a passkey identity + `.woke`
+indexer + web build → real Chromium registers a passkey identity + `.drool`
 name and publishes posts (including an ambiguous-response recovery without
 rebroadcast) → the projection is destroyed and replayed to exact state. If your
 change crosses program/storage/indexer/client boundaries, this gate is the
@@ -309,7 +309,7 @@ evidence.
 - Program keypairs are deterministic: `scripts/prepare-local-solana.mjs` writes
   `target/deploy/social_protocol-keypair.json` and `.local/solana/deployer.json`
   and hard-fails if the program keypair doesn't match the declared ID.
-- `network/wokenet/` contains only empty leftover directories from the
+- `network/droolnet/` contains only empty leftover directories from the
   abandoned own-chain era; `network/solana/` (manifest schema + example) is the
   live part.
 - Relay keeps replay/connection state in-process — never scale it to multiple

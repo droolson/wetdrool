@@ -14,7 +14,7 @@ describe('Kubo/IPFS HTTP storage integration', () => {
       gateways: [gatewayUrl],
       requestTimeoutMilliseconds: 15_000,
     });
-    const bytes = new TextEncoder().encode(`wokesocial-ipfs-integration:${randomUUID()}`);
+    const bytes = new TextEncoder().encode(`wetdrool-ipfs-integration:${randomUUID()}`);
     let publishedCid: string | undefined;
 
     try {

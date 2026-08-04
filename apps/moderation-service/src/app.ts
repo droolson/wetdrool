@@ -1,16 +1,16 @@
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
-import { identityIdSchema, objectIdSchema, type ModerationSubject } from '@wokesocial/protocol';
+import { identityIdSchema, objectIdSchema, type ModerationSubject } from '@wetdrool/protocol';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
-import { createTrustedProxyPolicy } from '@wokesocial/config/trusted-proxy';
+import { createTrustedProxyPolicy } from '@wetdrool/config/trusted-proxy';
 import {
   RATE_LIMIT_BACKEND_UNAVAILABLE,
   RATE_LIMITER_CLOSED,
   createFastifyRateLimitStore,
   type RateLimiter,
-} from '@wokesocial/rate-limit';
+} from '@wetdrool/rate-limit';
 
 import { ModerationServiceError } from './errors.js';
 import { operatorAssertionSchema, type OperatorAssertion } from './models.js';
@@ -69,7 +69,7 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
         ? false
         : {
             level: 'info',
-            base: { service: '@wokesocial/moderation-service' },
+            base: { service: '@wetdrool/moderation-service' },
             redact: {
               paths: [
                 'req.headers.authorization',
@@ -130,7 +130,7 @@ export async function buildModerationApp(options: ModerationAppOptions): Promise
 
   app.get('/healthz', { config: { rateLimit: false } }, async () => ({
     ok: true,
-    service: '@wokesocial/moderation-service',
+    service: '@wetdrool/moderation-service',
     advisory: true,
     canonical: false,
     authorization: options.service.authorizationMode,

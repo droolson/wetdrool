@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   WOKENET_ONE_MEMBER_ONE_VOTE_V1,
   communityGovernanceStrategyCommitment,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   fetchCommunityDetail,
@@ -18,9 +18,9 @@ import {
 import { IndexerPayloadError, parseVerifiedCommunity } from '../src/contract.js';
 
 const NETWORK_ID =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const IDENTITY_ID =
-  'wokesocialid:v1:wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
+  'wetdroolid:v1:droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
 const COMMUNITY_ADDRESS = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const SECOND_COMMUNITY_ADDRESS = '8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
 const AUTHORITY = '11111111111111111111111111111111';
@@ -76,7 +76,7 @@ function verifiedCommunity(overrides: Record<string, unknown> = {}): Record<stri
     manifestHash,
     manifestVerified: true,
     networkId: NETWORK_ID,
-    objectId: `wokesocialobj:v1:community:${manifestHash}`,
+    objectId: `wetdroolobj:v1:community:${manifestHash}`,
     schemaVersion: 2,
     signingKeyId: `${IDENTITY_ID}#root/${'1'.repeat(32)}`,
     updatedAt: '2026-07-28T12:01:00.000Z',
@@ -93,11 +93,11 @@ function directoryResponse(overrides: Record<string, unknown> = {}): Record<stri
     meta: {
       checkpointSlot: 50,
       indexedAt: '2026-07-28T12:02:00.000Z',
-      source: 'WokeNet open indexer',
+      source: 'DroolNet open indexer',
     },
     network: NETWORK_ID,
     nextCursor: null,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     recipe: 'community-directory-v1',
     ...overrides,
   };
@@ -110,10 +110,10 @@ function detailResponse(overrides: Record<string, unknown> = {}): Record<string,
     meta: {
       checkpointSlot: 50,
       indexedAt: '2026-07-28T12:02:00.000Z',
-      source: 'WokeNet open indexer',
+      source: 'DroolNet open indexer',
     },
     network: NETWORK_ID,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     ...overrides,
   };
 }
@@ -140,13 +140,13 @@ function membershipStatusResponse(
     meta: {
       checkpointSlot: 51,
       indexedAt: '2026-07-28T12:03:01.000Z',
-      source: 'WokeNet open indexer',
+      source: 'DroolNet open indexer',
     },
     network: NETWORK_ID,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     proof: {
       finality: 'finalized',
-      kind: 'wokesocial-program-event',
+      kind: 'wetdrool-program-event',
       logIndex: 2,
       slot: '51',
       transactionIndex: 4,
@@ -177,7 +177,7 @@ describe('verified community parsing', () => {
   it.each([
     [
       'an unbound object ID',
-      () => verifiedCommunity({ objectId: `wokesocialobj:v1:community:${DIGEST_B}` }),
+      () => verifiedCommunity({ objectId: `wetdroolobj:v1:community:${DIGEST_B}` }),
     ],
     ['an unverified manifest', () => verifiedCommunity({ manifestVerified: false })],
     ['a legacy schema', () => verifiedCommunity({ schemaVersion: 1 })],
@@ -185,7 +185,7 @@ describe('verified community parsing', () => {
       'a signing key from another identity',
       () =>
         verifiedCommunity({
-          signingKeyId: `wokesocialid:v1:${NETWORK_ID}:${AUTHORITY}#root/${'1'.repeat(32)}`,
+          signingKeyId: `wetdroolid:v1:${NETWORK_ID}:${AUTHORITY}#root/${'1'.repeat(32)}`,
         }),
     ],
     [
@@ -472,7 +472,7 @@ describe('community indexer requests', () => {
           meta: {
             checkpointSlot: 50,
             indexedAt: '2026-07-28T12:03:01.000Z',
-            source: 'WokeNet open indexer',
+            source: 'DroolNet open indexer',
           },
         }),
     ],

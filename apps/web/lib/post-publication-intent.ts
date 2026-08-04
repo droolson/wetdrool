@@ -17,7 +17,7 @@ import {
   unsigned64Schema,
   verifyEnvelope,
   type PostContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   normalizePreviewText,
@@ -26,7 +26,7 @@ import {
   type ComposerDraft,
 } from './composer-draft';
 
-export const POST_PUBLICATION_INTENT_STORAGE_KEY = 'wokesocial:post-publication-intent:v1';
+export const POST_PUBLICATION_INTENT_STORAGE_KEY = 'wetdrool:post-publication-intent:v1';
 export const POST_PUBLICATION_INTENT_VERSION = 1 as const;
 export const MAX_POST_PUBLICATION_INTENT_BYTES = 128 * 1_024;
 export const MAX_SIGNED_POST_ENVELOPE_BYTES = 32 * 1_024;
@@ -631,19 +631,19 @@ function normalizePreparationInput(
   if (!networkResult.success || !identityResult.success || !rootResult.success) {
     throw publicationError(
       'invalid-input',
-      'The WokeNet network, identity, or root signing-key identifier is invalid.',
+      'The DroolNet network, identity, or root signing-key identifier is invalid.',
     );
   }
   const network = networkResult.data;
   const identity = identityResult.data;
   const rootSigningKey = rootResult.data;
   if (
-    !identity.startsWith(`wokesocialid:v1:${network}:`) ||
+    !identity.startsWith(`wetdroolid:v1:${network}:`) ||
     !rootSigningKey.startsWith(`${identity}#root/`)
   ) {
     throw publicationError(
       'invalid-input',
-      'The identity and root signing key must belong to the selected WokeNet network.',
+      'The identity and root signing key must belong to the selected DroolNet network.',
     );
   }
   if (
@@ -1028,7 +1028,7 @@ function parseContext(value: unknown): PostPublicationContext {
   const identity = value.identity as string;
   const rootSigningKey = value.rootSigningKey as string;
   if (
-    !identity.startsWith(`wokesocialid:v1:${network}:`) ||
+    !identity.startsWith(`wetdroolid:v1:${network}:`) ||
     !rootSigningKey.startsWith(`${identity}#root/`)
   ) {
     throw publicationError(
@@ -1275,7 +1275,7 @@ function persistTransition(
 ): PostPublicationIntent {
   // localStorage has no compare-and-swap primitive. These comparisons detect
   // many stale writes but are not an atomic cross-tab mutex; browser callers
-  // must hold the exclusive WokeSocial publication Web Lock for the complete
+  // must hold the exclusive WetDrool publication Web Lock for the complete
   // transition and cleanup sequence.
   const expected = current === null ? null : serializePostPublicationIntent(current);
   const serialized = serializePostPublicationIntent(next);

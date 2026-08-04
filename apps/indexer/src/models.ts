@@ -1,4 +1,4 @@
-import type { CommunityContent, PostContent, ProfileContent } from '@wokesocial/protocol';
+import type { CommunityContent, PostContent, ProfileContent } from '@wetdrool/protocol';
 
 export interface IdentityProjection {
   readonly identityId: string;

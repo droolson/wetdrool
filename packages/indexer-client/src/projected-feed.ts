@@ -9,7 +9,7 @@ import {
   signingKeyIdSchema,
   timestampSchema,
   transactionSignatureSchema,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   hasControlCharacters,
@@ -24,7 +24,7 @@ import {
 import { endpointFor, readIndexerJson } from './transport.js';
 
 export type ProjectedFeedMode = 'chronological' | 'following';
-export const OPEN_INDEXER_FEED_RECIPE = 'wokenet-open-indexer-feed-v1';
+export const OPEN_INDEXER_FEED_RECIPE = 'droolnet-open-indexer-feed-v1';
 
 export type ProjectedFeedReason =
   { kind: 'chronological' } | { followedIdentityId: string; kind: 'following' };
@@ -41,7 +41,7 @@ export interface ProjectedFeedResponse {
   mode: ProjectedFeedMode;
   network: string;
   nextCursor: string | null;
-  projection: 'wokenet-open-indexer';
+  projection: 'droolnet-open-indexer';
   recipe: typeof OPEN_INDEXER_FEED_RECIPE;
   viewer: string | null;
 }
@@ -67,7 +67,7 @@ export type IndexerFetch = (input: string, init?: RequestInit) => Promise<Respon
 
 export interface IndexerClientOptions {
   /**
-   * Absolute HTTP(S) base URL for a compatible WokeSocial indexer.
+   * Absolute HTTP(S) base URL for a compatible WetDrool indexer.
    *
    * A pathname is preserved, so `https://indexer.example/operator/` resolves
    * the feed endpoint below `/operator/`.
@@ -167,7 +167,7 @@ function canonicalNetworkId(value: unknown, label: string): string {
   const parsed = networkIdSchema.safeParse(value);
   if (!parsed.success) {
     throw new IndexerPayloadError(
-      `${label} must be a canonical WokeNet Solana deployment identifier.`,
+      `${label} must be a canonical DroolNet Solana deployment identifier.`,
     );
   }
   return parsed.data;
@@ -176,7 +176,7 @@ function canonicalNetworkId(value: unknown, label: string): string {
 function canonicalIdentityId(value: unknown, label: string): string {
   const parsed = identityIdSchema.safeParse(value);
   if (!parsed.success) {
-    throw new IndexerPayloadError(`${label} must be a canonical WokeSocial identity identifier.`);
+    throw new IndexerPayloadError(`${label} must be a canonical WetDrool identity identifier.`);
   }
   return parsed.data;
 }
@@ -190,11 +190,11 @@ function canonicalProtocolValue<T>(schema: ProtocolSchema<T>, value: unknown, la
 }
 
 function identityBelongsToNetwork(identityId: string, network: string): boolean {
-  return identityId.startsWith(`wokesocialid:v1:${network}:`);
+  return identityId.startsWith(`wetdroolid:v1:${network}:`);
 }
 
 /**
- * A projected author handle is a convenience field, not a `.woke` proof. It is
+ * A projected author handle is a convenience field, not a `.drool` proof. It is
  * accepted only as an absent field, an explicit null, or one exactly canonical
  * handle serialization; anything else is a payload error rather than a
  * silently repaired value.
@@ -239,12 +239,12 @@ function parseProjectedFeedEntry(
   }
   if (!identityBelongsToNetwork(authorIdentityId, network)) {
     throw new IndexerPayloadError(
-      'A feed entry author belongs to a different WokeNet Solana deployment.',
+      'A feed entry author belongs to a different DroolNet Solana deployment.',
     );
   }
   if (canonicalNetworkId(projectedPost.networkId, 'feed entry.post.networkId') !== network) {
     throw new IndexerPayloadError(
-      'A feed entry post belongs to a different WokeNet Solana deployment.',
+      'A feed entry post belongs to a different DroolNet Solana deployment.',
     );
   }
   if (
@@ -260,7 +260,7 @@ function parseProjectedFeedEntry(
     projectedPost.objectId,
     'feed entry.post.objectId',
   );
-  if (!objectId.startsWith('wokesocialobj:v1:post:')) {
+  if (!objectId.startsWith('wetdroolobj:v1:post:')) {
     throw new IndexerPayloadError('A projected feed entry must identify a post object.');
   }
   const signingKeyId = canonicalProtocolValue(
@@ -365,7 +365,7 @@ export function parseProjectedFeedResponse(
   const network = canonicalNetworkId(response.network, 'response.network');
   if (
     response.canonical !== false ||
-    response.projection !== 'wokenet-open-indexer' ||
+    response.projection !== 'droolnet-open-indexer' ||
     response.recipe !== OPEN_INDEXER_FEED_RECIPE ||
     !Array.isArray(response.entries) ||
     response.entries.length > MAX_INDEXER_PAGE_ITEMS
@@ -424,7 +424,7 @@ export function parseProjectedFeedResponse(
     mode,
     network,
     nextCursor: nextCursorState.kind === 'valid' ? nextCursorState.cursor : null,
-    projection: 'wokenet-open-indexer',
+    projection: 'droolnet-open-indexer',
     recipe: OPEN_INDEXER_FEED_RECIPE,
     viewer,
   };
@@ -451,7 +451,7 @@ export function validateFollowingViewer(
   if (value === undefined) return { kind: 'empty', viewer: '' };
   if (typeof value !== 'string') {
     return {
-      detail: 'Submit exactly one public WokeSocial identity identifier.',
+      detail: 'Submit exactly one public WetDrool identity identifier.',
       kind: 'invalid',
       viewer: '',
     };
@@ -462,7 +462,7 @@ export function validateFollowingViewer(
   if (!parsed.success) {
     return {
       detail:
-        'Use a canonical WokeSocial identity ID. Handles and passkey account IDs are not interchangeable with protocol identities.',
+        'Use a canonical WetDrool identity ID. Handles and passkey account IDs are not interchangeable with protocol identities.',
       kind: 'invalid',
       viewer: viewer.length <= 300 && !hasControlCharacters(viewer) ? viewer : '',
     };
@@ -548,7 +548,7 @@ export async function fetchProjectedFeed(
         'invalid-response',
         viewerState.kind === 'invalid'
           ? viewerState.detail
-          : 'A canonical public WokeSocial identity ID is required for this graph preview.',
+          : 'A canonical public WetDrool identity ID is required for this graph preview.',
       );
     }
     viewer = viewerState.viewer;

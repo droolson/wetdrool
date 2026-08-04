@@ -1,6 +1,6 @@
-# `@wokesocial/rate-limit`
+# `@wetdrool/rate-limit`
 
-Shared, fail-closed fixed-window rate limiting for WokeSocial services and the
+Shared, fail-closed fixed-window rate limiting for WetDrool services and the
 Relay.
 
 The production implementation stores counters in Redis through one atomic Lua

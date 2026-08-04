@@ -106,7 +106,7 @@ async function createRedisLimiter(
 ): Promise<RateLimiter> {
   const client = createClient({
     url: config.redisUrl,
-    name: `wokesocial-rate-limit:${config.deploymentId}:${serviceId}`,
+    name: `wetdrool-rate-limit:${config.deploymentId}:${serviceId}`,
     commandsQueueMaxLength: MAX_QUEUED_COMMANDS,
     disableOfflineQueue: true,
     pingInterval: PING_INTERVAL_MS,
@@ -159,7 +159,7 @@ async function createRedisLimiter(
       return new RedisFixedWindowRateLimiter({
         transport,
         hmacSecret: secret,
-        redisKeyPrefix: `wokesocial:rate-limit:v1:${config.deploymentId}:${serviceId}`,
+        redisKeyPrefix: `wetdrool:rate-limit:v1:${config.deploymentId}:${serviceId}`,
         commandTimeoutMs: COMMAND_TIMEOUT_MS,
         maxRetries: 1,
         retryDelayMs: 25,

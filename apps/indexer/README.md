@@ -1,7 +1,7 @@
 # Open indexer
 
-The indexer is a replaceable, non-canonical projection of finalized WokeNet
-program events on Solana. WokeNet is not a chain, RPC network, or
+The indexer is a replaceable, non-canonical projection of finalized DroolNet
+program events on Solana. DroolNet is not a chain, RPC network, or
 Firedancer/Agave topology. The indexer validates the configured genesis hash and
 program, decodes the generated Anchor IDL event surface, verifies portable
 manifests, and stores deterministic query models in PostgreSQL.
@@ -12,10 +12,10 @@ The long-running server is DML-only: it never creates tables or runs migrations.
 Apply the schema in a separate one-shot step with a migration role:
 
 ```sh
-DATABASE_MIGRATION_URL='postgresql://migration-role@database/wokesocial' \
-  pnpm --filter @wokesocial/indexer migrate
-DATABASE_URL='postgresql://runtime-role@database/wokesocial' \
-  pnpm --filter @wokesocial/indexer start
+DATABASE_MIGRATION_URL='postgresql://migration-role@database/wetdrool' \
+  pnpm --filter @wetdrool/indexer migrate
+DATABASE_URL='postgresql://runtime-role@database/wetdrool' \
+  pnpm --filter @wetdrool/indexer start
 ```
 
 `DATABASE_MIGRATION_URL` is mandatory for the migration command and is never
@@ -70,7 +70,7 @@ development.
 ## Profile schema activation
 
 `INDEXER_PROFILE_V2_ACTIVATION_SLOT` is a protocol-compatibility boundary, not a
-feature flag. Operators must assign one nonnegative value to each WokeNet and
+feature flag. Operators must assign one nonnegative value to each DroolNet and
 keep it immutable for the lifetime of that network. A historical
 `profile-updated` event without the appended schema commitment may reference a
 frozen schema-v1 profile only before the cutoff. Every event with an explicit
@@ -87,7 +87,7 @@ manifest verifier. Changing the value during a rebuild would reinterpret the
 durable event ledger and is prohibited. Record it with genesis, program ID,
 deployment slot, release, and migration evidence.
 
-The current WokeSocial program accepts only
+The current WetDrool program accepts only
 `CURRENT_PROFILE_SCHEMA_VERSION = 2` for root and delegated profile updates and
 appends that value to `ProfileReferenceUpdated`. The decoder retains the exact
 legacy event prefix solely for pre-activation history. This makes new schema
@@ -112,7 +112,7 @@ policy path and never enter these convenience feeds.
 
 ## Event compatibility
 
-`pnpm --filter @wokesocial/indexer check:anchor-events` compares the checked-in production
+`pnpm --filter @wetdrool/indexer check:anchor-events` compares the checked-in production
 decoder with `target/idl/social_protocol.json`. The check is exhaustive: the event-name set,
 all 33 discriminators, every field in order, and enum variants must match. A new, removed, or
 changed event fails the check. The six recovery event layouts and `RecoveryRequestState` variants
@@ -186,7 +186,7 @@ remain the replay source.
 
 Recovery rows are convenience views, never authorization decisions. In particular, projected
 `pending` means only that no terminal event has been observed; it does not mean the request is
-currently executable. Clients must read the WokeNet identity, policy, and
+currently executable. Clients must read the DroolNet identity, policy, and
 request accounts before signing or submitting recovery transactions.
 
 Migration `0008_network_scoped_solana_addresses.sql` upgrades every projection
@@ -197,7 +197,7 @@ address on networks with different genesis hashes without colliding. Legacy
 rows receive their network from their owning identity or community during the
 forward migration. Raw-address API lookups require both an exact 32-byte base58
 public key and an explicit canonical
-`wokenet:v1:{genesis}:{program}` network identifier.
+`droolnet:v1:{genesis}:{program}` network identifier.
 
 Migration `0009_network_scoped_identity_references.sql` binds each identity ID to its network and
 address and replaces projection-table identity references with composite `(network_id, identity_id)`
@@ -388,9 +388,9 @@ Operators can validate the durable PostgreSQL ledger without mutating the live
 projection:
 
 ```sh
-pnpm --filter @wokesocial/indexer build
-pnpm --filter @wokesocial/indexer rebuild:projection \
-  --network 'wokenet:v1:<genesis-hash>:<program-id>'
+pnpm --filter @wetdrool/indexer build
+pnpm --filter @wetdrool/indexer rebuild:projection \
+  --network 'droolnet:v1:<genesis-hash>:<program-id>'
 ```
 
 The command re-parses every stored event, verifies that row metadata exactly
@@ -412,10 +412,10 @@ fails closed.
 Applying the validated rebuild is deliberately explicit:
 
 ```sh
-pnpm --filter @wokesocial/indexer rebuild:projection \
-  --network 'wokenet:v1:<genesis-hash>:<program-id>' \
+pnpm --filter @wetdrool/indexer rebuild:projection \
+  --network 'droolnet:v1:<genesis-hash>:<program-id>' \
   --apply \
-  --confirm 'rebuild:wokenet:v1:<genesis-hash>:<program-id>'
+  --confirm 'rebuild:droolnet:v1:<genesis-hash>:<program-id>'
 ```
 
 Run all migrations first and take an operator-approved backup. Apply mode
@@ -431,7 +431,7 @@ is not eligible for the ledger-proven obsolete-content suppression above.
 In addition to verified feed and post routes, the service exposes replaceable projections at:
 
 - `GET /v1/search/public?q=...` for the operator-configured network
-- `GET /v1/search?network=...&q=...` for an explicit WokeNet
+- `GET /v1/search?network=...&q=...` for an explicit DroolNet
 - `GET /v1/identities/{identityId}/security`
 - `GET /v1/handles/{handle}?network=...`
 - `GET /v1/identities/{identityId}/handles`
@@ -452,7 +452,7 @@ In addition to verified feed and post routes, the service exposes replaceable pr
 - `GET /v1/payments/receipts/{receiptAddress}?network=...`
 - `GET /v1/payments/entitlements/{entitlementAddress}?network=...`
 
-Every response is convenience state. WokeSocial program accounts on Solana,
+Every response is convenience state. WetDrool program accounts on Solana,
 signed portable objects, and finalized receipts remain the independently
 verifiable sources.
 

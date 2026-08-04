@@ -1,5 +1,5 @@
-import { getContentCid } from '@wokesocial/protocol';
-import type { ContentAddressedStorage, StorageReceipt } from '@wokesocial/storage';
+import { getContentCid } from '@wetdrool/protocol';
+import type { ContentAddressedStorage, StorageReceipt } from '@wetdrool/storage';
 import { describe, expect, it } from 'vitest';
 
 import { LocalCasGateway } from '../lib/local-cas-gateway';

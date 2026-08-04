@@ -10,23 +10,23 @@ import { readModerationMigrationDatabaseUrl } from '../src/migrate.js';
 describe('moderation migration configuration', () => {
   it('requires the dedicated migration role instead of falling back to the runtime role', () => {
     const migrationUrl =
-      'postgresql://moderation_migration:migration-secret@database.test/wokesocial';
+      'postgresql://moderation_migration:migration-secret@database.test/wetdrool';
     expect(
       readModerationMigrationDatabaseUrl({
         MODERATION_DATABASE_URL:
-          'postgresql://moderation_runtime:runtime-secret@database.test/wokesocial',
+          'postgresql://moderation_runtime:runtime-secret@database.test/wetdrool',
         MODERATION_DATABASE_MIGRATION_URL: migrationUrl,
       }),
     ).toBe(migrationUrl);
     expect(() =>
       readModerationMigrationDatabaseUrl({
         MODERATION_DATABASE_URL:
-          'postgresql://moderation_runtime:runtime-secret@database.test/wokesocial',
+          'postgresql://moderation_runtime:runtime-secret@database.test/wetdrool',
       }),
     ).toThrow('MODERATION_DATABASE_MIGRATION_URL is required');
     expect(() =>
       readModerationMigrationDatabaseUrl({
-        MODERATION_DATABASE_MIGRATION_URL: 'https://database.test/wokesocial',
+        MODERATION_DATABASE_MIGRATION_URL: 'https://database.test/wetdrool',
       }),
     ).toThrow('must use postgres:// or postgresql://');
   });
@@ -69,7 +69,7 @@ describe('moderation migration configuration', () => {
       readModerationMigrationDatabaseUrl({
         APP_ENV: 'production',
         MODERATION_DATABASE_MIGRATION_URL:
-          'postgresql://moderation_migration:secret@database.test/wokesocial?sslmode=verify-full',
+          'postgresql://moderation_migration:secret@database.test/wetdrool?sslmode=verify-full',
       }),
     ).toContain('sslmode=verify-full');
 
@@ -83,7 +83,7 @@ describe('moderation migration configuration', () => {
       expect(() =>
         readModerationMigrationDatabaseUrl({
           APP_ENV: 'production',
-          MODERATION_DATABASE_MIGRATION_URL: `postgresql://moderation_migration:secret@database.test/wokesocial${sslQuery}`,
+          MODERATION_DATABASE_MIGRATION_URL: `postgresql://moderation_migration:secret@database.test/wetdrool${sslQuery}`,
         }),
       ).toThrow('must set exactly one sslmode=verify-full');
     }
@@ -95,7 +95,7 @@ describe('moderation migration configuration', () => {
         readModerationMigrationDatabaseUrl({
           ...environment,
           MODERATION_DATABASE_MIGRATION_URL:
-            'postgresql://moderation_migration:secret@database.test/wokesocial',
+            'postgresql://moderation_migration:secret@database.test/wetdrool',
         }),
       ).toThrow('must set exactly one sslmode=verify-full');
     }
@@ -103,7 +103,7 @@ describe('moderation migration configuration', () => {
       readModerationMigrationDatabaseUrl({
         APP_ENV: 'staging',
         MODERATION_DATABASE_MIGRATION_URL:
-          'postgresql://moderation_migration:secret@database.test/wokesocial?sslmode=verify-full',
+          'postgresql://moderation_migration:secret@database.test/wetdrool?sslmode=verify-full',
         NODE_TLS_REJECT_UNAUTHORIZED: '0',
       }),
     ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED must not be 0/u);
@@ -114,7 +114,7 @@ describe('moderation migration configuration', () => {
       readModerationMigrationDatabaseUrl({
         NODE_ENV: 'test',
         MODERATION_DATABASE_MIGRATION_URL:
-          'postgresql://moderation_migration:secret@localhost:5432/wokesocial',
+          'postgresql://moderation_migration:secret@localhost:5432/wetdrool',
       }),
     ).toContain('localhost');
   });

@@ -1,6 +1,6 @@
 'use client';
 
-import { StatePanel } from '@wokesocial/ui';
+import { StatePanel } from '@wetdrool/ui';
 
 export default function ErrorPage({
   reset,

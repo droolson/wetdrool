@@ -1,8 +1,8 @@
-# WokeSocial developer handoff
+# WetDrool developer handoff
 
 - **Audience:** Claude Fable or any engineer continuing the repository without
   access to prior task transcripts
-- **Repository:** `AlexBTC420/wokesocial`
+- **Repository:** `AlexBTC420/wetdrool`
 - **Default branch:** `main`
 - **Status:** Active pre-release development
 - **Last updated:** 2026-07-29
@@ -23,15 +23,15 @@ Before changing anything:
 3. Read this document, [TASKS.md](../TASKS.md),
    [FINAL_REPORT.md](../FINAL_REPORT.md), and
    [Platform Expansion](PLATFORM_EXPANSION.md). AI work also requires
-   [Woke AI Platform](AI_PLATFORM.md) and
+   [Drool AI Platform](AI_PLATFORM.md) and
    [Organization and Product Ownership](ORGANIZATION.md).
-4. Read closed [GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10)
+4. Read closed [GitHub issue #10](https://github.com/AlexBTC420/wetdrool/issues/10)
    for the passkey-publication evidence, then use
-   [issue #12](https://github.com/AlexBTC420/wokesocial/issues/12) for the
+   [issue #12](https://github.com/AlexBTC420/wetdrool/issues/12) for the
    expanded product program. The active social-product slices are
-   [issue #14](https://github.com/AlexBTC420/wokesocial/issues/14) for
-   pseudonymous `.woke` names and
-   [issue #15](https://github.com/AlexBTC420/wokesocial/issues/15) for the
+   [issue #14](https://github.com/AlexBTC420/wetdrool/issues/14) for
+   pseudonymous `.drool` names and
+   [issue #15](https://github.com/AlexBTC420/wetdrool/issues/15) for the
    points/reputation foundation.
 5. Confirm the repository-local Git identity:
 
@@ -59,21 +59,21 @@ These definitions are settled:
 
 | Name | Exact meaning |
 | --- | --- |
-| **WokeSocial** | The social product, web application, services, and planned native clients |
-| **WokeNet** | The portable protocol, identifiers, SDK boundaries, and Anchor program deployed on Solana |
-| **`woke.social`** | The canonical product origin |
-| **`sociallywoke.com`** | A redirect-only legacy hostname |
-| **`$WOKE`** | A possible future Solana asset; no mint currently exists |
+| **WetDrool** | The social product, web application, services, and planned native clients |
+| **DroolNet** | The portable protocol, identifiers, SDK boundaries, and Anchor program deployed on Solana |
+| **`wetdrool.com`** | The canonical product origin |
+| **`droolhouse.com`** | A redirect-only legacy hostname |
+| **`$DROOL`** | A possible future Solana asset; no mint currently exists |
 
-WokeNet is not a blockchain, Solana fork, validator implementation, RPC
+DroolNet is not a blockchain, Solana fork, validator implementation, RPC
 network, Firedancer topology, or Agave topology. Solana is the ledger and
 execution environment. RPC providers and validators remain external and
 replaceable.
 
-Use `WokeSocial`/`wokesocial` for the platform and app. Use
-`WokeNet`/`wokenet` for the protocol and local repository namespace. The remote
-repository name is `wokesocial`; the existing local directory may remain
-`wokenet`.
+Use `WetDrool`/`wetdrool` for the platform and app. Use
+`DroolNet`/`droolnet` for the protocol and local repository namespace. The remote
+repository name is `wetdrool`; the existing local directory may remain
+`droolnet`.
 
 The product is open to everyone who follows its community and safety rules.
 Documentation and product copy must not narrow the platform to one demographic
@@ -101,17 +101,17 @@ Preserve these invariants across code, tests, documentation, and GitHub issues:
   plaintext key wrappers must not cross an HTTP boundary or enter logs,
   storage receipts, analytics, screenshots, or fixtures.
 - The legacy lamport payment ABI remains quarantined, paused, and impossible to
-  unpause. It must never be relabeled as `$WOKE`.
-- No `$WOKE` mint, balance, redemption, exchange rate, or investment claim
+  unpause. It must never be relabeled as `$DROOL`.
+- No `$DROOL` mint, balance, redemption, exchange rate, or investment claim
   exists.
-- `.woke` names are versioned WokeNet mappings to real Solana public keys.
+- `.drool` names are versioned DroolNet mappings to real Solana public keys.
   Deterministic anonymous derivation and program-enforced `anon_`
   anti-front-running, atomic fresh registration, legacy identity-only
   migration, and strict checkpoint-covered current-root resolution are
   implemented locally. Cross-surface destination UX, public-cluster execution,
   and custom settlement remain incomplete. Names are not native Solana
   addresses or an external DNS top-level domain.
-- “No transaction fee” can only mean no hidden WokeSocial platform fee.
+- “No transaction fee” can only mean no hidden WetDrool platform fee.
   Solana fees and rent must be disclosed or sponsored under published limits.
 - “Middle-out” is a benchmark program, not a completed proprietary codec.
 - Reputation, platform points, AI credits, promotional grants, and any future
@@ -148,7 +148,7 @@ packages/
   config/               Typed environment and runtime contracts
   ui/                   Shared accessible UI foundations
 programs/
-  social_protocol/      WokeNet Anchor program
+  social_protocol/      DroolNet Anchor program
 network/solana/         Exact deployment-manifest and cluster metadata
 infra/                  Local provider-neutral infrastructure
 scripts/                Setup, verification, operations, and evidence harnesses
@@ -166,7 +166,7 @@ flowchart TD
   Services --> Protocol
   SDK --> Protocol
   SDK --> Crypto["packages/crypto"]
-  SDK --> Solana["Solana RPC and WokeNet program"]
+  SDK --> Solana["Solana RPC and DroolNet program"]
   SDK --> Storage["Replaceable content storage"]
   Program["programs/social_protocol"] -. "IDL and events" .-> SDK
   Program -. "portable-object conformance" .-> Protocol
@@ -205,8 +205,8 @@ limitations.
 
 ## 6. Completed milestone: passkey-first localnet publication
 
-[GitHub issue #10](https://github.com/AlexBTC420/wokesocial/issues/10) completed
-the first real browser-to-WokeNet publication slice:
+[GitHub issue #10](https://github.com/AlexBTC420/wetdrool/issues/10) completed
+the first real browser-to-DroolNet publication slice:
 
 ```mermaid
 sequenceDiagram
@@ -291,7 +291,7 @@ Agave-compatible evidence is assembled from:
 - the same context slot for pre-state and simulation; and
 - a bounded retry when the context slot advances.
 
-The exact simulation must still pass the WokeNet effect verifier before
+The exact simulation must still pass the DroolNet effect verifier before
 broadcast. Preserve the Agave-shaped regression fixtures in
 `packages/sdk/test/woke-transaction.test.ts`.
 
@@ -335,7 +335,7 @@ forbidden HTTP field assertion: zero matches
 
 The browser created identity
 `J8eUkB7sS8nbH1JDDM3DLF8WkNGo9JF9ZfJF4ACQqM2b` and its deterministic
-`anon_7n044tsjxrfm5e23.woke` claim in one transaction. The strict resolver
+`anon_7n044tsjxrfm5e23.drool` claim in one transaction. The strict resolver
 proved claim sequence `1`, current identity sequence `3`, stable identity
 address, current root, and a covering checkpoint after two posts. The first
 publication intentionally lost one forwarded response after finality. After
@@ -368,21 +368,21 @@ The approved long-horizon design is specified in
 
 | Issue | Workstream |
 | --- | --- |
-| [#12](https://github.com/AlexBTC420/wokesocial/issues/12) | Umbrella product expansion |
-| [#13](https://github.com/AlexBTC420/wokesocial/issues/13) | Long- and short-form video plus benchmarked delivery |
-| [#14](https://github.com/AlexBTC420/wokesocial/issues/14) | Random and custom `.woke` names |
-| [#15](https://github.com/AlexBTC420/wokesocial/issues/15) | Reputation, points, AI credits, and gated redemption |
-| [#16](https://github.com/AlexBTC420/wokesocial/issues/16) | Avatar studio, creator items, marketplace, and subscription |
-| [#17](https://github.com/AlexBTC420/wokesocial/issues/17) | Minimal-disclosure verification and age assurance |
-| [#18](https://github.com/AlexBTC420/wokesocial/issues/18) | Open-model assistant and content-creation suite |
-| [#19](https://github.com/AlexBTC420/wokesocial/issues/19) | Sourced market intelligence and bounded automation |
-| [#20](https://github.com/AlexBTC420/wokesocial/issues/20) | Open protocol and product-rule governance |
+| [#12](https://github.com/AlexBTC420/wetdrool/issues/12) | Umbrella product expansion |
+| [#13](https://github.com/AlexBTC420/wetdrool/issues/13) | Long- and short-form video plus benchmarked delivery |
+| [#14](https://github.com/AlexBTC420/wetdrool/issues/14) | Random and custom `.drool` names |
+| [#15](https://github.com/AlexBTC420/wetdrool/issues/15) | Reputation, points, AI credits, and gated redemption |
+| [#16](https://github.com/AlexBTC420/wetdrool/issues/16) | Avatar studio, creator items, marketplace, and subscription |
+| [#17](https://github.com/AlexBTC420/wetdrool/issues/17) | Minimal-disclosure verification and age assurance |
+| [#18](https://github.com/AlexBTC420/wetdrool/issues/18) | Open-model assistant and content-creation suite |
+| [#19](https://github.com/AlexBTC420/wetdrool/issues/19) | Sourced market intelligence and bounded automation |
+| [#20](https://github.com/AlexBTC420/wetdrool/issues/20) | Open protocol and product-rule governance |
 
 Do not implement these in issue-number order. Their dependency order is:
 
 1. Preserve the verified passkey identity, text publication, finality,
    indexer, and replay gate.
-2. Complete `.woke` cross-surface destination UX and specify separate
+2. Complete `.drool` cross-surface destination UX and specify separate
    reputation/points/credits ledgers.
 3. Ship standards-based video before experimental delivery optimization.
 4. Build a portable avatar renderer and off-chain catalog before NFT items.
@@ -458,10 +458,10 @@ git diff --check
 Examples:
 
 ```sh
-pnpm --filter @wokesocial/protocol test
-pnpm --filter @wokesocial/sdk test
-pnpm --filter @wokesocial/web test
-pnpm --filter @wokesocial/web test:e2e
+pnpm --filter @wetdrool/protocol test
+pnpm --filter @wetdrool/sdk test
+pnpm --filter @wetdrool/web test
+pnpm --filter @wetdrool/web test:e2e
 ```
 
 Use the actual script names declared by each workspace. Do not assume one
@@ -530,7 +530,7 @@ is missing. Update every affected source and keep status language conservative.
 The remote is a private repository:
 
 ```text
-https://github.com/AlexBTC420/wokesocial
+https://github.com/AlexBTC420/wetdrool
 ```
 
 Use `gh` for issue and repository operations. Keep implementation progress in
@@ -605,7 +605,7 @@ complete.
 
 Continue in this order:
 
-- [x] Specify ADR-0012’s canonical anonymous `.woke` derivation, ASCII
+- [x] Specify ADR-0012’s canonical anonymous `.drool` derivation, ASCII
       normalization boundary, identity mapping, and rotation/recovery stability.
 - [x] Add protocol derivation/property vectors, an exact SDK claim builder,
       program-enforced `anon_` anti-front-running, adversarial local-validator
@@ -638,19 +638,19 @@ Continue in this order:
     always null for a deactivated identity—into `/v1/feed`, `/v1/feed/home`,
     `/v1/posts/{objectId}`, and post-kind search results; the strict
     projected-feed client parses it fail-closed; and the web post
-    card/search results plus the Seeker read-only feed render `handle.woke`
+    card/search results plus the Seeker read-only feed render `handle.drool`
     with an honest no-active-name state. The profile route is now connected:
     `GET /v1/identities/{identityId}/profile` serves checkpoint-covered
     identity state, the ingestion-filtered public profile projection, and
     the canonical active handle (null for deactivated identities), a strict
     client parser rejects broken bindings, and the web profile page renders
-    the display name, `handle.woke`, public bio/pronouns/links, honest
+    the display name, `handle.drool`, public bio/pronouns/links, honest
     deactivated/not-found/degraded/invalid-identifier states, and an
     independently checkable identity receipt. Share surfaces and
     public-cluster rendering remain open.
 - [ ] Implement issue #15’s non-transferable reputation ledger and separately
       accounted spendable points only after abuse simulations and audit rules.
-- [ ] Keep points, AI credits, future redemption claims, and any future `$WOKE`
+- [ ] Keep points, AI credits, future redemption claims, and any future `$DROOL`
       token as distinct instruments.
 - [ ] Continue issue #13’s standards-based long/short video pipeline and
       benchmark the “middle-out” optimization work rather than claiming an

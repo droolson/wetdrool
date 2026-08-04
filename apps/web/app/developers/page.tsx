@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { ButtonLink, InfoCard, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, InfoCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 
 export const metadata: Metadata = {
   title: 'Developers',
-  description: 'The exact public web contracts currently consumed by WokeSocial.',
+  description: 'The exact public web contracts currently consumed by WetDrool.',
 };
 
 const CONTRACTS = [

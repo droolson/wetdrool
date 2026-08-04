@@ -1,7 +1,7 @@
 export const moderationOpenApiDocument = {
   openapi: '3.1.0',
   info: {
-    title: 'WokeSocial replaceable moderation service',
+    title: 'WetDrool replaceable moderation service',
     version: '0.2.0',
     description:
       'Non-authoritative signed moderation labels plus an encrypted, auditable restricted case ledger.',

@@ -80,7 +80,7 @@ export async function superviseSyncWorker(options: SyncWorkerSupervisionOptions)
   try {
     await options.run();
     if (!options.abortController.signal.aborted) {
-      failure = new Error('WokeNet ingestion stopped without a shutdown request.');
+      failure = new Error('DroolNet ingestion stopped without a shutdown request.');
     }
   } catch (error) {
     if (options.abortController.signal.aborted) {

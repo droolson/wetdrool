@@ -523,7 +523,7 @@ describe('object-specific validation invariants', () => {
   });
 });
 
-describe('WokeNet and integer representation bounds', () => {
+describe('DroolNet and integer representation bounds', () => {
   it('requires all network, identity, and signing-key segments to decode to 32 bytes', () => {
     const [, , genesis, program] = network.split(':');
     const identityAddress = author.split(':').at(-1);
@@ -533,10 +533,10 @@ describe('WokeNet and integer representation bounds', () => {
 
     expect(networkIdSchema.safeParse(network).success).toBe(true);
     expect(
-      networkIdSchema.safeParse(`wokenet:v1:${bs58.encode(new Uint8Array(31))}:${program}`).success,
+      networkIdSchema.safeParse(`droolnet:v1:${bs58.encode(new Uint8Array(31))}:${program}`).success,
     ).toBe(false);
     expect(
-      networkIdSchema.safeParse(`wokenet:v1:${genesis}:${bs58.encode(new Uint8Array(33))}`).success,
+      networkIdSchema.safeParse(`droolnet:v1:${genesis}:${bs58.encode(new Uint8Array(33))}`).success,
     ).toBe(false);
     expect(
       identityIdSchema.safeParse(`${author.slice(0, author.lastIndexOf(':') + 1)}1`).success,
@@ -544,14 +544,14 @@ describe('WokeNet and integer representation bounds', () => {
     expect(signingKeyIdSchema.safeParse(`${author}#delegation/1`).success).toBe(false);
 
     const legacyNetwork = `solana:${genesis}:${program}`;
-    const legacyIdentity = `wokesocialid:v1:${legacyNetwork}:${identityAddress}`;
+    const legacyIdentity = `wetdroolid:v1:${legacyNetwork}:${identityAddress}`;
     expect(networkIdSchema.safeParse(legacyNetwork).success).toBe(false);
     expect(identityIdSchema.safeParse(legacyIdentity).success).toBe(false);
     expect(signingKeyIdSchema.safeParse(`${legacyIdentity}#root/${program}`).success).toBe(false);
     expect(networkIdSchema.safeParse(`othernet:v2:${genesis}:${program}`).success).toBe(false);
     expect(
       identityIdSchema.safeParse(
-        `wokesocialid:v1:othernet:v2:${genesis}:${program}:${identityAddress}`,
+        `wetdroolid:v1:othernet:v2:${genesis}:${program}:${identityAddress}`,
       ).success,
     ).toBe(false);
   });

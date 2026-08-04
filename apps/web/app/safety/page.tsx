@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ButtonLink, SectionHeading } from '@wokesocial/ui';
+import { ButtonLink, SectionHeading } from '@wetdrool/ui';
 
 export const metadata: Metadata = {
   title: 'Safety',

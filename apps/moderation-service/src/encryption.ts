@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { ModerationServiceError } from './errors.js';
 
 const KEY_ID_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/u;
-const ENCRYPTION_DOMAIN = 'woke.social/moderation/aes-256-gcm/v1';
+const ENCRYPTION_DOMAIN = 'wetdrool.com/moderation/aes-256-gcm/v1';
 const encryptedPayloadSchema = z
   .object({
     version: z.literal(1),

@@ -13,9 +13,9 @@ import {
 import { MAX_INDEXER_JSON_BYTES, readIndexerJson } from '../src/transport.js';
 
 const NETWORK_ID =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const IDENTITY_ID =
-  'wokesocialid:v1:wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
+  'wetdroolid:v1:droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD:8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
 const DIGEST_A = `u${'A'.repeat(43)}`;
 const DIGEST_B = `u${'B'.repeat(43)}`;
 const CID = 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm';
@@ -51,7 +51,7 @@ function projectedEntry(
       },
       createdAt,
       networkId: NETWORK_ID,
-      objectId: `wokesocialobj:v1:post:${objectDigest}`,
+      objectId: `wetdroolobj:v1:post:${objectDigest}`,
       payloadHash: DIGEST_A,
       signingKeyId: `${IDENTITY_ID}#root/${'1'.repeat(32)}`,
       transactionSignature: TRANSACTION_SIGNATURE,
@@ -72,13 +72,13 @@ function feedResponse(overrides: Record<string, unknown> = {}): Record<string, u
     meta: {
       checkpointSlot: 42,
       indexedAt: '2026-07-28T12:01:00.000Z',
-      source: 'WokeSocial open indexer',
+      source: 'WetDrool open indexer',
     },
     mode: 'chronological',
     network: NETWORK_ID,
     nextCursor: null,
-    projection: 'wokenet-open-indexer',
-    recipe: 'wokenet-open-indexer-feed-v1',
+    projection: 'droolnet-open-indexer',
+    recipe: 'droolnet-open-indexer-feed-v1',
     viewer: null,
     ...overrides,
   };
@@ -92,7 +92,7 @@ describe('strict projected-feed parsing', () => {
       mode: 'chronological',
       network: NETWORK_ID,
       nextCursor: null,
-      recipe: 'wokenet-open-indexer-feed-v1',
+      recipe: 'droolnet-open-indexer-feed-v1',
     });
     expect(parsed.entries[0]).toMatchObject({
       post: {
@@ -163,7 +163,7 @@ describe('strict projected-feed parsing', () => {
     );
     expect(claimed.entries[0]?.post.author.handle).toBe('anon_7n044tsjxrfm5e23');
 
-    for (const authorHandle of [5, 'River', 'a__b', 'ab', 'anon_7n044tsjxrfm5e23.woke']) {
+    for (const authorHandle of [5, 'River', 'a__b', 'ab', 'anon_7n044tsjxrfm5e23.drool']) {
       expect(() =>
         parseProjectedFeedResponse(
           feedResponse({ entries: [{ ...projectedEntry(), authorHandle }] }),

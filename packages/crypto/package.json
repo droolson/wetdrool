@@ -1,9 +1,9 @@
 {
-  "name": "@wokesocial/crypto",
+  "name": "@wetdrool/crypto",
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Dependency-free WebCrypto primitives with WokeSocial domain separation",
+  "description": "Dependency-free WebCrypto primitives with WetDrool domain separation",
   "license": "SEE LICENSE IN LICENSE",
   "exports": {
     ".": {

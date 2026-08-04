@@ -15,8 +15,8 @@ import {
   signPayload,
   type CommunityContent,
   type NetworkId,
-} from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+} from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   GOVERNANCE_APPROVAL_BPS,
@@ -41,11 +41,11 @@ import { exerciseModerationAfterMemberDeactivation } from './community-membershi
 const databaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_URL'] ??
   process.env['DATABASE_URL'] ??
-  'postgresql://wokesocial_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_runtime:local-indexer-runtime-only@127.0.0.1:5432/wetdrool';
 const migrationDatabaseUrl =
   process.env['INDEXER_INTEGRATION_DATABASE_MIGRATION_URL'] ??
   process.env['DATABASE_MIGRATION_URL'] ??
-  'postgresql://wokesocial_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wokesocial';
+  'postgresql://wetdrool_indexer_migration:local-indexer-migration-only@127.0.0.1:5432/wetdrool';
 
 describe('PostgreSQL governance projection integration', () => {
   it.each(['root', 'delegation'] as const)(
@@ -80,12 +80,12 @@ describe('PostgreSQL governance projection integration', () => {
   it('rolls back invalid transitions and deterministically rebuilds proposal and vote state', async () => {
     await migrate(migrationDatabaseUrl);
     const programId = SOCIAL_PROTOCOL_EVENT_LAYOUT.programId;
-    const networkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
-    const secondNetworkId = `wokenet:v1:${publicKey()}:${programId}` as NetworkId;
+    const networkId = `droolnet:v1:${publicKey()}:${programId}` as NetworkId;
+    const secondNetworkId = `droolnet:v1:${publicKey()}:${programId}` as NetworkId;
     const creatorAddress = publicKey();
     const voterAddress = publicKey();
-    const creatorIdentityId = `wokesocialid:v1:${networkId}:${creatorAddress}`;
-    const voterIdentityId = `wokesocialid:v1:${networkId}:${voterAddress}`;
+    const creatorIdentityId = `wetdroolid:v1:${networkId}:${creatorAddress}`;
+    const voterIdentityId = `wetdroolid:v1:${networkId}:${voterAddress}`;
     const creatorPrivateKey = randomBytes(32);
     const creatorPublicKey = ed25519.getPublicKey(creatorPrivateKey);
     const creatorAuthority = bs58.encode(creatorPublicKey);

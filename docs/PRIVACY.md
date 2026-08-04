@@ -1,4 +1,4 @@
-# WokeSocial Privacy and Data Lifecycle
+# WetDrool Privacy and Data Lifecycle
 
 **Status:** Planning baseline requiring qualified legal review  
 **Last updated:** 2026-07-29
@@ -7,13 +7,13 @@
 
 This document specifies privacy requirements for the protocol, flagship client, operated services, and local development environment. It is technical implementation support, not legal advice or a claim of GDPR, CCPA, COPPA, or other regulatory compliance.
 
-WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+DroolNet is the WetDrool protocol and smart-contract deployment layer on
 Solana. Solana validators and RPC providers are external dependencies. Local
 validator evidence is not devnet/mainnet-beta or production evidence. No
-Firedancer/Agave validator topology is part of WokeNet. No
-`$WOKE` mint exists, and the legacy lamport-denominated payment ABI is
+Firedancer/Agave validator topology is part of DroolNet. No
+`$DROOL` mint exists, and the legacy lamport-denominated payment ABI is
 quarantined and never grants paid access. The canonical public origin is
-`https://woke.social`; `sociallywoke.com` is redirect-only and must not receive
+`https://wetdrool.com`; `droolhouse.com` is redirect-only and must not receive
 application data, authentication cookies, recovery links, or an independent
 identity namespace.
 
@@ -66,7 +66,7 @@ Combining public fields can still create sensitive inferences. Indexers and clie
 
 ## 4. Data forbidden onchain
 
-The following must never be placed in WokeNet accounts, Solana instructions,
+The following must never be placed in DroolNet accounts, Solana instructions,
 transaction memos, or public program events. Program and client fixtures must
 enforce the same prohibition:
 
@@ -197,7 +197,7 @@ that already knows a community and member identity can derive the PDA and
 inspect chain history.
 
 Historical profile compatibility is bounded by one immutable
-`INDEXER_PROFILE_V2_ACTIVATION_SLOT` per WokeNet. Before that slot, the indexer
+`INDEXER_PROFILE_V2_ACTIVATION_SLOT` per DroolNet. Before that slot, the indexer
 can read a signed schema-v1 profile only when the historical onchain event uses
 the legacy prefix without a schema commitment. Its public projection preserves
 only values for which the legacy object recorded explicit public visibility; it
@@ -240,7 +240,7 @@ the person to public search or discovery.
   receives PRF output or a plaintext Ed25519 seed.
 - Service-account IDs and credential metadata remain pseudonymous personal data
   subject to bounded retention, access control, export, and deletion policy.
-- Any embedded WokeNet signing-key design must document custody, extraction
+- Any embedded DroolNet signing-key design must document custody, extraction
   resistance, backup, recovery, and device compromise. The flagship web/mobile
   clients and Solana tooling must never become an undisclosed custodian.
 - Delegated session keys are device-bound, least-privileged, expiring, and revocable.
@@ -336,7 +336,7 @@ Structured logging and OpenTelemetry-compatible instrumentation must:
 ### 8.4 Seeker Android and Mobile Wallet Adapter
 
 The non-release Android foundation uses Mobile Wallet Adapter so the selected
-wallet, not WokeSocial, retains private keys. Its verified community discovery
+wallet, not WetDrool, retains private keys. Its verified community discovery
 is read-only. Identity selection, membership-manifest signing, simulation,
 Mobile Wallet Adapter transaction approval, finalized-account verification,
 and indexer catch-up are not connected and no join/leave/moderation control is
@@ -399,7 +399,7 @@ Before publication, the user sees:
 - Public metadata such as timestamp, language, replies, content warnings, and accessibility fields
 - Onchain action and fee or sponsorship
 - SOL network fee or future approved mint-aware asset metadata where
-  applicable; SOL/lamports must never be labeled `$WOKE`, and the quarantined
+  applicable; SOL/lamports must never be labeled `$DROOL`, and the quarantined
   payment ABI must never produce a signing prompt
 - Edit and deletion limitations
 
@@ -419,7 +419,7 @@ Stories default to deletion-compatible storage with an explicit expiry. Official
 - Image location metadata is stripped by default.
 - Future paid-ticket records are not presented as private if a separately
   approved mint-aware protocol/payment design exposes them. No current
-  `$WOKE` ticket path exists.
+  `$DROOL` ticket path exists.
 
 ### 11.3 Media processing
 
@@ -488,7 +488,7 @@ that replicated content was deleted. V1 retirement also does not release a
 
 The product must state plainly that deletion cannot guarantee removal from:
 
-- Solana transaction/account history containing WokeNet program activity,
+- Solana transaction/account history containing DroolNet program activity,
   archives, explorers, or copies exported through Solana tooling
 - Arweave or another intentionally permanent store
 - IPFS nodes or gateways outside operator control
@@ -592,7 +592,7 @@ The privacy model remains **Planned** until all applicable checks pass.
 ### 18.1 Automated acceptance criteria
 
 - **PRIV-TST-001:** Forbidden personal-data fixtures are rejected before Solana
-  transaction construction for WokeNet across local-validator, devnet, and
+  transaction construction for DroolNet across local-validator, devnet, and
   mainnet-beta configurations.
 - **PRIV-TST-002:** Logs, traces, analytics, and error reports contain no seeded secrets, emails, message plaintext, or private profile fields.
 - **PRIV-TST-003:** Optional profile-attribute schemas reject protected

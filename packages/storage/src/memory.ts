@@ -1,4 +1,4 @@
-import { getContentCid, isCanonicalRawSha256Cid, verifyContentCid } from '@wokesocial/protocol';
+import { getContentCid, isCanonicalRawSha256Cid, verifyContentCid } from '@wetdrool/protocol';
 
 import {
   type ContentAddressedStorage,

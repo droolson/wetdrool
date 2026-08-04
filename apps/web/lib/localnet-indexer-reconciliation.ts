@@ -3,8 +3,8 @@ import {
   parsePostResponse,
   readIndexerJson,
   type PostResponse,
-} from '@wokesocial/indexer-client';
-import { identityIdSchema, solanaPublicKeySchema, unsigned64Schema } from '@wokesocial/protocol';
+} from '@wetdrool/indexer-client';
+import { identityIdSchema, solanaPublicKeySchema, unsigned64Schema } from '@wetdrool/protocol';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', '[::1]', 'localhost']);
 
@@ -251,7 +251,7 @@ function parseExpectedIdentity(input: ExpectedIndexedIdentity) {
 function parseExpectedPost(input: ExpectedIndexedPost) {
   if (
     typeof input.objectId !== 'string' ||
-    !input.objectId.startsWith('wokesocialobj:v1:post:') ||
+    !input.objectId.startsWith('wetdroolobj:v1:post:') ||
     typeof input.cid !== 'string' ||
     !input.cid.startsWith('bafk') ||
     typeof input.payloadHash !== 'string' ||

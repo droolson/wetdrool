@@ -48,7 +48,7 @@ export const fixedOptions = { createdAt: fixedCreatedAt, nonce: fixedNonce };
 export const rootIdentity = createPayloadBuilderIdentity(network, author, publicKey, 'root');
 
 const otherIdentityPda = bs58.encode(Uint8Array.from({ length: 32 }, () => 10));
-export const otherIdentity = `wokesocialid:v1:${network}:${otherIdentityPda}`;
+export const otherIdentity = `wetdroolid:v1:${network}:${otherIdentityPda}`;
 export const communityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 11));
 const delegatedPrivateKey = Uint8Array.from({ length: 32 }, (_, index) => 200 - index);
 const delegatedPublicKey = ed25519.getPublicKey(delegatedPrivateKey);
@@ -62,7 +62,7 @@ const fixtureCids = {
 } as const;
 const fakeCid = (character: keyof typeof fixtureCids) => fixtureCids[character];
 export const objectReference = (type: PortablePayloadType): ObjectReference => ({
-  id: `wokesocialobj:v1:${type}:${fakeDigest}`,
+  id: `wetdroolobj:v1:${type}:${fakeDigest}`,
 });
 
 export const encryptedContentReference: EncryptedContentReference = {
@@ -72,7 +72,7 @@ export const encryptedContentReference: EncryptedContentReference = {
   mediaType: 'application/octet-stream',
   protection: {
     kind: 'encrypted',
-    encryptionFormat: 'wokesocial-sealed-body-v1',
+    encryptionFormat: 'wetdrool-sealed-body-v1',
     keyEnvelope: objectReference('media-manifest'),
     accessPolicy: objectReference('community-rule-set'),
   },

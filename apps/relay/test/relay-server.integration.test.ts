@@ -10,7 +10,7 @@ import {
   type RateLimiter,
   type RateLimiterHealth,
   type RateLimitRequest,
-} from '@wokesocial/rate-limit';
+} from '@wetdrool/rate-limit';
 
 import { combineRelayReadinessChecks } from '../src/http-authorizer-client.js';
 import { HttpRelaySubscriptionAuthorizer } from '../src/http-subscription-authorizer.js';
@@ -50,7 +50,7 @@ describe('relay server over loopback WebSockets', () => {
     expect(health.status).toBe(200);
     expect(await health.json()).toEqual({
       ok: true,
-      service: '@wokesocial/relay',
+      service: '@wetdrool/relay',
       advisory: true,
       canonical: false,
       relayId: address.relayId,
@@ -78,7 +78,7 @@ describe('relay server over loopback WebSockets', () => {
       },
     });
     const metrics = await (await fetch(`${address.httpUrl}/metrics`)).text();
-    expect(metrics).toContain('wokesocial_relay_active_connections');
+    expect(metrics).toContain('wetdrool_relay_active_connections');
     expect(metrics).not.toContain(alice.identityId);
     expect(server.metrics()).toMatchObject({
       activeConnections: 0,
@@ -590,7 +590,7 @@ describe('relay server over loopback WebSockets', () => {
       };
       return new Response(
         JSON.stringify({
-          version: 'wokesocial-relay-subscription-authorization-v1',
+          version: 'wetdrool-relay-subscription-authorization-v1',
           requestId: request.requestId,
           authorized: true,
           finalized: true,

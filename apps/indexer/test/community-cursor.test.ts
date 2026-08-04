@@ -1,7 +1,7 @@
 import bs58 from 'bs58';
 import { describe, expect, it } from 'vitest';
 
-import type { NetworkId } from '@wokesocial/protocol';
+import type { NetworkId } from '@wetdrool/protocol';
 
 import {
   decodeCommunityDirectoryCursor,
@@ -10,8 +10,8 @@ import {
 } from '../src/community-cursor.js';
 
 const programId = publicKey(2);
-const networkId = `wokenet:v1:${publicKey(1)}:${programId}` as NetworkId;
-const otherNetworkId = `wokenet:v1:${publicKey(3)}:${programId}` as NetworkId;
+const networkId = `droolnet:v1:${publicKey(1)}:${programId}` as NetworkId;
+const otherNetworkId = `droolnet:v1:${publicKey(3)}:${programId}` as NetworkId;
 const communityAddress = publicKey(4);
 
 describe('community directory cursor', () => {

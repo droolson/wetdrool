@@ -4,34 +4,34 @@ Date: 2026-07-29
 
 ## Executive summary
 
-WokeSocial is the social platform and flagship application at `woke.social`.
-WokeNet is the WokeSocial protocol and smart-contract deployment layer on the
+WetDrool is the social platform and flagship application at `wetdrool.com`.
+DroolNet is the WetDrool protocol and smart-contract deployment layer on the
 Solana blockchain. It is not a separate blockchain, Solana fork, validator
 network, RPC network, or Firedancer deployment. Solana validators and RPC
-providers are external to WokeNet.
+providers are external to DroolNet.
 
 The repository contains a substantial local implementation: an Anchor program,
 portable signed-content schemas, a finalized Solana indexer, replaceable
 services, a production-building Next.js web application, a non-release
 Expo/React Native Android foundation, local infrastructure, and automated
-tests. It does not contain a production launch. No WokeNet program is published
-to Solana devnet or mainnet-beta, no `$WOKE` mint exists, and no reproducible
+tests. It does not contain a production launch. No DroolNet program is published
+to Solana devnet or mainnet-beta, no `$DROOL` mint exists, and no reproducible
 signed Seeker APK or distribution artifact exists.
 
 The release decision remains **NO-GO for production**.
 
 The configured source remote is the private GitHub repository
-`AlexBTC420/wokesocial`; the local repository/workspace identity is `wokenet`.
+`AlexBTC420/wetdrool`; the local repository/workspace identity is `droolnet`.
 This is source hosting, not a deployment or release artifact.
 
 ## Architecture decision
 
 ADR-0009 records the current boundary:
 
-- WokeSocial is the product, web application, services, and mobile clients.
-- WokeNet is the Anchor program, protocol namespace, portable identifiers, and
+- WetDrool is the product, web application, services, and mobile clients.
+- DroolNet is the Anchor program, protocol namespace, portable identifiers, and
   exact Solana deployment metadata.
-- WokeNet does not ship or operate Firedancer, Agave, a validator topology, or
+- DroolNet does not ship or operate Firedancer, Agave, a validator topology, or
   a separate ledger.
 - Solana validators and RPC providers are external, replaceable dependencies.
 - Canonical projection uses finalized commitment and exact genesis/program
@@ -39,7 +39,7 @@ ADR-0009 records the current boundary:
 - The existing identifier remains:
 
   ```text
-  wokenet:v1:<solana-genesis-hash>:<social-protocol-program-id>
+  droolnet:v1:<solana-genesis-hash>:<social-protocol-program-id>
   ```
 
 - Local-validator results are local Solana program evidence only.
@@ -48,26 +48,26 @@ ADR-0009 records the current boundary:
 
 | Area               | Current implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Important limits                                                                                                                                                                                                                                |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| WokeSocial web     | Production Next.js build, required route-shell surface, responsive/failure states, provider settings, bounded indexer-backed discovery, real passkey-service registration/sign-in, and a verified development-localnet text composer that atomically registers identity plus random `.woke` claim, migrates identity-only accounts, signs/stores/simulates/finalizes/indexes two posts, strictly resolves the name, survives one ambiguous response without rebroadcast, and renders complete restored anchor proofs | Public-cluster publication, cross-surface name/destination UX, community joining, authenticated following, recommendation-provider integration, media upload/playback, cross-device safety, and complete offline behavior remain incomplete     |
-| WokeSocial Android | Expo/React Native Seeker foundation with a Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed and verified community discovery, honest unavailable states, and focused unit tests                                                                                                                                                                                                                                                                         | Membership remains read-only; no identity selection, manifest signing, simulation, MWA transaction approval, finalized mutation flow, verified Seeker-device run, reproducible signed APK, signing provenance, store submission, or publication |
-| WokeNet program    | Generated IDL with 43 instructions, 19 account layouts, and 33 events, including member-authorized join/leave, creator-or-scoped-delegate remove/ban, terminal bans, community-wide membership sequencing, and the broader identity/social/governance/content plus quarantined legacy-payment surface                                                                                                                                                                                                                | Predeployment/local code only; no devnet/mainnet-beta deployment; payment ABI is quarantined; richer roles, protected-community membership, close/migration paths, and public deployment review remain open                                     |
+| WetDrool web     | Production Next.js build, required route-shell surface, responsive/failure states, provider settings, bounded indexer-backed discovery, real passkey-service registration/sign-in, and a verified development-localnet text composer that atomically registers identity plus random `.drool` claim, migrates identity-only accounts, signs/stores/simulates/finalizes/indexes two posts, strictly resolves the name, survives one ambiguous response without rebroadcast, and renders complete restored anchor proofs | Public-cluster publication, cross-surface name/destination UX, community joining, authenticated following, recommendation-provider integration, media upload/playback, cross-device safety, and complete offline behavior remain incomplete     |
+| WetDrool Android | Expo/React Native Seeker foundation with a Mobile Wallet Adapter connection boundary, exact Solana deployment verification, read-only chronological feed and verified community discovery, honest unavailable states, and focused unit tests                                                                                                                                                                                                                                                                         | Membership remains read-only; no identity selection, manifest signing, simulation, MWA transaction approval, finalized mutation flow, verified Seeker-device run, reproducible signed APK, signing provenance, store submission, or publication |
+| DroolNet program    | Generated IDL with 43 instructions, 19 account layouts, and 33 events, including member-authorized join/leave, creator-or-scoped-delegate remove/ban, terminal bans, community-wide membership sequencing, and the broader identity/social/governance/content plus quarantined legacy-payment surface                                                                                                                                                                                                                | Predeployment/local code only; no devnet/mainnet-beta deployment; payment ABI is quarantined; richer roles, protected-community membership, close/migration paths, and public deployment review remain open                                     |
 | Portable protocol  | Strict 29-family object registry with current schema-v2 profile, community, and community-membership creation; read-compatible v1 history; member/moderator authorship and transition checks; canonical envelopes, hashes, signatures, identifiers, schema generation, exact governance commitment, and tamper/authorization checks                                                                                                                                                                                  | Full cross-language and independent-client conformance remain incomplete                                                                                                                                                                        |
-| Indexer            | Finalized Solana RPC synchronization, exact genesis/program validation, all 33 current IDL events decoded/projected, canonical profile/community/membership manifest validation, accepted/pending/terminal ingestion, replay, 18 PostgreSQL migrations, RPC failover, DLQ, provenance, strict checkpoint-covered `.woke` current-root resolution, privacy-safe community discovery and exact-address membership status, search, home feed, and generic projected feeds                                               | No membership roster or identity-bearing public membership response; independent-provider reconciliation, fork/reorg evidence, production metrics/load, and rebuilds above the documented bound remain incomplete                               |
+| Indexer            | Finalized Solana RPC synchronization, exact genesis/program validation, all 33 current IDL events decoded/projected, canonical profile/community/membership manifest validation, accepted/pending/terminal ingestion, replay, 18 PostgreSQL migrations, RPC failover, DLQ, provenance, strict checkpoint-covered `.drool` current-root resolution, privacy-safe community discovery and exact-address membership status, search, home feed, and generic projected feeds                                               | No membership roster or identity-bearing public membership response; independent-provider reconciliation, fork/reorg evidence, production metrics/load, and rebuilds above the documented bound remain incomplete                               |
 | Feed service       | Replaceable chronological, following, community, media, bounded-trending, explainable recommendation, and reconciliation logic                                                                                                                                                                                                                                                                                                                                                                                       | Production collection and independent deployment remain incomplete                                                                                                                                                                              |
-| Authentication     | Replaceable WebAuthn RP, discoverable registration/sign-in, durable ceremonies/sessions, passkey lifecycle, ciphertext-only PRF bundle storage, fresh operation signing, and a verified development-localnet protocol-identity/text-publication integration                                                                                                                                                                                                                                                          | Recovery, WokeNet delegation/device lifecycle, sponsorship, public-cluster execution, and complete device flows remain open                                                                                                                     |
+| Authentication     | Replaceable WebAuthn RP, discoverable registration/sign-in, durable ceremonies/sessions, passkey lifecycle, ciphertext-only PRF bundle storage, fresh operation signing, and a verified development-localnet protocol-identity/text-publication integration                                                                                                                                                                                                                                                          | Recovery, DroolNet delegation/device lifecycle, sponsorship, public-cluster execution, and complete device flows remain open                                                                                                                     |
 | Relay              | Signed non-authoritative WebSocket transport, failover client, bounded retention/backpressure, and fail-closed authorization adapters                                                                                                                                                                                                                                                                                                                                                                                | Cross-replica coordination and production authorizer deployments remain incomplete                                                                                                                                                              |
 | Moderation         | Signed label/report/appeal provider, encrypted PostgreSQL case ledger, retention/legal hold, transparency aggregation, and restricted reads                                                                                                                                                                                                                                                                                                                                                                          | Production SSO/authorizer and specialist safety workflows remain incomplete                                                                                                                                                                     |
 | Messaging          | Experimental pairwise Olm adapter using Matrix Rust crypto WASM with authenticated envelopes and adversarial tests                                                                                                                                                                                                                                                                                                                                                                                                   | Volatile storage, browser packaging, attachments, group messaging, product safety UX, and independent review block production                                                                                                                   |
 | Media              | Resumable worker, MIME/hash/container validation, ClamAV, metadata stripping, image/video/audio output, HLS, waveforms, and unsigned media manifests                                                                                                                                                                                                                                                                                                                                                                 | Flagship upload/signing/publication integration remains incomplete                                                                                                                                                                              |
 | Infrastructure     | Local PostgreSQL, Redis, Kubo, ClamAV/media profile, service containers, migrations, health checks, least-privilege defaults, and secret scanning                                                                                                                                                                                                                                                                                                                                                                    | Public provider accounts, production secrets, backups/restore evidence, capacity testing, and independent operations remain external                                                                                                            |
 
-## `$WOKE` and payment quarantine
+## `$DROOL` and payment quarantine
 
-No `$WOKE` mint exists.
+No `$DROOL` mint exists.
 
 The checked-in program, SDK, indexer, and tests include a legacy ABI that
 denominates transfers in lamports. Earlier documentation mislabeled those
-lamports as `$WOKE`. That interpretation is invalid now that WokeNet is a Solana
+lamports as `$DROOL`. That interpretation is invalid now that DroolNet is a Solana
 application.
 
 The legacy payment ABI is quarantined:
@@ -75,16 +75,16 @@ The legacy payment ABI is quarantined:
 - it must remain paused and fail closed;
 - it cannot execute or be unpaused;
 - flagship clients must not expose it;
-- SOL and lamports must not be labeled `$WOKE`;
+- SOL and lamports must not be labeled `$DROOL`;
 - its passing tests demonstrate historical arithmetic and rejection behavior
   only.
 
 Portable signed payment metadata has a separate, truthful asset schema:
 `{ kind: "sol" }` represents SOL, while SPL assets carry exact token metadata.
 `{ kind: "woke" }` is rejected. This schema does not make the quarantined
-onchain payment ABI executable or create a `$WOKE` mint.
+onchain payment ABI executable or create a `$DROOL` mint.
 
-A future `$WOKE` implementation requires a real SPL or Token-2022 mint, reviewed
+A future `$DROOL` implementation requires a real SPL or Token-2022 mint, reviewed
 decimals and authorities, extension and distribution decisions, tokenomics and
 legal review, a new mint-aware ABI, an explicit migration/version boundary,
 updated SDK/indexer/UI semantics, adversarial tests, devnet rehearsal,
@@ -155,7 +155,7 @@ following local boundaries:
 - The connected vertical slice starts a disposable local validator and
   PostgreSQL, proves the canonical signed post/community/member-authored-join
   fixture, then uses real Chromium and a virtual passkey authenticator to create
-  one WokeNet identity plus deterministic anonymous `.woke` claim atomically
+  one DroolNet identity plus deterministic anonymous `.drool` claim atomically
   and publish two more posts. It strictly resolves the finalized name, deliberately
   loses one response after finality, reloads, reconciles without rebroadcast,
   destroys the projection, replays all 14 events to exact state, and renders
@@ -190,11 +190,11 @@ report does not invent revised totals that were not captured here:
 | `pnpm test`                | 1,294 package tests plus 14 repository-script tests passed                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `pnpm test:e2e`            | 211 tests passed: one authentication-service browser test plus 210 web Playwright tests; two mobile-viewport passkey duplicates were intentionally skipped                                                                                                                                                                                                                                                                                                                        |
 | `pnpm test:programs`       | 31 Anchor local-validator cases passed, including six legacy-payment quarantine cases, identity deactivation, anonymous-origin binding, and member-signed community-membership paths                                                                                                                                                                                                                                                                                              |
-| `pnpm test:vertical-slice` | Fresh disposable run passed: canonical 10-event replay digest `937c73d35dea06b706c1ac8e3a91395494e44e857a4d08f85b83e8719da9407e`; one atomic passkey identity + anonymous-name registration and two browser posts; strict `.woke` resolution; one ambiguous finalized response recovered with no duplicate send; expanded 14-event replay digest `348f69b93e3f895a3cab2d82d2e7bfdd7d13ec5c78177fda75c5db9e8c394c6f`; restored feed/detail signatures; zero audited secret matches |
+| `pnpm test:vertical-slice` | Fresh disposable run passed: canonical 10-event replay digest `937c73d35dea06b706c1ac8e3a91395494e44e857a4d08f85b83e8719da9407e`; one atomic passkey identity + anonymous-name registration and two browser posts; strict `.drool` resolution; one ambiguous finalized response recovered with no duplicate send; expanded 14-event replay digest `348f69b93e3f895a3cab2d82d2e7bfdd7d13ec5c78177fda75c5db9e8c394c6f`; restored feed/detail signatures; zero audited secret matches |
 | Mobile package             | 12 tests passed; Expo dependency compatibility and 20/20 Expo Doctor checks passed; Android Hermes export succeeded at 4.4 MB                                                                                                                                                                                                                                                                                                                                                     |
 | Build and static checks    | All 18 workspace type-check scopes passed; all 17 build tasks, ESLint, Prettier, workspace, naming, schema, and domain-policy checks passed                                                                                                                                                                                                                                                                                                                                       |
 | Security                   | `pnpm audit --audit-level moderate` found no known vulnerability; both repository-history and working-tree secret scans found no leak                                                                                                                                                                                                                                                                                                                                             |
-| Production domains         | The live probe verified permanent redirects from the exact legacy hosts to `https://woke.social/`                                                                                                                                                                                                                                                                                                                                                                                 |
+| Production domains         | The live probe verified permanent redirects from the exact legacy hosts to `https://wetdrool.com/`                                                                                                                                                                                                                                                                                                                                                                                 |
 
 The unthrottled local production-build browser observation used three samples
 per route. It is not field Core Web Vitals evidence:
@@ -209,7 +209,7 @@ per route. It is not field Core Web Vitals evidence:
 
 ## Deployment records
 
-| Target                     | Program deployment                                                    | `$WOKE` mint | Status                      |
+| Target                     | Program deployment                                                    | `$DROOL` mint | Status                      |
 | -------------------------- | --------------------------------------------------------------------- | ------------ | --------------------------- |
 | Disposable Solana localnet | Development program ID `9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD` | None         | Built and exercised locally |
 | Solana devnet              | None recorded                                                         | None         | Not deployed                |
@@ -242,9 +242,9 @@ mint/token review.
 
 ## Known limitations
 
-- WokeSocial is not production-ready.
-- No WokeNet program is deployed to a public Solana cluster.
-- No `$WOKE` asset exists and all legacy payment execution is forbidden.
+- WetDrool is not production-ready.
+- No DroolNet program is deployed to a public Solana cluster.
+- No `$DROOL` asset exists and all legacy payment execution is forbidden.
 - The Android/Seeker foundation is not a release client, and no signed APK or
   distribution artifact exists.
 - The flagship web application does not yet perform protocol wallet signing or
@@ -283,7 +283,7 @@ publish an APK, spend production funds, or grant release authority.
 
 ## External work required before production
 
-1. Complete the essential WokeSocial consumer journeys and protocol mutation
+1. Complete the essential WetDrool consumer journeys and protocol mutation
    flows.
 2. Complete security, privacy, safety, accessibility, load, failure, backup,
    restore, and provider-evacuation verification.
@@ -292,7 +292,7 @@ publish an APK, spend production funds, or grant release authority.
 4. Obtain independent program, application, infrastructure, messaging, and
    mobile security reviews.
 5. Complete qualified legal/privacy/safety review.
-6. If `$WOKE` remains in scope, complete the mint, tokenomics, authority,
+6. If `$DROOL` remains in scope, complete the mint, tokenomics, authority,
    migration, ABI, product, legal, and audit work described above.
 7. Complete and verify the Seeker Android app, Mobile Wallet Adapter
    transaction-intent integration, reproducible signed APK, signing provenance,

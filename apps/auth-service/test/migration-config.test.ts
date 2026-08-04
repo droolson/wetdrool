@@ -9,21 +9,21 @@ import { readAuthMigrationDatabaseUrl } from '../src/migrate.js';
 
 describe('authentication migration configuration', () => {
   it('requires the dedicated migration role instead of falling back to the runtime role', () => {
-    const migrationUrl = 'postgresql://auth_migration:migration-secret@database.test/wokesocial';
+    const migrationUrl = 'postgresql://auth_migration:migration-secret@database.test/wetdrool';
     expect(
       readAuthMigrationDatabaseUrl({
-        AUTH_DATABASE_URL: 'postgresql://auth_runtime:runtime-secret@database.test/wokesocial',
+        AUTH_DATABASE_URL: 'postgresql://auth_runtime:runtime-secret@database.test/wetdrool',
         AUTH_DATABASE_MIGRATION_URL: migrationUrl,
       }),
     ).toBe(migrationUrl);
     expect(() =>
       readAuthMigrationDatabaseUrl({
-        AUTH_DATABASE_URL: 'postgresql://auth_runtime:runtime-secret@database.test/wokesocial',
+        AUTH_DATABASE_URL: 'postgresql://auth_runtime:runtime-secret@database.test/wetdrool',
       }),
     ).toThrow('AUTH_DATABASE_MIGRATION_URL is required');
     expect(() =>
       readAuthMigrationDatabaseUrl({
-        AUTH_DATABASE_MIGRATION_URL: 'https://database.test/wokesocial',
+        AUTH_DATABASE_MIGRATION_URL: 'https://database.test/wetdrool',
       }),
     ).toThrow('must use postgres:// or postgresql://');
   });
@@ -62,7 +62,7 @@ describe('authentication migration configuration', () => {
       readAuthMigrationDatabaseUrl({
         APP_ENV: 'production',
         AUTH_DATABASE_MIGRATION_URL:
-          'postgresql://auth_migration:secret@database.test/wokesocial?sslmode=verify-full',
+          'postgresql://auth_migration:secret@database.test/wetdrool?sslmode=verify-full',
       }),
     ).toContain('sslmode=verify-full');
 
@@ -76,7 +76,7 @@ describe('authentication migration configuration', () => {
       expect(() =>
         readAuthMigrationDatabaseUrl({
           APP_ENV: 'production',
-          AUTH_DATABASE_MIGRATION_URL: `postgresql://auth_migration:secret@database.test/wokesocial${sslQuery}`,
+          AUTH_DATABASE_MIGRATION_URL: `postgresql://auth_migration:secret@database.test/wetdrool${sslQuery}`,
         }),
       ).toThrow('must set exactly one sslmode=verify-full');
     }
@@ -88,7 +88,7 @@ describe('authentication migration configuration', () => {
         readAuthMigrationDatabaseUrl({
           ...environment,
           AUTH_DATABASE_MIGRATION_URL:
-            'postgresql://auth_migration:secret@database.test/wokesocial',
+            'postgresql://auth_migration:secret@database.test/wetdrool',
         }),
       ).toThrow('must set exactly one sslmode=verify-full');
     }
@@ -96,7 +96,7 @@ describe('authentication migration configuration', () => {
       readAuthMigrationDatabaseUrl({
         APP_ENV: 'staging',
         AUTH_DATABASE_MIGRATION_URL:
-          'postgresql://auth_migration:secret@database.test/wokesocial?sslmode=verify-full',
+          'postgresql://auth_migration:secret@database.test/wetdrool?sslmode=verify-full',
         NODE_TLS_REJECT_UNAUTHORIZED: '0',
       }),
     ).toThrow(/NODE_TLS_REJECT_UNAUTHORIZED must not be 0/u);
@@ -106,7 +106,7 @@ describe('authentication migration configuration', () => {
     expect(
       readAuthMigrationDatabaseUrl({
         NODE_ENV: 'test',
-        AUTH_DATABASE_MIGRATION_URL: 'postgresql://auth_migration:secret@127.0.0.1:5432/wokesocial',
+        AUTH_DATABASE_MIGRATION_URL: 'postgresql://auth_migration:secret@127.0.0.1:5432/wetdrool',
       }),
     ).toContain('127.0.0.1');
   });

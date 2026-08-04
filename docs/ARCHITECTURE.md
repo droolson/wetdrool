@@ -1,4 +1,4 @@
-# WokeSocial Architecture
+# WetDrool Architecture
 
 ## Document status
 
@@ -6,7 +6,7 @@
 - **Implementation status:** Foundation and experimental core subsets implemented
 - **Deployment status:** disposable Solana local-validator and local-container
   testing plus a non-release Seeker Android foundation; no devnet or
-  mainnet-beta WokeNet program deployment, `$WOKE` mint, verified Seeker-device
+  mainnet-beta DroolNet program deployment, `$DROOL` mint, verified Seeker-device
   run, signed APK, or distribution release
 - **Last verified:** 2026-07-29
 
@@ -19,16 +19,16 @@ or complete-product path.
 
 ## Architectural goals
 
-WokeSocial is designed as an open social protocol with a polished reference
+WetDrool is designed as an open social protocol with a polished reference
 client. The architecture must preserve these properties:
 
 1. An identity and its public social graph can outlive the flagship client.
-2. Public content can be authenticated without trusting a WokeSocial
+2. Public content can be authenticated without trusting a WetDrool
    database.
 3. PostgreSQL, Redis, relays, indexers, feed providers, storage vendors, and RPC
    providers are replaceable.
 4. Sensitive data, authentication secrets, moderation evidence, and private
-   messages never become public WokeNet state.
+   messages never become public DroolNet state.
 5. Private messaging uses established end-to-end encryption and does not treat a
    relay as an authority.
 6. Official services can honor deletion and safety requests without falsely
@@ -44,7 +44,7 @@ flowchart LR
     Client["Web, Seeker Android, or third-party client"]
     Wallet["Wallet, passkey-backed account, or delegated device key"]
     RPC["One or more Solana RPC providers"]
-    Chain["Solana ledger and WokeNet program"]
+    Chain["Solana ledger and DroolNet program"]
     Storage["Content-addressed storage providers"]
     Relay["Replaceable real-time relays"]
     Indexer["Replaceable indexers"]
@@ -80,7 +80,7 @@ interchangeable would break the decentralization and privacy requirements.
 
 | State class | Examples | Authority | May be rebuilt? |
 | --- | --- | --- | --- |
-| Verifiable protocol state | Identity roots, delegations, handle claims, public follow edges, community authority, post references, revocations, tombstones, and only under a separately approved mint-aware ABI, future payment settlement | WokeNet program state and finalized Solana history | Yes, from the configured deployment slot and public content |
+| Verifiable protocol state | Identity roots, delegations, handle claims, public follow edges, community authority, post references, revocations, tombstones, and only under a separately approved mint-aware ABI, future payment settlement | DroolNet program state and finalized Solana history | Yes, from the configured deployment slot and public content |
 | Signed portable objects | Profile and post manifests, media manifests, policies, moderation-label feeds, feed-provider descriptors | Valid signatures plus authorized key state and content hashes | Yes, from any provider retaining the bytes |
 | Derived projections | Timelines, search indexes, notification lists, counters, and future mint-aware entitlement caches | Never authoritative; each record must retain provenance. Legacy payment records are always non-entitling | Yes, deterministically |
 | Private or ephemeral service state | Encrypted message envelopes, typing/presence, rate limits, local drafts, private abuse evidence, recovery contact data | The relevant user, encrypted conversation, or scoped operator policy | Not necessarily; minimize and apply retention limits |
@@ -92,7 +92,7 @@ See:
 - [ADR-0006: Passkey Authentication and Account-Key Boundary](DECISIONS/0006-passkey-account-key-boundary.md)
 - [ADR-0007: Messaging Cryptographic Engine](DECISIONS/0007-messaging-cryptographic-engine.md)
 - [ADR-0008: Canonical Domain Transition](DECISIONS/0008-canonical-domain-transition.md)
-- [ADR-0009: WokeNet as a protocol deployment on Solana](DECISIONS/0009-wokenet-on-solana.md)
+- [ADR-0009: DroolNet as a protocol deployment on Solana](DECISIONS/0009-droolnet-on-solana.md)
 - [ADR-0010: Verified community manifests and privacy-safe discovery](DECISIONS/0010-verified-community-discovery.md)
 - [ADR-0011: Member-signed community membership](DECISIONS/0011-member-signed-community-membership.md)
 
@@ -112,15 +112,15 @@ not scaffolded as empty services.
 | `apps/feed-service` | Explainable, selectable feed scoring | Results are recommendations, never protocol truth | Deterministic chronological/following/community/media scopes, bounded-window trending, explainable recommendations, third-party order reconciliation, bound cursors, local safety filtering, source checkpoints, and noncanonical disclaimers implemented and tested |
 | `apps/media-worker` | Validation, metadata stripping, transcoding, thumbnails, captions, and malware scanning | Clients may publish independently processed compliant media; worker output is unsigned | Authenticated resumable uploads, exact chunk/source hashes, strict MIME/container validation, metadata-free image/video/audio profiles, HLS, waveforms, bounded processing, real ClamAV INSTREAM with fresh database provenance, content-addressed publication, and independent preprocessed mode implemented and tested |
 | `apps/docs` | Human and generated protocol/API documentation | Generated reference must derive from canonical schemas | Planned |
-| `programs/social_protocol` | Compact WokeNet state, authorization, and events deployed as a Solana program | Canonical only for explicitly documented onchain facts | The generated IDL contains 43 instructions, 19 account layouts, and 33 events. Member-authorized join/leave, creator-root or scoped-delegate remove/ban, terminal bans, and governance membership-sequence snapshots replace creator membership assignment. The broader local subset covers config, identity/profile references, deactivation, handles, rotation/delegation/recovery, social actions, communities/governance, posts/reactions/tombstones, and a quarantined legacy payment family. No `$WOKE` mint exists; the legacy ABI cannot execute or be unpaused |
+| `programs/social_protocol` | Compact DroolNet state, authorization, and events deployed as a Solana program | Canonical only for explicitly documented onchain facts | The generated IDL contains 43 instructions, 19 account layouts, and 33 events. Member-authorized join/leave, creator-root or scoped-delegate remove/ban, terminal bans, and governance membership-sequence snapshots replace creator membership assignment. The broader local subset covers config, identity/profile references, deactivation, handles, rotation/delegation/recovery, social actions, communities/governance, posts/reactions/tombstones, and a quarantined legacy payment family. No `$DROOL` mint exists; the legacy ABI cannot execute or be unpaused |
 | `packages/protocol` | Versioned schemas, canonical serialization, identifiers, validation | Single source of truth for portable object formats | Strict modular schemas and builders for all 29 portable object families. Profile, community, and community-membership use schema v2 for current creation while their frozen v1 shapes remain readable. Membership v2 enforces member consent for join/leave, distinct moderator authorship/reasons for remove/ban, terminal bans, exact roles, and replacement lineage. Bounded primitives, SHA-256 IDs/CIDs, Ed25519 proofs, and intrinsic/external authorization boundaries are implemented |
 | `packages/storage` | Content-addressed publication and retrieval | Provider receipts never replace local integrity verification | Local/memory CAS, multi-provider quorum/failover, IPFS/Kubo, and consent-gated Arweave-compatible adapters implemented |
 | `packages/sdk` | Signing, verification, transaction construction, and provider clients | Must not silently trust flagship endpoints | Operation-scoped signed recoverable post/profile/community/membership publication and provider pool plus IDL-aligned Anchor instruction builders, including exact deterministic membership PDAs and join/leave/remove/ban data, root-only community creation with persisted retry coordinates, one-way identity deactivation, quarantined legacy payment helpers, strict simulation/broadcast/finality, and finalized-account proof verification. These primitives do not connect a flagship wallet or Mobile Wallet Adapter, and no client currently exposes membership mutation |
 | `packages/crypto` | Thin wrappers around platform and reviewed cryptographic libraries | No custom cryptographic primitives | WebCrypto random/hash/HKDF/AES-GCM sealed-envelope and credential-bound WebAuthn-PRF key-wrapping primitives implemented and tested; ceremonies are implemented at the web/auth-service boundary, while no messaging protocol is claimed here |
-| `packages/messaging` | Pairwise E2EE adapter over the pinned Matrix Rust crypto WASM engine | WokeSocial device authorization remains authoritative; directory and relay cannot authorize devices or receive plaintext | Real Olm sessions, opaque bounded upload/query/claim routing, before/after local and remote authorization checks, canonical sender-signed envelopes verified before state mutation, replay/corruption/wrong-device rejection, revocation, fixed errors, private construction, and disabled room/group APIs implemented; only volatile test/development storage exists and production rejects it |
+| `packages/messaging` | Pairwise E2EE adapter over the pinned Matrix Rust crypto WASM engine | WetDrool device authorization remains authoritative; directory and relay cannot authorize devices or receive plaintext | Real Olm sessions, opaque bounded upload/query/claim routing, before/after local and remote authorization checks, canonical sender-signed envelopes verified before state mutation, replay/corruption/wrong-device rejection, revocation, fixed errors, private construction, and disabled room/group APIs implemented; only volatile test/development storage exists and production rejects it |
 | `packages/ui` | Accessible design primitives and tokens | No protocol authority | Initial brand, tokens, themes, and shared primitives implemented |
 | `packages/config` | Shared typed configuration and observability contracts | Secrets remain external; retired `WOKENET_*` RPC aliases fail closed | Typed `SOLANA_*` and `NEXT_PUBLIC_SOLANA_*` configuration, canonical-origin enforcement, production constraints, and safe summaries implemented |
-| `packages/test-fixtures` | Deterministic keys, manifests, events, and adversarial fixtures | Test-only; never production secrets | Clearly labeled deterministic `wokenet:v1` public test keys plus signed profile/post/reply/tombstone fixtures and golden values implemented |
+| `packages/test-fixtures` | Deterministic keys, manifests, events, and adversarial fixtures | Test-only; never production secrets | Clearly labeled deterministic `droolnet:v1` public test keys plus signed profile/post/reply/tombstone fixtures and golden values implemented |
 | `infra` | Local containers and provider-neutral deployment examples | Must not imply a mandatory cloud | Digest-pinned PostgreSQL, Redis, Kubo, patched ClamAV, and hardened optional authentication/feed/media plus fail-closed relay/moderation service profiles implemented and locally health-checked |
 
 Code dependencies should point inward toward stable protocol contracts:
@@ -151,14 +151,14 @@ for drift in CI, but the versioned schema and program IDL remain the inputs.
 
 ## Runtime layers
 
-### 1. WokeNet protocol layer
+### 1. DroolNet protocol layer
 
-WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+DroolNet is the WetDrool protocol and smart-contract deployment layer on
 Solana. It is not a blockchain, Solana fork, validator implementation, or RPC
-network. Solana provides the ledger and runtime; the WokeNet deployment is
-identified by the exact observed Solana genesis hash and WokeSocial program ID.
-WokeNet neither ships nor operates Firedancer or Agave validator topology.
-See [ADR-0009](DECISIONS/0009-wokenet-on-solana.md).
+network. Solana provides the ledger and runtime; the DroolNet deployment is
+identified by the exact observed Solana genesis hash and WetDrool program ID.
+DroolNet neither ships nor operates Firedancer or Agave validator topology.
+See [ADR-0009](DECISIONS/0009-droolnet-on-solana.md).
 
 The Anchor program is intended to hold only compact, high-value, verifiable
 state:
@@ -177,7 +177,7 @@ The program must emit sufficient versioned events to reconstruct projection
 state. Every instruction must validate signer authority, PDA derivation,
 ownership, relationship constraints, bounded inputs, replay identifiers, and
 checked arithmetic. Account layouts, maximum sizes, rent, compute, and
-transaction-size budgets must be measured before any public WokeNet deployment.
+transaction-size budgets must be measured before any public DroolNet deployment.
 Canonical reads and projections require finalized Solana state.
 
 The current disposable-localnet implementation covers configuration,
@@ -185,7 +185,7 @@ identity and profile references, collision-safe handles, root rotation, scoped
 delegations, delayed recovery, root/delegated social actions, blocks,
 communities and membership, one-member-one-vote governance, posts, reactions,
 tombstones, and a legacy payment account family. The payment ABI is quarantined,
-must remain paused, and cannot execute or be unpaused. No `$WOKE` mint exists.
+must remain paused, and cannot execute or be unpaused. No `$DROOL` mint exists.
 For public or unlisted open communities, member identities authorize their own
 join/leave transitions. The creator identity's root or current
 community-scoped delegate may remove or ban only an existing membership, and a
@@ -219,12 +219,12 @@ proofs, local and memory CAS, multi-provider quorum/failover, IPFS/Kubo, and a
 consent-gated Arweave-compatible path. Media-manifest content is produced by
 the worker but deliberately remains unsigned until a client signs it. Unit and
 real Kubo/processor integrations verify those paths. Shared Rust/TypeScript
-golden vectors, a funded Arweave upload, and a general browser WokeNet
+golden vectors, a funded Arweave upload, and a general browser DroolNet
 writer remain absent.
 
 ### 3. Projection and discovery layer
 
-An open-source indexer reconstructs queryable state from finalized WokeNet
+An open-source indexer reconstructs queryable state from finalized DroolNet
 program events on Solana, signed manifests, and signed policy feeds. PostgreSQL
 contains projections and ingestion provenance, not truth. Redis, if enabled,
 is restricted to disposable queues, rate limits, and caches.
@@ -261,7 +261,7 @@ no roster and omits member/actor identities, signer authority, moderation
 reason, and manifest location. PostgreSQL schema evolution consists of 18
 ordered migrations.
 Profile manifests use one immutable
-`INDEXER_PROFILE_V2_ACTIVATION_SLOT` per WokeNet: legacy schema-v1 profiles
+`INDEXER_PROFILE_V2_ACTIVATION_SLOT` per DroolNet: legacy schema-v1 profiles
 remain readable only for historical profile-update events before that slot
 whose legacy event prefix lacks a schema commitment. Current root and delegated
 instructions accept only schema version 2 and append it to the onchain event;
@@ -449,7 +449,7 @@ sequenceDiagram
 
 The pairwise adapter now proves this cryptographic core with the real pinned
 Matrix Rust crypto WASM engine on two independent devices, opaque directory
-requests, current WokeSocial device authorization, sender-signed outer
+requests, current WetDrool device authorization, sender-signed outer
 envelopes verified before Olm state mutation, and 13 adversarial
 replay/corruption/revocation/lifecycle tests. Messaging remains disabled in production
 until encrypted persistent state, browser WASM/CSP packaging, attachment and
@@ -475,7 +475,7 @@ separate security gate.
 
 | Store | Allowed data | Forbidden role |
 | --- | --- | --- |
-| WokeNet accounts and ledger | Compact public protocol state and references | PII, private messages, secrets, media, large post bodies |
+| DroolNet accounts and ledger | Compact public protocol state and references | PII, private messages, secrets, media, large post bodies |
 | Content-addressed providers | Signed public manifests; encrypted restricted content; media manifests | Plaintext private messages or decryption keys |
 | PostgreSQL | Rebuildable projections, provenance, operator-scoped private records in isolated schemas | Sole source of identity, social graph, signed content, or entitlement truth |
 | Redis | Rate-limit counters, queues, cache entries, short-lived coordination | Durable protocol state, session authority, irreplaceable jobs |
@@ -566,9 +566,9 @@ addresses, or moderation evidence.
 
 The verified connected development slice runs a disposable Solana local
 validator, PostgreSQL, local content-addressed storage, and the minimum services
-needed for the vertical slice. WokeNet is the program deployed to that local
+needed for the vertical slice. DroolNet is the program deployed to that local
 ledger. Public environments will use Solana devnet or mainnet-beta through
-multiple configured RPC providers; WokeSocial does not operate a separate
+multiple configured RPC providers; WetDrool does not operate a separate
 validator network. Production may distribute each replaceable service across
 different operators and providers.
 
@@ -598,7 +598,7 @@ flowchart TB
     end
 
     Solana["Solana cluster"]
-    WokeNet["WokeNet program"]
+    DroolNet["DroolNet program"]
     StorageA["Storage/gateway A"]
 
     Web <--> LocalKeys
@@ -614,7 +614,7 @@ flowchart TB
     Web <--> GatewayB
     IndexerA <--> PgA
     IndexerA -.-> RedisA
-    WokeNet --> Solana
+    DroolNet --> Solana
     Web --> Solana
     Wallet --> Solana
     IndexerA --> Solana
@@ -625,8 +625,8 @@ flowchart TB
 
 Local setup automation, a fixed development program ID, and local container
 configuration exist. The Android foundation has source and export metadata, but
-no verified Seeker-device run or signed APK. No devnet/mainnet-beta WokeNet
-deployment, `$WOKE` mint, Android distribution release, or production provider
+no verified Seeker-device run or signed APK. No devnet/mainnet-beta DroolNet
+deployment, `$DROOL` mint, Android distribution release, or production provider
 deployment exists.
 
 ## Smallest complete vertical slice
@@ -638,7 +638,7 @@ component harnesses:
 2. Create or update a signed profile manifest and anchor its verified reference.
 3. Canonicalize and sign a text-post manifest.
 4. Publish it to local content-addressed storage and verify the returned bytes.
-5. Anchor the manifest reference and hash through the WokeNet social program.
+5. Anchor the manifest reference and hash through the DroolNet social program.
 6. Ingest the finalized event and manifest into a rebuildable indexer projection.
 7. Display the verified post in the reference web feed.
 8. Follow another identity and reflect the edge in the following feed.
@@ -686,5 +686,5 @@ Seeker, token-mint, or production readiness.
 - [ADR-0003: Onchain and Offchain Data Split](DECISIONS/0003-onchain-offchain-data-split.md)
 - [ADR-0004: Indexer Projection and Replay](DECISIONS/0004-indexer-projection-and-replay.md)
 - [ADR-0005: Provider Replaceability](DECISIONS/0005-provider-replaceability.md)
-- [ADR-0009: WokeNet as a protocol deployment on Solana](DECISIONS/0009-wokenet-on-solana.md)
+- [ADR-0009: DroolNet as a protocol deployment on Solana](DECISIONS/0009-droolnet-on-solana.md)
 - [ADR-0010: Verified community manifests and privacy-safe discovery](DECISIONS/0010-verified-community-discovery.md)

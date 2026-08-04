@@ -5,7 +5,7 @@ import { digestSha256, encodeMultibaseBase64Url, utf8 } from './encoding.js';
 import { assertCanonicalInput, ProtocolValidationError } from './validation.js';
 
 export const COMMUNITY_GOVERNANCE_STRATEGY_DOMAIN =
-  'wokenet:community-governance-strategy:v1' as const;
+  'droolnet:community-governance-strategy:v1' as const;
 
 export const WOKENET_ONE_MEMBER_ONE_VOTE_V1 = {
   model: 'one-active-member-one-vote',

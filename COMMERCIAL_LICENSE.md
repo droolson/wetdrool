@@ -1,4 +1,4 @@
-# Commercial & Government Production Licensing — WokeSocial
+# Commercial & Government Production Licensing — WetDrool
 
 **Transparency is free. Production is not.**
 
@@ -27,7 +27,7 @@ OSI open source cannot require payment for ordinary production use. That is inte
 
 ## Who needs Section B
 
-- Companies running WokeSocial in production or as SaaS
+- Companies running WetDrool in production or as SaaS
 - App stores / paid clients embedding substantial first-party code
 - Government, military, EM, or public agencies in operational deployment
 - Contractors delivering this stack to public-sector customers
@@ -45,7 +45,7 @@ OSI open source cannot require payment for ordinary production use. That is inte
 ## How to request a license
 
 1. Open an issue titled **Commercial / Government License Request**  
-   https://github.com/AlexBTC420/wokesocial/issues/new  
+   https://github.com/AlexBTC420/wetdrool/issues/new  
 2. Or contact [github.com/AlexBTC420](https://github.com/AlexBTC420)
 
 Include: legal entity, use case, expected scale (users/nodes/revenue band), territory, duration, modification needs, procurement constraints.
@@ -76,8 +76,8 @@ Doctrine and legislative strategy (same dual-license philosophy):
 https://github.com/AlexBTC420/order-hail-mary
 
 Sibling product repos:
-- https://github.com/AlexBTC420/wokesocial
-- https://github.com/AlexBTC420/wokenet
+- https://github.com/AlexBTC420/wetdrool
+- https://github.com/AlexBTC420/droolnet
 
 ---
 

@@ -16,7 +16,7 @@ import {
   buildUpdateWokePaymentConfigInstruction,
   calculatePaymentPlan,
   calculateWokeNativePaymentPlan,
-  createWokeNetContext,
+  createDroolNetContext,
   deriveWokeIdentityAddress,
   deriveWokePaymentConfigAddress,
   deriveWokePaymentReceiptAddress,
@@ -31,7 +31,7 @@ import {
   type PaymentPlanInput,
   type SettleWokeSubscriptionInput,
   type WokeFinalizedAccount,
-  type WokeNetContext,
+  type DroolNetContext,
   type WokePaymentAccountReader,
   type WokePaymentReceiptRecord,
   type WokePaymentSimulation,
@@ -69,15 +69,15 @@ const paymentAuthority = key(17);
 const upgradeAuthority = key(18);
 const rotatedAuthority = key(19);
 
-const context: WokeNetContext = {
-  endpoint: 'https://rpc.network.woke.social',
+const context: DroolNetContext = {
+  endpoint: 'https://rpc.network.wetdrool.com',
   genesisHash: 'EahQmXc3rwhY3CH1g3ZgUx8L4vHTNmzpK1xtiQ1RAxq6',
   programAddress: 'EWn7dE93GeQJu72WEkEmC5MZpm5FhiJzkcJEf1xpRdWP',
 };
 
 const expectedContext = {
   ...context,
-  endpoint: 'https://rpc.network.woke.social/',
+  endpoint: 'https://rpc.network.wetdrool.com/',
 };
 
 const golden = {
@@ -171,18 +171,18 @@ function subscriptionInput(
 
 describe('legacy SOL allocation', () => {
   it('requires an explicit endpoint, genesis hash, and program address', () => {
-    expect(createWokeNetContext(context)).toEqual(expectedContext);
+    expect(createDroolNetContext(context)).toEqual(expectedContext);
     expect(() =>
-      createWokeNetContext({ ...context, endpoint: 'wss://rpc.network.woke.social' }),
+      createDroolNetContext({ ...context, endpoint: 'wss://rpc.network.wetdrool.com' }),
     ).toThrowError(expect.objectContaining({ code: 'invalid-context' }));
     expect(() =>
-      createWokeNetContext({
+      createDroolNetContext({
         ...context,
         genesisHash: `solana:${context.genesisHash}`,
       }),
     ).toThrowError(expect.objectContaining({ code: 'invalid-address' }));
     expect(() =>
-      createWokeNetContext({
+      createDroolNetContext({
         ...context,
         programAddress: WOKENET_SYSTEM_PROGRAM_ADDRESS,
       }),
@@ -363,7 +363,7 @@ describe('legacy SOL allocation', () => {
       protocolFee: { basisPoints: 0, destination: feeDestination },
       recipientSplits: [
         {
-          recipient: `wokesocialid:v1:wokenet:v1:${context.genesisHash}:${context.programAddress}:${creatorIdentity}`,
+          recipient: `wetdroolid:v1:droolnet:v1:${context.genesisHash}:${context.programAddress}:${creatorIdentity}`,
           destination: creatorDestination,
           basisPoints: 10_000,
         },
@@ -374,7 +374,7 @@ describe('legacy SOL allocation', () => {
   });
 });
 
-describe('WokeSocial protocol PDA derivation', () => {
+describe('WetDrool protocol PDA derivation', () => {
   it('matches the pinned protocol seed vectors', async () => {
     await expect(deriveWokeProtocolConfigAddress(context)).resolves.toBe(golden.config);
     await expect(deriveWokePaymentConfigAddress(context)).resolves.toBe(golden.paymentConfig);
@@ -403,7 +403,7 @@ describe('WokeSocial protocol PDA derivation', () => {
   });
 });
 
-describe('WokeSocial Anchor instruction builders', () => {
+describe('WetDrool Anchor instruction builders', () => {
   it('builds one-way identity deactivation with exact IDL accounts and wire data', async () => {
     const instruction = await buildDeactivateWokeIdentityInstruction(context, {
       identity: creatorIdentity,

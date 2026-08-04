@@ -10,7 +10,7 @@ import {
   timestampSchema,
   unsigned64Schema,
   type ProfileContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 import {
   IndexerPayloadError,
@@ -26,7 +26,7 @@ import { endpointFor, readIndexerJson } from './transport.js';
  * verified public profile manifest when one exists, and its canonical active
  * handle. Protected profile fields are filtered at indexer ingestion and are
  * never present here. This is an exact-identifier read, not a proof surface —
- * `.woke` proofs come from the strict resolver.
+ * `.drool` proofs come from the strict resolver.
  */
 export interface IdentityProfileView {
   canonical: false;
@@ -112,7 +112,7 @@ export function parseIdentityProfileResponse(
       ? undefined
       : parsed(timestampSchema, identity.deactivatedAt, 'identity profile deactivation time');
   if (
-    identityId !== `wokesocialid:v1:${network}:${identityAddress}` ||
+    identityId !== `wetdroolid:v1:${network}:${identityAddress}` ||
     (expected !== undefined && identityId !== expected.identityId) ||
     (deactivatedAt !== undefined) === identity.active
   ) {
@@ -136,7 +136,7 @@ export function parseIdentityProfileResponse(
       'updatedSlot',
     ]);
     const objectId = parsed(objectIdSchema, projected.objectId, 'identity profile object ID');
-    if (!objectId.startsWith('wokesocialobj:v1:profile:')) {
+    if (!objectId.startsWith('wetdroolobj:v1:profile:')) {
       throw new IndexerPayloadError('The identity profile must reference a profile object.');
     }
     profile = {

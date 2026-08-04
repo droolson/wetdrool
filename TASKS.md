@@ -1,4 +1,4 @@
-# WokeSocial implementation plan
+# WetDrool implementation plan
 
 Updated: 2026-07-29
 
@@ -56,15 +56,15 @@ Dependencies: repository audit.
 
 ### Monorepo and toolchains
 
-- [x] Initialize Git and configure the private `AlexBTC420/wokesocial` source
+- [x] Initialize Git and configure the private `AlexBTC420/wetdrool` source
   remote.
-- [x] Set the repository identity to `wokenet` and enforce the platform/protocol
+- [x] Set the repository identity to `droolnet` and enforce the platform/protocol
   naming boundary.
   - Evidence: the local repository directory and root package are both
-    `wokenet`; `pnpm naming:check` enforces `WokeSocial`/`wokesocial` for the
-    platform and `WokeNet`/`wokenet` for the protocol and local repository
-    identity. `origin` points to the private `AlexBTC420/wokesocial` source
-    repository; this hosting name does not change the local WokeNet protocol
+    `droolnet`; `pnpm naming:check` enforces `WetDrool`/`wetdrool` for the
+    platform and `DroolNet`/`droolnet` for the protocol and local repository
+    identity. `origin` points to the private `AlexBTC420/wetdrool` source
+    repository; this hosting name does not change the local DroolNet protocol
     namespace.
 - [x] Add a strict pnpm workspace and Turborepo pipeline.
 - [x] Pin Node, pnpm, TypeScript, Rust, Anchor, and the Solana development
@@ -94,7 +94,7 @@ Dependencies: repository audit.
     to `OTEL_EXPORTER_OTLP_ENDPOINT` remain open.
 - [x] Implement a fail-closed shared rate-limit store and verify limits across
   multiple replicas.
-  - Evidence: `@wokesocial/rate-limit` uses one atomic Redis fixed-window Lua
+  - Evidence: `@wetdrool/rate-limit` uses one atomic Redis fixed-window Lua
     operation, HMAC-derived keys that never send raw client identities to
     Redis, abortable finite-time commands, active command/ACL readiness, and
     stable fail-closed `503` errors. Twenty-five unit cases and six real-Redis
@@ -154,22 +154,22 @@ Dependencies: repository audit.
     program suite.
 - [x] Documentation matches the generated foundation.
 
-## 2. WokeNet on Solana and core protocol
+## 2. DroolNet on Solana and core protocol
 
 Dependencies: phase 1, canonical schemas, and pinned Rust/Anchor/Solana
 development toolchains.
 
-- [x] Define WokeNet as the WokeSocial protocol and smart-contract deployment
+- [x] Define DroolNet as the WetDrool protocol and smart-contract deployment
   layer on Solana.
   - Evidence: ADR-0009 rejects a separate chain, Solana fork, custom validator,
-    Firedancer/Agave topology, and WokeNet-owned RPC network. Deployment
+    Firedancer/Agave topology, and DroolNet-owned RPC network. Deployment
     metadata uses explicit Solana clusters and preserves
-    `wokenet:v1:<solana-genesis-hash>:<social-program-id>`.
-- [ ] Publish a verified WokeNet deployment to Solana devnet.
+    `droolnet:v1:<solana-genesis-hash>:<social-program-id>`.
+- [ ] Publish a verified DroolNet deployment to Solana devnet.
   - Required evidence: reproducible SBF build, exact devnet genesis/program
     binding, deployment slot, authority record, finalized RPC verification,
     explorer-visible transaction, rollback plan, and release approval.
-- [ ] Publish a security-reviewed WokeNet deployment to Solana mainnet-beta.
+- [ ] Publish a security-reviewed DroolNet deployment to Solana mainnet-beta.
   - Blocked on independent program review, authority/multisig policy, devnet
     rehearsal, production operations, monitoring, incident response, and
     explicit approval. No public deployment is currently claimed.
@@ -222,7 +222,7 @@ development toolchains.
     and historical arithmetic/state-transition helpers remain for migration and
     regression analysis. Program tests prove bootstrap, tip/offering execution,
     authority rotation, unpause, and entitlement maintenance fail without
-    changing state or balances. No successful payment flow or `$WOKE` mint
+    changing state or balances. No successful payment flow or `$DROOL` mint
     exists. A real SPL/Token-2022 mint, new mint-aware ABI, migration,
     SDK/UI/indexer work, tests, legal review, and audit are required.
 - [ ] Document and test every PDA seed, account constraint, account size,
@@ -276,7 +276,7 @@ Dependencies: phase 2 protocol identifiers and events.
     v1 shapes remain read-compatible. Its checked-in Draft 2020-12
     signed-envelope schema is
     generated from the same registry, exported as
-    `@wokesocial/protocol/schema/v1`, and fails `schema:check` when stale. Rust
+    `@wetdrool/protocol/schema/v1`, and fails `schema:check` when stale. Rust
     consumption and cross-language golden conformance remain separate open
     gates.
 - [x] Implement deterministic canonical serialization, stable identifiers,
@@ -541,7 +541,7 @@ Dependencies: identity/delegation protocol, production-grade web sessions,
 threat-model mitigations.
 
 - [ ] Implement existing-wallet onboarding through supported Solana wallets.
-- [ ] Complete the native Android WokeSocial client for Solana Seeker using
+- [ ] Complete the native Android WetDrool client for Solana Seeker using
   Mobile Wallet Adapter.
   - Implemented subset: an Expo/React Native Android foundation provides an MWA
     connection boundary, exact Solana genesis/program verification, a strict
@@ -557,7 +557,7 @@ threat-model mitigations.
 - [ ] Implement passkey-first onboarding using WebAuthn and a documented
   noncustodial signing architecture.
   - Implemented subset: ADR-0006 fixes the authentication/signing boundary;
-    `@wokesocial/crypto` wraps locally generated Ed25519 seeds with
+    `@wetdrool/crypto` wraps locally generated Ed25519 seeds with
     credential-bound WebAuthn PRF output using HKDF-SHA-256 plus AES-256-GCM.
     The replaceable auth service now verifies exact-origin/RP, user-verifying,
     discoverable ceremonies with durable PostgreSQL challenge, credential,
@@ -571,7 +571,7 @@ threat-model mitigations.
     additional passkey unwraps and rewraps the same root, and revocation requires
     fresh step-up, deletes that wrapper, and revokes service sessions.
     The development-localnet composer now requires a fresh passkey assertion,
-    atomically creates one deterministic WokeNet identity plus anonymous name
+    atomically creates one deterministic DroolNet identity plus anonymous name
     claim (or migrates a legacy identity-only account), signs canonical post
     bytes, verifies local CAS storage, simulates and finalizes exact Solana
     transactions, waits for the indexer, strictly resolves the name, and
@@ -581,7 +581,7 @@ threat-model mitigations.
     four isolated PostgreSQL, one auth-service browser integration, 253 web
     tests across 19 files, and the vertical publication/replay browser checks
     pass.
-  - Remaining scope: connect service-passkey revocation to the separate WokeNet
+  - Remaining scope: connect service-passkey revocation to the separate DroolNet
     delegation/device-authority lifecycle, complete recovery UX and independent
     security review, provide a reviewed fallback for authenticators without PRF
     support, and move the publication flow beyond the development-localnet
@@ -604,15 +604,15 @@ Dependencies: secure devices, identity verification, relay envelope interface.
   ADR; do not invent cryptography.
   - Evidence: ADR-0007 selects the Apache-2.0 Rust
     `matrix-sdk-crypto`/`vodozemac` engine through its maintained WASM binding,
-    preserves WokeSocial identity and relay authority boundaries, and keeps
+    preserves WetDrool identity and relay authority boundaries, and keeps
     group messaging gated.
 - [ ] Implement device keys, authenticated encryption, replay protection,
   rotation, forward secrecy where supported, safety-number UX, encrypted local
   storage, attachments, revocation, message requests, and blocking.
-  - Implemented subset: `@wokesocial/messaging` delegates pairwise sessions
+  - Implemented subset: `@wetdrool/messaging` delegates pairwise sessions
     to pinned `@matrix-org/matrix-sdk-crypto-wasm@18.4.0`, routes only opaque
     upload/query/claim requests, binds engine keys to injected current
-    WokeSocial device authorization before and after sensitive operations,
+    WetDrool device authorization before and after sensitive operations,
     verifies a canonical sender-device Ed25519 signature over routing fields
     and ciphertext before mutating Olm state, and rejects replay, corruption,
     wrong-device delivery, local or remote revocation, authorization changes,
@@ -669,14 +669,14 @@ and security review.
 - [x] Quarantine the legacy lamport-denominated payment ABI.
   - Evidence: its policy is paused by default. Under ADR-0009 it must remain
     paused, cannot execute or be unpaused, cannot be exposed by flagship
-    clients, and cannot describe SOL or lamports as `$WOKE`. Historical tests
+    clients, and cannot describe SOL or lamports as `$DROOL`. Historical tests
     remain regression evidence only.
 - [x] Keep portable signed payment-asset metadata truthful and distinct from the
   quarantined onchain ABI.
   - Evidence: `paymentAssetSchema` accepts `{ kind: "sol" }` or exact SPL token
     metadata and rejects `{ kind: "woke" }`. This does not create a mint,
     authorize the legacy ABI, or establish an entitlement.
-- [ ] Define and create a real `$WOKE` SPL or Token-2022 mint.
+- [ ] Define and create a real `$DROOL` SPL or Token-2022 mint.
   - Required evidence: reviewed token standard, exact mint, decimals,
     mint/freeze authorities, extensions, distribution, tokenomics, legal
     posture, public deployment record, and explicit approval. No mint exists.
@@ -727,7 +727,7 @@ Dependencies: all applicable product phases.
 - [ ] Prepare provider-neutral deployment, Solana devnet/mainnet-beta
   automation, DNS/TLS guide, monitoring, privacy-controlled error tracking,
   backups, rollback, incident response, and disaster recovery.
-- [ ] Obtain `BLOCKED(external)` independent WokeNet program, web/service, and
+- [ ] Obtain `BLOCKED(external)` independent DroolNet program, web/service, and
   Seeker Android security audits.
 - [ ] Obtain `BLOCKED(external)` cryptography and messaging audit.
 - [ ] Obtain `BLOCKED(external)` qualified legal/privacy/safety review.
@@ -740,7 +740,7 @@ Dependencies: all applicable product phases.
 Dependencies: the verified social publication foundation, plus the specific
 privacy, security, economic, and operational gates named below. The complete
 design is in [docs/PLATFORM_EXPANSION.md](docs/PLATFORM_EXPANSION.md) and is
-tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12).
+tracked by [GitHub epic #12](https://github.com/AlexBTC420/wetdrool/issues/12).
 
 - [ ] Define and verify decentralized long-form and vertical short-form video
   manifests, browser upload/playback, replaceable delivery, accessibility, and
@@ -748,7 +748,7 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
 - [ ] Treat “middle-out” as a measured media R&D program; retain
   standards-based fallbacks and ship no codec or efficiency claim without a
   public corpus and reproducible result.
-- [x] Define and cross-language test the version-1 `.woke` namespace,
+- [x] Define and cross-language test the version-1 `.drool` namespace,
   deterministic pseudonymous derivation from immutable identity origin,
   conservative ASCII normalization, rotation/recovery stability, and
   program-enforced `anon_` anti-front-running.
@@ -762,7 +762,7 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
     to the stable identity; the strict resolver follows finalized root
     rotation; and `pnpm test:vertical-slice` reconstructs 14 events after one
     atomic registration plus two browser posts.
-- [ ] Connect finalized `.woke` names across profile, feed, search,
+- [ ] Connect finalized `.drool` names across profile, feed, search,
   payment/signature confirmation, cache invalidation, and public-cluster
   product surfaces.
   - Partial evidence (signature confirmation and cache invalidation only):
@@ -770,13 +770,13 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
     disclosure from the account's synchronized ciphertext-only key wrappers,
     requires every wrapper to agree on one exact 32-byte key, shows the exact
     deployment, program, root authority, derived identity account, and
-    anonymous `.woke` candidate before enabling a signature, caches the
+    anonymous `.drool` candidate before enabling a signature, caches the
     disclosure only against the exact account/key/deployment binding,
     discards it on any change, and `publishLocalnetTextPost` rejects with
     `destination-mismatch` before any account read or transaction when the
     fresh passkey key differs from the disclosed destination. Passkey
     onboarding renders the exact (untruncated) Solana destination for the
-    derived candidate. Verified by `pnpm --filter @wokesocial/web test`
+    derived candidate. Verified by `pnpm --filter @wetdrool/web test`
     (20 files / 260 cases) and `pnpm verify` on 2026-07-29. No payment
     surface exists yet.
   - Partial evidence (feed, post-detail, search, and Seeker-feed rendering):
@@ -787,7 +787,7 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
     with handle release proven to drop the field; the strict projected-feed
     client accepts only an exactly canonical handle serialization; and the
     web post card, search results, and Seeker read-only feed render
-    `handle.woke` with an honest no-active-name state. Verified by the
+    `handle.drool` with an honest no-active-name state. Verified by the
     indexer (209), indexer-client (59), web (260), and mobile (12) unit
     suites on 2026-07-29.
   - Partial evidence (profile surface): `GET
@@ -796,26 +796,26 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
     projection, and its canonical active handle (always null for a
     deactivated identity); the strict client parser rejects broken
     identity/handle/deactivation bindings and stale checkpoints; and the
-    web profile route renders the display name, `handle.woke`, public
+    web profile route renders the display name, `handle.drool`, public
     bio/pronouns/links, an independently checkable identity receipt, and
     honest deactivated/not-found/degraded/invalid-identifier states.
     Verified by the indexer (210), indexer-client (64), and web (260) unit
     suites on 2026-07-29. Share surfaces and public-cluster surfaces
     remain open.
-- [ ] Ship handle subdomains (`*.woke.social`), `handle@woke.social` E2EE
-  mail, the Woke AI site builder, the platform assistant, and the feed-native
+- [ ] Ship handle subdomains (`*.wetdrool.com`), `handle@wetdrool.com` E2EE
+  mail, the Drool AI site builder, the platform assistant, and the feed-native
   Solana token launchpad.
   - Partial evidence (front-end flows and prepared contracts only): `/sites`
     derives the injective identity bundle for any canonical handle — the
     DNS-safe subdomain (underscore→hyphen; handles never contain hyphens)
-    and the verbatim `handle@woke.social` mail address, with E2EE-between-
+    and the verbatim `handle@wetdrool.com` mail address, with E2EE-between-
     identities semantics and non-deployed status stated — offers the Crypto
     Project (featured), Personal Blog, and Work Portfolio presets with
     device-local drafts, a deterministic local preview, and the exact frozen
-    Woke AI generation request (Qwen3 Coder Next, static bundle, no
+    Drool AI generation request (Qwen3 Coder Next, static bundle, no
     trackers, truthful-claims constraint); `/ai` is the platform assistant
     surface over the self-hosted model catalog (Kairos default) with a
-    fail-closed `WOKESOCIAL_AI_INFERENCE_URL` runtime reader — messages stay
+    fail-closed `WETDROOL_AI_INFERENCE_URL` runtime reader — messages stay
     on-device and no inference occurs; `/launchpad` previews the fair
     bonding-curve Solana token launch flow (SPL/Token-2022), sentiment
     discovery, and the prepared noncustodial agent API, with launching and
@@ -849,7 +849,7 @@ tracked by [GitHub epic #12](https://github.com/AlexBTC420/wokesocial/issues/12)
   financial/legal review, and user-protection gates pass.
 - [ ] Publish machine-readable governance for protocol changes, name rules,
   point formulas, marketplace policy, AI policy, and automation limits without
-  assigning control by default to SOL, NFT, purchased-point, or future `$WOKE`
+  assigning control by default to SOL, NFT, purchased-point, or future `$DROOL`
   wealth.
 
 ## Vertical slice acceptance gate
@@ -862,13 +862,13 @@ finalized exactly 11 local transactions, applied 10 durable projected events,
 produced zero dead letters, compared pre/post replay state exactly, and passed
 eight production desktop and mobile-viewport Chromium checks (four before and
 four after replay) without request interception. This is local development
-scope, not devnet, mainnet-beta, Seeker, or `$WOKE`-mint evidence.
+scope, not devnet, mainnet-beta, Seeker, or `$DROOL`-mint evidence.
 
 - [x] A user creates an identity on a real local validator.
 - [x] The user creates or updates a profile.
 - [x] The client canonicalizes and signs a text-post manifest.
 - [x] Local content-addressed storage returns a verifiable address.
-- [x] The local WokeNet program anchors the manifest hash and reference.
+- [x] The local DroolNet program anchors the manifest hash and reference.
 - [x] The indexer validates the event, content hash, and signature.
 - [x] The web feed displays the verified post.
 - [x] The public directory, exact-network search, and address-routed detail
@@ -908,5 +908,5 @@ scope, not devnet, mainnet-beta, Seeker, or `$WOKE`-mint evidence.
   setup documentation match the implementation.
 - [x] `FINAL_REPORT.md` distinguishes implemented-and-tested,
   externally-configured, experimental, planned, and not-implemented work.
-- [x] Production WokeNet readiness is assessed without automatically deploying
+- [x] Production DroolNet readiness is assessed without automatically deploying
   the program, creating a token mint, publishing an APK, or spending funds.

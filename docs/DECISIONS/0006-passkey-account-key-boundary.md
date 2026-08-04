@@ -8,7 +8,7 @@
 ## Context
 
 WebAuthn credentials authenticate a person to a relying party. They do not
-natively produce Ed25519 signatures accepted by Solana or by WokeSocial's v1
+natively produce Ed25519 signatures accepted by Solana or by WetDrool's v1
 portable-object protocol. Treating a WebAuthn P-256 assertion as a Solana
 signature would be false, while sending an account private key to an
 authentication service would create application custody.
@@ -26,11 +26,11 @@ The passkey-first path separates three authorities:
 1. The WebAuthn credential authenticates an account session to the selected
    relying-party service.
 2. A locally generated Ed25519 root or delegated seed signs Solana transactions
-   invoking the selected WokeNet program and signs portable protocol objects.
+   invoking the selected DroolNet program and signs portable protocol objects.
 3. A supported WebAuthn credential's 32-byte PRF output derives a wrapping key
    for that Ed25519 seed entirely in the client.
 
-`@wokesocial/crypto` implements the third boundary using domain-separated
+`@wetdrool/crypto` implements the third boundary using domain-separated
 HKDF-SHA-256 and AES-256-GCM. The ciphertext is authenticated against:
 
 - a domain-separated digest of the WebAuthn credential ID;
@@ -145,5 +145,5 @@ authentication service and flagship browser path additionally verify:
 
 Remaining gates are root export/recovery UX, reviewed non-PRF fallback behavior,
 Solana local-validator identity creation and rotation using only the unwrapped
-client key, WokeNet delegation/device-authority integration, load/restore
+client key, DroolNet delegation/device-authority integration, load/restore
 evidence, and independent review of the browser-to-protocol flow.

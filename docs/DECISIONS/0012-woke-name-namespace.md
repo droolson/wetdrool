@@ -1,4 +1,4 @@
-# ADR-0012: Versioned `.woke` identity names
+# ADR-0012: Versioned `.drool` identity names
 
 - Status: Accepted and implemented for localnet anonymous registration and
   resolution; custom-name settlement and public-cluster registration remain
@@ -9,13 +9,13 @@
 
 ## Context
 
-Every WokeSocial account should begin with a pseudonymous name without asking
+Every WetDrool account should begin with a pseudonymous name without asking
 for a phone number, email address, legal name, or user-selected handle. The name
 must remain stable through ordinary root-key rotation and guardian recovery,
 resolve to the current Solana authority, resist registration front-running, and
-remain independently verifiable without trusting one WokeSocial server.
+remain independently verifiable without trusting one WetDrool server.
 
-The `.woke` suffix is a WokeNet application namespace. It is not an ICANN or
+The `.drool` suffix is a DroolNet application namespace. It is not an ICANN or
 alternative-DNS top-level domain, a Solana public key, an SPL asset, or a
 promise that third-party wallets understand the string. Before a payment or
 signature, clients must reveal the exact destination public key, Solana
@@ -25,7 +25,7 @@ cluster, deployed program, fees, rent, and expected state transition.
 
 ### Canonical v1 representation
 
-The namespace version is `1`; the presentation suffix is `.woke`. Program
+The namespace version is `1`; the presentation suffix is `.drool`. Program
 state stores the canonical handle without the suffix because the existing
 versioned handle account is the portable uniqueness primitive.
 
@@ -33,11 +33,11 @@ The deterministic anonymous handle is:
 
 ```text
 digest = SHA-256(
-  UTF-8("wokesocial:woke-name:random:v1\0")
+  UTF-8("wetdrool:woke-name:random:v1\0")
   || 32-byte immutable Identity.origin_authority
 )
 handle = "anon_" || crockford-base32(digest[0..10])
-name = handle || ".woke"
+name = handle || ".drool"
 ```
 
 The 80-bit digest prefix encodes to exactly 16 lowercase Crockford base32
@@ -46,13 +46,13 @@ randomness, wall clock, provider, database, or current-root input. The known
 vector for `11111111111111111111111111111111` is:
 
 ```text
-anon_a8rvm9ryz0phc719.woke
+anon_a8rvm9ryz0phc719.drool
 ```
 
 The system-program address is a derivation vector only. It remains invalid as
 an identity authority in transaction builders.
 
-UI input may contain one leading `@` and one trailing `.woke`; both are
+UI input may contain one leading `@` and one trailing `.drool`; both are
 presentation syntax. V1 canonicalization lowercases ASCII and rejects
 whitespace, non-ASCII or non-NFKC input, invalid underscore placement, and
 unsupported characters. Unicode remains available for display names, not v1
@@ -65,14 +65,14 @@ The existing handle PDA remains:
 
 ```text
 PDA(
-  "wokesocial",
+  "wetdrool",
   account-version-1,
   "handle",
   SHA-256(UTF-8(canonical handle))
 )
 ```
 
-For any `anon_` claim, the WokeNet Solana program independently re-derives the
+For any `anon_` claim, the DroolNet Solana program independently re-derives the
 only valid value from `Identity.origin_authority`. A different identity cannot
 claim it, even after seeing the pending transaction. The immutable origin,
 rather than the current root, means root rotation and guardian recovery do not
@@ -121,7 +121,7 @@ the identity, and checkpoints that do not cover both the claim and current
 identity update. Resolution deliberately follows the current root after a
 finalized rotation.
 
-Clients still bind the answer to one exact Solana genesis hash and WokeNet
+Clients still bind the answer to one exact Solana genesis hash and DroolNet
 program and must be able to verify accounts/events independently. Cache keys
 include namespace version, network, program, and canonical handle;
 rotation/recovery invalidates current-destination entries. A stale or optimistic
@@ -171,7 +171,7 @@ The implemented slice has:
   root-rotated names; and
 - a real Chromium/local-validator test proving passkey registration creates
   identity plus claim in one transaction, two subsequent posts advance the
-  same identity to sequence `3`, strict `.woke` resolution returns the current
+  same identity to sequence `3`, strict `.drool` resolution returns the current
   root, and replay reconstructs all four browser-written events.
 
 The 2026-07-29 Agave 2.3 local-validator atomic registration simulation consumed
@@ -208,7 +208,7 @@ guarantee.
   integration.
 - Custom names, purchases, expiry, transfer, appeals, and economic policy
   remain unimplemented.
-- No devnet or mainnet-beta WokeNet deployment exists.
+- No devnet or mainnet-beta DroolNet deployment exists.
 
 ## Rejected alternatives
 
@@ -218,7 +218,7 @@ guarantee.
   person.
 - **User-chosen anonymous names at signup:** encourages squatting and reveals
   intent before eligibility policy exists.
-- **Treat `.woke` as DNS or a native wallet address:** technically false and
+- **Treat `.drool` as DNS or a native wallet address:** technically false and
   unsafe for signatures or payments.
 - **Rely on the client to protect `anon_`:** a modified client or direct
   transaction could bypass it.
@@ -226,7 +226,7 @@ guarantee.
   not yet sufficiently specified.
 - **Launch custom-name sales with a denylist:** expiry, recovery, disputes,
   front-running, economics, and consumer obligations remain unresolved.
-- **Build a WokeNet chain:** WokeNet is the WokeSocial protocol/program
+- **Build a DroolNet chain:** DroolNet is the WetDrool protocol/program
   namespace on Solana.
 
 ## References
@@ -234,7 +234,7 @@ guarantee.
 - [ADR-0002: Canonical serialization and hashing](0002-canonical-serialization-and-hashing.md)
 - [ADR-0004: Indexer projection and replay](0004-indexer-projection-and-replay.md)
 - [ADR-0006: Passkey account/key boundary](0006-passkey-account-key-boundary.md)
-- [ADR-0009: WokeNet on Solana](0009-wokenet-on-solana.md)
+- [ADR-0009: DroolNet on Solana](0009-droolnet-on-solana.md)
 - `packages/protocol/src/woke-names.ts`
 - `packages/sdk/src/woke-name-claim.ts`
 - `programs/social_protocol/src/validation.rs`

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-import { RATE_LIMIT_BACKEND_UNAVAILABLE, RATE_LIMITER_CLOSED } from '@wokesocial/rate-limit';
+import { RATE_LIMIT_BACKEND_UNAVAILABLE, RATE_LIMITER_CLOSED } from '@wetdrool/rate-limit';
 
 import { AuthServiceError } from './errors.js';
 

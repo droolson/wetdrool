@@ -24,7 +24,7 @@ import {
   type BuiltPublishWokePostInstruction,
   type WokeIdentityAccountRecord,
   type WokeIdentityCoordinates,
-  type WokeNetContext,
+  type DroolNetContext,
   type WokePostReferenceAccountRecord,
   type WokeProgramAccountReader,
   type WokeProgramAccountSnapshot,
@@ -46,7 +46,7 @@ const payer = publicKey(2);
 const alternatePayer = publicKey(3);
 const genesisHash = publicKey(7);
 const programAddress = publicKey(8);
-const context: WokeNetContext = {
+const context: DroolNetContext = {
   endpoint: 'http://127.0.0.1:8899',
   genesisHash,
   programAddress,
@@ -88,7 +88,7 @@ async function post(): Promise<{
   return { built, coordinates };
 }
 
-describe('deterministic WokeSocial identity coordinates', () => {
+describe('deterministic WetDrool identity coordinates', () => {
   it('uses one stable primary nonce and known PDA for the same root authority', async () => {
     const first = await derivePrimaryWokeIdentityCoordinates(context, rootAuthority);
     const second = await derivePrimaryWokeIdentityCoordinates(context, rootAuthority);

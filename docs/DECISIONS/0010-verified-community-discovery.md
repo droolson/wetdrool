@@ -41,7 +41,7 @@ implemented by the program:
 
 Its onchain commitment is SHA-256 over:
 
-1. the UTF-8 domain `wokenet:community-governance-strategy:v1`;
+1. the UTF-8 domain `droolnet:community-governance-strategy:v1`;
 2. one NUL byte; and
 3. the RFC 8785 canonical JSON bytes of the strategy object.
 
@@ -186,7 +186,7 @@ not sample content.
 - [ADR-0002: Canonical serialization and hashing](0002-canonical-serialization-and-hashing.md)
 - [ADR-0003: Onchain/offchain data split](0003-onchain-offchain-data-split.md)
 - [ADR-0004: Indexer projection and replay](0004-indexer-projection-and-replay.md)
-- [ADR-0009: WokeNet on Solana](0009-wokenet-on-solana.md)
+- [ADR-0009: DroolNet on Solana](0009-droolnet-on-solana.md)
 - [ADR-0011: Member-signed community membership](0011-member-signed-community-membership.md)
 - `packages/protocol/src/governance.ts`
 - `apps/indexer/`

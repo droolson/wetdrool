@@ -14,7 +14,7 @@ import { endpointFor, readIndexerJson } from './indexer-transport';
 import {
   describeEndpoint,
   getIndexerBaseUrl,
-  getWokeNetNetworkId,
+  getDroolNetNetworkId,
   ProviderConfigurationError,
 } from './provider-config';
 
@@ -97,7 +97,7 @@ export async function getHomeFeed(): Promise<FeedResult> {
   if (!base) {
     return degraded(
       'unconfigured',
-      'Set WOKESOCIAL_INDEXER_URL to a compatible indexer base URL. No demonstration posts are substituted.',
+      'Set WETDROOL_INDEXER_URL to a compatible indexer base URL. No demonstration posts are substituted.',
     );
   }
   const endpoint = endpointFor(base, 'v1/feed/home?limit=20');
@@ -149,7 +149,7 @@ export async function getPostById(id: string): Promise<PostResult> {
   }
   if (!base) {
     return {
-      detail: 'Set WOKESOCIAL_INDEXER_URL to load and verify a post. No placeholder post is shown.',
+      detail: 'Set WETDROOL_INDEXER_URL to load and verify a post. No placeholder post is shown.',
       kind: 'degraded',
       reason: 'unconfigured',
     };
@@ -208,14 +208,14 @@ export async function searchPublic(query: string): Promise<SearchResult> {
   let network: string | null;
   try {
     base = getIndexerBaseUrl();
-    network = getWokeNetNetworkId();
+    network = getDroolNetNetworkId();
   } catch (error) {
     return degraded('invalid-configuration', providerError(error));
   }
   if (!base) {
     return degraded(
       'unconfigured',
-      'Set WOKESOCIAL_INDEXER_URL to a compatible indexer. No search results are fabricated.',
+      'Set WETDROOL_INDEXER_URL to a compatible indexer. No search results are fabricated.',
     );
   }
   if (!network) {

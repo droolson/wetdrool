@@ -6,19 +6,19 @@ import {
   sha256,
   unwrapPasskeyAccountKey,
   type PasskeyWrappedKeyBundle,
-} from '@wokesocial/crypto';
+} from '@wetdrool/crypto';
 import { z } from 'zod';
 
 import { AuthServiceError } from './errors.js';
 import { decodeBase64Url, encodeBase64Url } from './security.js';
 
-const CREDENTIAL_BINDING_DOMAIN = 'wokesocial/auth/passkey-credential-binding';
+const CREDENTIAL_BINDING_DOMAIN = 'wetdrool/auth/passkey-credential-binding';
 const base64url32Schema = z.string().regex(/^[A-Za-z0-9_-]{43}$/u);
 const envelopeSchema = z
   .object({
     version: z.literal(1),
     algorithm: z.literal('A256GCM'),
-    domain: z.literal('wokesocial/auth/account-key-bundle'),
+    domain: z.literal('wetdrool/auth/account-key-bundle'),
     nonce: z.string().regex(/^[A-Za-z0-9_-]{16}$/u),
     ciphertext: z.string().regex(/^[A-Za-z0-9_-]{64}$/u),
   })
@@ -54,7 +54,7 @@ export async function validateKeyBundle(
     throw invalidBundle();
   }
 
-  // @wokesocial/crypto intentionally exposes no parse-only helper. Invoke its
+  // @wetdrool/crypto intentionally exposes no parse-only helper. Invoke its
   // exact bundle parser with a different credential binding so it exits before
   // key derivation or decryption; no client PRF value or plaintext key enters here.
   try {

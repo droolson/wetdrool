@@ -4,15 +4,15 @@ This service implements the relying-party side of user-verifying, discoverable W
 credentials. It creates opaque account IDs, never asks for email or on-chain identity data, and
 issues short-lived host-only sessions after exact-origin and exact-RP verification.
 
-The service is deliberately not a WokeSocial identity or wallet:
+The service is deliberately not a WetDrool identity or wallet:
 
 - WebAuthn authenticates access to this replaceable service only.
-- WokeNet transaction and portable-object signing keys remain client-side.
+- DroolNet transaction and portable-object signing keys remain client-side.
 - Serialized `solana-ed25519-*` bundle kinds remain compatibility identifiers
   for Solana-compatible Ed25519 wire roles; they do not identify the network.
 - WebAuthn PRF results, plaintext Ed25519 seeds, and private keys are rejected before request
   handling and redacted from logs.
-- A validated `@wokesocial/crypto` root ciphertext is created only in the same transaction as its
+- A validated `@wetdrool/crypto` root ciphertext is created only in the same transaction as its
   first or additional credential; authenticated callers cannot replace established wrappers.
 - Email recovery and last-credential revocation are disabled until a reviewed recovery protocol
   exists.
@@ -36,8 +36,8 @@ store transaction, so revocation cannot land between those writes.
 
 The in-memory store identifies itself as `memory-development-only`. Server startup requires
 `AUTH_DATABASE_URL` unless `AUTH_DANGEROUSLY_USE_MEMORY_STORE=1` is explicitly configured.
-Production configuration uses RP ID `woke.social` and exact origin `https://woke.social`.
-`sociallywoke.com` is redirect-only and must not be added as a second WebAuthn origin.
+Production configuration uses RP ID `wetdrool.com` and exact origin `https://wetdrool.com`.
+`droolhouse.com` is redirect-only and must not be added as a second WebAuthn origin.
 The long-running server never runs DDL and never reads the migration-role URL.
 
 ## Configuration
@@ -66,8 +66,8 @@ capabilities are available from `GET /v1/policy`.
 Apply migrations before starting a database-backed server:
 
 ```sh
-AUTH_DATABASE_MIGRATION_URL='postgresql://auth_migration@localhost/wokesocial' \
-  pnpm --filter @wokesocial/auth-service migrate
+AUTH_DATABASE_MIGRATION_URL='postgresql://auth_migration@localhost/wetdrool' \
+  pnpm --filter @wetdrool/auth-service migrate
 ```
 
 The command refuses to fall back to `AUTH_DATABASE_URL`. It takes one
@@ -92,13 +92,13 @@ integrity, so a failed migration cannot leave the ledger writable.
 From the repository root:
 
 ```sh
-pnpm --filter @wokesocial/auth-service typecheck
-pnpm --filter @wokesocial/auth-service lint
-pnpm --filter @wokesocial/auth-service test
-pnpm --filter @wokesocial/auth-service test:integration
-pnpm --filter @wokesocial/auth-service test:e2e
-pnpm --filter @wokesocial/auth-service build
-docker build --file apps/auth-service/Dockerfile --tag wokesocial-auth-service:local .
+pnpm --filter @wetdrool/auth-service typecheck
+pnpm --filter @wetdrool/auth-service lint
+pnpm --filter @wetdrool/auth-service test
+pnpm --filter @wetdrool/auth-service test:integration
+pnpm --filter @wetdrool/auth-service test:e2e
+pnpm --filter @wetdrool/auth-service build
+docker build --file apps/auth-service/Dockerfile --tag wetdrool-auth-service:local .
 ```
 
 The integration suite uses `AUTH_INTEGRATION_DATABASE_URL`, then `DATABASE_URL`, then the

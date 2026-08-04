@@ -12,8 +12,8 @@ import {
   type NetworkId,
   type PostContent,
   type ProfileContent,
-} from '@wokesocial/protocol';
-import { MemoryContentAddressedStorage } from '@wokesocial/storage';
+} from '@wetdrool/protocol';
+import { MemoryContentAddressedStorage } from '@wetdrool/storage';
 
 import {
   ManifestVerifier,
@@ -29,8 +29,8 @@ const genesis = bs58.encode(Uint8Array.from({ length: 32 }, () => 7));
 const program = bs58.encode(Uint8Array.from({ length: 32 }, () => 8));
 const identityAddress = bs58.encode(Uint8Array.from({ length: 32 }, () => 9));
 const authority = bs58.encode(publicKey);
-const networkId = `wokenet:v1:${genesis}:${program}` as NetworkId;
-const identityId = `wokesocialid:v1:wokenet:v1:${genesis}:${program}:${identityAddress}`;
+const networkId = `droolnet:v1:${genesis}:${program}` as NetworkId;
+const identityId = `wetdroolid:v1:droolnet:v1:${genesis}:${program}:${identityAddress}`;
 const identity = createPayloadBuilderIdentity(networkId, identityId, publicKey, 'root');
 const content: PostContent = {
   format: 'plain',
@@ -238,7 +238,7 @@ describe('open indexer', () => {
       blockTime: '2026-07-28T12:01:00.000Z',
       finalized: true,
       identityId,
-      objectId: `wokesocialobj:v1:post:u${'A'.repeat(43)}`,
+      objectId: `wetdroolobj:v1:post:u${'A'.repeat(43)}`,
       cid: TEST_CID,
       payloadHash: `u${'A'.repeat(43)}`,
       sequence: 1n,

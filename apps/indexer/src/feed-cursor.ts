@@ -5,15 +5,15 @@ import {
   networkIdSchema,
   objectIdSchema,
   timestampSchema,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 import { z } from 'zod';
 
 import type { FeedCursor, PostProjection } from './models.js';
 
 export const MAX_FEED_CURSOR_LENGTH = 512;
-export const OPEN_INDEXER_FEED_RECIPE = 'wokenet-open-indexer-feed-v1';
+export const OPEN_INDEXER_FEED_RECIPE = 'droolnet-open-indexer-feed-v1';
 
-const FEED_CURSOR_SCOPE_DOMAIN = 'wokesocial:indexer:feed-cursor-scope:v3';
+const FEED_CURSOR_SCOPE_DOMAIN = 'wetdrool:indexer:feed-cursor-scope:v3';
 
 const feedCursorScopeSchema = z.discriminatedUnion('mode', [
   z

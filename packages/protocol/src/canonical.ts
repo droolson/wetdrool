@@ -67,7 +67,7 @@ export function assertSigningKeyBelongsToAuthor(payload: PortablePayload): void 
 }
 
 export interface ProofDescriptor {
-  readonly domain: 'woke.social/protocol/signed-object';
+  readonly domain: 'wetdrool.com/protocol/signed-object';
   readonly version: 1;
   readonly algorithm: 'Ed25519';
   readonly keyId: string;

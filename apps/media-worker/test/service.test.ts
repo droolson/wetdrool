@@ -1,14 +1,14 @@
 import { access, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { getContentCid, mediaManifestContentSchema } from '@wokesocial/protocol';
+import { getContentCid, mediaManifestContentSchema } from '@wetdrool/protocol';
 import {
   MemoryContentAddressedStorage,
   MultiProviderStorage,
   type ContentAddressedStorage,
   type StorageHealth,
   type StorageReceipt,
-} from '@wokesocial/storage';
+} from '@wetdrool/storage';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { digestBytes } from '../src/digests.js';

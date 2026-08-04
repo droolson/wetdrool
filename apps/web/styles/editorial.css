@@ -9,7 +9,7 @@
 .safety-hero h1 {
   max-width: 13ch;
   margin: 0;
-  font-family: var(--wokesocial-font-sans);
+  font-family: var(--wetdrool-font-sans);
   font-size: clamp(3.2rem, 8vw, 7.2rem);
   font-weight: 780;
   letter-spacing: -0.075em;
@@ -21,8 +21,8 @@
 .safety-hero h1 em {
   display: block;
   margin-left: 0.45em;
-  color: var(--wokesocial-coral);
-  font-family: var(--wokesocial-font-display);
+  color: var(--wetdrool-coral);
+  font-family: var(--wetdrool-font-display);
   font-size: 0.76em;
   font-weight: 610;
   letter-spacing: -0.05em;
@@ -32,7 +32,7 @@
 .editorial-hero > p:last-child {
   max-width: 47rem;
   margin: 0 0 0 auto;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: clamp(1.08rem, 2vw, 1.35rem);
   line-height: 1.7;
 }
@@ -42,13 +42,13 @@
   grid-template-columns: minmax(16rem, 0.65fr) minmax(0, 1fr);
   gap: clamp(2rem, 8vw, 8rem);
   padding-block: clamp(4rem, 8vw, 7rem);
-  border-top: 1px solid var(--wokesocial-line);
+  border-top: 1px solid var(--wetdrool-line);
 }
 
 .editorial-split h2,
 .principle-grid__intro h2 {
   margin: 0.65rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2.2rem, 5vw, 4rem);
   letter-spacing: -0.05em;
   line-height: 0.98;
@@ -61,21 +61,21 @@
 
 .prose-stack p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: clamp(1.02rem, 2vw, 1.2rem);
   line-height: 1.75;
 }
 
 .inclusion-panel {
   padding-block: clamp(5rem, 10vw, 9rem);
-  border-block: 1px solid var(--wokesocial-line);
+  border-block: 1px solid var(--wetdrool-line);
   background:
     radial-gradient(
       circle at 85% 10%,
-      color-mix(in srgb, var(--wokesocial-coral) 16%, transparent),
+      color-mix(in srgb, var(--wetdrool-coral) 16%, transparent),
       transparent 25rem
     ),
-    var(--wokesocial-canvas-raised);
+    var(--wetdrool-canvas-raised);
 }
 
 .inclusion-panel .page-shell {
@@ -97,15 +97,15 @@
   grid-template-columns: 2.5rem 1fr;
   align-items: center;
   gap: 0.75rem;
-  border-bottom: 1px solid var(--wokesocial-line);
-  font-family: var(--wokesocial-font-display);
+  border-bottom: 1px solid var(--wetdrool-line);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.05rem, 2vw, 1.3rem);
   line-height: 1.3;
 }
 
 .inclusion-panel li span {
-  color: var(--wokesocial-coral);
-  font-family: var(--wokesocial-font-sans);
+  color: var(--wetdrool-coral);
+  font-family: var(--wetdrool-font-sans);
   font-size: 0.68rem;
   font-weight: 780;
 }
@@ -115,12 +115,12 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 1px;
   padding-block: clamp(6rem, 11vw, 10rem);
-  background: var(--wokesocial-line);
+  background: var(--wetdrool-line);
 }
 
 .principle-grid > * {
   padding: clamp(1.5rem, 5vw, 3.2rem);
-  background: var(--wokesocial-canvas);
+  background: var(--wetdrool-canvas);
 }
 
 .principle-grid__intro {
@@ -136,14 +136,14 @@
 
 .principle-grid article h3 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.4rem, 3vw, 2rem);
   letter-spacing: -0.035em;
 }
 
 .principle-grid article p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.65;
 }
 
@@ -153,13 +153,13 @@
   align-items: end;
   gap: 2rem;
   padding-block: clamp(5rem, 10vw, 9rem);
-  border-top: 1px solid var(--wokesocial-line);
+  border-top: 1px solid var(--wetdrool-line);
 }
 
 .editorial-cta h2 {
   max-width: 18ch;
   margin: 0.55rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2.1rem, 5vw, 4rem);
   letter-spacing: -0.05em;
   line-height: 1;
@@ -190,7 +190,7 @@
 .protocol-hero > div:last-child {
   display: grid;
   gap: 1.1rem;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: 1.08rem;
   line-height: 1.7;
 }
@@ -201,7 +201,7 @@
 
 .protocol-hero__note {
   padding-top: 1rem;
-  border-top: 1px solid var(--wokesocial-line);
+  border-top: 1px solid var(--wetdrool-line);
   font-size: 0.8rem;
 }
 
@@ -209,7 +209,7 @@
   display: grid;
   gap: clamp(3rem, 7vw, 6rem);
   padding-block: clamp(5rem, 10vw, 9rem);
-  border-top: 1px solid var(--wokesocial-line);
+  border-top: 1px solid var(--wetdrool-line);
 }
 
 .layer-section ol {
@@ -224,18 +224,18 @@
   grid-template-columns: 4rem minmax(13rem, 0.55fr) minmax(0, 1fr);
   align-items: center;
   gap: 2rem;
-  border-top: 1px solid var(--wokesocial-line);
+  border-top: 1px solid var(--wetdrool-line);
 }
 
 .layer-section li > span {
-  color: var(--wokesocial-coral);
-  font-family: var(--wokesocial-font-display);
+  color: var(--wetdrool-coral);
+  font-family: var(--wetdrool-font-display);
   font-style: italic;
 }
 
 .layer-section li div > p {
   margin: 0 0 0.4rem;
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -244,21 +244,21 @@
 
 .layer-section li h2 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(1.6rem, 3vw, 2.5rem);
   letter-spacing: -0.04em;
 }
 
 .layer-section li > p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.7;
 }
 
 .replaceability-section {
   padding-block: clamp(5rem, 10vw, 9rem);
-  border-block: 1px solid var(--wokesocial-line);
-  background: var(--wokesocial-canvas-raised);
+  border-block: 1px solid var(--wetdrool-line);
+  background: var(--wetdrool-canvas-raised);
 }
 
 .replaceability-section .page-shell {
@@ -278,14 +278,14 @@
   align-content: end;
   gap: 0.85rem;
   padding: 1.7rem;
-  border: 1px solid var(--wokesocial-line);
-  border-radius: var(--wokesocial-radius-md);
-  background: var(--wokesocial-surface);
+  border: 1px solid var(--wetdrool-line);
+  border-radius: var(--wetdrool-radius-md);
+  background: var(--wetdrool-surface);
 }
 
 .replaceability-grid h3 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.7rem;
   letter-spacing: -0.04em;
   line-height: 1.08;
@@ -293,7 +293,7 @@
 
 .replaceability-grid article > p:last-child {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.6;
 }
 
@@ -311,8 +311,8 @@
   place-items: center;
   border-radius: 44% 56% 56% 44% / 48% 42% 58% 52%;
   color: #17131d;
-  background: var(--wokesocial-citron);
-  font-family: var(--wokesocial-font-display);
+  background: var(--wetdrool-citron);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(3rem, 8vw, 6rem);
   font-style: italic;
 }
@@ -325,7 +325,7 @@
 
 .permanence-callout h2 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2rem, 5vw, 4rem);
   letter-spacing: -0.05em;
   line-height: 1;
@@ -333,22 +333,22 @@
 
 .permanence-callout div > p:last-child {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.7;
 }
 
 .safety-hero {
-  border-bottom: 1px solid var(--wokesocial-line);
+  border-bottom: 1px solid var(--wetdrool-line);
   background:
     radial-gradient(
       circle at 75% 30%,
-      color-mix(in srgb, var(--wokesocial-citron) 45%, transparent),
+      color-mix(in srgb, var(--wetdrool-citron) 45%, transparent),
       transparent 25rem
     ),
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--wokesocial-coral) 8%, var(--wokesocial-canvas-raised)),
-      var(--wokesocial-canvas-raised)
+      color-mix(in srgb, var(--wetdrool-coral) 8%, var(--wetdrool-canvas-raised)),
+      var(--wetdrool-canvas-raised)
     );
 }
 
@@ -363,7 +363,7 @@
 .safety-hero > .page-shell > p:last-child {
   max-width: 38rem;
   margin: 0 0 0 auto;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   font-size: clamp(1.05rem, 2vw, 1.3rem);
   line-height: 1.7;
 }
@@ -388,22 +388,22 @@
   align-content: space-between;
   gap: 3rem;
   padding: 1.5rem;
-  border: 1px solid var(--wokesocial-line);
+  border: 1px solid var(--wetdrool-line);
   border-right: 0;
 }
 
 .safety-layers li:first-child {
-  border-radius: var(--wokesocial-radius-md) 0 0 var(--wokesocial-radius-md);
+  border-radius: var(--wetdrool-radius-md) 0 0 var(--wetdrool-radius-md);
 }
 
 .safety-layers li:last-child {
-  border-right: 1px solid var(--wokesocial-line);
-  border-radius: 0 var(--wokesocial-radius-md) var(--wokesocial-radius-md) 0;
+  border-right: 1px solid var(--wetdrool-line);
+  border-radius: 0 var(--wetdrool-radius-md) var(--wetdrool-radius-md) 0;
 }
 
 .safety-layers li > span {
-  color: var(--wokesocial-coral);
-  font-family: var(--wokesocial-font-display);
+  color: var(--wetdrool-coral);
+  font-family: var(--wetdrool-font-display);
   font-style: italic;
 }
 
@@ -414,12 +414,12 @@
 
 .safety-layers li p {
   margin: 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.55;
 }
 
 .safety-layers li div > p:first-child {
-  color: var(--wokesocial-plum);
+  color: var(--wetdrool-plum);
   font-size: 0.67rem;
   font-weight: 800;
   letter-spacing: 0.09em;
@@ -428,7 +428,7 @@
 
 .safety-layers h3 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.9rem;
   letter-spacing: -0.04em;
 }
@@ -446,12 +446,12 @@
 }
 
 .safety-spotlight .section-kicker {
-  color: var(--wokesocial-citron);
+  color: var(--wetdrool-citron);
 }
 
 .safety-spotlight h2 {
   margin: 0.6rem 0 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2.3rem, 5vw, 4.3rem);
   letter-spacing: -0.05em;
   line-height: 0.98;
@@ -483,7 +483,7 @@
   align-content: start;
   gap: 1rem;
   padding: 1.5rem;
-  border-top: 1px solid var(--wokesocial-line-strong);
+  border-top: 1px solid var(--wetdrool-line-strong);
 }
 
 .report-flow li > span {
@@ -493,19 +493,19 @@
   place-items: center;
   border-radius: 50%;
   color: #17131d;
-  background: var(--wokesocial-citron);
+  background: var(--wetdrool-citron);
   font-weight: 800;
 }
 
 .report-flow h3 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: 1.6rem;
 }
 
 .report-flow li p {
   margin: 0.5rem 0 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.6;
 }
 
@@ -514,12 +514,12 @@
   grid-template-columns: 0.35fr 1fr;
   gap: 3rem;
   padding-block: clamp(4rem, 8vw, 7rem);
-  border-block: 1px solid var(--wokesocial-line);
+  border-block: 1px solid var(--wetdrool-line);
 }
 
 .deletion-language h2 {
   margin: 0;
-  font-family: var(--wokesocial-font-display);
+  font-family: var(--wetdrool-font-display);
   font-size: clamp(2rem, 5vw, 3.8rem);
   letter-spacing: -0.05em;
   line-height: 1;
@@ -527,7 +527,7 @@
 
 .deletion-language div p {
   margin: 1rem 0 0;
-  color: var(--wokesocial-ink-muted);
+  color: var(--wetdrool-ink-muted);
   line-height: 1.7;
 }
 
@@ -556,18 +556,18 @@
   .safety-layers li:first-child,
   .safety-layers li:last-child {
     min-height: auto;
-    border: 1px solid var(--wokesocial-line);
+    border: 1px solid var(--wetdrool-line);
     border-bottom: 0;
     border-radius: 0;
   }
 
   .safety-layers li:first-child {
-    border-radius: var(--wokesocial-radius-md) var(--wokesocial-radius-md) 0 0;
+    border-radius: var(--wetdrool-radius-md) var(--wetdrool-radius-md) 0 0;
   }
 
   .safety-layers li:last-child {
-    border-bottom: 1px solid var(--wokesocial-line);
-    border-radius: 0 0 var(--wokesocial-radius-md) var(--wokesocial-radius-md);
+    border-bottom: 1px solid var(--wetdrool-line);
+    border-radius: 0 0 var(--wetdrool-radius-md) var(--wetdrool-radius-md);
   }
 }
 

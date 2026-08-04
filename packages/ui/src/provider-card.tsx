@@ -13,14 +13,14 @@ export interface ProviderCardProps {
 
 export function ProviderCard({ detail, eyebrow, footer, name, status, tone }: ProviderCardProps) {
   return (
-    <article className="wokesocial-provider-card">
-      <div className="wokesocial-provider-card__topline">
-        <p className="wokesocial-eyebrow">{eyebrow}</p>
+    <article className="wetdrool-provider-card">
+      <div className="wetdrool-provider-card__topline">
+        <p className="wetdrool-eyebrow">{eyebrow}</p>
         <StatusBadge tone={tone}>{status}</StatusBadge>
       </div>
       <h3>{name}</h3>
       <p>{detail}</p>
-      {footer ? <div className="wokesocial-provider-card__footer">{footer}</div> : null}
+      {footer ? <div className="wetdrool-provider-card__footer">{footer}</div> : null}
     </article>
   );
 }

@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 import postgres, { type Sql } from 'postgres';
 
-import { assertNodeTlsVerificationPolicy, assertPostgresTlsPolicy } from '@wokesocial/config';
+import { assertNodeTlsVerificationPolicy, assertPostgresTlsPolicy } from '@wetdrool/config';
 import {
   assertMigrationLedgerIntegrity,
   calculateMigrationChecksum,
-} from '@wokesocial/config/migration-integrity';
+} from '@wetdrool/config/migration-integrity';
 
 import { EXPECTED_INDEXER_MIGRATION_COUNT, LATEST_INDEXER_MIGRATION } from './migration-version.js';
 

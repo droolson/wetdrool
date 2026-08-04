@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { assertNoMigrationCredentials, isLocalOrUnspecifiedHostname } from '@wokesocial/config';
-import { parseTrustedProxyCidrs } from '@wokesocial/config/trusted-proxy';
+import { assertNoMigrationCredentials, isLocalOrUnspecifiedHostname } from '@wetdrool/config';
+import { parseTrustedProxyCidrs } from '@wetdrool/config/trusted-proxy';
 
-const legacyRedirectHostnames = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const legacyRedirectHostnames = new Set(['droolhouse.com', 'www.droolhouse.com']);
 
 function isLegacyRedirectHostname(hostname: string): boolean {
   return legacyRedirectHostnames.has(hostname.toLowerCase().replace(/\.+$/u, ''));

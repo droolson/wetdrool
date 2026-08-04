@@ -1,4 +1,4 @@
-import { encodeMultibaseBase64Url, extractWokeManifestCid } from '@wokesocial/protocol';
+import { encodeMultibaseBase64Url, extractWokeManifestCid } from '@wetdrool/protocol';
 
 import type { DecodedAnchorEvent } from './anchor-events.js';
 import { protocolEventSchema, type ProtocolEvent } from './events.js';
@@ -793,7 +793,7 @@ export class SolanaEventMaterializer {
     const payloadHash = encodeMultibaseBase64Url(manifestHash);
     return {
       manifestUri,
-      objectId: `wokesocialobj:v1:${objectType}:${payloadHash}`,
+      objectId: `wetdroolobj:v1:${objectType}:${payloadHash}`,
       ...(cid === undefined ? {} : { cid }),
       payloadHash,
     };
@@ -847,7 +847,7 @@ export class SolanaEventMaterializer {
 }
 
 function identityId(networkId: string, identityAddress: string): string {
-  return `wokesocialid:v1:${networkId}:${identityAddress}`;
+  return `wetdroolid:v1:${networkId}:${identityAddress}`;
 }
 
 function manifestCid(manifestUri: string): string {

@@ -1,10 +1,10 @@
-# WokeSocial media worker
+# WetDrool media worker
 
-`@wokesocial/media-worker` is a non-custodial media preparation service. It
+`@wetdrool/media-worker` is a non-custodial media preparation service. It
 accepts resumable byte uploads, verifies every chunk and the complete object,
 validates MIME signatures, requires a real malware scanner, creates bounded
 renditions, and publishes all deliverable bytes through
-`@wokesocial/storage`.
+`@wetdrool/storage`.
 
 The result contains protocol-valid **unsigned** `media-manifest` content and
 the exact storage receipts. The worker never holds an identity key and never
@@ -94,7 +94,7 @@ Optional variables and their defaults are:
 | --- | ---: | ---: |
 | `MEDIA_WORKER_HOST` | `127.0.0.1` (`0.0.0.0` in the image) | non-empty |
 | `MEDIA_WORKER_PORT` | `4500` | 1–65535 |
-| `MEDIA_WORKER_ALLOWED_ORIGINS` | empty/disabled | comma-separated exact HTTP(S) origins, for example `https://woke.social` |
+| `MEDIA_WORKER_ALLOWED_ORIGINS` | empty/disabled | comma-separated exact HTTP(S) origins, for example `https://wetdrool.com` |
 | `MEDIA_WORKER_CLAMD_PORT` | `3310` | 1–65535 |
 | `MEDIA_WORKER_CLAMD_CONNECT_TIMEOUT_MS` | `5000` | 1–60000 |
 | `MEDIA_WORKER_CLAMD_SCAN_TIMEOUT_MS` | `120000` | 1–299000 |
@@ -153,7 +153,7 @@ such as
 Build from the repository root:
 
 ```sh
-docker build -f apps/media-worker/Dockerfile -t wokesocial-media-worker .
+docker build -f apps/media-worker/Dockerfile -t wetdrool-media-worker .
 ```
 
 The multi-stage image uses the digest-pinned Node 22.23.1 bookworm-slim base,
@@ -169,19 +169,19 @@ the production `ClamdScanner`, requires opposite verdicts, and verifies that
 the adapter does not expose the daemon's signature name.
 
 For a read-only root filesystem, mount writable, private storage at the three
-configured `/var/lib/wokesocial` subdirectories and provide a bounded
+configured `/var/lib/wetdrool` subdirectories and provide a bounded
 temporary filesystem if the container runtime requires `/tmp`:
 
 ```sh
 docker run --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-  --mount type=volume,src=media-staging,dst=/var/lib/wokesocial/staging \
-  --mount type=volume,src=media-temporary,dst=/var/lib/wokesocial/temporary \
-  --mount type=volume,src=media-cas,dst=/var/lib/wokesocial/cas \
+  --mount type=volume,src=media-staging,dst=/var/lib/wetdrool/staging \
+  --mount type=volume,src=media-temporary,dst=/var/lib/wetdrool/temporary \
+  --mount type=volume,src=media-cas,dst=/var/lib/wetdrool/cas \
   --network media-private \
   --env-file /path/to/chmod-0600-media-worker.env \
   -p 127.0.0.1:4500:4500 \
-  wokesocial-media-worker
+  wetdrool-media-worker
 ```
 
 The environment file must contain the two required variables and should point
@@ -298,11 +298,11 @@ timeouts, CORS, and rate limits are applied before route work.
 ## Verification
 
 ```sh
-pnpm --filter @wokesocial/media-worker lint
-pnpm --filter @wokesocial/media-worker typecheck
-pnpm --filter @wokesocial/media-worker test
-pnpm --filter @wokesocial/media-worker test:integration
-pnpm --filter @wokesocial/media-worker build
+pnpm --filter @wetdrool/media-worker lint
+pnpm --filter @wetdrool/media-worker typecheck
+pnpm --filter @wetdrool/media-worker test
+pnpm --filter @wetdrool/media-worker test:integration
+pnpm --filter @wetdrool/media-worker build
 ```
 
 The integration suite explicitly checks the host for Sharp, FFmpeg, and

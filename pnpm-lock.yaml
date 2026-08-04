@@ -85,13 +85,13 @@ importers:
       '@simplewebauthn/server':
         specifier: 13.3.2
         version: 13.3.2
-      '@wokesocial/config':
+      '@wetdrool/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@wokesocial/crypto':
+      '@wetdrool/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
-      '@wokesocial/rate-limit':
+      '@wetdrool/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
       fastify:
@@ -128,10 +128,10 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
-      '@wokesocial/config':
+      '@wetdrool/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@wokesocial/rate-limit':
+      '@wetdrool/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
       fastify:
@@ -165,16 +165,16 @@ importers:
       '@solana/kit':
         specifier: 7.0.0
         version: 7.0.0(bufferutil@4.1.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
-      '@wokesocial/config':
+      '@wetdrool/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@wokesocial/rate-limit':
+      '@wetdrool/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
-      '@wokesocial/storage':
+      '@wetdrool/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       bs58:
@@ -199,7 +199,7 @@ importers:
       '@types/node':
         specifier: 22.20.1
         version: 22.20.1
-      '@wokesocial/test-fixtures':
+      '@wetdrool/test-fixtures':
         specifier: workspace:*
         version: link:../../packages/test-fixtures
       tsx:
@@ -219,16 +219,16 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
-      '@wokesocial/config':
+      '@wetdrool/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@wokesocial/rate-limit':
+      '@wetdrool/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
-      '@wokesocial/storage':
+      '@wetdrool/storage':
         specifier: workspace:*
         version: link:../../packages/storage
       fastify:
@@ -262,10 +262,10 @@ importers:
       '@wallet-ui/react-native-web3js':
         specifier: 4.2.1
         version: 4.2.1(@solana/kit@7.0.0(bufferutil@4.1.0)(typescript@6.0.3))(bufferutil@4.1.0)(react-dom@19.2.3(react@19.2.3))(react-native@0.86.0(@babel/core@7.29.7)(@types/react@19.2.17)(bufferutil@4.1.0)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
-      '@wokesocial/indexer-client':
+      '@wetdrool/indexer-client':
         specifier: workspace:*
         version: link:../../packages/indexer-client
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       expo:
@@ -317,13 +317,13 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.1.0
         version: 11.1.0
-      '@wokesocial/config':
+      '@wetdrool/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@wokesocial/rate-limit':
+      '@wetdrool/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
       fastify:
@@ -339,7 +339,7 @@ importers:
       '@types/node':
         specifier: 22.20.1
         version: 22.20.1
-      '@wokesocial/test-fixtures':
+      '@wetdrool/test-fixtures':
         specifier: workspace:*
         version: link:../../packages/test-fixtures
       tsx:
@@ -354,13 +354,13 @@ importers:
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0
-      '@wokesocial/config':
+      '@wetdrool/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@wokesocial/rate-limit':
+      '@wetdrool/rate-limit':
         specifier: workspace:*
         version: link:../../packages/rate-limit
       bs58:
@@ -389,27 +389,32 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
 
+  apps/wallet-alpha: {}
+
   apps/web:
     dependencies:
       '@noble/curves':
         specifier: 2.2.0
         version: 2.2.0
-      '@wokesocial/crypto':
+      '@wetdrool/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
-      '@wokesocial/indexer-client':
+      '@wetdrool/indexer-client':
         specifier: workspace:*
         version: link:../../packages/indexer-client
-      '@wokesocial/protocol':
+      '@wetdrool/mesh':
+        specifier: workspace:*
+        version: link:../../packages/mesh
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@wokesocial/sdk':
+      '@wetdrool/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@wokesocial/storage':
+      '@wetdrool/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-      '@wokesocial/ui':
+      '@wetdrool/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       bs58:
@@ -498,9 +503,15 @@ importers:
 
   packages/indexer-client:
     dependencies:
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../protocol
+    devDependencies:
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/mesh:
     devDependencies:
       vitest:
         specifier: 4.1.10
@@ -586,10 +597,10 @@ importers:
       '@solana/rpc-spec-types':
         specifier: 7.0.0
         version: 7.0.0(typescript@6.0.3)
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@wokesocial/storage':
+      '@wetdrool/storage':
         specifier: workspace:*
         version: link:../storage
     devDependencies:
@@ -605,7 +616,7 @@ importers:
 
   packages/storage:
     dependencies:
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../protocol
       multiformats:
@@ -621,7 +632,7 @@ importers:
 
   packages/test-fixtures:
     dependencies:
-      '@wokesocial/protocol':
+      '@wetdrool/protocol':
         specifier: workspace:*
         version: link:../protocol
     devDependencies:

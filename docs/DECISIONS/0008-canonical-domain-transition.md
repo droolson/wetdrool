@@ -6,8 +6,8 @@
 
 ## Context
 
-The canonical public domain changed from `sociallywoke.com` to `woke.social`
-before any public WokeNet program deployment on Solana, public account, or
+The canonical public domain changed from `droolhouse.com` to `wetdrool.com`
+before any public DroolNet program deployment on Solana, public account, or
 production WebAuthn deployment.
 The prior hostname appeared not only in web metadata but also in portable-object
 and relay cryptographic domain separators. Treating the two names as
@@ -16,9 +16,9 @@ party authority.
 
 ## Decision
 
-`https://woke.social` is the sole canonical flagship origin.
-`sociallywoke.com` and `www.sociallywoke.com` are discovery redirects only. They
-issue a permanent, path/query-preserving redirect to `https://woke.social` and
+`https://wetdrool.com` is the sole canonical flagship origin.
+`droolhouse.com` and `www.droolhouse.com` are discovery redirects only. They
+issue a permanent, path/query-preserving redirect to `https://wetdrool.com` and
 never serve a second application, establish sessions, set application cookies,
 or act as WebAuthn origins.
 
@@ -28,22 +28,22 @@ its internal bind address. It never redirects substring, suffix, trailing-dot,
 credential-like, or out-of-range-port variants. The destination host and scheme
 are constants, so untrusted header text cannot become a redirect target.
 
-Production WebAuthn uses RP ID `woke.social` and exact expected origin
-`https://woke.social`. Preview, localhost, and independently operated client
+Production WebAuthn uses RP ID `wetdrool.com` and exact expected origin
+`https://wetdrool.com`. Preview, localhost, and independently operated client
 hosts remain separate deployments and are never silently rewritten to the
 flagship origin.
 
-WokeSocial and WokeNet are prelaunch names, not old-brand exceptions frozen
+WetDrool and DroolNet are prelaunch names, not old-brand exceptions frozen
 into the wire protocol. Platform and protocol identifiers move in the same
 change:
 
-- portable objects declare protocol `wokesocial`;
+- portable objects declare protocol `wetdrool`;
 - network identifiers use
-  `wokenet:v1:<solana-genesis-hash>:<program-id>`;
-- portable signed objects use `woke.social/protocol/signed-object`;
-- the v1 JSON Schema identifier is hosted below `https://woke.social/`;
-- relay topics use `woke.social/relay/topic/v1`; and
-- relay signed envelopes use `woke.social/relay/signed-envelope`.
+  `droolnet:v1:<solana-genesis-hash>:<program-id>`;
+- portable signed objects use `wetdrool.com/protocol/signed-object`;
+- the v1 JSON Schema identifier is hosted below `https://wetdrool.com/`;
+- relay topics use `wetdrool.com/relay/topic/v1`; and
+- relay signed envelopes use `wetdrool.com/relay/signed-envelope`.
 
 There is no compatibility alias for superseded prelaunch identifiers or
 separators. Objects signed under the experimental superseded domain are
@@ -57,7 +57,7 @@ environment namespace.
 
 - Golden identifiers, signatures, relay topics, schemas, fixtures, and connected
   tests must be regenerated and pass together.
-- Browser metadata and canonical URLs point only to `woke.social`.
+- Browser metadata and canonical URLs point only to `wetdrool.com`.
 - The legacy redirect must preserve ordinary paths and query parameters while
   rejecting header-driven open-redirect behavior.
 - Cookie and CORS allowlists must not include the legacy host as an application
@@ -84,7 +84,7 @@ environment namespace.
 
 The gate requires:
 
-1. no remaining `sociallywoke.com` use except explicit redirect/migration text
+1. no remaining `droolhouse.com` use except explicit redirect/migration text
    and exact redirect-host tests;
 2. generated schema drift checks and all protocol golden vectors passing;
 3. relay protocol and loopback tests passing under the new domains;

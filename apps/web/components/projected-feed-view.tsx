@@ -1,4 +1,4 @@
-import { ButtonLink, StatePanel, StatusBadge } from '@wokesocial/ui';
+import { ButtonLink, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import type { ProjectedFeedMode, ProjectedFeedResult } from '@/lib/projected-feed';
 import { formatUtcDate } from '@/lib/presentation';

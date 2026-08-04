@@ -1,8 +1,8 @@
 {
-  "name": "@wokesocial/mobile",
+  "name": "@wetdrool/mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "WokeSocial Android client for Solana Mobile and Seeker",
+  "description": "WetDrool Android client for Solana Mobile and Seeker",
   "license": "SEE LICENSE IN LICENSE",
   "main": "./index.js",
   "scripts": {
@@ -17,8 +17,8 @@
   "dependencies": {
     "@solana/web3.js": "1.98.4",
     "@wallet-ui/react-native-web3js": "4.2.1",
-    "@wokesocial/indexer-client": "workspace:*",
-    "@wokesocial/protocol": "workspace:*",
+    "@wetdrool/indexer-client": "workspace:*",
+    "@wetdrool/protocol": "workspace:*",
     "expo": "57.0.8",
     "expo-build-properties": "57.0.7",
     "expo-dev-client": "57.0.9",

@@ -45,7 +45,7 @@ const composeBaseArgs = [
   '--env-file',
   envFile,
   '--project-name',
-  'wokesocial-local',
+  'wetdrool-local',
   '--file',
   composeFile,
 ];

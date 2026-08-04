@@ -1,15 +1,15 @@
-# Woke AI platform
+# Drool AI platform
 
 - **Status:** Approved product direction; implementation planned
-- **Operator brand:** Woke AI
-- **Owner-provided company:** Woke AI, Inc.
+- **Operator brand:** Drool AI
+- **Owner-provided company:** Drool AI, Inc.
 - **Planned public origin:** `pinkman.ai`
 - **Last updated:** 2026-07-29
-- **Tracking:** [GitHub issue #18](https://github.com/AlexBTC420/wokesocial/issues/18)
+- **Tracking:** [GitHub issue #18](https://github.com/AlexBTC420/wetdrool/issues/18)
 
 ## 1. Purpose
 
-Woke AI is the planned intelligence layer for Woke.social. It will provide a
+Drool AI is the planned intelligence layer for WetDrool.com. It will provide a
 native assistant, research, content creation, accessibility assistance,
 engagement analysis, community tools, and tightly bounded agent workflows.
 
@@ -24,18 +24,18 @@ turn the concept into a testable service.
 
 ## 2. Product relationship
 
-WokeSocial remains usable without Woke AI. AI features are an optional,
+WetDrool remains usable without Drool AI. AI features are an optional,
 replaceable provider layer and do not become protocol truth, moderation
 authority, wallet authority, governance authority, or identity authority.
 
 ```mermaid
 flowchart LR
-  Person["Woke.social user"] --> Product["WokeSocial client"]
+  Person["WetDrool.com user"] --> Product["WetDrool client"]
   Product --> Gateway["Consent + quota gateway"]
-  Gateway --> Router["Woke AI model router"]
-  Router --> Athena["Woke Athena"]
-  Router --> Kairos["Woke Kairos"]
-  Router --> Hermes["Woke Hermes"]
+  Gateway --> Router["Drool AI model router"]
+  Router --> Athena["Drool Athena"]
+  Router --> Kairos["Drool Kairos"]
+  Router --> Hermes["Drool Hermes"]
   Router --> Tools["Permissioned tool sandbox"]
   Router --> Retrieval["Sourced retrieval"]
   Gateway --> Ledger["AI credit ledger"]
@@ -44,7 +44,7 @@ flowchart LR
   Evaluations["Quality, safety, latency, and cost evaluations"] --> Models
 ```
 
-The WokeSocial client shows which company/provider, model release, tools, data
+The WetDrool client shows which company/provider, model release, tools, data
 sources, credit estimate, and privacy policy apply before a request crosses the
 AI boundary.
 
@@ -55,11 +55,11 @@ Every served response binds to an immutable release record.
 
 | Product model | Intended role | Relative compute | Default uses |
 | --- | --- | ---: | --- |
-| **Woke Athena** | Highest reasoning and research quality | Highest | Difficult research, planning, coding, multi-source analysis, high-value creator workflows |
-| **Woke Kairos** | Balanced quality, latency, and cost | Medium | Default assistant, drafting, editing, analysis, everyday multimodal work |
-| **Woke Hermes** | Fastest and least expensive, with strong tool discipline | Lowest | Classification, extraction, routing, concise drafting, background agents, repetitive creator tasks |
+| **Drool Athena** | Highest reasoning and research quality | Highest | Difficult research, planning, coding, multi-source analysis, high-value creator workflows |
+| **Drool Kairos** | Balanced quality, latency, and cost | Medium | Default assistant, drafting, editing, analysis, everyday multimodal work |
+| **Drool Hermes** | Fastest and least expensive, with strong tool discipline | Lowest | Classification, extraction, routing, concise drafting, background agents, repetitive creator tasks |
 
-The UI may display a release such as `Woke Athena 1.0`, but the internal model
+The UI may display a release such as `Drool Athena 1.0`, but the internal model
 record must also include:
 
 - product name and semantic release;
@@ -101,9 +101,9 @@ quantization, fine-tuning, and distributed operation on Apple Silicon.
 for GGUF and Metal. Neither runtime is a permanent architectural dependency
 until the benchmark passes.
 
-All third-party names remain the property of their owners. A Woke AI release
+All third-party names remain the property of their owners. A Drool AI release
 must retain every required attribution and must not imply that an upstream
-model creator endorses Woke AI.
+model creator endorses Drool AI.
 
 ## 5. Hardware benchmark
 
@@ -195,7 +195,7 @@ in [Platform Expansion](PLATFORM_EXPANSION.md) pass.
 
 ## 8. Creator suite
 
-Planned Woke AI creator capabilities include:
+Planned Drool AI creator capabilities include:
 
 - post, reply, thread, article, and campaign drafting;
 - rewriting, summarization, translation, and tone control;
@@ -236,7 +236,7 @@ path, while abuse controls prevent automated farming.
 
 ## 10. Training and continuous improvement
 
-Woke AI can improve continuously without pretending that a deployed model is
+Drool AI can improve continuously without pretending that a deployed model is
 sentient or allowing unreviewed online self-modification.
 
 The allowed loop is:
@@ -253,7 +253,7 @@ flowchart LR
   Canary --> Rollout["Measured rollout or rollback"]
 ```
 
-Public Woke.social content is not automatically training data. Training or
+Public WetDrool.com content is not automatically training data. Training or
 preference use requires a published lawful basis, clear product notice,
 rights/license analysis, user controls where required, deletion/opt-out
 handling, and a reproducible dataset manifest.
@@ -348,4 +348,4 @@ tier name is earned by measured behavior, not assigned by prompt alone.
 11. Begin fine-tuning only after dataset rights, privacy, contamination, and
    evaluation pipelines are proven.
 
-No step requires the WokeNet program to trust or execute model output.
+No step requires the DroolNet program to trust or execute model output.

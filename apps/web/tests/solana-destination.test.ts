@@ -1,5 +1,5 @@
-import { deriveRandomWokeName } from '@wokesocial/protocol';
-import { derivePrimaryWokeIdentityCoordinates } from '@wokesocial/sdk';
+import { deriveRandomWokeName } from '@wetdrool/protocol';
+import { derivePrimaryWokeIdentityCoordinates } from '@wetdrool/sdk';
 import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -14,7 +14,7 @@ import {
 
 const GENESIS = '4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB';
 const PROGRAM = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
-const NETWORK = `wokenet:v1:${GENESIS}:${PROGRAM}`;
+const NETWORK = `droolnet:v1:${GENESIS}:${PROGRAM}`;
 const PUBLIC_KEY_BYTES = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const PUBLIC_KEY = encodeBase64Url(PUBLIC_KEY_BYTES);
 const ROOT = bs58.encode(PUBLIC_KEY_BYTES);
@@ -68,7 +68,7 @@ describe('readSynchronizedRootPublicKey', () => {
 });
 
 describe('deriveSolanaDestinationDisclosure', () => {
-  it('derives the exact root, identity account, identity ID, and .woke candidate', async () => {
+  it('derives the exact root, identity account, identity ID, and .drool candidate', async () => {
     const disclosure = await deriveSolanaDestinationDisclosure({
       accountId: 'account-1',
       publicKey: PUBLIC_KEY,
@@ -84,13 +84,13 @@ describe('deriveSolanaDestinationDisclosure', () => {
       },
       genesisHash: GENESIS,
       identityAddress: coordinates.identityAddress,
-      identityId: `wokesocialid:v1:${NETWORK}:${coordinates.identityAddress}`,
+      identityId: `wetdroolid:v1:${NETWORK}:${coordinates.identityAddress}`,
       networkId: NETWORK,
       programAddress: PROGRAM,
       rootAuthority: ROOT,
       wokeNameCandidate: deriveRandomWokeName(ROOT).name,
     });
-    expect(disclosure.wokeNameCandidate).toMatch(/^anon_[0-9a-z]{16}\.woke$/u);
+    expect(disclosure.wokeNameCandidate).toMatch(/^anon_[0-9a-z]{16}\.drool$/u);
     expect(Object.isFrozen(disclosure)).toBe(true);
   });
 
@@ -128,7 +128,7 @@ describe('createSolanaDestinationCache', () => {
       runtime: {
         ...RUNTIME,
         context: { ...RUNTIME.context, programAddress: otherProgram },
-        networkId: `wokenet:v1:${GENESIS}:${otherProgram}`,
+        networkId: `droolnet:v1:${GENESIS}:${otherProgram}`,
       },
     });
     expect(derive).toHaveBeenCalledTimes(4);

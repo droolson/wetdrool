@@ -1,5 +1,5 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
-import type { PostResponse } from '@wokesocial/indexer-client';
+import type { PostResponse } from '@wetdrool/indexer-client';
 import {
   buildPublishWokePostInstruction,
   derivePrimaryWokeIdentityCoordinates,
@@ -10,7 +10,7 @@ import {
   type WokeProgramAccountReadRequest,
   type WokeProgramAccountSnapshot,
   type WokeTransactionExecutionResult,
-} from '@wokesocial/sdk';
+} from '@wetdrool/sdk';
 import bs58 from 'bs58';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -35,7 +35,7 @@ import {
 const GENESIS = '4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB';
 const PROGRAM = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const SYSTEM = '11111111111111111111111111111111';
-const NETWORK = `wokenet:v1:${GENESIS}:${PROGRAM}`;
+const NETWORK = `droolnet:v1:${GENESIS}:${PROGRAM}`;
 const PRIVATE_KEY = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const PUBLIC_KEY = ed25519.getPublicKey(PRIVATE_KEY);
 const ROOT = bs58.encode(PUBLIC_KEY);
@@ -189,7 +189,7 @@ async function invokeAndVerifySigner(
 ): Promise<void> {
   const messageBytes = Uint8Array.of(marker, 2, 3, 4);
   const signatures = await input.signer({
-    purpose: 'wokenet-transaction-v1',
+    purpose: 'droolnet-transaction-v1',
     context: input.context,
     version: 'legacy',
     feePayer: ROOT,
@@ -260,7 +260,7 @@ function harness(options: HarnessOptions = {}) {
           policy: { permanence: 'deletion-compatible' as const },
           provider: 'local-filesystem' as const,
           providerVersion: '1' as const,
-          schema: 'wokesocial.local-cas-receipt.v1' as const,
+          schema: 'wetdrool.local-cas-receipt.v1' as const,
           verified: true as const,
         },
       };
@@ -404,7 +404,7 @@ describe('passkey-first localnet publication orchestration', () => {
       },
       finalizedIntent: { stage: 'finalized' },
     });
-    expect(result.identity.id).toBe(`wokesocialid:v1:${NETWORK}:${result.identity.address}`);
+    expect(result.identity.id).toBe(`wetdroolid:v1:${NETWORK}:${result.identity.address}`);
     expect(result.finalizedIntent.context.rootSigningKey).toBe(
       `${result.identity.id}#root/${ROOT}`,
     );
@@ -578,7 +578,7 @@ describe('passkey-first localnet publication orchestration', () => {
             policy: { permanence: 'deletion-compatible' as const },
             provider: 'local-filesystem' as const,
             providerVersion: '1' as const,
-            schema: 'wokesocial.local-cas-receipt.v1' as const,
+            schema: 'wetdrool.local-cas-receipt.v1' as const,
             verified: true as const,
           },
         };

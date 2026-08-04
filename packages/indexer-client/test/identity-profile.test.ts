@@ -4,13 +4,13 @@ import { IndexerPayloadError } from '../src/contract.js';
 import { fetchIdentityProfile, parseIdentityProfileResponse } from '../src/identity-profile.js';
 
 const NETWORK =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const IDENTITY_ADDRESS = '8qbHbw2BbbTHBW1sbeqakYXVzPpQ2R2moVnuhjXGhfE';
-const IDENTITY_ID = `wokesocialid:v1:${NETWORK}:${IDENTITY_ADDRESS}`;
+const IDENTITY_ID = `wetdroolid:v1:${NETWORK}:${IDENTITY_ADDRESS}`;
 const ROOT = '4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB';
 const CID = 'bafkreigks6arfsq3xxfpvqrrwonchxcnu6do76auprhhfomao6c273sixm';
 const DIGEST = `u${'A'.repeat(43)}`;
-const OBJECT_ID = `wokesocialobj:v1:profile:${DIGEST}`;
+const OBJECT_ID = `wetdroolobj:v1:profile:${DIGEST}`;
 
 function response(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -42,7 +42,7 @@ function response(overrides: Record<string, unknown> = {}): Record<string, unkno
     meta: {
       checkpointSlot: 42,
       indexedAt: '2026-07-29T12:00:00.000Z',
-      source: 'WokeNet open indexer',
+      source: 'DroolNet open indexer',
     },
     ...overrides,
   };
@@ -111,10 +111,10 @@ describe('parseIdentityProfileResponse', () => {
           deactivatedAt: '2026-07-29T11:00:00.000Z',
         },
       }),
-      // Identity ID must equal wokesocialid:v1:<network>:<identityAddress>.
+      // Identity ID must equal wetdroolid:v1:<network>:<identityAddress>.
       response({
         identity: {
-          identityId: `wokesocialid:v1:${NETWORK}:${ROOT}`,
+          identityId: `wetdroolid:v1:${NETWORK}:${ROOT}`,
           identityAddress: IDENTITY_ADDRESS,
           rootAuthority: ROOT,
           active: true,
@@ -130,11 +130,11 @@ describe('parseIdentityProfileResponse', () => {
         meta: { checkpointSlot: null, indexedAt: '2026-07-29T12:00:00.000Z', source: 'X' },
       }),
       response({ handle: 'Not_Canonical' }),
-      response({ handle: 'anon_7n044tsjxrfm5e23.woke' }),
+      response({ handle: 'anon_7n044tsjxrfm5e23.drool' }),
       response({ operatorOverride: true }),
       response({
         profile: {
-          objectId: `wokesocialobj:v1:post:${DIGEST}`,
+          objectId: `wetdroolobj:v1:post:${DIGEST}`,
           cid: CID,
           payloadHash: DIGEST,
           content: { displayName: 'x', bio: '', pronouns: [], chosenFamilyLabels: [], links: [] },
@@ -148,7 +148,7 @@ describe('parseIdentityProfileResponse', () => {
     }
     expect(() =>
       parseIdentityProfileResponse(response(), {
-        identityId: `wokesocialid:v1:${NETWORK}:${ROOT}`,
+        identityId: `wetdroolid:v1:${NETWORK}:${ROOT}`,
       }),
     ).toThrowError(IndexerPayloadError);
   });

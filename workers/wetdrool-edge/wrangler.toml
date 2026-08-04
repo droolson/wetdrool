@@ -1,0 +1,16 @@
+name = "wetdrool-edge"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+workers_dev = true
+
+# Production custom domain routes (enable after zone is active):
+# routes = [
+#   { pattern = "wetdrool.com/*", zone_name = "wetdrool.com" },
+#   { pattern = "www.wetdrool.com/*", zone_name = "wetdrool.com" },
+# ]
+
+[vars]
+# Public Vercel production origin for wallet-alpha (Mythic Agent team).
+# Override with: npx wrangler secret put ORIGIN_URL
+ORIGIN_URL = "https://wallet-alpha-dun.vercel.app"
+ALLOWED_HOSTS = "wetdrool.com,www.wetdrool.com"

@@ -1,4 +1,4 @@
-import type { CommunityMembershipContent } from '@wokesocial/protocol';
+import type { CommunityMembershipContent } from '@wetdrool/protocol';
 
 import {
   assertUnambiguousEventOrder,
@@ -490,7 +490,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       const expectedPreviousObjectId =
         previous === undefined
           ? undefined
-          : `wokesocialobj:v1:community-membership:${previous.manifestHash}`;
+          : `wetdroolobj:v1:community-membership:${previous.manifestHash}`;
       if (
         BigInt(content.replacement.sequence) !== event.membershipStateSequence ||
         content.replacement.replaces?.id !== expectedPreviousObjectId
@@ -2093,7 +2093,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     const verified =
       manifest === undefined ? undefined : requireManifest(event, manifest, 'community-membership');
     const content = verified?.content as CommunityMembershipContent | undefined;
-    const objectId = `wokesocialobj:v1:community-membership:${event.manifestHash}`;
+    const objectId = `wetdroolobj:v1:community-membership:${event.manifestHash}`;
     if (
       (current === undefined &&
         (event.action !== 'join' ||
@@ -2904,7 +2904,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       }
     }
     for (const identityId of this.#lastGovernanceVoterSequence.keys()) {
-      if (identityId.startsWith(`wokesocialid:v1:${networkId}:`)) {
+      if (identityId.startsWith(`wetdroolid:v1:${networkId}:`)) {
         this.#lastGovernanceVoterSequence.delete(identityId);
       }
     }
@@ -3209,7 +3209,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       }
     }
     for (const [key, delegation] of this.#delegations) {
-      if (delegation.identityId.startsWith(`wokesocialid:v1:${networkId}:`)) {
+      if (delegation.identityId.startsWith(`wetdroolid:v1:${networkId}:`)) {
         this.#delegations.delete(key);
       }
     }
@@ -3221,16 +3221,16 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
     }
     for (const [key, follow] of this.#follows) {
       if (
-        follow.followerIdentityId.startsWith(`wokesocialid:v1:${networkId}:`) ||
-        follow.followedIdentityId.startsWith(`wokesocialid:v1:${networkId}:`)
+        follow.followerIdentityId.startsWith(`wetdroolid:v1:${networkId}:`) ||
+        follow.followedIdentityId.startsWith(`wetdroolid:v1:${networkId}:`)
       ) {
         this.#follows.delete(key);
       }
     }
     for (const [key, block] of this.#blocks) {
       if (
-        block.blockerIdentityId.startsWith(`wokesocialid:v1:${networkId}:`) ||
-        block.subjectIdentityId.startsWith(`wokesocialid:v1:${networkId}:`)
+        block.blockerIdentityId.startsWith(`wetdroolid:v1:${networkId}:`) ||
+        block.subjectIdentityId.startsWith(`wetdroolid:v1:${networkId}:`)
       ) {
         this.#blocks.delete(key);
       }
@@ -3263,7 +3263,7 @@ export class MemoryProjectionStore implements ProjectionStore, IngestionStateSto
       if (key.startsWith(`${networkId}\u0000`)) this.#voteByProposalVoter.delete(key);
     }
     for (const key of this.#lastGovernanceVoterSequence.keys()) {
-      if (key.startsWith(`wokesocialid:v1:${networkId}:`)) {
+      if (key.startsWith(`wetdroolid:v1:${networkId}:`)) {
         this.#lastGovernanceVoterSequence.delete(key);
       }
     }

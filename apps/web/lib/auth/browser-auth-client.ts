@@ -7,7 +7,7 @@ import {
   type PasskeyWrappedKeyBundle,
   type UnwrapPasskeyAccountKeyInput,
   type WrapPasskeyAccountKeyInput,
-} from '@wokesocial/crypto';
+} from '@wetdrool/crypto';
 
 import {
   AuthApiClient,

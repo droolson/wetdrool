@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://woke.social/sitemap.xml
+Sitemap: https://wetdrool.com/sitemap.xml

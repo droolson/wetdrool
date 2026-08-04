@@ -17,7 +17,7 @@ export type FastifyRateLimitStoreCallback = (
  * Structurally compatible with the @fastify/rate-limit 10.3+ custom-store
  * contract, including the 11.1 runtime's optional non-mutating `read` extension.
  */
-export interface WokeSocialFastifyRateLimitStore {
+export interface WetDroolFastifyRateLimitStore {
   incr(
     key: string,
     callback: FastifyRateLimitStoreCallback,
@@ -30,12 +30,12 @@ export interface WokeSocialFastifyRateLimitStore {
     timeWindow?: number,
     max?: number,
   ): void;
-  child(routeOptions: unknown): WokeSocialFastifyRateLimitStore;
+  child(routeOptions: unknown): WetDroolFastifyRateLimitStore;
 }
 
-export type WokeSocialFastifyRateLimitStoreConstructor = new (
+export type WetDroolFastifyRateLimitStoreConstructor = new (
   options: unknown,
-) => WokeSocialFastifyRateLimitStore;
+) => WetDroolFastifyRateLimitStore;
 
 export interface FastifyRateLimitStoreFactoryOptions {
   readonly limiter: RateLimiter;
@@ -89,12 +89,12 @@ function routeFingerprint(routeOptions: unknown): string {
  */
 export function createFastifyRateLimitStore(
   options: FastifyRateLimitStoreFactoryOptions,
-): WokeSocialFastifyRateLimitStoreConstructor {
+): WetDroolFastifyRateLimitStoreConstructor {
   const limiter = options.limiter;
   const baseNamespace = requireBoundedString(options.namespace, 'namespace', 384);
   const clock = options.clock ?? Date.now;
 
-  class SharedRateLimitStore implements WokeSocialFastifyRateLimitStore {
+  class SharedRateLimitStore implements WetDroolFastifyRateLimitStore {
     readonly #namespace: string;
 
     constructor(_pluginOptions: unknown, namespace = baseNamespace) {
@@ -119,7 +119,7 @@ export function createFastifyRateLimitStore(
       this.#run('read', key, callback, timeWindow, max);
     }
 
-    child(routeOptions: unknown): WokeSocialFastifyRateLimitStore {
+    child(routeOptions: unknown): WetDroolFastifyRateLimitStore {
       const childNamespace = `${this.#namespace}:route:${routeFingerprint(routeOptions)}`;
       return new SharedRateLimitStore(undefined, childNamespace);
     }

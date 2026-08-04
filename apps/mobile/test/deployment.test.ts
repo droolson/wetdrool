@@ -13,7 +13,7 @@ function config(deployed = true): MobileRuntimeConfig {
     deployment: deployed
       ? {
           expectedGenesisHash: genesisHash,
-          id: `wokenet:v1:${genesisHash}:${programId}`,
+          id: `droolnet:v1:${genesisHash}:${programId}`,
           programId,
         }
       : null,

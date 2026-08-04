@@ -1,6 +1,6 @@
 'use client';
 
-import { ButtonLink, StatePanel } from '@wokesocial/ui';
+import { ButtonLink, StatePanel } from '@wetdrool/ui';
 
 export default function HomeError({
   reset,

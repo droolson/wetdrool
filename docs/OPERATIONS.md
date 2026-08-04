@@ -4,8 +4,8 @@ Last reviewed: 2026-07-29
 
 ## Document status
 
-This is the target operations contract for WokeSocial and its WokeNet program
-deployment on Solana. No WokeNet program is deployed to devnet or
+This is the target operations contract for WetDrool and its DroolNet program
+deployment on Solana. No DroolNet program is deployed to devnet or
 mainnet-beta, no staging or production service is deployed, and there are no
 production alerts, backups, runbook automations, on-call schedules, or
 completed incident exercises.
@@ -23,16 +23,16 @@ signed-APK release evidence exists. These local checks do not satisfy any
 production-readiness claim. Unless a section says otherwise, the controls and
 procedures below remain **Planned**.
 
-The canonical public origin is `https://woke.social`. `sociallywoke.com` and
-`www.sociallywoke.com` are redirect-only legacy origins and must never become
+The canonical public origin is `https://wetdrool.com`. `droolhouse.com` and
+`www.droolhouse.com` are redirect-only legacy origins and must never become
 an alternate application, identity namespace, RPC surface, or cookie scope.
 
-WokeNet is the WokeSocial protocol and smart-contract deployment layer on
+DroolNet is the WetDrool protocol and smart-contract deployment layer on
 Solana. Solana validators and RPC providers are external dependencies. No
-`$WOKE` mint exists. The legacy lamport-denominated payment ABI is quarantined,
+`$DROOL` mint exists. The legacy lamport-denominated payment ABI is quarantined,
 cannot execute or be unpaused, and never grants entitlements. Portable metadata
 may truthfully identify SOL or an exact SPL asset but may not relabel either as
-`$WOKE`.
+`$DROOL`.
 
 This document does not authorize production-network activity. See
 [DEPLOYMENT.md](./DEPLOYMENT.md) for the explicit manual production boundary and
@@ -41,14 +41,14 @@ This document does not authorize production-network activity. See
 ## Operating principles
 
 - Preserve user safety and key integrity before availability metrics.
-- Treat finalized WokeNet program state on the exact Solana deployment and
+- Treat finalized DroolNet program state on the exact Solana deployment and
   signed protocol objects as canonical; treat service databases as replayable
   projections.
 - Keep disposable Solana local-validator evidence separate from devnet,
   mainnet-beta, provider-diversity, Seeker-device, and signed-APK evidence in
   alerts, dashboards, releases, and incident records.
 - Treat SOL as the Solana network-fee asset. Do not execute the quarantined
-  payment ABI or claim that `$WOKE` exists.
+  payment ABI or claim that `$DROOL` exists.
 - Prefer degraded read-only behavior over ambiguous success or unsafe writes.
 - Never declare a transaction, publication, deletion, or recovery complete before
   its defined confirmation state.
@@ -70,7 +70,7 @@ roles MUST remain separated for high-impact changes.
 | Incident commander | Coordinates response, priorities, timeline, and handoffs | Deploy unreviewed program changes or suppress required notification |
 | Operations lead | Service health, capacity, failover, database and queue operations | Access user private content without approved purpose |
 | Security lead | Compromise analysis, containment, evidence, credential rotation | Unilaterally accept critical residual risk |
-| WokeNet release authority | Verifies the reviewed SBF artifact, exact Solana deployment, and program-authority state | Satisfy production multisig quorum alone or substitute local-validator evidence for public-deployment evidence |
+| DroolNet release authority | Verifies the reviewed SBF artifact, exact Solana deployment, and program-authority state | Satisfy production multisig quorum alone or substitute local-validator evidence for public-deployment evidence |
 | Android release authority | Verifies source, dependencies, package/certificate identity, reproducible APK, signing provenance, and distribution target | Control signing custody, approve security/privacy review, and publish alone |
 | Safety lead | User harm, moderation escalation, evidence minimization | Expand evidence access or retention without review |
 | Communications lead | Operator/user/status updates | Make legal conclusions or unsupported attribution |
@@ -84,7 +84,7 @@ out-of-band communications, and a tested method for reaching multisig signers.
 
 | Component | Role | Canonical? | Expected failure behavior |
 | --- | --- | --- | --- |
-| WokeNet program on Solana and finalized ledger observations | Protocol authorization and compact public state | Yes, within documented protocol scope | Writes pause or remain pending; clients retain safe read/degraded mode |
+| DroolNet program on Solana and finalized ledger observations | Protocol authorization and compact public state | Yes, within documented protocol scope | Writes pause or remain pending; clients retain safe read/degraded mode |
 | Signed content manifests | Verifiable public/restricted object representation | Yes for represented content | Alternate provider retrieval; reject unverifiable bytes |
 | PostgreSQL indexer database | Query projection | No | Fail over or rebuild from protocol data |
 | Redis | Cache, queue coordination, rate limiting | No | Lose cache safely; sensitive limits fail safe; reconcile queued work |
@@ -135,7 +135,7 @@ exists. All requirements below beyond those subsets are **Planned**.
 - Timestamp in UTC, service, environment, region, instance, release digest.
 - Trace/correlation ID generated independently of user content.
 - Operation name, stable result code, duration, retry count.
-- Solana cluster, observed genesis hash, WokeNet program ID/deployment slot,
+- Solana cluster, observed genesis hash, DroolNet program ID/deployment slot,
   RPC provider alias, observed slot, commitment, and checkpoint where relevant.
 - The immutable per-network `INDEXER_PROFILE_V2_ACTIVATION_SLOT` in indexer
   release and rebuild records.
@@ -421,7 +421,7 @@ screen sharing of secret material.
 1. Declare SEV-0 or SEV-1 based on scope and move to out-of-band coordination.
 2. Stop deployments and sponsorship. Disable affected service credentials and
    isolate control-plane access.
-3. Independently inspect the affected Solana genesis, WokeNet program ID,
+3. Independently inspect the affected Solana genesis, DroolNet program ID,
    program-data address, deployed binary hash, deployment slot, upgrade
    authority, sponsor balance, and recent transactions across trusted providers.
 4. Notify multisig signers through verified channels; do not collect root secrets
@@ -434,7 +434,7 @@ screen sharing of secret material.
    required.
 8. Publish material program changes and incident facts.
 
-There is no safe generic rollback for a stateful WokeNet program. Any program
+There is no safe generic rollback for a stateful DroolNet program. Any program
 action requires independent review of deployed binary and state compatibility.
 Disposable local-validator behavior cannot approve a devnet or mainnet-beta
 action.
@@ -447,7 +447,7 @@ action.
 3. Check recipient, programs, instructions, SOL network-fee amount, optional
    exact SPL token identifiers, fees, blockhashes, and subject limits against
    the allowlist. Treat any legacy payment instruction, unpause attempt, or
-   SOL-as-`$WOKE` labeling as a security incident.
+   SOL-as-`$DROOL` labeling as a security incident.
 4. Reconcile pending transactions and prevent automatic duplicate retries.
 5. Rotate the isolated sponsor key if compromise is possible; never use a
    production upgrade or treasury authority.
@@ -512,7 +512,7 @@ surfaces or event types instead of creating a silently unreplayable ledger.
 For disposable local development only:
 
 1. Stop the indexer, web/services that can write, and every local validator.
-2. Resolve and verify the exact `wokesocial-local` Compose project and its
+2. Resolve and verify the exact `wetdrool-local` Compose project and its
    disposable volumes using the commands in the next section.
 3. Remove that exact project's disposable volumes.
 4. Start a local validator with a new empty ledger directory and redeploy the
@@ -524,13 +524,13 @@ For disposable local development only:
 If either the PostgreSQL data or validator history is not disposable, stop.
 There is no in-place compatibility path in this predeployment repository.
 Preserve the state read-only and design a new program/version plus explicit
-dual-read or export/import plan. No devnet or mainnet-beta WokeNet deployment
+dual-read or export/import plan. No devnet or mainnet-beta DroolNet deployment
 currently exists.
 
 ## Legacy public-schema volume upgrade or reset
 
-The local provisioner refuses to create the parallel `wokesocial_auth`,
-`wokesocial_indexer`, and `wokesocial_moderation` schemas when it finds tables,
+The local provisioner refuses to create the parallel `wetdrool_auth`,
+`wetdrool_indexer`, and `wetdrool_moderation` schemas when it finds tables,
 partitioned tables, sequences, views, materialized views, foreign tables,
 routines, domains, or enums in `public`. This is intentional. A pre-isolation
 volume may contain live application state, and silently creating empty service
@@ -542,9 +542,9 @@ volume. Do not infer a volume name from a shell variable:
 
 ```sh
 docker compose --env-file .env.example --file infra/compose.yaml \
-  --project-name wokesocial-local down
-docker volume ls --filter label=com.docker.compose.project=wokesocial-local
-docker volume inspect wokesocial-local_postgres-data
+  --project-name wetdrool-local down
+docker volume ls --filter label=com.docker.compose.project=wetdrool-local
+docker volume inspect wetdrool-local_postgres-data
 ```
 
 If the volume is disposable local data, reset it explicitly. The following
@@ -554,7 +554,7 @@ loss before running it:
 
 ```sh
 docker compose --env-file .env.example --file infra/compose.yaml \
-  --project-name wokesocial-local down --volumes --remove-orphans
+  --project-name wetdrool-local down --volumes --remove-orphans
 pnpm infra:up
 ```
 
@@ -586,7 +586,7 @@ If any data must be preserved, use this reviewed upgrade procedure:
    to the matching migration role; set service search paths; and apply the
    least-privilege grants from
    `infra/postgres/provision-service-roles.sql`. Provision `pg_trgm` and
-   `btree_gin` in `wokesocial_indexer`. Do not use a blanket `public.*` move.
+   `btree_gin` in `wetdrool_indexer`. Do not use a blanket `public.*` move.
 6. Run all three migration commands against their scoped migration roles, then
    run the `privilege-probe` profile. Verify that each runtime can perform
    required DML only in its own schema, cannot perform DDL or read another
@@ -715,7 +715,7 @@ Production operations are not ready until evidence exists for:
 - Moderation/safety escalation reviewed by qualified specialists.
 - Release, rollback, migration, Solana devnet/mainnet-beta program-deployment,
   and authority-ceremony rehearsals.
-- A verifiable public WokeNet deployment, independent Solana RPC
+- A verifiable public DroolNet deployment, independent Solana RPC
   provider/failover result, and connected-slice result; local-validator results
   are recorded separately and do not satisfy this gate.
 - A verified Seeker-device/MWA matrix, reproducible signed APK, signing

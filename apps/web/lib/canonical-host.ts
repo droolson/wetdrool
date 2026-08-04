@@ -1,8 +1,8 @@
-export const CANONICAL_ORIGIN = 'https://woke.social';
+export const CANONICAL_ORIGIN = 'https://wetdrool.com';
 
-const LEGACY_HOSTNAMES = new Set(['sociallywoke.com', 'www.sociallywoke.com']);
+const LEGACY_HOSTNAMES = new Set(['droolhouse.com', 'www.droolhouse.com']);
 const REQUEST_HOST_PATTERN =
-  /^(?<hostname>(?:sociallywoke\.com|www\.sociallywoke\.com)\.*)(?::(?<port>[0-9]{1,5}))?$/iu;
+  /^(?<hostname>(?:droolhouse\.com|www\.droolhouse\.com)\.*)(?::(?<port>[0-9]{1,5}))?$/iu;
 
 function normalizeDnsHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.+$/u, '');
@@ -24,7 +24,7 @@ export function legacyHostRedirect(input: URL, requestHost = input.host): URL | 
 
   const destination = new URL(input.href);
   destination.protocol = 'https:';
-  destination.hostname = 'woke.social';
+  destination.hostname = 'wetdrool.com';
   destination.port = '';
   destination.username = '';
   destination.password = '';

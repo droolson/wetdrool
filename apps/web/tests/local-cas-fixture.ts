@@ -6,13 +6,13 @@ import {
   signPayload,
   type NetworkId,
   type PostContent,
-} from '@wokesocial/protocol';
+} from '@wetdrool/protocol';
 
 const privateKey = Uint8Array.from({ length: 32 }, (_, index) => index + 1);
 const publicKey = ed25519.getPublicKey(privateKey);
 const network =
-  'wokenet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD' as NetworkId;
-const author = `wokesocialid:v1:${network}:11111111111111111111111111111111`;
+  'droolnet:v1:4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQqT6wAGkwhB:9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD' as NetworkId;
+const author = `wetdroolid:v1:${network}:11111111111111111111111111111111`;
 const identity = createPayloadBuilderIdentity(network, author, publicKey, 'root');
 const content: PostContent = {
   accessibility: {

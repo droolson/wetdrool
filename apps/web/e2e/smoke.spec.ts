@@ -130,7 +130,7 @@ test('community discovery rejects unsafe URL state and never treats slugs as add
 
   await page.goto(`/community/${COMMUNITY_ADDRESS}`);
   await expect(
-    page.getByRole('heading', { name: 'Connect an indexer and WokeNet network scope.' }),
+    page.getByRole('heading', { name: 'Connect an indexer and DroolNet network scope.' }),
   ).toBeVisible();
   await expect(page.locator('.community-proof')).toHaveCount(0);
 
@@ -156,7 +156,7 @@ test('projected feed routes reject unsafe scope before contacting a provider', a
   await expect(
     page.getByRole('heading', { name: 'That public identity is not canonical.' }),
   ).toBeVisible();
-  await expect(page.getByLabel('Public WokeSocial identity ID')).toHaveValue('not-an-identity');
+  await expect(page.getByLabel('Public WetDrool identity ID')).toHaveValue('not-an-identity');
   await expect(page.locator('.post-card')).toHaveCount(0);
 });
 
@@ -260,7 +260,7 @@ test('local export downloads only the scoped device JSON', async ({ page }) => {
   await page.getByRole('button', { name: 'Download local device export' }).click();
   const download = await downloadPromise;
 
-  expect(download.suggestedFilename()).toBe('wokesocial-device-export.json');
+  expect(download.suggestedFilename()).toBe('wetdrool-device-export.json');
   await expect(page.getByText(/No identity, post history, relationships/u)).toBeVisible();
 });
 

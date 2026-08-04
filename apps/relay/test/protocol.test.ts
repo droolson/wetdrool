@@ -49,10 +49,10 @@ describe('signed relay protocol', () => {
       unsignedRelayEventSchema.safeParse({
         ...message,
         identity: message.identity.replace(
-          'wokesocialid:v1:wokenet:v1:',
-          'wokesocialid:v1:solana:',
+          'wetdroolid:v1:droolnet:v1:',
+          'wetdroolid:v1:solana:',
         ),
-        keyId: message.keyId.replace('wokesocialid:v1:wokenet:v1:', 'wokesocialid:v1:solana:'),
+        keyId: message.keyId.replace('wetdroolid:v1:droolnet:v1:', 'wetdroolid:v1:solana:'),
       }).success,
     ).toBe(false);
   });
@@ -196,7 +196,7 @@ describe('signed relay protocol', () => {
     ).rejects.toMatchObject({ code: 'key-not-authorized' });
   });
 
-  it('represents WokeNet slots and Solana-compatible signatures exactly', () => {
+  it('represents DroolNet slots and Solana-compatible signatures exactly', () => {
     const post = makeEvent('new-post').message;
     if (post.kind !== 'new-post') {
       throw new Error('fixture kind drift');

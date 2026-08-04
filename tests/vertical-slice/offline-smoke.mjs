@@ -20,8 +20,8 @@ import {
 
 const programId = '9kFGJEzA7uKvJ1wTvKRWoFadRU7WFnpwWEGP6APro3dD';
 const authority = deterministicTestKeypair(41);
-const networkId = `wokenet:v1:${programId}:${programId}`;
-const identityId = `wokesocialid:v1:${networkId}:${authority.publicKey.toBase58()}`;
+const networkId = `droolnet:v1:${programId}:${programId}`;
+const identityId = `wetdroolid:v1:${networkId}:${authority.publicKey.toBase58()}`;
 const builder = createPayloadBuilderIdentity(
   networkId,
   identityId,

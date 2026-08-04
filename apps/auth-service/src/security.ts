@@ -1,8 +1,8 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-import { secureRandomBytes, secureRandomId } from '@wokesocial/crypto';
+import { secureRandomBytes, secureRandomId } from '@wetdrool/crypto';
 
-const HASH_DOMAIN = Buffer.from('wokesocial/auth-service/hash/v1\u0000', 'utf8');
+const HASH_DOMAIN = Buffer.from('wetdrool/auth-service/hash/v1\u0000', 'utf8');
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/u;
 const SENSITIVE_FIELD_NAMES = new Set([
   'accountkeyseed',
@@ -14,8 +14,8 @@ const SENSITIVE_FIELD_NAMES = new Set([
   'seed',
 ]);
 
-export const SESSION_COOKIE_NAME = '__Host-wokesocial-session';
-export const CSRF_COOKIE_NAME = '__Host-wokesocial-csrf';
+export const SESSION_COOKIE_NAME = '__Host-wetdrool-session';
+export const CSRF_COOKIE_NAME = '__Host-wetdrool-csrf';
 
 export function randomAccountId(): string {
   return secureRandomId({ prefix: 'acct' });
