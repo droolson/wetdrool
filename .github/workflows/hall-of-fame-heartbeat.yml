@@ -1,0 +1,124 @@
+# High-cadence push heartbeat for the Hall of Fame ledger.
+# GitHub scheduled workflows: minimum practical interval is ~every 5 minutes.
+# Does NOT touch application source on main — only ops/hall-of-fame/* on a dedicated branch.
+
+name: Hall of Fame heartbeat
+
+on:
+  schedule:
+    # Every 5 minutes (GitHub may coalesce under load)
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why this heartbeat fired'
+        required: false
+        default: 'manual'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hall-of-fame-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    name: Record push heartbeat
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out hall-of-fame branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: hall-of-fame
+          fetch-depth: 0
+
+      - name: Ensure branch exists from main if first run
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git rev-parse --verify origin/hall-of-fame >/dev/null 2>&1; then
+            git fetch origin main || git fetch origin master || true
+            BASE=$(git rev-parse origin/main 2>/dev/null || git rev-parse origin/master 2>/dev/null || git rev-parse HEAD)
+            git checkout -B hall-of-fame "$BASE"
+            git push -u origin hall-of-fame || true
+          fi
+          git checkout hall-of-fame
+          git pull --ff-only origin hall-of-fame || true
+
+      - name: Append heartbeat
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ops/hall-of-fame
+          TS_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          DAY=$(date -u +"%Y-%m-%d")
+          RUN_ID="${GITHUB_RUN_ID:-local}"
+          REASON="${{ github.event.inputs.reason || 'schedule' }}"
+          LEDGER="ops/hall-of-fame/ledger.ndjson"
+          COUNTER="ops/hall-of-fame/counter.json"
+
+          echo "{\"ts\":\"${TS_UTC}\",\"run_id\":\"${RUN_ID}\",\"event\":\"${GITHUB_EVENT_NAME}\",\"reason\":\"${REASON}\",\"sha_before\":\"$(git rev-parse HEAD)\",\"actor\":\"github-actions\"}" >> "${LEDGER}"
+
+          if [ -f "${COUNTER}" ]; then
+            TOTAL=$(python3 -c "import json; print(int(json.load(open('${COUNTER}')).get('total_heartbeats',0))+1)")
+            DAYS=$(python3 - <<PY
+          import json
+          from pathlib import Path
+          p=Path("${COUNTER}")
+          d=json.loads(p.read_text()) if p.exists() else {}
+          days=set(d.get("days") or [])
+          days.add("${DAY}")
+          print(len(days))
+          open("/tmp/hof_days.txt","w").write("\n".join(sorted(days)))
+          PY
+          )
+          else
+            TOTAL=1
+            DAYS=1
+            echo "${DAY}" > /tmp/hof_days.txt
+          fi
+
+          DAYS_LIST=$(tr '\n' ',' < /tmp/hof_days.txt | sed 's/,$//')
+          python3 - <<PY
+          import json
+          from pathlib import Path
+          days=Path("/tmp/hof_days.txt").read_text().strip().splitlines()
+          payload={
+            "schema": "wetdrool.hall_of_fame.v1",
+            "total_heartbeats": ${TOTAL},
+            "unique_utc_days": len(days),
+            "days": days,
+            "last_heartbeat_utc": "${TS_UTC}",
+            "last_run_id": "${RUN_ID}",
+            "branch": "hall-of-fame",
+            "note": "Automated push cadence for Hall of Fame ledger. Application code ships on main separately.",
+          }
+          Path("${COUNTER}").write_text(json.dumps(payload, indent=2) + "\n")
+          Path("ops/hall-of-fame/README.md").write_text(
+          f"""# Hall of Fame push ledger
+
+          Automated heartbeats on branch \`hall-of-fame\` (every ~5 minutes via GitHub Actions).
+
+          | Metric | Value |
+          | ------ | ----- |
+          | Total heartbeats | **{payload['total_heartbeats']}** |
+          | Unique UTC days | **{payload['unique_utc_days']}** |
+          | Last | \`{payload['last_heartbeat_utc']}\` |
+
+          Append-only history: \`ledger.ndjson\`.
+          App points / product Hall of Fame: see \`apps/web\` route \`/fame\`.
+          """
+          )
+          PY
+
+          git config user.name "wetdrool-hof-bot"
+          git config user.email "hof-bot@users.noreply.github.com"
+          git add ops/hall-of-fame
+          if git diff --staged --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "chore(hof): heartbeat ${TS_UTC} (#${TOTAL})"
+          git push origin hall-of-fame
