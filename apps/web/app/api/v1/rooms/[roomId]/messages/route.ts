@@ -56,6 +56,10 @@ export async function POST(
     return jsonError(413, 'too_large', 'Envelope exceeds size budget (~4MB media).');
   }
 
+  const fromRaw = typeof env.from === 'string' ? env.from.trim().slice(0, 32) : '';
+  const from =
+    fromRaw.length > 0 ? fromRaw.replace(/[\u0000-\u001f\u007f]/g, '') || undefined : undefined;
+
   const sealed: SealedEnvelope = {
     protocol: SEAL_PROTOCOL,
     roomId,
@@ -65,6 +69,7 @@ export async function POST(
     ivBase64: env.ivBase64,
     ciphertextBase64: env.ciphertextBase64,
     compression: 'middle-out-lite-v1',
+    ...(from !== undefined && from.length > 0 ? { from } : {}),
   };
 
   appendMessage(sealed);
