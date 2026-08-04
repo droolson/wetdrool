@@ -51,8 +51,9 @@ export async function POST(
     return jsonError(400, 'invalid_envelope', 'Envelope failed validation (ciphertext-only schema).');
   }
 
-  if (env.ciphertextBase64.length > 2_000_000) {
-    return jsonError(413, 'too_large', 'Envelope exceeds size budget.');
+  // ~4MB media → base64 envelope budget
+  if (env.ciphertextBase64.length > 6_000_000) {
+    return jsonError(413, 'too_large', 'Envelope exceeds size budget (~4MB media).');
   }
 
   const sealed: SealedEnvelope = {
