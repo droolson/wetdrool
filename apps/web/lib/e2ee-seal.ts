@@ -10,7 +10,7 @@ import {
   frameFromBytes,
   frameToBytes,
   type PayloadKind,
-} from '@wetdrool/middle-out-lite';
+} from './middle-out';
 
 const te = new TextEncoder();
 const td = new TextDecoder();
