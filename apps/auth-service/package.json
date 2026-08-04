@@ -21,12 +21,12 @@
   "dependencies": {
     "@fastify/cookie": "11.1.2",
     "@fastify/cors": "11.3.0",
-    "@fastify/rate-limit": "11.1.0",
+    "@fastify/rate-limit": "11.2.0",
     "@simplewebauthn/server": "13.3.2",
     "@wetdrool/config": "workspace:*",
     "@wetdrool/crypto": "workspace:*",
     "@wetdrool/rate-limit": "workspace:*",
-    "fastify": "5.10.0",
+    "fastify": "5.11.0",
     "postgres": "3.4.9",
     "zod": "4.4.3"
   },
