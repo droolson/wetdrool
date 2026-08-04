@@ -1,0 +1,24 @@
+{
+  "name": "@wetdrool/middle-out-lite",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Portable middle-out compression subset for WetDrool E2EE envelopes (WokeNet-inspired CDC + content addressing)",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run --exclude 'dist/**'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "vitest": "4.1.10"
+  }
+}
