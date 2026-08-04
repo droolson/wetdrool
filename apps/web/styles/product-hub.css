@@ -674,3 +674,106 @@
   gap: 0.35rem;
   padding-left: 1.1rem;
 }
+
+.e2ee-room {
+  max-width: 40rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 0.85rem;
+  padding-bottom: 4rem;
+}
+
+.e2ee-room__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.e2ee-room__lede {
+  opacity: 0.88;
+  margin: 0;
+}
+
+.e2ee-room__field {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 650;
+}
+
+.e2ee-room__field input,
+.e2ee-room__compose textarea {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px solid color-mix(in oklab, canvasText 18%, transparent);
+  background: color-mix(in oklab, canvas 96%, canvasText);
+  color: inherit;
+}
+
+.e2ee-room__log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+  max-height: 50vh;
+  overflow: auto;
+}
+
+.e2ee-room__log > li {
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+  padding: 0.65rem 0.8rem;
+  background: color-mix(in oklab, canvas 94%, canvasText);
+}
+
+.e2ee-room__log time {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.e2ee-room__media {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.e2ee-room__err {
+  color: #ff7b83;
+}
+
+.e2ee-room__compose {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.e2ee-room__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.e2ee-room__actions button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #13d7ff, #9d4dff);
+}
+
+.e2ee-room__file {
+  font-size: 0.88rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.e2ee-room__file input {
+  display: block;
+  margin-top: 0.25rem;
+}

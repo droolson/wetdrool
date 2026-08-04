@@ -1,0 +1,12 @@
+name = "wetdrool-rooms"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+workers_dev = true
+
+# Bind KV for ciphertext: wrangler kv namespace create WETDROOL_ROOMS
+# [[kv_namespaces]]
+# binding = "ROOMS"
+# id = "<id>"
+
+[vars]
+MAX_MESSAGES = "200"
