@@ -1,0 +1,13 @@
+{
+  "name": "@wetdrool/onion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "SEE LICENSE IN LICENSE",
+  "description": "Tor-optimized, JavaScript-free WetDrool onion gateway and sealed rooms",
+  "scripts": {
+    "dev": "node ./scripts/dev-server.mjs",
+    "start": "node ./scripts/dev-server.mjs",
+    "test": "node --test ./test/*.test.mjs"
+  }
+}

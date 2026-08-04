@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<title>WetDrool Onion</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">wetdrool</a>
+  <span class="pill">onion · no javascript</span>
+</header>
+<main>
+  <h1>WetDrool · onion gateway</h1>
+  <p class="lede">
+    Tor-optimized, <strong>JavaScript-free</strong> entry. Sealed rooms for text and
+    img/GIF/video. No trackers, no third-party scripts, no analytics.
+  </p>
+
+  <div class="card stack">
+    <h2>Open a sealed room</h2>
+    <form class="stack" method="get" action="/room" accept-charset="utf-8">
+      <label>
+        Room id
+        <input type="text" name="room" value="lobby" maxlength="64" required pattern="[A-Za-z0-9][A-Za-z0-9_-]{1,62}" autocomplete="off">
+      </label>
+      <label>
+        Passphrase (required to decrypt)
+        <input type="password" name="pass" required autocomplete="off">
+      </label>
+      <button type="submit">Enter room</button>
+    </form>
+    <p class="note">Passphrase is sent only over this Tor/HTTPS hop for that request. It is never stored on the server.</p>
+  </div>
+
+  <div class="card">
+    <h2>Security model (honest)</h2>
+    <ul>
+      <li><strong>No JavaScript</strong> — works in Tor Browser with highest security level.</li>
+      <li><strong>Passphrase-sealed storage</strong> — AES-256-GCM; ciphertext at rest.</li>
+      <li><strong>Not classic browser E2EE</strong> — without JS the server must decrypt briefly to render HTML. For client-only crypto use clearnet <code>/rooms/*</code>.</li>
+      <li><strong>18+</strong> — CSAM and illegal content are banned.</li>
+    </ul>
+  </div>
+
+  <nav class="links" aria-label="Quick rooms">
+    <a href="/room?room=lobby">lobby</a>
+    <a href="/room?room=shorts">shorts</a>
+    <a href="/room?room=pride">pride</a>
+    <a href="/about.html">about</a>
+    <a href="https://wetdrool.com/">wetdrool.com</a>
+  </nav>
+</main>
+<footer class="foot">
+  <p>Clearnet full app (JS): hub, RedGIFs-class shorts, live, creators. This onion mirror prioritizes anonymity and no scripts.</p>
+</footer>
+</body>
+</html>
