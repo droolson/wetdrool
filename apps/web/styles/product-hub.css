@@ -1000,3 +1000,112 @@
 .muted {
   opacity: 0.7;
 }
+
+/* —— Anon gate / secret entrance —— */
+.anon-gate,
+.anon-entrance {
+  max-width: 26rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.5rem 0 4rem;
+}
+
+.anon-gate__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.anon-gate__header h1 {
+  width: 100%;
+  margin: 0;
+}
+
+.anon-gate__lede,
+.anon-entrance p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.anon-gate__form,
+.anon-entrance__jump {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, canvasText 14%, transparent);
+  background: color-mix(in oklab, canvas 94%, canvasText);
+}
+
+.anon-gate__form label,
+.anon-entrance__jump label {
+  display: grid;
+  gap: 0.3rem;
+  font-weight: 650;
+}
+
+.anon-gate__form input,
+.anon-entrance__jump input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in oklab, canvasText 16%, transparent);
+  background: color-mix(in oklab, canvas 97%, canvasText);
+  color: inherit;
+}
+
+.anon-gate__form button,
+.anon-entrance__jump button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #13d7ff, #9d4dff);
+}
+
+.anon-entrance__rooms {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  font-weight: 750;
+}
+
+.e2ee-room__you {
+  font-size: 0.55em;
+  font-weight: 650;
+  opacity: 0.75;
+}
+
+.e2ee-room__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.e2ee-room__leave {
+  appearance: none;
+  border: 1px solid color-mix(in oklab, canvasText 20%, transparent);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.e2ee-card__from {
+  color: #13d7ff;
+  font-weight: 800;
+}

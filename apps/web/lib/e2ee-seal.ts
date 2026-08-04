@@ -26,6 +26,19 @@ export interface SealedEnvelope {
   readonly ivBase64: string;
   readonly ciphertextBase64: string;
   readonly compression: 'middle-out-lite-v1';
+  /**
+   * Optional public display name only (not a login). Content stays E2EE.
+   * Max 32 chars; stripped of control characters.
+   */
+  readonly from?: string;
+}
+
+export function normalizeUsername(raw: string): string {
+  const t = raw
+    .trim()
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .slice(0, 32);
+  return t.length > 0 ? t : 'anon';
 }
 
 function b64(bytes: Uint8Array): string {
@@ -74,12 +87,14 @@ export async function sealBytes(
   plaintext: Uint8Array,
   contentType: string,
   kind: PayloadKind = 'bytes',
+  from?: string,
 ): Promise<SealedEnvelope> {
   const frame = await encodeMiddleOutLite(plaintext, kind, contentType);
   const frameBytes = frameToBytes(frame);
   const key = await deriveRoomKey(roomId, passphrase);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, frameBytes);
+  const display = from !== undefined ? normalizeUsername(from) : undefined;
   return {
     protocol: SEAL_PROTOCOL,
     roomId,
@@ -89,6 +104,7 @@ export async function sealBytes(
     ivBase64: b64(iv),
     ciphertextBase64: b64(new Uint8Array(ct)),
     compression: 'middle-out-lite-v1',
+    ...(display !== undefined ? { from: display } : {}),
   };
 }
 
@@ -96,8 +112,16 @@ export async function sealText(
   roomId: string,
   passphrase: string,
   text: string,
+  from?: string,
 ): Promise<SealedEnvelope> {
-  return sealBytes(roomId, passphrase, te.encode(text), 'text/plain; charset=utf-8', 'text');
+  return sealBytes(
+    roomId,
+    passphrase,
+    te.encode(text),
+    'text/plain; charset=utf-8',
+    'text',
+    from,
+  );
 }
 
 export async function openEnvelope(
