@@ -12,6 +12,7 @@ const PRIMARY_LINKS = [
   { href: '/creator/kingofqueens6ix', label: 'Creators' },
   { href: '/messages', label: 'Private' },
   { href: '/rooms/lobby', label: 'E2EE' },
+  { href: '/market', label: 'Market' },
   { href: '/token', label: '$DROOL' },
   { href: '/fame', label: 'Fame' },
   { href: '/docs', label: 'Docs' },
