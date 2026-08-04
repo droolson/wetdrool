@@ -873,3 +873,130 @@
   font-weight: 800;
   color: #13d7ff;
 }
+
+/* —— E2EE marketplace x402 —— */
+.market-page {
+  padding-bottom: 4rem;
+}
+
+.market {
+  max-width: 42rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.market__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.market__lede {
+  margin: 0;
+  opacity: 0.88;
+}
+
+.card-panel {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+  padding: 1rem;
+  display: grid;
+  gap: 0.55rem;
+  background: color-mix(in oklab, canvas 94%, canvasText);
+}
+
+.card-panel label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+
+.card-panel input,
+.card-panel textarea {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in oklab, canvasText 16%, transparent);
+  background: color-mix(in oklab, canvas 97%, canvasText);
+  color: inherit;
+}
+
+.market__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.market__actions button,
+.market-card button,
+.market__buy button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.5rem 0.95rem;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, #14f195, #9945ff);
+}
+
+.market__file {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.market__list ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.market-card {
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.market-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.market-card__meta {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  font-family: ui-monospace, monospace;
+}
+
+.market__plain {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: #0a0a0c;
+  color: #eee;
+  overflow: auto;
+}
+
+.market__media {
+  max-width: 100%;
+  border-radius: 0.65rem;
+}
+
+.market__status {
+  font-weight: 700;
+}
+
+.muted {
+  opacity: 0.7;
+}
