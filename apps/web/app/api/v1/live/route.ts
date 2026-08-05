@@ -1,52 +1,26 @@
-import { jsonOk } from '@/lib/product-api';
+import { LIVE_ROOMS } from '@/lib/live-catalog';
+import { jsonError, jsonOk } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ROOMS = [
-  {
-    id: 'room-pride-desk',
-    title: 'Pride desk · soft stream',
-    host: '@violetwave',
-    nsfw: true,
-    tags: ['pride', 'trans', 'chat'],
-    viewersHint: 'staged',
-    status: 'staged' as const,
-  },
-  {
-    id: 'room-femboy-lofi',
-    title: 'Femboy lofi hours',
-    host: '@neonangel',
-    nsfw: true,
-    tags: ['femboy', 'lofi', 'tips'],
-    viewersHint: 'staged',
-    status: 'staged' as const,
-  },
-  {
-    id: 'room-sfw-dev',
-    title: 'Build-in-public (SFW)',
-    host: '@droolhouse',
-    nsfw: false,
-    tags: ['sfw', 'dev', 'mesh'],
-    viewersHint: 'staged',
-    status: 'staged' as const,
-  },
-  {
-    id: 'room-straight-after',
-    title: 'After dark lounge',
-    host: '@nightshift',
-    nsfw: true,
-    tags: ['straight', 'lounge'],
-    viewersHint: 'staged',
-    status: 'staged' as const,
-  },
-] as const;
+export function GET(request: Request): Response {
+  const url = new URL(request.url);
+  const nsfwParam = url.searchParams.get('nsfw');
+  // nsfw=0|false → SFW-only listing; default returns full catalog (client age-gates).
+  const sfwOnly = nsfwParam === '0' || nsfwParam === 'false';
+  const rooms = sfwOnly ? LIVE_ROOMS.filter((r) => !r.nsfw) : LIVE_ROOMS;
 
-export function GET(): Response {
   return jsonOk({
     ok: true,
-    rooms: ROOMS,
+    rooms,
+    count: rooms.length,
     join: 'disabled',
+    synthetic: true,
     note: 'Live SFU / chat / tips not online. Cards are product scaffolding.',
   });
+}
+
+export function POST(): Response {
+  return jsonError(405, 'method_not_allowed', 'Use GET for live room catalog.');
 }

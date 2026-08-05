@@ -148,8 +148,25 @@ export function streakFromDays(days: readonly string[], todayUtc: string): numbe
   return streak;
 }
 
-export function rankBoard(local: LocalFameProfile | null, todayUtc: string): readonly FameEntry[] {
-  const entries: FameEntry[] = [...FAME_SEED];
+/**
+ * Rank a seed board (API or static fixtures) with an optional local grinder row.
+ * Seed rows with source 'local' are dropped so the browser profile is authoritative.
+ */
+export function rankBoardWithSeed(
+  seed: readonly FameEntry[],
+  local: LocalFameProfile | null,
+  todayUtc: string,
+): readonly FameEntry[] {
+  const entries: FameEntry[] = seed
+    .filter((e) => e.source !== 'local')
+    .map((e) => ({
+      handle: e.handle,
+      displayName: e.displayName,
+      lifetimePoints: e.lifetimePoints,
+      streakDays: e.streakDays,
+      badges: e.badges,
+      source: e.source === 'seed' ? ('seed' as const) : ('seed' as const),
+    }));
   if (local && local.lifetimePoints > 0) {
     entries.push({
       handle: local.handle,
@@ -161,6 +178,10 @@ export function rankBoard(local: LocalFameProfile | null, todayUtc: string): rea
     });
   }
   return [...entries].sort((a, b) => b.lifetimePoints - a.lifetimePoints);
+}
+
+export function rankBoard(local: LocalFameProfile | null, todayUtc: string): readonly FameEntry[] {
+  return rankBoardWithSeed(FAME_SEED, local, todayUtc);
 }
 
 export function fameTier(lifetimePoints: number): string {

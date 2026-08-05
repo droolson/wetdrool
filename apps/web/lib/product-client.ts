@@ -5,6 +5,8 @@
 import type { DiscoveryMode, RankedShort } from './short-feed';
 import type { DroolTokenConfig } from './drool-token';
 import type { CreatorStudioProfile } from './creator-economy';
+import type { LiveRoom } from './live-catalog';
+import type { FameEntry } from './hall-of-fame';
 
 export type ProductClientResult<T> =
   | { readonly kind: 'ok'; readonly data: T }
@@ -45,19 +47,15 @@ export interface ShortsApiResponse {
   readonly synthetic: boolean;
 }
 
-export interface LiveRoomDto {
-  readonly id: string;
-  readonly title: string;
-  readonly host: string;
-  readonly nsfw: boolean;
-  readonly tags: readonly string[];
-  readonly viewersHint: string;
-  readonly status: 'staged';
-}
+export type LiveRoomDto = LiveRoom;
 
 export interface LiveApiResponse {
   readonly ok: true;
   readonly rooms: readonly LiveRoomDto[];
+  readonly count?: number;
+  readonly join?: string;
+  readonly synthetic?: boolean;
+  readonly note?: string;
 }
 
 export interface CreatorApiResponse {
@@ -76,6 +74,17 @@ export interface HealthApiResponse {
   readonly surfaces: readonly string[];
 }
 
+export interface FameBoardRow extends FameEntry {
+  readonly rank: number;
+  readonly tier: string;
+}
+
+export interface FameApiResponse {
+  readonly ok: true;
+  readonly board: readonly FameBoardRow[];
+  readonly note?: string;
+}
+
 export function fetchShorts(
   mode: DiscoveryMode,
   limit = 24,
@@ -84,8 +93,14 @@ export function fetchShorts(
   return getJson<ShortsApiResponse>(`/api/v1/shorts?${q}`);
 }
 
-export function fetchLiveRooms(): Promise<ProductClientResult<LiveApiResponse>> {
-  return getJson<LiveApiResponse>('/api/v1/live');
+export function fetchLiveRooms(options?: {
+  readonly nsfw?: boolean;
+}): Promise<ProductClientResult<LiveApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.nsfw === false) q.set('nsfw', '0');
+  if (options?.nsfw === true) q.set('nsfw', '1');
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<LiveApiResponse>(`/api/v1/live${suffix}`);
 }
 
 export function fetchCreator(
@@ -100,4 +115,8 @@ export function fetchToken(): Promise<ProductClientResult<TokenApiResponse>> {
 
 export function fetchHealth(): Promise<ProductClientResult<HealthApiResponse>> {
   return getJson<HealthApiResponse>('/api/v1/health');
+}
+
+export function fetchFameBoard(): Promise<ProductClientResult<FameApiResponse>> {
+  return getJson<FameApiResponse>('/api/v1/fame');
 }
