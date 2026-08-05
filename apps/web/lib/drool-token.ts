@@ -37,6 +37,22 @@ export interface DroolTokenConfig {
 }
 
 /**
+ * Machine-readable honesty flags for the economy surface and /api/v1/token.
+ * earningClaimed and droolMintInvented are always false (product rule).
+ * tradeExecutable stays false until a separate trade gate ships.
+ */
+export interface TokenHonestFlags {
+  readonly mintExists: boolean;
+  /** Explicit product rule: no $DROOL mint is shipped or invented in-repo. */
+  readonly droolMintInvented: false;
+  readonly earningClaimed: false;
+  readonly pointsAreNotToken: true;
+  readonly solIsNotDrool: true;
+  readonly transferTaxConfigured: boolean;
+  readonly tradeExecutable: false;
+}
+
+/**
  * Sole client config. Update only after verified mint paste + review.
  */
 export function getDroolTokenConfig(
@@ -75,6 +91,33 @@ export function getDroolTokenConfig(
       'Reading feeds does not require holding $DROOL',
     ],
   };
+}
+
+/**
+ * Derive honest economy flags from a token config (or defaults).
+ * Never reports mintExists without a non-empty live mint; never claims earnings.
+ */
+export function getTokenHonestFlags(
+  token: DroolTokenConfig = getDroolTokenConfig({}),
+): TokenHonestFlags {
+  const mintLive = token.status === 'live' && token.mint.length > 0;
+  return {
+    mintExists: mintLive,
+    droolMintInvented: false,
+    earningClaimed: false,
+    pointsAreNotToken: true,
+    solIsNotDrool: true,
+    transferTaxConfigured: token.transferTaxBps === DROOL_TRANSFER_TAX_BPS,
+    tradeExecutable: false,
+  };
+}
+
+/** Short note for API/UI when mint is absent vs env-configured. */
+export function tokenEconomyNote(token: DroolTokenConfig = getDroolTokenConfig({})): string {
+  const mintLive = token.status === 'live' && token.mint.length > 0;
+  return mintLive
+    ? 'Mint address configured from env. Trade execution and listings still require separate product gates.'
+    : 'Mint pending: no contract address. $DROOL is not a live tradeable asset in this deployment. Points ≠ token. SOL is never labeled $DROOL.';
 }
 
 export function transferTaxAmount(amount: number, bps = DROOL_TRANSFER_TAX_BPS): number {

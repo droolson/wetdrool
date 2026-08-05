@@ -4,20 +4,18 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
-import { getDroolTokenConfig, transferTaxAmount, type DroolTokenConfig } from '@/lib/drool-token';
+import {
+  getDroolTokenConfig,
+  getTokenHonestFlags,
+  tokenEconomyNote,
+  transferTaxAmount,
+  type DroolTokenConfig,
+  type TokenHonestFlags,
+} from '@/lib/drool-token';
 import { proModeQuote } from '@/lib/creator-economy';
 import { AppPageHeader } from '@/components/app-page-header';
 
 type ProQuote = ReturnType<typeof proModeQuote>;
-
-interface HonestFlags {
-  readonly mintExists: boolean;
-  readonly droolMintInvented: boolean;
-  readonly earningClaimed: boolean;
-  readonly pointsAreNotToken: boolean;
-  readonly solIsNotDrool: boolean;
-  readonly tradeExecutable: boolean;
-}
 
 export function TokenEconomy() {
   const localToken = getDroolTokenConfig();
@@ -25,8 +23,8 @@ export function TokenEconomy() {
   const [token, setToken] = useState<DroolTokenConfig>(localToken);
   const [pro, setPro] = useState<ProQuote>(localPro);
   const [exampleTax, setExampleTax] = useState(() => transferTaxAmount(100));
-  const [honest, setHonest] = useState<HonestFlags | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [honest, setHonest] = useState<TokenHonestFlags>(() => getTokenHonestFlags(localToken));
+  const [note, setNote] = useState<string | null>(() => tokenEconomyNote(localToken));
   const [source, setSource] = useState<'api' | 'local'>('local');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,18 +41,36 @@ export function TokenEconomy() {
         if (typeof result.data.exampleTaxOn100 === 'number') {
           setExampleTax(result.data.exampleTaxOn100);
         }
-        if (result.data.honest) setHonest(result.data.honest);
-        setNote(result.data.note ?? null);
+        if (result.data.honest) {
+          setHonest({
+            mintExists: result.data.honest.mintExists === true,
+            droolMintInvented: false,
+            earningClaimed: false,
+            pointsAreNotToken: true,
+            solIsNotDrool: true,
+            transferTaxConfigured: result.data.token.transferTaxBps === 300,
+            tradeExecutable: false,
+          });
+        } else {
+          setHonest(getTokenHonestFlags(result.data.token));
+        }
+        setNote(result.data.note ?? tokenEconomyNote(result.data.token));
         setSource('api');
       } else {
-        setToken(getDroolTokenConfig());
+        const fallback = getDroolTokenConfig();
+        setToken(fallback);
         setPro(proModeQuote());
         setExampleTax(transferTaxAmount(100));
+        setHonest(getTokenHonestFlags(fallback));
+        setNote(tokenEconomyNote(fallback));
         setSource('local');
         setError(result.kind === 'error' ? result.message : 'Token API empty.');
-        setNote('Local config fallback. Mint is not invented client-side.');
       }
     } catch {
+      const fallback = getDroolTokenConfig();
+      setToken(fallback);
+      setHonest(getTokenHonestFlags(fallback));
+      setNote(tokenEconomyNote(fallback));
       setSource('local');
       setError('Network error loading token config.');
     } finally {
@@ -66,16 +82,21 @@ export function TokenEconomy() {
     void load();
   }, [load]);
 
+  const mintPending = !honest.mintExists;
+
   return (
     <div className="product-page page-shell">
       <AppPageHeader
         actions={
           <>
-            <StatusBadge tone="degraded">mintExists: false</StatusBadge>
-            <StatusBadge tone="pending">earningClaimed: false</StatusBadge>
             <StatusBadge tone={token.status === 'live' ? 'verified' : 'degraded'}>
               {token.status}
             </StatusBadge>
+            <StatusBadge tone={mintPending ? 'degraded' : 'verified'}>
+              {mintPending ? 'mintExists: false' : 'mintExists: true'}
+            </StatusBadge>
+            <StatusBadge tone="degraded">earningClaimed: false</StatusBadge>
+            <StatusBadge tone="pending">tradeExecutable: false</StatusBadge>
             <StatusBadge tone={source === 'api' ? 'pending' : 'degraded'}>
               {loading ? 'loading' : source === 'api' ? 'api config' : 'local config'}
             </StatusBadge>
@@ -95,6 +116,25 @@ export function TokenEconomy() {
         </p>
       </AppPageHeader>
 
+      <section className="token-honesty" aria-label="Mint and earnings honesty">
+        <div className="token-honesty__badges" role="group" aria-label="Honest economy badges">
+          <StatusBadge tone={mintPending ? 'degraded' : 'verified'}>
+            {mintPending ? 'mint does not exist' : 'mint configured (env)'}
+          </StatusBadge>
+          <StatusBadge tone="degraded">mintExists: {String(honest.mintExists)}</StatusBadge>
+          <StatusBadge tone="degraded">droolMintInvented: false</StatusBadge>
+          <StatusBadge tone="degraded">earningClaimed: false</StatusBadge>
+          <StatusBadge tone="pending">tradeExecutable: false</StatusBadge>
+          <StatusBadge tone="verified">pointsAreNotToken: true</StatusBadge>
+          <StatusBadge tone="verified">solIsNotDrool: true</StatusBadge>
+        </div>
+        <p className="field-help" role="status">
+          Product rule: no $DROOL mint address is invented in-repo. Until a verified mint is pasted
+          and reviewed, status stays mint-pending. Points are not {token.symbol}. SOL/lamports are
+          never labeled {token.symbol}. Earnings and trade execution are not claimed.
+        </p>
+      </section>
+
       {loading ? (
         <p className="field-help" role="status">
           Loading economy config…
@@ -109,34 +149,17 @@ export function TokenEconomy() {
         </p>
       ) : null}
       {note ? <p className="field-help">{note}</p> : null}
-      <div className="rooms-index__meta" aria-label="Honest economy flags" role="status">
-        <StatusBadge tone="degraded">
-          mintExists: {String(honest?.mintExists ?? false)}
-        </StatusBadge>
-        <StatusBadge tone="pending">
-          earningClaimed: {String(honest?.earningClaimed ?? false)}
-        </StatusBadge>
-        <StatusBadge tone="pending">
-          droolMintInvented: {String(honest?.droolMintInvented ?? false)}
-        </StatusBadge>
-        <StatusBadge tone="neutral">
-          tradeExecutable: {String(honest?.tradeExecutable ?? false)}
-        </StatusBadge>
-        <StatusBadge tone="verified">
-          pointsAreNotToken: {String(honest?.pointsAreNotToken ?? true)}
-        </StatusBadge>
-        <StatusBadge tone="verified">
-          solIsNotDrool: {String(honest?.solIsNotDrool ?? true)}
-        </StatusBadge>
-      </div>
-      <p className="field-help">
-        <strong>$DROOL does not exist.</strong> SOL/lamports are never labeled as product currency.
-        Mint stays empty until a verified mint address is configured — this UI will not invent one.
-      </p>
 
       <section className="token-grid">
         <article className="token-card">
           <h2>{token.symbol}</h2>
+          <div className="token-card__badges" aria-label={`${token.symbol} status badges`}>
+            <StatusBadge tone={mintPending ? 'degraded' : 'verified'}>{token.status}</StatusBadge>
+            <StatusBadge tone="degraded">earningClaimed: false</StatusBadge>
+            {!token.mint ? (
+              <StatusBadge tone="degraded">no CA · never invented</StatusBadge>
+            ) : null}
+          </div>
           <dl>
             <div>
               <dt>Status</dt>
@@ -145,6 +168,14 @@ export function TokenEconomy() {
             <div>
               <dt>Mint</dt>
               <dd>{token.mint || '— not set (mint-pending; never invented) —'}</dd>
+            </div>
+            <div>
+              <dt>mintExists</dt>
+              <dd>{String(honest.mintExists)}</dd>
+            </div>
+            <div>
+              <dt>earningClaimed</dt>
+              <dd>false</dd>
             </div>
             <div>
               <dt>Tax</dt>
@@ -172,6 +203,7 @@ export function TokenEconomy() {
 
         <article className="token-card">
           <h2>Points</h2>
+          <StatusBadge tone="verified">points ≠ {token.symbol}</StatusBadge>
           <p>
             Local ledger on device. Issuance never exceeds ad-revenue point units for the period.
             Watch shorts, check in, post — when the pool is funded. Points are not {token.symbol}.
@@ -183,6 +215,7 @@ export function TokenEconomy() {
 
         <article className="token-card">
           <h2>Pro · ${pro.monthlyUsd}/mo</h2>
+          <StatusBadge tone="pending">checkout staged · no earnings claim</StatusBadge>
           <ul>
             {pro.perks.map((p) => (
               <li key={p}>{p}</li>
