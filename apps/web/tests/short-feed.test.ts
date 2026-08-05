@@ -6,7 +6,11 @@ import {
   discoveryHonestyNote,
   discoverySortNote,
   emptyDiscoveryMessage,
+  isOfflineLocalFallback,
   listShortCategories,
+  localFallbackApiNote,
+  offlineLocalFallbackMessage,
+  offlineLocalFallbackSyntheticBadge,
   parseDiscoveryMode,
   parseShortSortMode,
   personalizationStatus,
@@ -82,7 +86,24 @@ describe('short feed ranking', () => {
     }
   });
 
+
+  it('offline local fallback banner is explicit and synthetic-labeled', () => {
+    expect(offlineLocalFallbackMessage()).toMatch(/Offline \/ local fallback/i);
+    expect(offlineLocalFallbackMessage()).toMatch(/synthetic/i);
+    expect(offlineLocalFallbackMessage('Network error')).toMatch(/Network error/);
+    expect(offlineLocalFallbackSyntheticBadge()).toMatch(/SYNTHETIC/i);
+    expect(offlineLocalFallbackSyntheticBadge()).toMatch(/offline/i);
+    expect(localFallbackApiNote('recent')).toMatch(/Local ranking fallback/i);
+    expect(localFallbackApiNote('recent')).toMatch(/Recent/i);
+    expect(localFallbackApiNote()).toMatch(/Synthetic fixtures only/i);
+    expect(isOfflineLocalFallback('local', 'API down')).toBe(true);
+    expect(isOfflineLocalFallback('api', 'API down')).toBe(false);
+    expect(isOfflineLocalFallback('local', null)).toBe(false);
+    expect(isOfflineLocalFallback('local', '   ')).toBe(false);
+  });
+
   it('emptyDiscoveryMessage is honest about synthetic catalog', () => {
+
     expect(emptyDiscoveryMessage('pride', 'missing-cat')).toMatch(/synthetic/i);
     expect(emptyDiscoveryMessage('all', null)).toMatch(/synthetic/i);
     expect(emptyDiscoveryMessage('straight', 'cosplay')).toMatch(/straight/i);
