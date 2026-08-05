@@ -4,13 +4,21 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
-import type {
-  NotificationItemDto,
-  NotificationsApiResponse,
-  ProductClientResult,
-} from '@/lib/product-client';
+import type { NotificationsApiResponse, ProductClientResult } from '@/lib/product-client';
 
 export type NotificationFilter = 'all' | 'mentions' | 'communities' | 'system';
+
+/** Local row shape — product API returns items: [] until delivery is wired. */
+export interface NotificationItemDto {
+  readonly id: string;
+  readonly category: string;
+  readonly title: string;
+  readonly body?: string;
+  readonly createdAt?: string;
+  readonly read?: boolean;
+  readonly href?: string;
+  readonly actorHandle?: string;
+}
 
 const FILTERS: readonly {
   readonly id: NotificationFilter;
@@ -152,9 +160,10 @@ export function NotificationsInbox({
         return;
       }
       const data = result.data;
-      const normalized = normalizeNotificationItems(data.items);
+      // items is typed as never[] today; still normalize defensively for future non-empty payloads.
+      const normalized = normalizeNotificationItems(data.items as readonly unknown[]);
       setItems(normalized);
-      setConfigured(typeof data.configured === 'boolean' ? data.configured : true);
+      setConfigured(data.configured === true);
       setNote(typeof data.note === 'string' ? data.note : null);
     } catch {
       setError({ status: 0, message: 'Network error talking to product API.' });
@@ -231,7 +240,7 @@ export function NotificationsInbox({
     );
   }
 
-  const emptyBecauseUnconfigured = configured === false;
+  const emptyBecauseUnconfigured = configured !== true;
   const empty = items.length === 0;
 
   return (
@@ -328,7 +337,12 @@ export function NotificationsInbox({
 function HonestCommitments() {
   return (
     <section className="product-card-grid" aria-label="Notification design commitments">
-      <InfoCard eyebrow="Signal" footer="No anonymous urgency" title="Know what asked for attention" tone="plum">
+      <InfoCard
+        eyebrow="Signal"
+        footer="No anonymous urgency"
+        title="Know what asked for attention"
+        tone="plum"
+      >
         <p>
           Mentions, replies, follows, community changes, and system notices carry a typed category
           and source.
