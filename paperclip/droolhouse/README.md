@@ -4,6 +4,16 @@ Importable org for [Paperclip](https://paperclip.ing) +
 [hermes-paperclip-adapter](https://github.com/NousResearch/hermes-paperclip-adapter)
 on **Mythic Agent** / Hermes.
 
+## Product map (mandatory)
+
+| Product | Rating | URL |
+|---------|--------|-----|
+| **$DDD Games** | **SFW** | https://drooly.ai/games/ddd |
+| **WetDrool** | **18+** | https://drooly.ai/games/wetdrool |
+| **wetdrool.com** | 18+ | Redirects → games/wetdrool |
+
+WetDrool is the **adult twin** of the $DDD skill arena. Economy: **$DDD** (pre-mint until official CA). **$DROOL does not exist.**
+
 ## Owner vs CEO
 
 | Role | Actor | Runtime |
@@ -16,52 +26,27 @@ on **Mythic Agent** / Hermes.
 - **Use:** `xai-oauth` · `grok-4.5` (fallback `grok-4.3`)  
 - **Do not use:** OpenAI OAuth, `openai-codex`, OpenAI API for company agents  
 
-Configure Hermes:
+## Effort focus
 
-```bash
-hermes model   # provider xai-oauth, default grok-4.5
-hermes fallback
-# remove openai-codex if still listed
-```
+**Build · market · distribute** WetDrool 18+ and keep SFW $DDD separate.
 
-## Coding swarm (5 specialists)
-
-| ID | Effort | Scope |
-| -- | ------ | ----- |
-| `code-web` | high | apps/web + API |
-| `code-protocol` | high | protocol / program / sdk |
-| `code-services` | high | backend services |
-| `code-economy` | medium | points / fame / $DROOL |
-| `code-edge` | low | CF / Vercel / HOF pushes |
+| ID | Scope |
+| -- | ----- |
+| `code-web` | games/wetdrool + wetdrool.com |
+| `code-game` | arena engine / boards |
+| `code-economy` | $DDD honesty |
+| `code-edge` | Vercel / DNS / smoke |
+| `growth` | 18+ distribution, clear SFW path |
 
 ## Import
 
 ```bash
-# From wetdrool repo root
 npx paperclipai company import --from ./paperclip/droolhouse
 ```
 
-Adapter defaults are in `org-chart.json` → `adapterDefaults`.
+## Workspaces
 
-## Workspace path
+- `drooly-inc/repos/drooly-web` — game surfaces  
+- `drooly-inc/repos/wetdrool-web` — domain redirect + this pack  
 
-Point Paperclip at this monorepo checkout (example):
-
-`/Users/raphaelcardona/drooly-inc/repos/wetdrool-web`
-
-## Autonomy
-
-- CEO heartbeat 30m; moderation 5m; support 3m  
-- Hermes approvals: `smart`  
-- Tirith + secret redaction on  
-- Checkpoints on  
-
-## Related products (powered together)
-
-| Surface | Role |
-| ------- | ---- |
-| wetdrool.com | Flagship adult social web app |
-| drooly.ai | Sibling AI product |
-| icefam.fm | Music / culture rail |
-| drooly-agent | Private Hermes profile distribution |
-| Paperclip | Company orchestration |
+See `docs/ops/GAME_WETDROOL.md` in wetdrool-web.

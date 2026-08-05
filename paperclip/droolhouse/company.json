@@ -3,9 +3,10 @@
   "slug": "droolhouse",
   "product": "WetDrool",
   "domain": "wetdrool.com",
-  "vanityTld": ".drool",
-  "token": "$DROOL",
-  "description": "Autonomous AI company operating WetDrool. Human is Owner only; Paperclip CEO agent runs day-to-day. Runtime: Mythic/Hermes on xAI OAuth Grok — no OpenAI OAuth.",
+  "gameUrl": "https://drooly.ai/games/wetdrool",
+  "sfwSibling": "https://drooly.ai/games/ddd",
+  "token": "$DDD",
+  "description": "Autonomous AI company: build, market, and distribute WetDrool — the 18+ twin of $DDD Games. SFW track = drooly.ai/games/ddd. 18+ track = drooly.ai/games/wetdrool (wetdrool.com redirects there). Runtime: Hermes on xAI OAuth Grok — no OpenAI OAuth.",
   "ownership": {
     "owner": {
       "role": "owner",
@@ -13,7 +14,7 @@
       "handle": "kingofqueens6ix",
       "duties": [
         "Capital and equity",
-        "Key approvals (mint, legal entity filings, production secrets)",
+        "Key approvals ($DDD mint CA when published, legal, production secrets)",
         "CEO dashboard monitoring — not day-to-day tickets"
       ]
     },
@@ -23,9 +24,9 @@
       "agentId": "ceo",
       "adapterType": "hermes_local",
       "duties": [
-        "Priorities and delegation",
-        "Ship product truth",
-        "Economy and safety SLAs"
+        "Priorities for WetDrool 18+ game + distribution",
+        "Keep SFW $DDD and 18+ WetDrool product lines distinct",
+        "Ship honest status — no invented $DDD CA, no fake live claims"
       ]
     }
   },
@@ -41,63 +42,64 @@
     },
     "sourceOfTruth": "https://github.com/canadasfemboy/mythic-agent",
     "products": {
-      "wetdrool": "wetdrool.com",
-      "droolyAi": "drooly.ai",
-      "icefamFm": "icefam.fm",
-      "droolyAgent": "repos/drooly-agent (Hermes profile)"
+      "dddSfw": "https://drooly.ai/games/ddd",
+      "wetdrool18": "https://drooly.ai/games/wetdrool",
+      "wetdroolCom": "https://wetdrool.com → games/wetdrool",
+      "droolyAi": "https://drooly.ai",
+      "economyToken": "$DDD (pre-mint until CA on @kingofqueens6ix)"
     }
   },
   "codingSwarm": {
-    "description": "5 Grok 4.5 specialists for monorepo work. Effort low|high via Hermes reasoning_overrides.",
+    "description": "Grok specialists focused on 18+ WetDrool game, distribution, and honest $DDD economy surfaces.",
     "specialists": [
       {
         "id": "code-web",
-        "title": "Web App Specialist",
+        "title": "WetDrool Game Web",
         "effort": "high",
-        "scope": "apps/web product surfaces and /api/v1",
+        "scope": "drooly-web/games/wetdrool + wetdrool.com redirect; adult UX + age gate",
         "model": "grok-4.5"
       },
       {
-        "id": "code-protocol",
-        "title": "Protocol & Solana Specialist",
+        "id": "code-game",
+        "title": "Arena Engine",
         "effort": "high",
-        "scope": "packages/protocol, programs/social_protocol, sdk",
-        "model": "grok-4.5"
-      },
-      {
-        "id": "code-services",
-        "title": "Backend Services Specialist",
-        "effort": "high",
-        "scope": "indexer, auth, relay, moderation, media-worker",
+        "scope": "Shared .io engine lineage (ddd/wetdrool), boards, radio, contests",
         "model": "grok-4.5"
       },
       {
         "id": "code-economy",
-        "title": "Economy & Points Specialist",
+        "title": "Economy ($DDD)",
         "effort": "medium",
-        "scope": "points, fame, $DROOL rails, ads cap",
+        "scope": "$DDD honesty, Golden Tickets, no invented CA, points only when real",
         "model": "grok-4.5"
       },
       {
         "id": "code-edge",
-        "title": "Edge & Deploy Specialist",
-        "effort": "low",
-        "scope": "workers/wetdrool-edge, Vercel, GitHub Actions, hall-of-fame pushes",
+        "title": "Deploy & distribute",
+        "effort": "high",
+        "scope": "Vercel drooly.ai + wetdrool.com DNS/redirect, smoke, marketing links",
+        "model": "grok-4.5"
+      },
+      {
+        "id": "growth",
+        "title": "Growth & marketing",
+        "effort": "high",
+        "scope": "18+ distribution, X/YouTube, clear SFW vs adult paths",
         "model": "grok-4.5"
       }
     ]
   },
   "goals": [
-    "Ship WetDrool as a real web app (hub/shorts/live/creators), not marketing",
-    "Keep points issuance ≤ ad revenue every period; Hall of Fame grind live",
-    "24/7 AI moderation with human escalation last resort",
-    "Grok 4.5 companions + platform chat via xAI OAuth only",
-    "High-cadence GitHub hall-of-fame heartbeats on branch hall-of-fame",
-    "Prepare $DROOL mint and .drool vanity safely"
+    "Ship WetDrool as the 18+ $DDD arena at drooly.ai/games/wetdrool",
+    "Keep SFW $DDD at drooly.ai/games/ddd strictly separate",
+    "wetdrool.com always lands on the 18+ game (age gate first)",
+    "Build, market, distribute — not generic social feature thrash",
+    "Never invent $DDD mint address; never claim $DROOL exists",
+    "18+ self-attest; zero-tolerance illegal content"
   ],
   "policies": {
-    "age": "18+",
-    "speech": "Near-complete freedom for consensual adult expression",
+    "age": "18+ for WetDrool; SFW $DDD has no adult gate",
+    "speech": "Near-complete freedom for consensual adult expression on WetDrool",
     "zeroTolerance": [
       "csam",
       "nonconsensual_intimate",
@@ -109,7 +111,8 @@
       "real_world_crime_facilitation"
     ],
     "mentalHealth": "Always surface crisis resources; never shame users",
-    "inference": "xAI OAuth / Grok only — OpenAI OAuth retired"
+    "inference": "xAI OAuth / Grok only — OpenAI OAuth retired",
+    "token": "$DDD only for game economy; no $DROOL mint claims"
   },
   "import": {
     "paperclip": "npx paperclipai company import --from ./paperclip/droolhouse",

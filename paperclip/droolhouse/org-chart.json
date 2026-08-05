@@ -20,7 +20,7 @@
       "model": "grok-4.5",
       "provider": "xai-oauth",
       "effort": "high",
-      "mission": "Operate Droolhouse day-to-day: priorities, delegation, product truth, ship evidence.",
+      "mission": "Build/market/distribute WetDrool 18+ (drooly.ai/games/wetdrool); keep SFW $DDD separate; ship evidence.",
       "heartbeatMinutes": 30,
       "toolsets": ["terminal", "file", "web", "delegation", "memory", "skills"]
     },
@@ -32,7 +32,7 @@
       "model": "grok-4.5",
       "provider": "xai-oauth",
       "effort": "high",
-      "mission": "apps/web hub/shorts/live/fame + /api/v1 product routes.",
+      "mission": "WetDrool 18+ game UX (games/wetdrool) + wetdrool.com → games/wetdrool; age gate honesty.",
       "heartbeatMinutes": 20,
       "toolsets": ["terminal", "file", "web", "code_execution", "memory", "skills"]
     },

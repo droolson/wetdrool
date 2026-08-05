@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation';
 
-/** App entry = product hub, not a marketing brochure. */
+/**
+ * wetdrool.com entry: 18+ $DDD adult game twin on drooly.ai.
+ * SFW track remains https://drooly.ai/games/ddd
+ */
 export default function RootPage() {
-  redirect('/hub');
+  redirect('https://drooly.ai/games/wetdrool');
 }
