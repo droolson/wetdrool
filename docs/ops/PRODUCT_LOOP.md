@@ -30,6 +30,13 @@
 
 ## Sprint log
 
+### 2026-08-05T21:00Z — 15m product swarm (A–F)
+
+- **Task:** Parallel product FE/BE: health/stores, explore, market q=, rooms index, auth next-step, live pagination.
+- **Verify:** vitest 42 passed (scoped suites above).
+- **Next:** personalized explore provider (honest empty), e2e for new surfaces.
+
+
 ### 2026-08-05T20:26Z — E2EE rooms optional file-backed store
 
 - **Task:** P4 room ciphertext store abstraction (memory | file via `WETDROOL_ROOMS_DATA_PATH`).

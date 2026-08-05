@@ -43,3 +43,16 @@ All six specialists completed and pushed to `origin/main`. User-visible: healthi
 
 - Scheduler retargeted: 30m single-slice → **15m massive parallel fanout**.
 - Orchestrator must spawn ≥4 general-purpose agents per fire.
+
+### 2026-08-05T21:00Z — 15m parallel FE/BE swarm (orchestrator direct)
+
+- **Fanout:** workflow spawn blocked in subagent context; orchestrator implemented 6 slots in-process (A–F). Concurrent hof commits absorbed intermediate stages.
+- **A APIs:** `buildProductHealthReport` / `storeKinds` on readiness (prior + this fire); surfaces catalog includes `rooms`.
+- **B Discovery:** `/explore` + `ExploreDiscovery` → GET `/api/v1/shorts`.
+- **C Market:** `filterListingsByQuery` + `q=` on market GET; marketplace search UI.
+- **D Rooms:** `GET /api/v1/rooms` ciphertext index + custom-room-jump recent list.
+- **E Auth:** `deriveAuthNextStep` + AuthServiceStatus next-step copy.
+- **F Live:** `pageLiveRooms` + live route pagination + load-more UI.
+- **Verify:** vitest live-catalog, auth-service-config, marketplace-store, revenue-readiness, room-store, product-api-helpers → **42 passed**.
+- **Next:** feed-service wire for explore personalization (still unconfigured), multi-replica market backend, e2e smoke for market filter + live load-more.
+
