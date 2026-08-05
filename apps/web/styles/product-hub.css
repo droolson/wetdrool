@@ -332,6 +332,141 @@
   font-weight: 750;
 }
 
+.hub-catalog__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+}
+
+/* —— CUMDUMP / HAIL SATAN · EVIL drop (/video/cumdump) —— */
+.evil-drop {
+  position: relative;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 0 5.5rem;
+  color: #f4e8ea;
+}
+
+.evil-drop__veil {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(140, 0, 20, 0.45), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(60, 0, 10, 0.5), transparent 45%),
+    #050203;
+}
+
+.evil-drop__header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.evil-drop__kicker {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, #ff4d6d 70%, white);
+}
+
+.evil-drop__title {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.evil-drop__hail {
+  color: #ff2a4a;
+  text-shadow: 0 0 28px rgba(255, 30, 60, 0.55);
+}
+
+.evil-drop__sep {
+  opacity: 0.45;
+  font-weight: 500;
+}
+
+.evil-drop__evil {
+  color: #f0e6e8;
+  text-shadow: 0 0 20px rgba(180, 0, 30, 0.4);
+}
+
+.evil-drop__sub {
+  margin: 1rem auto 0;
+  max-width: 34rem;
+  color: color-mix(in oklab, #f4e8ea 78%, transparent);
+  font-size: 1rem;
+}
+
+.evil-drop__stage {
+  margin: 0 0 1.5rem;
+}
+
+.evil-drop__frame {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, #ff2a4a 35%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 24px 60px rgba(80, 0, 12, 0.55);
+  background: #000;
+}
+
+.evil-drop__video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: min(70vh, 520px);
+  object-fit: contain;
+  background: #000;
+}
+
+.evil-drop__meta {
+  margin: 0.65rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.evil-drop__meta code {
+  font-size: 0.85em;
+}
+
+.evil-drop__copy ul {
+  margin: 0 0 1.75rem;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.45rem;
+  color: color-mix(in oklab, #f4e8ea 82%, transparent);
+  font-size: 0.92rem;
+}
+
+.evil-drop__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.evil-drop__nav a {
+  color: #ff6b85;
+}
+
+.evil-drop__nav a:hover {
+  color: #ffb3c0;
+}
+
 .creator-studio__hero {
   display: grid;
   gap: 1rem;

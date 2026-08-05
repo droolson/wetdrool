@@ -74,7 +74,7 @@ export default function CumdumpDropPage() {
       <nav className="evil-drop__nav" aria-label="Related surfaces">
         <Link href="/feeds">← Shorts feed</Link>
         <Link href="/hub">Hub</Link>
-        <Link href="/rooms/anon">E2EE rooms</Link>
+        <Link href="/rooms/lobby">E2EE rooms</Link>
         <Link href="/market">Marketplace</Link>
         <Link href="/video">Video surface</Link>
       </nav>

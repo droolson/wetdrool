@@ -9,7 +9,7 @@ export function GET(): Response {
     service: '@wetdrool/web',
     product: 'wetdrool',
     surfaces: ['hub', 'shorts', 'live', 'creators', 'fame', 'token', 'social'],
-    media: 'synthetic-fixtures',
+    media: 'mixed-synthetic-plus-founder',
     droolMint: 'see /api/v1/token',
     mesh: false,
   });
