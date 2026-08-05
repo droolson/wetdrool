@@ -13,16 +13,23 @@ import {
   isValidMessageId,
   listMessages,
   listRooms,
+  newestActivityAt,
   normalizeRoomId,
   resetRoomStoreCache,
+  sortRoomsByActivity,
+  type RoomIndexEntry,
 } from '../lib/room-store';
 
-function env(roomId: string, messageId: string): SealedEnvelope {
+function env(
+  roomId: string,
+  messageId: string,
+  createdAt = new Date().toISOString(),
+): SealedEnvelope {
   return {
     protocol: SEAL_PROTOCOL,
     roomId,
     messageId,
-    createdAt: new Date().toISOString(),
+    createdAt,
     contentType: 'text/plain',
     ivBase64: 'aGk=',
     ciphertextBase64: 'Y2lwaGVy',
@@ -112,15 +119,53 @@ describe('room-store', () => {
     expect(page.total).toBe(1);
   });
 
-  it('indexes rooms with ciphertext counts only', () => {
-    appendMessage(env('alpha', 'msg-alpha1'));
-    appendMessage(env('beta', 'msg-beta01'));
-    appendMessage(env('beta', 'msg-beta02'));
+  it('indexes rooms with ciphertext counts and last activity only', () => {
+    appendMessage(env('alpha', 'msg-alpha1', '2026-01-01T00:00:00.000Z'));
+    appendMessage(env('beta', 'msg-beta01', '2026-01-02T00:00:00.000Z'));
+    appendMessage(env('beta', 'msg-beta02', '2026-01-03T12:00:00.000Z'));
     const index = listRooms();
     expect(index).toEqual([
-      { roomId: 'alpha', messageCount: 1 },
-      { roomId: 'beta', messageCount: 2 },
+      {
+        roomId: 'alpha',
+        messageCount: 1,
+        lastActivityAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        roomId: 'beta',
+        messageCount: 2,
+        lastActivityAt: '2026-01-03T12:00:00.000Z',
+      },
     ]);
+  });
+
+  it('newestActivityAt picks max ISO createdAt', () => {
+    expect(newestActivityAt([])).toBe(null);
+    expect(
+      newestActivityAt([
+        env('r', 'a', '2026-01-01T00:00:00.000Z'),
+        env('r', 'b', '2026-02-01T00:00:00.000Z'),
+        env('r', 'c', '2026-01-15T00:00:00.000Z'),
+      ]),
+    ).toBe('2026-02-01T00:00:00.000Z');
+  });
+
+  it('sortRoomsByActivity orders newest first', () => {
+    const rows: RoomIndexEntry[] = [
+      { roomId: 'old', messageCount: 1, lastActivityAt: '2026-01-01T00:00:00.000Z' },
+      { roomId: 'new', messageCount: 2, lastActivityAt: '2026-03-01T00:00:00.000Z' },
+      { roomId: 'mid', messageCount: 1, lastActivityAt: '2026-02-01T00:00:00.000Z' },
+      { roomId: 'none', messageCount: 0, lastActivityAt: null },
+    ];
+    expect(sortRoomsByActivity(rows).map((r) => r.roomId)).toEqual([
+      'new',
+      'mid',
+      'old',
+      'none',
+    ]);
+  });
+
+  it('listRooms is empty when bag is empty', () => {
+    expect(listRooms()).toEqual([]);
   });
 
   it('file store survives re-open', () => {

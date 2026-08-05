@@ -606,11 +606,17 @@ export function fetchRoomMessages(
 export interface RoomsIndexApiResponse {
   readonly ok: true;
   readonly count: number;
-  readonly rooms: readonly { readonly roomId: string; readonly messageCount: number }[];
+  readonly rooms: readonly {
+    readonly roomId: string;
+    readonly messageCount: number;
+    readonly lastActivityAt?: string | null;
+  }[];
   readonly store?: {
     readonly kind: string;
     readonly multiReplicaSafe?: boolean;
     readonly durableAcrossRestart?: boolean;
+    readonly maxMessagesPerRoom?: number;
+    readonly label?: string;
     readonly note?: string;
   };
   readonly note?: string;
