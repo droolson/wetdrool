@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T18:56Z — token + age policy API honesty and token UI wire-up
+
+- **Task:** P1 product API completeness for `/api/v1/token` + `/api/v1/policy/age`; wire token page.
+- **BE:** token honest flags (mintExists, earningClaimed, tradeExecutable); age policy region validation + flags; POST 405 both.
+- **FE:** `TokenEconomy` client loads API; nsfw toggle refreshes age policy from API; `fetchAgePolicy` client.
+- **Verify:** vitest product-api-helpers + age-access-policy + short-feed → 22 passed.
+- **Next:** settings/privacy age policy surface, or creators API pagination.
+
 ### 2026-08-05T18:26Z — auth service status API + passkey surface wiring
 
 - **Task:** P6 connect web sign-in/onboarding/devices to honest auth-service readiness.
