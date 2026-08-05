@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import { StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { AuthServiceStatus } from '@/components/auth-service-status';
 import { PasskeyAccessManager } from '@/components/passkey-access-manager';
 import { SettingsNav } from '@/components/settings-nav';
+import { resolveAuthServiceConfig } from '@/lib/auth/auth-service-config';
 
 export const metadata: Metadata = {
   title: 'Passkeys and devices',
@@ -14,10 +16,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default function DeviceSettingsPage() {
-  const authServiceUrl =
-    process.env['WETDROOL_AUTH_URL'] ??
-    process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
-    'http://localhost:4300';
+  const authServiceUrl = resolveAuthServiceConfig().origin;
 
   return (
     <div className="product-page page-shell">
@@ -33,6 +32,8 @@ export default function DeviceSettingsPage() {
       </AppPageHeader>
 
       <SettingsNav />
+
+      <AuthServiceStatus />
 
       <section className="passkey-access-shell" aria-label="Passkey access manager">
         <PasskeyAccessManager authServiceUrl={authServiceUrl} />

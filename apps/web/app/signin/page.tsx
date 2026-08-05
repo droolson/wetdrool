@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { ButtonLink, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { AuthServiceStatus } from '@/components/auth-service-status';
 import { PasskeyAuthPanel } from '@/components/passkey-auth-panel';
+import { resolveAuthServiceConfig } from '@/lib/auth/auth-service-config';
 
 export const metadata: Metadata = {
   title: 'Sign in',
@@ -12,10 +14,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default function SignInPage() {
-  const authServiceUrl =
-    process.env['WETDROOL_AUTH_URL'] ??
-    process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
-    'http://localhost:4300';
+  const authServiceUrl = resolveAuthServiceConfig().origin;
 
   return (
     <div className="auth-page page-shell">
@@ -30,6 +29,8 @@ export default function SignInPage() {
           transaction, or create an onchain identity.
         </p>
       </AppPageHeader>
+
+      <AuthServiceStatus />
 
       <div className="auth-layout">
         <section className="auth-panel" aria-labelledby="signin-options-title">
