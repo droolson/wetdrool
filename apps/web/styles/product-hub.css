@@ -91,6 +91,82 @@
   color: #fff;
 }
 
+.shorts-modes button:focus-visible,
+.hub-cats button:focus-visible {
+  outline: 2px solid color-mix(in oklab, #14d8ff 80%, white);
+  outline-offset: 2px;
+}
+
+.shorts-empty,
+.hub-empty {
+  list-style: none;
+  margin: 0.5rem 0 1.25rem;
+  padding: 1.15rem 1.2rem;
+  border-radius: 1rem;
+  border: 1px dashed color-mix(in oklab, canvasText 22%, transparent);
+  background: color-mix(in oklab, canvas 96%, canvasText);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.shorts-empty__title {
+  margin: 0;
+  font-weight: 750;
+  font-size: 1rem;
+}
+
+.shorts-empty__reset,
+.shorts-load-more__btn {
+  justify-self: start;
+  appearance: none;
+  border: 1px solid color-mix(in oklab, canvasText 18%, transparent);
+  background: color-mix(in oklab, canvas 92%, canvasText);
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.shorts-empty__reset:focus-visible,
+.shorts-load-more__btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, #14d8ff 80%, white);
+  outline-offset: 2px;
+}
+
+.shorts-load-more {
+  display: flex;
+  justify-content: center;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.shorts-load-more__btn {
+  background: linear-gradient(135deg, #ff3d7f, #7c3aed);
+  border-color: transparent;
+  color: #fff;
+}
+
+.shorts-load-more__btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Discovery honesty badges on synthetic cards/tiles */
+.short-card__synth-badge,
+.hub-tile__badge {
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.short-card[data-synthetic='true'] .short-card__synth-badge,
+.hub-tile[data-synthetic='true'] .hub-tile__badge {
+  background: color-mix(in oklab, #14d8ff 22%, rgb(0 0 0 / 0.72));
+  color: #e8fbff;
+}
+
 .shorts-hint,
 .live-app__lede,
 .hub-catalog__lede {

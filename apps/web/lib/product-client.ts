@@ -7,12 +7,11 @@ import type { DroolTokenConfig } from './drool-token';
 import type { CreatorStudioProfile } from './creator-economy';
 import type { LiveRoom } from './live-catalog';
 import type { FameEntry } from './hall-of-fame';
+import { readProductApiErrorMessage } from './product-api';
 
 export type ProductClientResult<T> =
   | { readonly kind: 'ok'; readonly data: T }
   | { readonly kind: 'error'; readonly status: number; readonly message: string };
-
-import { readProductApiErrorMessage } from './product-api';
 
 async function getJson<T>(path: string): Promise<ProductClientResult<T>> {
   try {
@@ -39,7 +38,7 @@ export interface ShortsApiResponse {
   readonly ok: true;
   readonly mode: DiscoveryMode;
   readonly items: readonly RankedShort[];
-  /** True only when every item is a synthetic fixture. */
+  /** True only when every item is a synthetic fixture (or the page is empty). */
   readonly synthetic: boolean;
   readonly category?: string | null;
   readonly total?: number;
@@ -49,9 +48,12 @@ export interface ShortsApiResponse {
   readonly syntheticCount?: number;
   readonly licensedCount?: number;
   readonly categories?: readonly string[];
+  readonly empty?: boolean;
+  readonly emptyMessage?: string | null;
   readonly ranking?: {
     readonly name: string;
     readonly note?: string;
+    readonly weights?: unknown;
   };
   readonly note?: string;
 }
@@ -62,6 +64,10 @@ export interface LiveApiResponse {
   readonly ok: true;
   readonly rooms: readonly LiveRoomDto[];
   readonly count?: number;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
   readonly join?: string;
   readonly synthetic?: boolean;
   readonly note?: string;
@@ -196,10 +202,14 @@ export function fetchShorts(
 
 export function fetchLiveRooms(options?: {
   readonly nsfw?: boolean;
+  readonly limit?: number;
+  readonly offset?: number;
 }): Promise<ProductClientResult<LiveApiResponse>> {
   const q = new URLSearchParams();
   if (options?.nsfw === false) q.set('nsfw', '0');
   if (options?.nsfw === true) q.set('nsfw', '1');
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<LiveApiResponse>(`/api/v1/live${suffix}`);
 }
@@ -302,6 +312,13 @@ export interface MarketApiResponse {
   readonly limit?: number;
   readonly offset?: number;
   readonly hasMore?: boolean;
+  readonly q?: string | null;
+  readonly filter?: {
+    readonly q: string | null;
+    readonly applied: boolean;
+    readonly matched?: number;
+    readonly note?: string;
+  };
   readonly store?: {
     readonly kind: 'memory-ephemeral' | 'file-local';
     readonly durableAcrossRestart?: boolean;
@@ -320,10 +337,12 @@ export interface MarketApiResponse {
 export function fetchMarket(options?: {
   readonly limit?: number;
   readonly offset?: number;
+  readonly q?: string | null;
 }): Promise<ProductClientResult<MarketApiResponse>> {
   const q = new URLSearchParams();
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  if (options?.q) q.set('q', options.q);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
 }
@@ -355,4 +374,21 @@ export function fetchRoomMessages(
   return getJson<RoomMessagesApiResponse>(
     `/api/v1/rooms/${encodeURIComponent(roomId)}/messages${suffix}`,
   );
+}
+
+export interface RoomsIndexApiResponse {
+  readonly ok: true;
+  readonly count: number;
+  readonly rooms: readonly { readonly roomId: string; readonly messageCount: number }[];
+  readonly store?: {
+    readonly kind: string;
+    readonly multiReplicaSafe?: boolean;
+    readonly durableAcrossRestart?: boolean;
+    readonly note?: string;
+  };
+  readonly note?: string;
+}
+
+export function fetchRoomsIndex(): Promise<ProductClientResult<RoomsIndexApiResponse>> {
+  return getJson<RoomsIndexApiResponse>('/api/v1/rooms');
 }

@@ -1,17 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react';
 import Link from 'next/link';
 import { StatusBadge } from '@wetdrool/ui';
 
 import {
+  chipKeyNavIndex,
+  emptyDiscoveryMessage,
   listShortCategories,
   type DiscoveryMode,
-  rankShorts,
+  rankShortsPage,
   readDiscoveryMode,
   writeDiscoveryMode,
   type RankedShort,
   contentWarningLabel,
+  SHORTS_PAGE_SIZE,
 } from '@/lib/short-feed';
 import {
   awardPoints,
@@ -37,6 +48,11 @@ function formatDuration(sec: number): string {
 }
 
 export function ShortFeed() {
+  const modeListId = useId();
+  const catListId = useId();
+  const modeRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const catRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
   const [mode, setMode] = useState<DiscoveryMode>('all');
   const [category, setCategory] = useState<string>('all');
   const [categories, setCategories] = useState<readonly string[]>(() => listShortCategories());
@@ -47,9 +63,13 @@ export function ShortFeed() {
   const [clips, setClips] = useState<readonly RankedShort[]>([]);
   const [source, setSource] = useState<'api' | 'local'>('local');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiNote, setApiNote] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setMode(readDiscoveryMode(window.localStorage));
@@ -58,55 +78,113 @@ export function ShortFeed() {
     setLedger(loadLedger(window.localStorage));
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { fetchShorts } = await import('@/lib/product-client');
-      const result = await fetchShorts(mode, 24, {
-        category: category === 'all' ? null : category,
+  const applyLocalPage = useCallback(
+    (nextMode: DiscoveryMode, nextCategory: string, nextOffset: number, append: boolean) => {
+      const page = rankShortsPage(nextMode, {
+        limit: SHORTS_PAGE_SIZE,
+        offset: nextOffset,
+        category: nextCategory === 'all' ? null : nextCategory,
       });
-      if (result.kind === 'ok' && result.data.items.length > 0) {
-        setClips(result.data.items);
-        setSource('api');
-        setTotal(result.data.total ?? result.data.items.length);
-        setApiNote(result.data.note ?? result.data.ranking?.note ?? null);
-        if (result.data.categories?.length) setCategories(result.data.categories);
-      } else if (result.kind === 'ok') {
-        setClips([]);
-        setSource('api');
-        setTotal(0);
-        setApiNote(result.data.note ?? 'No clips for this filter.');
-      } else {
-        const local = rankShorts(mode, 24).filter(
-          (c) => category === 'all' || c.category === category,
-        );
-        setClips(local);
-        setSource('local');
-        setTotal(local.length);
-        setError(result.message);
-        setApiNote('Local ranking fallback.');
-      }
-    } catch {
-      const local = rankShorts(mode, 24).filter(
-        (c) => category === 'all' || c.category === category,
+      setClips((prev) => (append ? [...prev, ...page.items] : page.items));
+      setTotal(page.total);
+      setHasMore(page.hasMore);
+      setOffset(nextOffset);
+      setEmptyMessage(
+        page.total === 0 ? emptyDiscoveryMessage(nextMode, nextCategory) : null,
       );
-      setClips(local);
+      setApiNote('Local ranking fallback.');
       setSource('local');
-      setError('Network error loading shorts.');
-    } finally {
-      setLoading(false);
-    }
-  }, [mode, category]);
+    },
+    [],
+  );
+
+  const load = useCallback(
+    async (opts?: { readonly append?: boolean; readonly nextOffset?: number }) => {
+      const append = opts?.append === true;
+      const nextOffset = opts?.nextOffset ?? 0;
+      if (append) setLoadingMore(true);
+      else {
+        setLoading(true);
+        setOffset(0);
+      }
+      setError(null);
+      try {
+        const { fetchShorts } = await import('@/lib/product-client');
+        const result = await fetchShorts(mode, SHORTS_PAGE_SIZE, {
+          category: category === 'all' ? null : category,
+          offset: nextOffset,
+        });
+        if (result.kind === 'ok') {
+          const items = result.data.items;
+          setClips((prev) => (append ? [...prev, ...items] : items));
+          setSource('api');
+          setTotal(result.data.total ?? items.length);
+          setHasMore(Boolean(result.data.hasMore));
+          setOffset(nextOffset);
+          setApiNote(result.data.note ?? result.data.ranking?.note ?? null);
+          setEmptyMessage(
+            result.data.empty
+              ? (result.data.emptyMessage ?? emptyDiscoveryMessage(mode, category))
+              : items.length === 0
+                ? emptyDiscoveryMessage(mode, category)
+                : null,
+          );
+          if (result.data.categories?.length) setCategories(result.data.categories);
+        } else {
+          applyLocalPage(mode, category, nextOffset, append);
+          setError(result.message);
+        }
+      } catch {
+        applyLocalPage(mode, category, nextOffset, append);
+        setError('Network error loading shorts.');
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [mode, category, applyLocalPage],
+  );
 
   useEffect(() => {
-    void load();
+    void load({ append: false, nextOffset: 0 });
   }, [load]);
+
+  const loadMore = useCallback(() => {
+    if (!hasMore || loading || loadingMore) return;
+    void load({ append: true, nextOffset: offset + SHORTS_PAGE_SIZE });
+  }, [hasMore, loading, loadingMore, load, offset]);
 
   const selectMode = useCallback((next: DiscoveryMode) => {
     writeDiscoveryMode(window.localStorage, next);
     setMode(next);
   }, []);
+
+  const onModeKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      const ids = MODES.map((m) => m.id);
+      const current = ids.indexOf(mode);
+      const next = chipKeyNavIndex(event.key, current, ids.length);
+      if (next === null) return;
+      event.preventDefault();
+      selectMode(ids[next]!);
+      modeRefs.current[next]?.focus();
+    },
+    [mode, selectMode],
+  );
+
+  const categoryOptions = ['all', ...categories];
+  const onCategoryKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      const current = categoryOptions.indexOf(category);
+      const next = chipKeyNavIndex(event.key, current < 0 ? 0 : current, categoryOptions.length);
+      if (next === null) return;
+      event.preventDefault();
+      const value = categoryOptions[next]!;
+      setCategory(value);
+      catRefs.current[next]?.focus();
+    },
+    [category, categoryOptions],
+  );
 
   const confirmAge = useCallback(() => {
     writeAgeGate(window.localStorage, true);
@@ -176,13 +254,22 @@ export function ShortFeed() {
         </div>
       </header>
 
-      <div className="shorts-modes" role="tablist" aria-label="Discovery mode">
-        {MODES.map((m) => (
+      <div
+        className="shorts-modes"
+        role="tablist"
+        aria-label="Discovery mode"
+        onKeyDown={onModeKeyDown}
+      >
+        {MODES.map((m, index) => (
           <button
             key={m.id}
             type="button"
             role="tab"
-            id={`shorts-mode-${m.id}`}
+            id={`${modeListId}-${m.id}`}
+            ref={(el) => {
+              modeRefs.current[index] = el;
+            }}
+            tabIndex={mode === m.id ? 0 : -1}
             aria-selected={mode === m.id}
             aria-controls="shorts-rail"
             className={mode === m.id ? 'is-active' : undefined}
@@ -193,39 +280,42 @@ export function ShortFeed() {
         ))}
       </div>
 
-      <div className="shorts-modes" role="toolbar" aria-label="Category filter">
-        <button
-          type="button"
-          className={category === 'all' ? 'is-active' : undefined}
-          aria-pressed={category === 'all'}
-          onClick={() => setCategory('all')}
-        >
-          All cats
-        </button>
-        {categories.map((c) => (
+      <div
+        className="shorts-modes"
+        role="toolbar"
+        aria-label="Category filter"
+        id={catListId}
+        onKeyDown={onCategoryKeyDown}
+      >
+        {categoryOptions.map((c, index) => (
           <button
             key={c}
             type="button"
+            ref={(el) => {
+              catRefs.current[index] = el;
+            }}
+            tabIndex={category === c ? 0 : -1}
             className={category === c ? 'is-active' : undefined}
             aria-pressed={category === c}
             onClick={() => setCategory(c)}
           >
-            {c}
+            {c === 'all' ? 'All cats' : c}
           </button>
         ))}
       </div>
 
       <p className="shorts-hint">
         Pride emphasizes trans, femboy, and queer creators. Mode is local and never inferred.
-        Cards are labeled synthetic until licensed media exists. Complete a short for watch points
-        when the ad-funded pool allows.
-        {total > 0 ? ` · ${total} ranked` : ''}
+        Cards are labeled synthetic fixtures until licensed media exists. Complete a short for
+        watch points when the ad-funded pool allows.
+        {total > 0 ? ` · ${clips.length} of ${total} ranked` : ''}
+        {hasMore ? ' · more available' : ''}
       </p>
       {apiNote ? <p className="field-help">{apiNote}</p> : null}
       {error ? (
         <p className="field-help" role="alert">
           {error}{' '}
-          <button type="button" onClick={() => void load()}>
+          <button type="button" onClick={() => void load({ append: false, nextOffset: 0 })}>
             Retry
           </button>
         </p>
@@ -238,7 +328,15 @@ export function ShortFeed() {
 
       <ul id="shorts-rail" className="shorts-rail" aria-label="Short feed" aria-busy={loading}>
         {!loading && clips.length === 0 ? (
-          <li className="field-help">No clips for this mode/category.</li>
+          <li className="shorts-empty" role="status">
+            <p className="shorts-empty__title">Nothing ranked for this filter</p>
+            <p className="field-help">
+              {emptyMessage ?? emptyDiscoveryMessage(mode, category === 'all' ? null : category)}
+            </p>
+            <button type="button" className="shorts-empty__reset" onClick={() => setCategory('all')}>
+              Reset category to All
+            </button>
+          </li>
         ) : null}
         {clips.map((clip) => {
           const playable = Boolean(clip.mediaSrc) && !clip.synthetic;
@@ -271,15 +369,16 @@ export function ShortFeed() {
                     <span className="short-card__pulse" aria-hidden="true" />
                   )}
                   <span className="short-card__dur">{formatDuration(clip.durationSec)}</span>
-                  <span className="short-card__synth-badge">
-                    {clip.syntheticLabel ?? (clip.synthetic ? 'SYNTHETIC' : 'LICENSED')}
+                  <span className="short-card__synth-badge" title={contentWarningLabel(clip.contentWarning)}>
+                    {clip.syntheticLabel ??
+                      (clip.synthetic ? 'SYNTHETIC FIXTURE · abstract only' : 'LICENSED MEDIA')}
                   </span>
                 </div>
                 <div className="short-card__body">
                   <div className="short-card__tags">
                     <span>{clip.category}</span>
                     <span>{clip.mode}</span>
-                    <span>{clip.synthetic ? 'abstract' : 'licensed media'}</span>
+                    <span>{clip.synthetic ? 'fixture' : 'licensed media'}</span>
                     {!clip.synthetic ? <span>18+</span> : null}
                   </div>
                   <h2>{clip.title}</h2>
@@ -313,6 +412,20 @@ export function ShortFeed() {
           );
         })}
       </ul>
+
+      {!loading && hasMore ? (
+        <div className="shorts-load-more">
+          <button
+            type="button"
+            className="shorts-load-more__btn"
+            disabled={loadingMore}
+            onClick={loadMore}
+            aria-busy={loadingMore}
+          >
+            {loadingMore ? 'Loading more…' : `Load more · ${total - clips.length} remaining`}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  chipKeyNavIndex,
   contentWarningLabel,
+  discoveryHonestyNote,
+  emptyDiscoveryMessage,
   listShortCategories,
   parseDiscoveryMode,
   rankShorts,
@@ -9,6 +12,7 @@ import {
   scoreShort,
   SHORT_CLIPS,
   SHORT_RANK_WEIGHTS,
+  SHORTS_PAGE_SIZE,
   syntheticMediaLabel,
 } from '../lib/short-feed';
 import { transferTaxAmount, getDroolTokenConfig } from '../lib/drool-token';
@@ -27,12 +31,15 @@ describe('short feed ranking', () => {
     expect(scoreShort(item, 'pride')).toBeGreaterThan(scoreShort(item, 'straight'));
   });
 
-  it('labels fixtures synthetic', () => {
+  it('labels fixtures synthetic with honest abstract copy', () => {
     expect(SHORT_CLIPS.every((c) => c.synthetic && c.contentWarning === 'abstract-only')).toBe(
       true,
     );
     expect(syntheticMediaLabel(SHORT_CLIPS[0]!)).toContain('SYNTHETIC');
+    expect(syntheticMediaLabel(SHORT_CLIPS[0]!)).toMatch(/abstract/i);
     expect(contentWarningLabel('abstract-only')).toMatch(/Synthetic/i);
+    expect(discoveryHonestyNote(true)).toMatch(/synthetic/i);
+    expect(discoveryHonestyNote(false)).toMatch(/Mixed/i);
   });
 
   it('filters by category and paginates', () => {
@@ -50,13 +57,48 @@ describe('short feed ranking', () => {
     expect(SHORT_RANK_WEIGHTS.provenance).toBe(0.35);
   });
 
-  it('offset pagination hasMore', () => {
+  it('offset pagination hasMore across pages', () => {
     const first = rankShortsPage('all', { limit: 3, offset: 0 });
     expect(first.items).toHaveLength(3);
     expect(first.hasMore).toBe(true);
     const second = rankShortsPage('all', { limit: 3, offset: 3 });
     expect(second.offset).toBe(3);
     expect(second.items[0]!.id).not.toBe(first.items[0]!.id);
+
+    const full = rankShortsPage('all', { limit: SHORTS_PAGE_SIZE, offset: 0 });
+    expect(full.items.length).toBeLessThanOrEqual(SHORTS_PAGE_SIZE);
+    if (full.total > SHORTS_PAGE_SIZE) {
+      expect(full.hasMore).toBe(true);
+      const next = rankShortsPage('all', { limit: SHORTS_PAGE_SIZE, offset: SHORTS_PAGE_SIZE });
+      const ids = new Set([...full.items, ...next.items].map((i) => i.id));
+      expect(ids.size).toBe(full.items.length + next.items.length);
+      expect(full.items.length + next.items.length).toBeLessThanOrEqual(full.total);
+    }
+  });
+
+  it('emptyDiscoveryMessage is honest about synthetic catalog', () => {
+    expect(emptyDiscoveryMessage('pride', 'missing-cat')).toMatch(/synthetic/i);
+    expect(emptyDiscoveryMessage('all', null)).toMatch(/synthetic/i);
+    expect(emptyDiscoveryMessage('straight', 'cosplay')).toMatch(/straight/i);
+  });
+
+  it('chipKeyNavIndex wraps and supports Home/End', () => {
+    expect(chipKeyNavIndex('ArrowRight', 0, 3)).toBe(1);
+    expect(chipKeyNavIndex('ArrowRight', 2, 3)).toBe(0);
+    expect(chipKeyNavIndex('ArrowLeft', 0, 3)).toBe(2);
+    expect(chipKeyNavIndex('Home', 2, 3)).toBe(0);
+    expect(chipKeyNavIndex('End', 0, 3)).toBe(2);
+    expect(chipKeyNavIndex('Enter', 0, 3)).toBeNull();
+    expect(chipKeyNavIndex('ArrowDown', 0, 0)).toBeNull();
+  });
+
+  it('unknown category filter yields empty page with hasMore false', () => {
+    const page = rankShortsPage('all', { category: 'does-not-exist', limit: 6, offset: 0 });
+    expect(page.total).toBe(0);
+    expect(page.items).toHaveLength(0);
+    expect(page.hasMore).toBe(false);
+    expect(page.syntheticCount).toBe(0);
+    expect(page.licensedCount).toBe(0);
   });
 });
 
