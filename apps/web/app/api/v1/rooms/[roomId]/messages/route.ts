@@ -1,24 +1,42 @@
-import { appendMessage, listMessages, normalizeRoomId } from '@/lib/room-store';
+import {
+  appendMessage,
+  getRoomStoreMeta,
+  isValidMessageId,
+  listMessages,
+  normalizeRoomId,
+} from '@/lib/room-store';
 import type { SealedEnvelope } from '@/lib/e2ee-seal';
 import { SEAL_PROTOCOL } from '@/lib/e2ee-seal';
-import { jsonError, jsonOk } from '@/lib/product-api';
+import { jsonError, jsonOk, parseLimit } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ roomId: string }> },
 ): Promise<Response> {
   const { roomId: raw } = await context.params;
   const roomId = normalizeRoomId(raw);
   if (!roomId) return jsonError(400, 'invalid_room', 'Invalid room id.');
-  const messages = listMessages(roomId);
+
+  const url = new URL(request.url);
+  const limit = parseLimit(url.searchParams.get('limit'), 50, 100);
+  const afterRaw = url.searchParams.get('after')?.trim() ?? '';
+  const after = afterRaw && isValidMessageId(afterRaw) ? afterRaw : undefined;
+
+  const page = listMessages(roomId, { limit, ...(after !== undefined ? { after } : {}) });
+  const store = getRoomStoreMeta();
+
   return jsonOk({
     ok: true,
     roomId,
-    count: messages.length,
-    messages,
+    count: page.messages.length,
+    total: page.total,
+    limit,
+    hasMore: page.hasMore,
+    messages: page.messages,
+    store,
     note: 'Ciphertext only. Decrypt client-side with room passphrase + middle-out-lite.',
   });
 }
@@ -43,17 +61,26 @@ export async function POST(
     env.protocol !== SEAL_PROTOCOL ||
     env.roomId !== roomId ||
     typeof env.messageId !== 'string' ||
+    !isValidMessageId(env.messageId) ||
     typeof env.ciphertextBase64 !== 'string' ||
     typeof env.ivBase64 !== 'string' ||
     typeof env.contentType !== 'string' ||
     env.compression !== 'middle-out-lite-v1'
   ) {
-    return jsonError(400, 'invalid_envelope', 'Envelope failed validation (ciphertext-only schema).');
+    return jsonError(
+      400,
+      'invalid_envelope',
+      'Envelope failed validation (ciphertext-only schema, messageId 8–128).',
+    );
   }
 
   // ~4MB media → base64 envelope budget
   if (env.ciphertextBase64.length > 6_000_000) {
     return jsonError(413, 'too_large', 'Envelope exceeds size budget (~4MB media).');
+  }
+
+  if (typeof env.ivBase64 === 'string' && env.ivBase64.length > 64) {
+    return jsonError(400, 'invalid_iv', 'IV too large.');
   }
 
   const fromRaw = typeof env.from === 'string' ? env.from.trim().slice(0, 32) : '';
@@ -72,6 +99,14 @@ export async function POST(
     ...(from !== undefined && from.length > 0 ? { from } : {}),
   };
 
-  appendMessage(sealed);
-  return jsonOk({ ok: true, messageId: sealed.messageId }, { status: 201 });
+  const result = appendMessage(sealed);
+  return jsonOk(
+    {
+      ok: true,
+      messageId: sealed.messageId,
+      duplicate: result === 'duplicate',
+      store: getRoomStoreMeta().kind,
+    },
+    { status: result === 'duplicate' ? 200 : 201 },
+  );
 }
