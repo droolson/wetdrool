@@ -7,20 +7,20 @@ import { ButtonLink, SectionHeading, StatusBadge } from '@wetdrool/ui';
 import { AppPageHeader } from '@/components/app-page-header';
 import {
   getVanityHonestFlags,
-  getVanityRegistryStatus,
   vanityQuote,
   vanityRegistryNote,
   VANITY_MONTHLY_USD,
   type VanityHonestFlags,
   type VanityQuote,
 } from '@/lib/points';
+import { buildVanityRegistryStatus } from '@/lib/product-vanity';
 import type { VanityApiResponse } from '@/lib/product-client';
 
 export function VanityRegistry() {
-  const local = getVanityRegistryStatus();
+  const local = buildVanityRegistryStatus();
   const [quote, setQuote] = useState<VanityQuote>(local.quote);
   const [honest, setHonest] = useState<VanityHonestFlags>(() => getVanityHonestFlags());
-  const [note, setNote] = useState<string | null>(() => vanityRegistryNote());
+  const [note, setNote] = useState<string | null>(() => local.note);
   const [claimCount, setClaimCount] = useState(0);
   const [notClaims, setNotClaims] = useState<readonly string[]>(local.notClaims);
   const [source, setSource] = useState<'api' | 'local'>('local');
@@ -50,7 +50,7 @@ export function VanityRegistry() {
     }
 
     function applyLocal() {
-      const fallback = getVanityRegistryStatus();
+      const fallback = buildVanityRegistryStatus();
       setQuote(fallback.quote);
       setHonest(getVanityHonestFlags());
       setNote(fallback.note);
@@ -59,7 +59,7 @@ export function VanityRegistry() {
     }
 
     function applyApi(data: VanityApiResponse) {
-      // Fail-closed: never trust API claimExecutable/registryLive true without product gate.
+      // Fail-closed: never trust registryLive/claimExecutable true without product gate.
       setHonest({
         registryLive: false,
         claimExecutable: false,
@@ -78,9 +78,9 @@ export function VanityRegistry() {
             }
           : vanityQuote(),
       );
-      // Never invent owned names: product rule forces empty claimCount until registryLive.
+      // Never invent owned names.
       setClaimCount(0);
-      setNotClaims(data.notClaims ?? getVanityRegistryStatus().notClaims);
+      setNotClaims(data.notClaims ?? buildVanityRegistryStatus().notClaims);
       setNote(data.note ?? vanityRegistryNote());
     }
   }, []);
@@ -96,6 +96,7 @@ export function VanityRegistry() {
           <>
             <StatusBadge tone="degraded">registryLive: false</StatusBadge>
             <StatusBadge tone="pending">claimExecutable: false</StatusBadge>
+            <StatusBadge tone="pending">settlementLive: false</StatusBadge>
             <StatusBadge tone="pending">${VANITY_MONTHLY_USD}/mo intent</StatusBadge>
             <StatusBadge tone={source === 'api' ? 'pending' : 'degraded'}>
               {loading ? 'loading' : source === 'api' ? 'api status' : 'local status'}
@@ -117,6 +118,7 @@ export function VanityRegistry() {
         <div className="token-honesty__badges" role="group" aria-label="Honest vanity badges">
           <StatusBadge tone="degraded">registryLive: {String(honest.registryLive)}</StatusBadge>
           <StatusBadge tone="pending">claimExecutable: {String(honest.claimExecutable)}</StatusBadge>
+          <StatusBadge tone="pending">settlementLive: false</StatusBadge>
           <StatusBadge tone="verified">inventsOwnedNames: false</StatusBadge>
           <StatusBadge tone="verified">claims: {claimCount}</StatusBadge>
           <StatusBadge tone="verified">anonymousCandidateIsNotClaim: true</StatusBadge>
@@ -125,7 +127,7 @@ export function VanityRegistry() {
         <p className="field-help" role="status">
           Product rule: no fake vanity registry. Until handle claims anchor through DroolNet and a
           verified projection exists, this API returns an empty claims list and refuses claim
-          execution.
+          execution. GET <code>/api/v1/vanity</code>.
         </p>
       </section>
 
@@ -167,13 +169,15 @@ export function VanityRegistry() {
           <div>
             <dt>SOL</dt>
             <dd>
-              {quote.solEstimate === null ? 'market rate at checkout (not live)' : quote.solEstimate.toFixed(4)}
+              {quote.solEstimate === null
+                ? 'market rate at checkout (not live)'
+                : quote.solEstimate.toFixed(4)}
             </dd>
           </div>
         </dl>
         <p className="field-help">
-          Pricing is shown for product planning only. <code>claimExecutable: false</code> — the
-          claim button is disabled until a verified registry and settlement path ship.
+          Pricing is shown for product planning only. <code>claimExecutable: false</code> — claim
+          is disabled until a verified registry and settlement path ship.
         </p>
         <p>
           <ButtonLink href="/signin">Sign in for identity</ButtonLink>
