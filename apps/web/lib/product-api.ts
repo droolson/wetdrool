@@ -269,6 +269,7 @@ export function buildProductHealthReport(
       agePolicy: '/api/v1/policy/age' as const,
       token: '/api/v1/token' as const,
       e2ee: '/api/v1/e2ee' as const,
+      notifications: '/api/v1/notifications' as const,
     },
     media: 'synthetic-fixtures' as const,
     mesh: false as const,
@@ -361,5 +362,39 @@ export function buildProductStatusReport(
       feedPersonalizationActive: false as const,
       shortsCatalogExternal: false as const,
     },
+  };
+}
+
+/**
+ * Honest empty notifications inbox — never invents social-graph or push events.
+ * Pagination/filter are accepted and echoed; total stays 0 until auth+relay+preferences wire.
+ */
+export type NotificationsFilter = 'mentions' | 'communities' | 'system';
+
+export function buildEmptyNotificationsInbox(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly filter?: NotificationsFilter | null;
+}) {
+  const limit = options?.limit ?? 24;
+  const offset = options?.offset ?? 0;
+  const filter = options?.filter ?? null;
+  return {
+    ok: true as const,
+    items: [] as const,
+    count: 0 as const,
+    total: 0 as const,
+    limit,
+    offset,
+    hasMore: false as const,
+    filter,
+    configured: false as const,
+    delivery: 'none' as const,
+    unread: 0 as const,
+    protocolHistoryReconstructable: true as const,
+    inventedSignals: false as const,
+    pushLive: false as const,
+    inAppLive: false as const,
+    note: 'Notification inbox is unconfigured: no authenticated session, no relay subscription, and no push channel. Empty is honest — not a silent “all clear” from a live graph. Push and in-app notifications are not live until auth, relay, and preferences wire.',
   };
 }

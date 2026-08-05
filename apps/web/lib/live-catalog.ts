@@ -54,11 +54,40 @@ export const LIVE_ROOMS: readonly LiveRoom[] = [
   },
 ] as const;
 
+/** Normalize tag query: trim, lower, empty → null. Max 32 chars. */
+export function normalizeLiveTag(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const t = raw.trim().toLowerCase();
+  if (t.length === 0 || t === 'all') return null;
+  return t.slice(0, 32);
+}
+
+/** Unique tags from a room list (sorted, lowercase as stored). */
+export function listLiveTags(rooms: readonly LiveRoom[] = LIVE_ROOMS): readonly string[] {
+  const set = new Set<string>();
+  for (const room of rooms) {
+    for (const tag of room.tags) {
+      const n = tag.trim().toLowerCase();
+      if (n) set.add(n);
+    }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
 export function filterLiveRooms(
   rooms: readonly LiveRoom[],
-  options: { readonly nsfwAllowed: boolean },
+  options: {
+    readonly nsfwAllowed: boolean;
+    /** Exact tag match after normalizeLiveTag (null = no tag filter). */
+    readonly tag?: string | null;
+  },
 ): readonly LiveRoom[] {
-  return rooms.filter((r) => (options.nsfwAllowed ? true : !r.nsfw));
+  const tag = normalizeLiveTag(options.tag ?? null);
+  return rooms.filter((r) => {
+    if (!options.nsfwAllowed && r.nsfw) return false;
+    if (tag && !r.tags.some((t) => t.toLowerCase() === tag)) return false;
+    return true;
+  });
 }
 
 export interface LiveRoomsPage {
@@ -67,18 +96,25 @@ export interface LiveRoomsPage {
   readonly limit: number;
   readonly offset: number;
   readonly hasMore: boolean;
+  /** Echo of normalized tag filter, or null when unfiltered. */
+  readonly tag: string | null;
 }
 
-/** Page the live catalog after optional SFW filter. Synthetic fixtures only. */
+/** Page the live catalog after optional SFW + tag filters. Synthetic fixtures only. */
 export function pageLiveRooms(
   rooms: readonly LiveRoom[],
   options: {
     readonly nsfwAllowed: boolean;
+    readonly tag?: string | null;
     readonly limit?: number;
     readonly offset?: number;
   },
 ): LiveRoomsPage {
-  const filtered = filterLiveRooms(rooms, { nsfwAllowed: options.nsfwAllowed });
+  const tag = normalizeLiveTag(options.tag ?? null);
+  const filtered = filterLiveRooms(rooms, {
+    nsfwAllowed: options.nsfwAllowed,
+    tag,
+  });
   const limit = Math.min(Math.max(1, options.limit ?? 24), 48);
   const offset = Math.max(0, options.offset ?? 0);
   const items = filtered.slice(offset, offset + limit);
@@ -88,5 +124,6 @@ export function pageLiveRooms(
     limit,
     offset,
     hasMore: offset + items.length < filtered.length,
+    tag,
   };
 }

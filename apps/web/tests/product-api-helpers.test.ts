@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildDiscoveryProviderHonesty,
+  buildEmptyNotificationsInbox,
   buildProductHealthReport,
   buildProductStatusReport,
   jsonError,
@@ -82,11 +83,41 @@ describe('product api helpers', () => {
     expect(ids).toContain('auth/status');
     expect(ids).toContain('market');
     expect(ids).toContain('ai/chat');
+    expect(ids).toContain('notifications');
     expect(ids).not.toContain('social'); // not a real /api/v1 route
     const market = PRODUCT_API_SURFACES.find((s) => s.id === 'market');
     expect(market?.methods).toEqual(['GET', 'POST']);
     const health = PRODUCT_API_SURFACES.find((s) => s.id === 'health');
     expect(health?.methods).toEqual(['GET']);
+  });
+
+  it('notifications inbox stays empty and unconfigured (no invented social events)', () => {
+    const empty = buildEmptyNotificationsInbox({ limit: 10, offset: 5, filter: 'mentions' });
+    expect(empty.ok).toBe(true);
+    expect(empty.items).toEqual([]);
+    expect(empty.total).toBe(0);
+    expect(empty.count).toBe(0);
+    expect(empty.limit).toBe(10);
+    expect(empty.offset).toBe(5);
+    expect(empty.hasMore).toBe(false);
+    expect(empty.filter).toBe('mentions');
+    expect(empty.configured).toBe(false);
+    expect(empty.delivery).toBe('none');
+    expect(empty.unread).toBe(0);
+    expect(empty.inventedSignals).toBe(false);
+    expect(empty.pushLive).toBe(false);
+    expect(empty.inAppLive).toBe(false);
+    expect(empty.note.toLowerCase()).toMatch(/unconfigured|not live/);
+    const defaults = buildEmptyNotificationsInbox();
+    expect(defaults.limit).toBe(24);
+    expect(defaults.offset).toBe(0);
+    expect(defaults.filter).toBeNull();
+    const notifications = PRODUCT_API_SURFACES.find((s) => s.id === 'notifications');
+    expect(notifications?.path).toBe('/api/v1/notifications');
+    expect(notifications?.methods).toEqual(['GET']);
+    const health = buildProductHealthReport({});
+    expect(health.surfaces).toContain('notifications');
+    expect(health.links.notifications).toBe('/api/v1/notifications');
   });
 
   it('honest flags never invent $DROOL mint or earnings', () => {

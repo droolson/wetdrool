@@ -201,19 +201,61 @@ export interface FameSeedPage {
   readonly globalLedger: false;
 }
 
+export function normalizeFameSearchQuery(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const q = raw.trim().toLowerCase().replace(/^@/, '');
+  if (q.length === 0) return null;
+  return q.slice(0, 64);
+}
+
+export function fameEntryMatchesQuery(entry: FameEntry, q: string): boolean {
+  if (entry.handle.toLowerCase().includes(q)) return true;
+  if (entry.displayName.toLowerCase().includes(q)) return true;
+  return entry.badges.some((b) => b.toLowerCase().includes(q));
+}
+
+export interface FameSeedPage {
+  readonly board: readonly FameBoardRow[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+  readonly seedOnly: true;
+  readonly globalLedger: false;
+  readonly q: string | null;
+}
+
 /** Server-side seed board page (no local grinder — client merges that). */
 export function pageFameSeed(
-  options: { readonly limit?: number; readonly offset?: number } = {},
+  options: {
+    readonly limit?: number;
+    readonly offset?: number;
+    readonly q?: string | null;
+  } = {},
 ): FameSeedPage {
   const limit = Math.min(Math.max(1, options.limit ?? 24), 48);
   const offset = Math.max(0, options.offset ?? 0);
-  const ranked = [...FAME_SEED]
+  const q = normalizeFameSearchQuery(options.q ?? null);
+  let ranked = [...FAME_SEED]
     .sort((a, b) => b.lifetimePoints - a.lifetimePoints || a.handle.localeCompare(b.handle))
     .map((e, i) => ({
       ...e,
       rank: i + 1,
       tier: fameTier(e.lifetimePoints),
     }));
+  if (q) {
+    ranked = ranked.filter((e) => fameEntryMatchesQuery(e, q));
+    // Preserve global rank numbers from unfiltered board by re-looking up original ranks.
+    const rankByHandle = new Map(
+      [...FAME_SEED]
+        .sort((a, b) => b.lifetimePoints - a.lifetimePoints || a.handle.localeCompare(b.handle))
+        .map((e, i) => [e.handle, i + 1] as const),
+    );
+    ranked = ranked.map((e) => ({
+      ...e,
+      rank: rankByHandle.get(e.handle) ?? e.rank,
+    }));
+  }
   const slice = ranked.slice(offset, offset + limit);
   return {
     board: slice,
@@ -223,6 +265,7 @@ export function pageFameSeed(
     hasMore: offset + slice.length < ranked.length,
     seedOnly: true,
     globalLedger: false,
+    q,
   };
 }
 

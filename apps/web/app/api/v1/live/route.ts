@@ -1,4 +1,4 @@
-import { LIVE_ROOMS, pageLiveRooms } from '@/lib/live-catalog';
+import { LIVE_ROOMS, listLiveTags, pageLiveRooms } from '@/lib/live-catalog';
 import { jsonOk, methodNotAllowed, parseLimit, parseOffset } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
@@ -11,8 +11,10 @@ export function GET(request: Request): Response {
   const sfwOnly = nsfwParam === '0' || nsfwParam === 'false';
   const limit = parseLimit(url.searchParams.get('limit'), 24, 48);
   const offset = parseOffset(url.searchParams.get('offset'), 0);
+  const tagParam = url.searchParams.get('tag');
   const page = pageLiveRooms(LIVE_ROOMS, {
     nsfwAllowed: !sfwOnly,
+    tag: tagParam,
     limit,
     offset,
   });
@@ -26,6 +28,8 @@ export function GET(request: Request): Response {
     offset: page.offset,
     hasMore: page.hasMore,
     nextOffset: page.hasMore ? page.offset + page.items.length : null,
+    tag: page.tag,
+    tags: listLiveTags(LIVE_ROOMS),
     join: 'disabled',
     synthetic: true,
     note: 'Live SFU / chat / tips not online. Cards are product scaffolding.',

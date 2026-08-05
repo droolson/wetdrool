@@ -1,11 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
 import { readAgeGate, readContentMode } from '@/lib/nsfw-mode';
-import { LIVE_ROOMS, filterLiveRooms, type LiveRoom } from '@/lib/live-catalog';
+import {
+  LIVE_ROOMS,
+  filterLiveRooms,
+  listLiveTags,
+  type LiveRoom,
+} from '@/lib/live-catalog';
+import { chipKeyNavIndex } from '@/lib/short-feed';
 
 const PAGE_SIZE = 2;
 
@@ -20,6 +34,10 @@ export function LiveRooms() {
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [synthetic, setSynthetic] = useState(true);
+  const [tag, setTag] = useState<string | null>(null);
+  const [availableTags, setAvailableTags] = useState<readonly string[]>(() => listLiveTags());
+  const tagListId = useId();
+  const tagRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     const age = readAgeGate(window.localStorage).confirmed;
@@ -27,8 +45,10 @@ export function LiveRooms() {
     setNsfw(age && mode === 'nsfw');
   }, []);
 
+  const tagOptions = useMemo(() => ['all', ...availableTags], [availableTags]);
+
   const loadPage = useCallback(
-    async (nextOffset: number, append: boolean) => {
+    async (nextOffset: number, append: boolean, activeTag: string | null) => {
       if (append) setLoadingMore(true);
       else setLoading(true);
       setError(null);
@@ -37,6 +57,7 @@ export function LiveRooms() {
         const result = await fetchLiveRooms({
           limit: PAGE_SIZE,
           offset: nextOffset,
+          tag: activeTag,
         });
         if (result.kind === 'ok' && Array.isArray(result.data.rooms)) {
           setRooms((prev) => (append ? [...prev, ...result.data.rooms] : result.data.rooms));
@@ -45,7 +66,10 @@ export function LiveRooms() {
           setHasMore(Boolean(result.data.hasMore));
           setOffset(nextOffset + result.data.rooms.length);
           setSynthetic(result.data.synthetic !== false);
-          if (!append && result.data.rooms.length === 0) {
+          if (Array.isArray(result.data.tags) && result.data.tags.length > 0) {
+            setAvailableTags(result.data.tags);
+          }
+          if (!append && result.data.rooms.length === 0 && !activeTag) {
             setRooms(LIVE_ROOMS);
             setSource('local');
             setHasMore(false);
@@ -86,10 +110,32 @@ export function LiveRooms() {
   );
 
   useEffect(() => {
-    void loadPage(0, false);
-  }, [loadPage]);
+    void loadPage(0, false, tag);
+  }, [loadPage, tag]);
 
-  const visible = filterLiveRooms(rooms, { nsfwAllowed: nsfw });
+  const selectTag = (next: string) => {
+    setTag(next === 'all' ? null : next);
+    setOffset(0);
+  };
+
+  const onTagKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const current = tagOptions.findIndex((t) => (t === 'all' ? tag === null : t === tag));
+    const next = chipKeyNavIndex(event.key, current < 0 ? 0 : current, tagOptions.length);
+    if (next == null) return;
+    event.preventDefault();
+    const choice = tagOptions[next];
+    if (choice) {
+      selectTag(choice);
+      tagRefs.current[next]?.focus();
+    }
+  };
+
+  // Always apply SFW client-side (age gate). Tag is server-filtered for API;
+  // local fallback applies tag here.
+  const visible = filterLiveRooms(rooms, {
+    nsfwAllowed: nsfw,
+    tag: source === 'api' ? null : tag,
+  });
 
   return (
     <div className="live-app">
@@ -111,8 +157,34 @@ export function LiveRooms() {
       <p className="live-app__lede">
         Livestream cards for chat, reactions, and tips. No fake viewer counts. Media ingress and
         SFU wiring stay off until a reviewed pipeline exists. NSFW rooms require the global 18+
-        toggle.
+        toggle. Tag chips filter synthetic fixtures only.
       </p>
+      <div
+        className="shorts-modes"
+        role="toolbar"
+        aria-label="Live room tag filter"
+        id={tagListId}
+        onKeyDown={onTagKeyDown}
+      >
+        {tagOptions.map((t, index) => {
+          const active = t === 'all' ? tag === null : tag === t;
+          return (
+            <button
+              key={t}
+              type="button"
+              ref={(el) => {
+                tagRefs.current[index] = el;
+              }}
+              tabIndex={active ? 0 : -1}
+              className={active ? 'is-active' : undefined}
+              aria-pressed={active}
+              onClick={() => selectTag(t)}
+            >
+              {t === 'all' ? 'All tags' : t}
+            </button>
+          );
+        })}
+      </div>
       {error ? (
         <p className="field-help" role="status">
           {error}
@@ -165,7 +237,7 @@ export function LiveRooms() {
           <button
             type="button"
             disabled={loadingMore}
-            onClick={() => void loadPage(offset, true)}
+            onClick={() => void loadPage(offset, true, tag)}
           >
             {loadingMore ? 'Loading…' : 'Load more rooms'}
           </button>
@@ -174,7 +246,7 @@ export function LiveRooms() {
       <p className="field-help">
         Private gifts and whisper chat target E2EE pairwise messaging when the web adapter is
         wired. Operator seat: Swiss foundation (planned). Catalog:{' '}
-        <code>/api/v1/live</code>.
+        <code>/api/v1/live?tag=</code> (synthetic fixtures).
       </p>
     </div>
   );
