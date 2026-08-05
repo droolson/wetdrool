@@ -66,18 +66,47 @@ function receiptTone(v: UnlockReceipt['verification'] | MarketUnlockReceiptDto['
 function UnlockAttemptHistory({
   log,
   listingId,
+  onClear,
 }: {
   readonly log: readonly MarketUnlockAttempt[];
   readonly listingId: string | null;
+  readonly onClear: () => void;
 }) {
   const forListing = listingId
     ? log.filter((a) => a.listingId === listingId)
     : [];
-  const recent = log.slice(0, 8);
-  if (recent.length === 0) {
+  const filteredActive = Boolean(listingId && forListing.length > 0);
+  const visible = (filteredActive ? forListing : log).slice(0, 12);
+  const totalCount = log.length;
+  const shownCount = visible.length;
+  const listingCount = listingId ? forListing.length : 0;
+
+  const downloadJson = () => {
+    void (async () => {
+      const { exportUnlockAttemptsJson } = await import('@/lib/product-client');
+      const body = exportUnlockAttemptsJson(log);
+      const blob = new Blob([body], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `wetdrool-market-unlock-attempts-${new Date().toISOString().slice(0, 10)}.json`;
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    })();
+  };
+
+  if (totalCount === 0) {
     return (
-      <div className="market__attempts" role="status">
-        <h3 className="market__attempts-title">Unlock attempts (this browser)</h3>
+      <div className="market__attempts" role="status" aria-label="Unlock attempt history empty">
+        <h3 className="market__attempts-title">
+          Unlock attempts (this browser){' '}
+          <span className="market__attempt-count" aria-label="0 unlock attempts logged">
+            0
+          </span>
+        </h3>
         <p className="field-help">
           No attempts yet. Failures and successes are logged locally (listing id, time, status) —
           never secrets or full payment payloads. Host store remains replica-unsafe.
@@ -85,17 +114,64 @@ function UnlockAttemptHistory({
       </div>
     );
   }
+
   return (
-    <div className="market__attempts" role="region" aria-label="Unlock attempt history">
-      <h3 className="market__attempts-title">Unlock attempts (this browser)</h3>
-      <p className="field-help">
+    <div
+      className="market__attempts"
+      role="region"
+      aria-label={`Unlock attempt history, ${totalCount} total`}
+    >
+      <h3 className="market__attempts-title">
+        Unlock attempts (this browser){' '}
+        <span
+          className="market__attempt-count"
+          aria-label={`${totalCount} unlock attempt${totalCount === 1 ? '' : 's'} logged`}
+        >
+          {totalCount}
+        </span>
+        {filteredActive ? (
+          <span
+            className="market__attempt-count market__attempt-count--listing"
+            aria-label={`${listingCount} attempt${listingCount === 1 ? '' : 's'} for active listing`}
+          >
+            {listingCount} this listing
+          </span>
+        ) : null}
+      </h3>
+      <p className="field-help" id="market-unlock-attempts-help">
         Local-only log (localStorage). Success here does not prove multi-replica settlement.
-        {listingId && forListing.length > 0
-          ? ` Showing ${forListing.length} for this listing; ${recent.length} recent overall.`
-          : null}
+        {filteredActive
+          ? ` Showing ${shownCount} of ${listingCount} for this listing (${totalCount} overall).`
+          : ` Showing ${shownCount} most recent of ${totalCount}.`}
       </p>
-      <ul className="market__attempt-list">
-        {(listingId && forListing.length > 0 ? forListing : recent).slice(0, 12).map((a) => (
+      <div className="market__attempt-toolbar" role="group" aria-label="Unlock attempt log actions">
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={downloadJson}
+          aria-label="Export unlock attempt log as JSON"
+        >
+          Export JSON
+        </button>
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={onClear}
+          aria-label="Clear unlock attempt history from this browser"
+        >
+          Clear history
+        </button>
+      </div>
+      <ul
+        className="market__attempt-list"
+        aria-describedby="market-unlock-attempts-help"
+        aria-label={
+          filteredActive
+            ? `Unlock attempts for listing ${listingId}`
+            : 'Recent unlock attempts'
+        }
+      >
+        {visible.map((a) => (
           <li key={a.id}>
             <StatusBadge tone={a.status === 'success' ? 'verified' : 'degraded'}>
               {a.status}
@@ -840,7 +916,16 @@ export function Marketplace() {
                 </ul>
               </div>
             ) : null}
-            <UnlockAttemptHistory log={attemptLog} listingId={activeId} />
+            <UnlockAttemptHistory
+              log={attemptLog}
+              listingId={activeId}
+              onClear={() => {
+                void (async () => {
+                  const { clearUnlockAttemptLog } = await import('@/lib/product-client');
+                  setAttemptLog(clearUnlockAttemptLog());
+                })();
+              }}
+            />
             {unlocked?.text ? <pre className="market__plain">{unlocked.text}</pre> : null}
             {unlocked?.mediaUrl && unlocked.contentType?.startsWith('image/') ? (
               // eslint-disable-next-line @next/next/no-img-element

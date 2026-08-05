@@ -256,4 +256,91 @@ describe('market unlock attempt log (client helpers)', () => {
     expect(again[0]?.listingId).toBe('lst_persist');
     expect(map.get(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY)).not.toMatch(/secret|ciphertext/i);
   });
+
+  it('clears stored attempt log and returns empty', async () => {
+    const map = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        map.set(k, v);
+      },
+      removeItem: (k: string) => {
+        map.delete(k);
+      },
+      clear: () => map.clear(),
+      key: () => null,
+      length: 0,
+    } as Storage;
+
+    const {
+      recordUnlockAttempt,
+      clearUnlockAttemptLog,
+      readUnlockAttemptLog,
+      MARKET_UNLOCK_ATTEMPT_STORAGE_KEY,
+    } = await import('../lib/product-client');
+
+    recordUnlockAttempt(
+      { listingId: 'lst_clear_me', status: 'fail', reason: 'no_rpc' },
+      storage,
+    );
+    expect(readUnlockAttemptLog(storage)).toHaveLength(1);
+
+    const emptied = clearUnlockAttemptLog(storage);
+    expect(emptied).toEqual([]);
+    expect(map.has(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY)).toBe(false);
+    expect(readUnlockAttemptLog(storage)).toEqual([]);
+
+    // Idempotent clear when already empty / null storage
+    expect(clearUnlockAttemptLog(storage)).toEqual([]);
+    expect(clearUnlockAttemptLog(null)).toEqual([]);
+  });
+
+  it('append skips empty listingId fields only via parse; export re-sanitizes', async () => {
+    const {
+      appendUnlockAttempt,
+      parseUnlockAttemptLog,
+      exportUnlockAttemptsJson,
+      filterUnlockAttemptsForListing,
+    } = await import('../lib/product-client');
+
+    // Truncation + newest-first
+    const longId = `lst_${'x'.repeat(100)}`;
+    const one = appendUnlockAttempt([], {
+      listingId: longId,
+      status: 'fail',
+      reason: 'r'.repeat(200),
+      signatureHint: 'h'.repeat(40),
+      at: '2026-03-01T00:00:00.000Z',
+      id: 'att_edge',
+    });
+    expect(one[0]?.listingId.length).toBeLessThanOrEqual(64);
+    expect(one[0]?.reason?.length).toBeLessThanOrEqual(80);
+    expect(one[0]?.signatureHint?.length).toBeLessThanOrEqual(16);
+
+    // Malicious extra fields dropped on parse/export
+    const dirty = [
+      {
+        id: 'att_ok',
+        at: '2026-03-01T00:00:00.000Z',
+        listingId: 'lst_a',
+        status: 'success',
+        unlockSecret: 'SHOULD_NOT_LEAK',
+        ciphertext: 'nope',
+        verification: 'rpc_verified',
+      },
+      { listingId: '', status: 'fail', at: '2026-03-01T00:00:00.000Z' },
+      { listingId: 'lst_b', status: 'maybe', at: '2026-03-01T00:00:00.000Z' },
+      null,
+      'string',
+    ];
+    const cleaned = parseUnlockAttemptLog(JSON.stringify(dirty));
+    expect(cleaned).toHaveLength(1);
+    expect(cleaned[0]?.listingId).toBe('lst_a');
+    const exported = exportUnlockAttemptsJson(cleaned);
+    expect(exported).not.toMatch(/SHOULD_NOT_LEAK|ciphertext|unlockSecret/);
+    expect(JSON.parse(exported)).toHaveLength(1);
+
+    expect(filterUnlockAttemptsForListing(cleaned, null)).toHaveLength(1);
+    expect(filterUnlockAttemptsForListing(cleaned, 'missing')).toHaveLength(0);
+  });
 });

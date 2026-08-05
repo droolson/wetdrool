@@ -665,3 +665,46 @@ export interface RoomsIndexApiResponse {
 export function fetchRoomsIndex(): Promise<ProductClientResult<RoomsIndexApiResponse>> {
   return getJson<RoomsIndexApiResponse>('/api/v1/rooms');
 }
+
+/** In-app notification row — only fields a future product API is expected to return. */
+export interface NotificationItemDto {
+  readonly id: string;
+  readonly category: string;
+  readonly title: string;
+  readonly body?: string;
+  readonly createdAt?: string;
+  readonly read?: boolean;
+  readonly href?: string;
+  readonly actorHandle?: string;
+}
+
+/**
+ * GET /api/v1/notifications — honest inbox envelope.
+ * Until the route exists, callers receive kind:error (e.g. 404) and must not invent rows.
+ */
+export interface NotificationsApiResponse {
+  readonly ok: true;
+  readonly items: readonly NotificationItemDto[];
+  /** False when delivery/identity is not wired; empty items must still be trusted as empty. */
+  readonly configured?: boolean;
+  readonly unreadCount?: number;
+  readonly note?: string;
+  readonly filter?: string | null;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+}
+
+export function fetchNotifications(options?: {
+  readonly filter?: string | null;
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<NotificationsApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.filter) q.set('filter', options.filter);
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<NotificationsApiResponse>(`/api/v1/notifications${suffix}`);
+}
