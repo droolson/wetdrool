@@ -26,6 +26,19 @@
 
 ## Swarm log
 
+### 2026-08-05 ~21:00Z — manual GOGOGO 6-agent fanout
+
+| Slot | Focus | Result | Commit (tip) |
+|------|--------|--------|----------------|
+| A | Product APIs health/status honesty | 16 tests | `dd55102` |
+| B | Discovery load-more + a11y chips | 11 tests | `194bf8a` |
+| C | Market unlock UX + receipts | 15 tests | `25918bf` |
+| D | E2EE rooms wrong-key/poll/pagination | 11 tests | `99d6ac1` |
+| E | Auth readiness retry + next-step | 8 tests | `4ae6415` |
+| F | Creators directory + studio badges | 10 tests | `e27676e` |
+
+All six specialists completed and pushed to `origin/main`. User-visible: healthier APIs, shorts load-more, market fail-closed unlock, rooms rekey/poll, passkey readiness, creators pagination.
+
 ### 2026-08-05 — 15m swarm mode enabled
 
 - Scheduler retargeted: 30m single-slice → **15m massive parallel fanout**.
