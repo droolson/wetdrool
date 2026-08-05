@@ -336,3 +336,16 @@ export function filterListingsByQuery(
     return hay.includes(q);
   });
 }
+
+/**
+ * Exact x402 network match (solana:devnet | solana:mainnet).
+ * Null / undefined network leaves the list unchanged.
+ */
+export function filterListingsByNetwork(
+  all: readonly MarketplaceListing[],
+  network: X402Network | null | undefined,
+): readonly MarketplaceListing[] {
+  if (!network) return all;
+  return all.filter((listing) => listing.network === network);
+}
+

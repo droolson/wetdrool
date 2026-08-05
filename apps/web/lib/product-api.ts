@@ -4,8 +4,13 @@
  */
 
 import { tryResolveAuthServiceConfig } from './auth/auth-service-config';
+import { resolveFeedServiceConfig } from './feed-service-config';
 import { getMarketplaceStoreKind } from './marketplace-store';
 import { getMarketplaceGateMode } from './marketplace-unlock';
+import {
+  getMeshCapabilityReport,
+  resolveRelayReadinessHonesty,
+} from './mesh-status';
 import { buildRevenueReadiness } from './revenue-readiness';
 import { getRoomStoreMeta } from './room-store';
 
@@ -25,6 +30,7 @@ export const PRODUCT_API_SURFACES = [
   { id: 'rooms', path: '/api/v1/rooms', methods: ['GET'] as const },
   { id: 'rooms/:roomId/messages', path: '/api/v1/rooms/:roomId/messages', methods: ['GET', 'POST'] as const },
   { id: 'e2ee', path: '/api/v1/e2ee', methods: ['GET'] as const },
+  { id: 'mesh', path: '/api/v1/mesh', methods: ['GET'] as const },
   { id: 'policy/age', path: '/api/v1/policy/age', methods: ['GET'] as const },
   { id: 'notifications', path: '/api/v1/notifications', methods: ['GET'] as const },
   { id: 'mesh', path: '/api/v1/mesh', methods: ['GET'] as const },
@@ -88,53 +94,21 @@ export interface DiscoveryProviderHonesty {
   readonly feedService: FeedPersonalizationHonesty;
 }
 
-function isLoopbackHostname(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1';
-}
-
 /**
  * Resolve feed-service URL honesty from raw env (no network probe).
  * Empty / missing / invalid → configured: false (honest empty personalization).
+ * Delegates to feed-service-config pure helper (origin only; no ranking).
  */
 export function resolveFeedPersonalizationHonesty(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): FeedPersonalizationHonesty {
-  const raw = env.NEXT_PUBLIC_FEED_SERVICE_URL?.trim() ?? '';
-  if (!raw) {
-    return {
-      configured: false,
-      origin: null,
-      personalizationActive: false,
-      note: 'Feed-service URL unset — personalization is empty, not faked from local ranking.',
-    };
-  }
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return {
-        configured: false,
-        origin: null,
-        personalizationActive: false,
-        note: 'Feed-service URL protocol invalid — personalization stays unconfigured.',
-      };
-    }
-    return {
-      configured: true,
-      origin: url.origin,
-      personalizationActive: false,
-      note: isLoopbackHostname(url.hostname)
-        ? 'Feed-service URL is set (loopback) but product discovery does not call it yet — ranking stays local synthetic.'
-        : 'Feed-service URL is set but product discovery does not call it yet — ranking stays local synthetic.',
-    };
-  } catch {
-    return {
-      configured: false,
-      origin: null,
-      personalizationActive: false,
-      note: 'Feed-service URL malformed — personalization stays unconfigured.',
-    };
-  }
+  const cfg = resolveFeedServiceConfig(env);
+  return {
+    configured: cfg.configured,
+    origin: cfg.origin,
+    personalizationActive: false,
+    note: cfg.note,
+  };
 }
 
 /**
@@ -271,6 +245,7 @@ export function buildProductHealthReport(
       agePolicy: '/api/v1/policy/age' as const,
       token: '/api/v1/token' as const,
       e2ee: '/api/v1/e2ee' as const,
+      mesh: '/api/v1/mesh' as const,
       notifications: '/api/v1/notifications' as const,
     },
     media: 'synthetic-fixtures' as const,
@@ -400,3 +375,52 @@ export function buildEmptyNotificationsInbox(options?: {
     note: 'Notification inbox is unconfigured: no authenticated session, no relay subscription, and no push channel. Empty is honest — not a silent “all clear” from a live graph. Push and in-app notifications are not live until auth, relay, and preferences wire.',
   };
 }
+
+/**
+ * Payload for GET /api/v1/mesh — honest mesh/relay readiness (no peer inventing).
+ * configured is false when no valid relay URL; multiReplicaSafe always false;
+ * live peer counts stay null / unclaimed.
+ */
+export function buildMeshProductStatus(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+) {
+  const mesh = getMeshCapabilityReport();
+  const relay = resolveRelayReadinessHonesty(env);
+  return {
+    ok: true as const,
+    product: 'wetdrool' as const,
+    service: '@wetdrool/web' as const,
+    path: '/api/v1/mesh' as const,
+    mesh: {
+      foundation: mesh.foundation,
+      productionMeshDeployed: mesh.productionMeshDeployed,
+      localFirst: mesh.localFirst,
+      e2eeSpaces: mesh.e2eeSpaces,
+      transports: mesh.transports,
+      notes: mesh.notes,
+    },
+    relay: {
+      configured: relay.configured,
+      displayEndpoints: relay.displayEndpoints,
+      configuredCount: relay.configuredCount,
+      invalidCount: relay.invalidCount,
+      multiReplicaSafe: relay.multiReplicaSafe,
+      liveMeshPeersClaimed: relay.liveMeshPeersClaimed,
+      livePeerCount: relay.livePeerCount,
+      productionMeshDeployed: relay.productionMeshDeployed,
+      note: relay.note,
+    },
+    honest: {
+      configured: relay.configured,
+      multiReplicaSafe: false as const,
+      liveMeshPeersClaimed: false as const,
+      livePeerCount: null,
+      productionMeshDeployed: false as const,
+      inventsLivePeers: false as const,
+    },
+    note: relay.configured
+      ? 'Mesh/relay product status reports configuration honesty only — not live peers, not multi-replica scale-out, and not production any-sync mesh deployment.'
+      : 'Mesh/relay product status is unconfigured (no valid relay URL). Empty configuration is honest — not a silent live mesh with zero peers.',
+  };
+}
+

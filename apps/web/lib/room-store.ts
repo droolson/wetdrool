@@ -346,3 +346,16 @@ export function normalizeRoomId(raw: string): string | null {
 export function isValidMessageId(raw: string): boolean {
   return typeof raw === 'string' && raw.length >= 8 && raw.length <= 128 && /^[\w.-]+$/.test(raw);
 }
+
+/**
+ * Path or absolute URL for sharing a room (no passphrase — share key out of band).
+ * Uses encodeURIComponent on the room id segment.
+ */
+export function buildRoomShareUrl(roomId: string, origin?: string | null): string {
+  const id = roomId.trim();
+  const path = `/rooms/${encodeURIComponent(id)}`;
+  if (!origin) return path;
+  const base = origin.replace(/\/+$/, '');
+  return `${base}${path}`;
+}
+

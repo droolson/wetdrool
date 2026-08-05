@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDiscoveryProviderHonesty,
   buildEmptyNotificationsInbox,
+  buildMeshProductStatus,
   buildProductHealthReport,
   buildProductStatusReport,
   jsonError,
@@ -15,6 +16,7 @@ import {
   readProductApiErrorMessage,
   resolveFeedPersonalizationHonesty,
 } from '../lib/product-api';
+import { resolveRelayReadinessHonesty } from '../lib/mesh-status';
 import { rankShorts } from '../lib/short-feed';
 import { getDroolTokenConfig, transferTaxAmount } from '../lib/drool-token';
 import {
@@ -118,6 +120,51 @@ describe('product api helpers', () => {
     const health = buildProductHealthReport({});
     expect(health.surfaces).toContain('notifications');
     expect(health.links.notifications).toBe('/api/v1/notifications');
+  });
+
+  it('mesh surface reports honest relay readiness without inventing live peers', () => {
+    const ids = listProductApiSurfaceIds();
+    expect(ids).toContain('mesh');
+    const meshSurface = PRODUCT_API_SURFACES.find((s) => s.id === 'mesh');
+    expect(meshSurface?.path).toBe('/api/v1/mesh');
+    expect(meshSurface?.methods).toEqual(['GET']);
+
+    const unconfigured = buildMeshProductStatus({});
+    expect(unconfigured.ok).toBe(true);
+    expect(unconfigured.honest.configured).toBe(false);
+    expect(unconfigured.relay.configured).toBe(false);
+    expect(unconfigured.relay.multiReplicaSafe).toBe(false);
+    expect(unconfigured.relay.liveMeshPeersClaimed).toBe(false);
+    expect(unconfigured.relay.livePeerCount).toBeNull();
+    expect(unconfigured.honest.multiReplicaSafe).toBe(false);
+    expect(unconfigured.honest.inventsLivePeers).toBe(false);
+    expect(unconfigured.mesh.productionMeshDeployed).toBe(false);
+    expect(unconfigured.note.toLowerCase()).toMatch(/unconfigured|not a silent live mesh/);
+
+    const withRelay = buildMeshProductStatus({
+      WETDROOL_RELAY_ENDPOINTS: 'wss://relay.example/v1/relay',
+    });
+    expect(withRelay.relay.configured).toBe(true);
+    expect(withRelay.honest.configured).toBe(true);
+    expect(withRelay.relay.displayEndpoints).toEqual(['wss://relay.example']);
+    expect(withRelay.relay.multiReplicaSafe).toBe(false);
+    expect(withRelay.relay.liveMeshPeersClaimed).toBe(false);
+    expect(withRelay.relay.livePeerCount).toBeNull();
+    expect(withRelay.mesh.productionMeshDeployed).toBe(false);
+
+    expect(resolveRelayReadinessHonesty({}).configured).toBe(false);
+    expect(
+      resolveRelayReadinessHonesty({ WETDROOL_RELAY_ENDPOINTS: 'https://not-ws.example' }).configured,
+    ).toBe(false);
+    expect(
+      resolveRelayReadinessHonesty({
+        WETDROOL_RELAY_ENDPOINTS: 'wss://name:secret@relay.example/v1/relay',
+      }).configured,
+    ).toBe(false);
+
+    const health = buildProductHealthReport({});
+    expect(health.surfaces).toContain('mesh');
+    expect(health.links.mesh).toBe('/api/v1/mesh');
   });
 
   it('honest flags never invent $DROOL mint or earnings', () => {

@@ -20,6 +20,24 @@ export type X402Network =
   | typeof X402_NETWORK_SOLANA_MAINNET
   | typeof X402_NETWORK_SOLANA_DEVNET;
 
+/** Accept exact x402 network ids or common cluster aliases; otherwise null (no filter / invalid). */
+export function parseX402Network(value: string | null | undefined): X402Network | null {
+  if (value == null) return null;
+  const raw = value.trim().toLowerCase();
+  if (!raw) return null;
+  if (raw === X402_NETWORK_SOLANA_DEVNET || raw === 'devnet') {
+    return X402_NETWORK_SOLANA_DEVNET;
+  }
+  if (
+    raw === X402_NETWORK_SOLANA_MAINNET ||
+    raw === 'mainnet' ||
+    raw === 'mainnet-beta'
+  ) {
+    return X402_NETWORK_SOLANA_MAINNET;
+  }
+  return null;
+}
+
 export interface X402PaymentRequirements {
   readonly x402Version: typeof X402_VERSION;
   readonly scheme: typeof X402_SCHEME;
