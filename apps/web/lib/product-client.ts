@@ -559,12 +559,15 @@ export function fetchMarket(options?: {
   readonly q?: string | null;
   /** Exact x402 network id or cluster alias (devnet / mainnet). */
   readonly network?: string | null;
+  /** newest (default) | price_asc | price_desc — lamports always on listings. */
+  readonly sort?: MarketSortMode | null;
 }): Promise<ProductClientResult<MarketApiResponse>> {
   const q = new URLSearchParams();
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
   if (options?.q) q.set('q', options.q);
   if (options?.network) q.set('network', options.network);
+  if (options?.sort) q.set('sort', options.sort);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
 }
