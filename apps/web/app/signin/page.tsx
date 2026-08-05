@@ -31,6 +31,12 @@ export default function SignInPage() {
       </AppPageHeader>
 
       <AuthServiceStatus />
+      <p className="field-help" role="note">
+        Follow the status card next step: <strong>Retry probe</strong> when unreachable or degraded;
+        open <strong>Passkeys &amp; devices</strong> after readiness is verified; configure{' '}
+        <code>WETDROOL_AUTH_URL</code> / <code>NEXT_PUBLIC_AUTH_SERVICE_URL</code> only in local/dev
+        (https or loopback http — never a legacy redirect host as WebAuthn RP).
+      </p>
 
       <div className="auth-layout">
         <section className="auth-panel" aria-labelledby="signin-options-title">
@@ -59,6 +65,9 @@ export default function SignInPage() {
           </ButtonLink>
           <ButtonLink href="/settings/devices" variant="quiet">
             Passkeys &amp; devices
+          </ButtonLink>
+          <ButtonLink href="/settings" variant="quiet">
+            Account readiness (settings)
           </ButtonLink>
           <ButtonLink href="/onboarding" variant="quiet">
             Create a new passkey account
