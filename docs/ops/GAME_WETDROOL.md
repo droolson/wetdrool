@@ -28,6 +28,12 @@ WetDrool is the **adult rating** of that world — not a different IP.
 
 - **$DDD** only · no invented CA · **`$DROOL` does not exist**
 
+## Distribution
+
+**Web forever until forced off web** (`DIST-WEB-FIRST-001`).  
+Primary: browser at drooly.ai. No “must install software” funnel while web works.  
+Native/store only after written evidence the game outgrew the browser. See drooly-web `docs/PRODUCT_CANON.md` + `docs/DECISIONS/0001-web-first-distribution.md`.
+
 ## Paperclip
 
-`paperclip/droolhouse/` — build / market / distribute this dual-track franchise.
+`paperclip/droolhouse/` — build / market / distribute this dual-track franchise **on the web**.

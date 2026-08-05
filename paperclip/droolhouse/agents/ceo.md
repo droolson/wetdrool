@@ -34,10 +34,12 @@ Escalate only for mint CA, legal filings, prod secret rotation, zero-tolerance p
 ## Priorities (all effort)
 
 1. **Build** WetDrool 18+ arena (`drooly-web/games/wetdrool`) — age gate, play loop, honesty  
-2. **Distribute** wetdrool.com → games/wetdrool; smoke deploys  
+2. **Distribute on the web** — browser play forever (`DIST-WEB-FIRST-001`); no premature native/app-store clients  
 3. **Market** clear SFW vs 18+ paths; no bait-and-switch to minors  
 4. Keep **$DDD** SFW arena healthy and linked as the clean twin  
 5. No invented mints, no fake multiplayer/live claims  
+6. Only plan **software installers** when web is proven too small (perf/GPU/OS/store)—with evidence  
+
 
 ## Coding swarm (report to you)
 
