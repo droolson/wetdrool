@@ -72,7 +72,7 @@ describe('product search helpers', () => {
         kind: 'short',
         title: 'Studio signal · soft light',
         subtitle: '@neonangel',
-        href: '/hub',
+        href: '/video',
         source: 'synthetic-catalog',
         tags: ['pride', 'synthetic'],
       },

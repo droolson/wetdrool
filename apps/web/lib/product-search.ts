@@ -73,7 +73,7 @@ export function searchSyntheticCatalog(
         kind: 'short',
         title: clip.title,
         subtitle: `${clip.creator} · ${clip.category}`,
-        href: '/hub',
+        href: '/video',
         source: 'synthetic-catalog',
         tags: [clip.mode, clip.category, 'synthetic'],
       });
