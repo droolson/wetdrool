@@ -289,9 +289,9 @@ export function CompanionsDirectory() {
                   <StatusBadge tone="pending">{c.model}</StatusBadge>{' '}
                   <span>{c.hirePointsPerMinute} pts/min</span>
                 </p>
-                {c.tones.length > 0 ? (
+                {(c.tones?.length ?? 0) > 0 ? (
                   <ul className="tag-row">
-                    {c.tones.map((t) => (
+                    {(c.tones ?? []).map((t) => (
                       <li key={t}>{t}</li>
                     ))}
                   </ul>
