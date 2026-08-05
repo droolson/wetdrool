@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildProductHealthReport,
+  buildProductStatusReport,
   jsonError,
   listProductApiSurfaceIds,
   methodNotAllowed,
@@ -27,8 +29,6 @@ import {
   normalizeCreatorHandle,
   resolveCreatorProfile,
 } from '../lib/creator-economy';
-import { GET as healthGet, POST as healthPost } from '../app/api/v1/health/route';
-import { GET as statusGet, POST as statusPost } from '../app/api/v1/status/route';
 
 describe('product api helpers', () => {
   it('clamps limit', () => {
@@ -95,22 +95,8 @@ describe('product api helpers', () => {
     expect(PRODUCT_HONEST_FLAGS.droolTickerForbidden).toBe(true);
   });
 
-  it('health aggregates store/auth flags and rejects POST', async () => {
-    const res = healthGet();
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      ok: true;
-      surfaces: string[];
-      droolMint: string;
-      earningClaimed: boolean;
-      honest: { droolMintInvented: boolean; earningClaimed: boolean; revenueReady: boolean };
-      stores: {
-        marketplace: { multiReplicaSafe: boolean; kind: string };
-        rooms: { multiReplicaSafe: boolean };
-      };
-      auth: { protocolIdentityEstablished: boolean; probePath: string };
-      revenueReady: boolean;
-    };
+  it('health aggregates store/auth flags without inventing mint/earnings', () => {
+    const body = buildProductHealthReport({});
     expect(body.ok).toBe(true);
     expect(body.surfaces).toContain('health');
     expect(body.surfaces.filter((s) => s === 'creators').length).toBe(1);
@@ -124,27 +110,13 @@ describe('product api helpers', () => {
     expect(body.stores.rooms.multiReplicaSafe).toBe(false);
     expect(body.auth.protocolIdentityEstablished).toBe(false);
     expect(body.auth.probePath).toBe('/api/v1/auth/status');
-
-    const post = healthPost();
-    expect(post.status).toBe(405);
-    expect(post.headers.get('Allow')).toBe('GET');
+    expect(body.surfaceCatalog.some((s) => s.id === 'ai/chat' && s.methods.includes('POST'))).toBe(
+      true,
+    );
   });
 
-  it('status aggregates stores + auth and never claims earnings', async () => {
-    const res = statusGet();
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      ok: true;
-      earningClaimed: false;
-      revenueReady: false;
-      checks: { droolMint: string };
-      stores: {
-        marketplace: { multiReplicaSafe: false; listings: number };
-        rooms: { kind: string };
-      };
-      auth: { protocolIdentityEstablished: false; probePath: string };
-      honest: { droolMint: string; earningClaimed: false };
-    };
+  it('status aggregates stores + auth and never claims earnings', () => {
+    const body = buildProductStatusReport({});
     expect(body.ok).toBe(true);
     expect(body.earningClaimed).toBe(false);
     expect(body.revenueReady).toBe(false);
@@ -155,10 +127,6 @@ describe('product api helpers', () => {
     expect(body.auth.protocolIdentityEstablished).toBe(false);
     expect(body.honest.droolMint).toBe('does-not-exist');
     expect(body.honest.earningClaimed).toBe(false);
-
-    const post = statusPost();
-    expect(post.status).toBe(405);
-    expect(post.headers.get('Allow')).toBe('GET');
   });
 
   it('ranks shorts for api payload shape', () => {

@@ -3,6 +3,12 @@
  * Fail-closed defaults; never invent mint or earnings claims.
  */
 
+import { tryResolveAuthServiceConfig } from './auth/auth-service-config';
+import { getMarketplaceStoreKind } from './marketplace-store';
+import { getMarketplaceGateMode } from './marketplace-unlock';
+import { buildRevenueReadiness } from './revenue-readiness';
+import { getRoomStoreMeta } from './room-store';
+
 /** Stable product API surface ids (paths under /api/v1). Deduped, honest. */
 export const PRODUCT_API_SURFACES = [
   { id: 'health', path: '/api/v1/health', methods: ['GET'] as const },
@@ -108,4 +114,116 @@ export function readProductApiErrorMessage(body: unknown, fallback: string): str
     return (body.error as { message: string }).message;
   }
   return fallback;
+}
+
+/**
+ * Payload for GET /api/v1/health — local flags only (no auth network probe).
+ */
+export function buildProductHealthReport(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+) {
+  const revenue = buildRevenueReadiness(env);
+  const marketStore = getMarketplaceStoreKind(env);
+  const marketGate = getMarketplaceGateMode(env);
+  const rooms = getRoomStoreMeta(env);
+  const auth = tryResolveAuthServiceConfig(env);
+
+  return {
+    ok: true as const,
+    service: '@wetdrool/web' as const,
+    product: 'wetdrool' as const,
+    surfaces: listProductApiSurfaceIds(),
+    surfaceCatalog: PRODUCT_API_SURFACES.map((s) => ({
+      id: s.id,
+      path: s.path,
+      methods: s.methods,
+    })),
+    links: {
+      authStatus: '/api/v1/auth/status' as const,
+      readiness: '/api/v1/status' as const,
+      creatorsDirectory: '/api/v1/creators' as const,
+      agePolicy: '/api/v1/policy/age' as const,
+      token: '/api/v1/token' as const,
+      e2ee: '/api/v1/e2ee' as const,
+    },
+    media: 'synthetic-fixtures' as const,
+    mesh: false as const,
+    stores: {
+      marketplace: {
+        kind: marketStore,
+        gate: marketGate,
+        durableAcrossRestart: marketStore === 'file-local',
+        multiReplicaSafe: false as const,
+      },
+      rooms: {
+        kind: rooms.kind,
+        durableAcrossRestart: rooms.durableAcrossRestart,
+        multiReplicaSafe: rooms.multiReplicaSafe,
+      },
+    },
+    auth: {
+      configured: auth.ok,
+      loopback: auth.ok ? auth.config.loopback : false,
+      source: auth.ok ? auth.config.source : null,
+      probePath: '/api/v1/auth/status' as const,
+      protocolIdentityEstablished: false as const,
+    },
+    marketplace: {
+      path: '/market' as const,
+      unlock: 'x402_solana_rpc_verify' as const,
+      ageGate: 'self_attest_18' as const,
+      rpcConfigured: revenue.checks.rpcConfigured,
+    },
+    revenueReady: revenue.revenueReady,
+    readinessLevel: revenue.level,
+    honest: {
+      ...PRODUCT_HONEST_FLAGS,
+      revenueReady: false as const,
+    },
+    droolMint: PRODUCT_HONEST_FLAGS.droolMint,
+    earningClaimed: PRODUCT_HONEST_FLAGS.earningClaimed,
+  };
+}
+
+/**
+ * Payload for GET /api/v1/status — readiness + aggregated store/auth flags.
+ */
+export function buildProductStatusReport(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+) {
+  const revenue = buildRevenueReadiness(env);
+  const rooms = getRoomStoreMeta(env);
+  const auth = tryResolveAuthServiceConfig(env);
+
+  return {
+    ...revenue,
+    stores: {
+      marketplace: {
+        kind: revenue.checks.marketplaceStore,
+        gate: revenue.checks.marketplaceGate,
+        durableAcrossRestart: revenue.checks.marketplaceStore === 'file-local',
+        multiReplicaSafe: false as const,
+        listings: revenue.checks.marketplaceListings,
+      },
+      rooms: {
+        kind: rooms.kind,
+        durableAcrossRestart: rooms.durableAcrossRestart,
+        multiReplicaSafe: rooms.multiReplicaSafe,
+        maxMessagesPerRoom: rooms.maxMessagesPerRoom,
+      },
+    },
+    auth: {
+      configured: auth.ok,
+      loopback: auth.ok ? auth.config.loopback : false,
+      source: auth.ok ? auth.config.source : null,
+      origin: auth.ok ? auth.config.origin : null,
+      probePath: '/api/v1/auth/status' as const,
+      protocolIdentityEstablished: false as const,
+    },
+    honest: {
+      ...PRODUCT_HONEST_FLAGS,
+      revenueReady: revenue.revenueReady,
+      founderMediaPath: revenue.checks.founderMediaPath,
+    },
+  };
 }

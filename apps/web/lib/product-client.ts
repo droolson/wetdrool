@@ -304,6 +304,21 @@ export interface MarketListingDto {
   readonly x402?: boolean;
 }
 
+/** Honest unlock receipt from market GET after payment proof (not multi-replica settlement). */
+export interface MarketUnlockReceiptDto {
+  readonly listingId: string;
+  readonly signature: string;
+  readonly network: string;
+  readonly payTo: string;
+  readonly lamports: string;
+  readonly verifiedAt: string;
+  readonly verification: 'rpc_verified' | 'prior_purchase' | 'dev_accept';
+  readonly slot?: number;
+  readonly payer?: string;
+  readonly settlementAuthoritative: false;
+  readonly note: string;
+}
+
 export interface MarketApiResponse {
   readonly ok: true;
   readonly listings: readonly MarketListingDto[];
@@ -312,6 +327,7 @@ export interface MarketApiResponse {
   readonly limit?: number;
   readonly offset?: number;
   readonly hasMore?: boolean;
+  readonly nextOffset?: number | null;
   readonly q?: string | null;
   readonly filter?: {
     readonly q: string | null;
@@ -323,6 +339,8 @@ export interface MarketApiResponse {
     readonly kind: 'memory-ephemeral' | 'file-local';
     readonly durableAcrossRestart?: boolean;
     readonly multiReplicaSafe?: boolean;
+    /** Always false until durable multi-replica proof exists. */
+    readonly revenueReady?: false;
     readonly gate?: 'env-stable' | 'ephemeral';
     readonly note?: string;
   };
