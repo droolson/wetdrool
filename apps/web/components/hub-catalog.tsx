@@ -13,12 +13,15 @@ import { StatusBadge } from '@wetdrool/ui';
 
 import {
   chipKeyNavIndex,
+  discoverySortNote,
   emptyDiscoveryMessage,
   listShortCategories,
   rankShortsPage,
   SHORTS_PAGE_SIZE,
+  shortSortLabel,
   type DiscoveryMode,
   type RankedShort,
+  type ShortSortMode,
   readDiscoveryMode,
   writeDiscoveryMode,
 } from '@/lib/short-feed';
@@ -29,6 +32,11 @@ const MODES: readonly { id: DiscoveryMode; label: string }[] = [
   { id: 'pride', label: 'Pride' },
 ];
 
+const SORTS: readonly { id: ShortSortMode; label: string }[] = [
+  { id: 'trending', label: 'Trending' },
+  { id: 'recent', label: 'Recent' },
+];
+
 /**
  * PH-class catalog grid over the shorts discovery API (synthetic until licensed).
  * Dense, accessible, keyboardable — not a marketing landing.
@@ -36,9 +44,11 @@ const MODES: readonly { id: DiscoveryMode; label: string }[] = [
 export function HubCatalog() {
   const modeRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const catRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const sortRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const [cat, setCat] = useState<string>('all');
   const [mode, setMode] = useState<DiscoveryMode>('all');
+  const [sort, setSort] = useState<ShortSortMode>('trending');
   const [categories, setCategories] = useState<readonly string[]>(() => [
     'all',
     ...listShortCategories(),
@@ -53,25 +63,36 @@ export function HubCatalog() {
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
+  const [activeSortLabel, setActiveSortLabel] = useState(() => shortSortLabel('trending'));
 
   useEffect(() => {
     setMode(readDiscoveryMode(window.localStorage));
   }, []);
 
   const applyLocal = useCallback(
-    (nextMode: DiscoveryMode, nextCat: string, nextOffset: number, append: boolean) => {
+    (
+      nextMode: DiscoveryMode,
+      nextCat: string,
+      nextSort: ShortSortMode,
+      nextOffset: number,
+      append: boolean,
+    ) => {
       const page = rankShortsPage(nextMode, {
         limit: SHORTS_PAGE_SIZE,
         offset: nextOffset,
         category: nextCat === 'all' ? null : nextCat,
+        sort: nextSort,
       });
       setItems((prev) => (append ? [...prev, ...page.items] : page.items));
       setTotal(page.total);
       setHasMore(page.hasMore);
       setOffset(nextOffset);
       setEmptyMessage(page.total === 0 ? emptyDiscoveryMessage(nextMode, nextCat) : null);
+      setActiveSortLabel(shortSortLabel(page.sort));
       setSource('local');
-      setNote('Local catalog fallback.');
+      setNote(
+        `Local catalog fallback · ${shortSortLabel(page.sort)}. Public recipe only — not personalized.`,
+      );
     },
     [],
   );
@@ -91,6 +112,7 @@ export function HubCatalog() {
         const result = await fetchShorts(mode, SHORTS_PAGE_SIZE, {
           category: cat === 'all' ? null : cat,
           offset: nextOffset,
+          sort,
         });
         if (result.kind === 'ok') {
           const nextItems = result.data.items;
@@ -100,6 +122,9 @@ export function HubCatalog() {
           setTotal(result.data.total ?? nextItems.length);
           setHasMore(Boolean(result.data.hasMore));
           setOffset(nextOffset);
+          setActiveSortLabel(
+            result.data.sortLabel ?? shortSortLabel(result.data.sort ?? sort),
+          );
           setEmptyMessage(
             result.data.empty
               ? (result.data.emptyMessage ?? emptyDiscoveryMessage(mode, cat))
@@ -111,18 +136,18 @@ export function HubCatalog() {
             setCategories(['all', ...result.data.categories]);
           }
         } else {
-          applyLocal(mode, cat, nextOffset, append);
+          applyLocal(mode, cat, sort, nextOffset, append);
           setError(result.message);
         }
       } catch {
-        applyLocal(mode, cat, nextOffset, append);
+        applyLocal(mode, cat, sort, nextOffset, append);
         setError('Network error loading hub catalog.');
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [mode, cat, applyLocal],
+    [mode, cat, sort, applyLocal],
   );
 
   useEffect(() => {
@@ -153,6 +178,16 @@ export function HubCatalog() {
     catRefs.current[next]?.focus();
   };
 
+  const onSortKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const ids = SORTS.map((s) => s.id);
+    const current = ids.indexOf(sort);
+    const next = chipKeyNavIndex(event.key, current < 0 ? 0 : current, ids.length);
+    if (next === null) return;
+    event.preventDefault();
+    setSort(ids[next]!);
+    sortRefs.current[next]?.focus();
+  };
+
   const loadMore = () => {
     if (!hasMore || loading || loadingMore) return;
     void load({ append: true, nextOffset: offset + SHORTS_PAGE_SIZE });
@@ -179,6 +214,7 @@ export function HubCatalog() {
         consented creator media is online. Mesh/any-sync carries private objects; Solana anchors
         identity. Every synthetic tile is labeled — no silent fake media.
         {total > 0 ? ` · ${items.length} of ${total}` : ''}
+        {` · ${activeSortLabel}`}
       </p>
       {note ? <p className="field-help">{note}</p> : null}
       {error ? (
@@ -214,6 +250,30 @@ export function HubCatalog() {
         ))}
       </div>
 
+      <div
+        className="hub-cats"
+        role="toolbar"
+        aria-label="Sort order"
+        onKeyDown={onSortKeyDown}
+      >
+        {SORTS.map((s, index) => (
+          <button
+            key={s.id}
+            type="button"
+            ref={(el) => {
+              sortRefs.current[index] = el;
+            }}
+            tabIndex={sort === s.id ? 0 : -1}
+            className={sort === s.id ? 'is-active' : undefined}
+            aria-pressed={sort === s.id}
+            title={shortSortLabel(s.id)}
+            onClick={() => setSort(s.id)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
       <div className="hub-cats" role="toolbar" aria-label="Categories" onKeyDown={onCatKeyDown}>
         {categories.map((c, index) => (
           <button
@@ -245,6 +305,7 @@ export function HubCatalog() {
             <p className="field-help">
               {emptyMessage ?? emptyDiscoveryMessage(mode, cat === 'all' ? null : cat)}
             </p>
+            <p className="field-help">{discoverySortNote(sort)}</p>
             <button type="button" className="shorts-empty__reset" onClick={() => setCat('all')}>
               Reset category to All
             </button>

@@ -298,6 +298,11 @@ export function shortSortLabel(sort: ShortSortMode): string {
   return sort === 'recent' ? 'Recent (recency signal)' : 'Trending (DroolRank-lite)';
 }
 
+/** Honesty line for sort chips / empty states — public recipe, never for-you. */
+export function discoverySortNote(sort: ShortSortMode): string {
+  return `Sort is ${shortSortLabel(sort)} — public catalog recipe only, not a for-you feed.`;
+}
+
 /**
  * Arrow/Home/End navigation for chip toolbars and tablists.
  * Returns the next index, or null if the key is not a navigation key.

@@ -4,6 +4,7 @@ import {
   chipKeyNavIndex,
   contentWarningLabel,
   discoveryHonestyNote,
+  discoverySortNote,
   emptyDiscoveryMessage,
   listShortCategories,
   parseDiscoveryMode,
@@ -135,6 +136,10 @@ describe('short feed ranking', () => {
       expect(trending.items[i - 1]!.score).toBeGreaterThanOrEqual(trending.items[i]!.score);
     }
     expect(recent.items[0]!.why.some((w) => w.includes('sort recent'))).toBe(true);
+    expect(discoverySortNote('trending')).toMatch(/Trending/i);
+    expect(discoverySortNote('trending')).toMatch(/not a for-you/i);
+    expect(discoverySortNote('recent')).toMatch(/Recent/i);
+    expect(discoverySortNote('recent')).toMatch(/public catalog/i);
   });
 });
 
