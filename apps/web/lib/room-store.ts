@@ -385,3 +385,17 @@ export function buildRoomShareUrl(roomId: string, origin?: string | null): strin
   return `${base}${path}`;
 }
 
+
+/**
+ * Screen-reader copy for poll-arriving messages.
+ * Returns null when count is not a positive safe integer (skip announcement).
+ */
+export function formatNewMessagesAnnouncement(count: number): string | null {
+  if (!Number.isSafeInteger(count) || count < 1) {
+    return null;
+  }
+  if (count === 1) {
+    return '1 new message';
+  }
+  return `${count} new messages`;
+}

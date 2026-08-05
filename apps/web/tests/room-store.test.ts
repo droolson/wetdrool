@@ -15,6 +15,7 @@ import {
   listRooms,
   newestActivityAt,
   buildRoomShareUrl,
+  formatNewMessagesAnnouncement,
   normalizeRoomId,
   resetRoomStoreCache,
   sortRoomsByActivity,
@@ -214,5 +215,22 @@ describe('room-store', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+
+describe('formatNewMessagesAnnouncement', () => {
+  it('announces singular and plural for positive counts', () => {
+    expect(formatNewMessagesAnnouncement(1)).toBe('1 new message');
+    expect(formatNewMessagesAnnouncement(2)).toBe('2 new messages');
+    expect(formatNewMessagesAnnouncement(12)).toBe('12 new messages');
+  });
+
+  it('returns null for non-positive or non-integer counts', () => {
+    expect(formatNewMessagesAnnouncement(0)).toBeNull();
+    expect(formatNewMessagesAnnouncement(-1)).toBeNull();
+    expect(formatNewMessagesAnnouncement(1.5)).toBeNull();
+    expect(formatNewMessagesAnnouncement(Number.NaN)).toBeNull();
+    expect(formatNewMessagesAnnouncement(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });

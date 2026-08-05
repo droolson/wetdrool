@@ -14,7 +14,7 @@ import {
   type SealedEnvelope,
 } from '@/lib/e2ee-seal';
 
-import { buildRoomShareUrl } from '@/lib/room-store';
+import { buildRoomShareUrl, formatNewMessagesAnnouncement } from '@/lib/room-store';
 
 type FeedFilter = 'all' | 'media' | 'chat';
 
@@ -124,6 +124,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [totalServer, setTotalServer] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [arrivalAnnouncement, setArrivalAnnouncement] = useState('');
   const [rekeyOpen, setRekeyOpen] = useState(false);
   const [rekeyPass, setRekeyPass] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -143,6 +144,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     setHasMoreOlder(false);
     setTotalServer(null);
     setLoadError(null);
+    setArrivalAnnouncement('');
     setRekeyOpen(false);
   }, [roomId]);
 
@@ -228,6 +230,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           setEnvelopes((prev) => mergeEnvelopes(prev, incoming, 'append'));
           const last = incoming[incoming.length - 1]?.messageId;
           if (last) lastIdRef.current = last;
+          const announcement = formatNewMessagesAnnouncement(incoming.length);
+          if (announcement) setArrivalAnnouncement(announcement);
         } else if (mode === 'older' && before) {
           setEnvelopes((prev) => mergeEnvelopes(prev, incoming, 'prepend'));
           setHasMoreOlder(moreOlder && incoming.length > 0);
@@ -715,12 +719,21 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         </div>
       ) : null}
 
+      <div
+        id="room-arrival-live"
+        className="visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {arrivalAnnouncement}
+      </div>
+
       <ul
         id="room-message-feed"
         className="e2ee-room__feed"
         role="tabpanel"
         aria-labelledby={`room-filter-${filter}`}
-        aria-live="polite"
         aria-busy={loading || loadingOlder}
         aria-label={`Messages in ${roomId}`}
       >
