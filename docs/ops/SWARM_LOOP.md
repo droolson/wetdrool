@@ -26,6 +26,21 @@
 
 ## Swarm log
 
+### 2026-08-05T21:09Z — 15m scheduled swarm (A–F)
+
+| Slot | Focus | Result |
+|------|--------|--------|
+| A | Health/status discovery personalization honesty | `buildDiscoveryProviderHonesty` + feed-service flags |
+| B | Explore sort + personalization empty | trending/recent, honest unconfigured copy |
+| C | Market unlock attempt log (localStorage) | session history, no secrets |
+| D | Rooms index + lastActivityAt | `/rooms` page + `RoomsIndexClient` |
+| E | Settings account readiness | AuthServiceStatus on settings hub |
+| F | Creators directory `q=` filter | API + UI + creator-economy tests |
+
+- **Verify:** vitest product-api-helpers, short-feed, marketplace-store, x402, revenue-readiness, room-store, e2ee-seal, auth-service-config, creator-economy, live-catalog → **87 passed**.
+- **Merge:** feature commits → `main` (rooms/settings/creators/health + explore/market polish).
+- **Next:** real feed-service client when URL set (still `personalizationActive: false` until wired), e2e for explore sort + market attempts + rooms index, multi-replica market store.
+
 ### 2026-08-05 ~21:00Z — manual GOGOGO 6-agent fanout
 
 | Slot | Focus | Result | Commit (tip) |

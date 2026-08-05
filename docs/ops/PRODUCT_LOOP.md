@@ -30,6 +30,12 @@
 
 ## Sprint log
 
+### 2026-08-05T21:09Z — 15m product swarm (A–F)
+
+- **Task:** Discovery honesty + explore sort, market unlock attempt log, rooms index page, settings readiness, creators `q=` search.
+- **Verify:** vitest 87 passed (product-api-helpers, short-feed, marketplace-store, x402, revenue-readiness, room-store, e2ee-seal, auth-service-config, creator-economy, live-catalog).
+- **Next:** feed-service client wire (keep personalization fail-closed until verified), e2e for new surfaces.
+
 ### 2026-08-05T21:00Z — 15m product swarm (A–F)
 
 - **Task:** Parallel product FE/BE: health/stores, explore, market q=, rooms index, auth next-step, live pagination.
