@@ -81,10 +81,9 @@ Interim (live):
 curl -sS https://wetdrool-web.vercel.app/api/v1/health | jq .
 curl -sS https://wetdrool-web.vercel.app/api/v1/status | jq .
 curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/feeds
-curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/video/cumdump
 curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/market
-curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/media/cumdump.webm
 ```
+
 
 Canonical (after DNS):
 

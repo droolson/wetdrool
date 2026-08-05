@@ -30,7 +30,7 @@ export interface RevenueReadinessReport {
     readonly marketplaceListings: number;
     readonly marketplaceStore: 'memory-ephemeral';
     readonly droolMint: 'does-not-exist';
-    readonly founderMediaPath: '/media/cumdump.webm';
+    readonly founderMediaPath: null;
   };
   readonly blockers: readonly RevenueBlocker[];
   readonly nextActions: readonly string[];
@@ -105,7 +105,7 @@ export function buildRevenueReadiness(
       marketplaceListings: listingCount,
       marketplaceStore: 'memory-ephemeral',
       droolMint: 'does-not-exist',
-      founderMediaPath: '/media/cumdump.webm',
+      founderMediaPath: null,
     },
     blockers,
     nextActions: [

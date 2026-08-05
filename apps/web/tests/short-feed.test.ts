@@ -17,21 +17,10 @@ describe('short feed ranking', () => {
     expect(scoreShort(item, 'pride')).toBeGreaterThan(scoreShort(item, 'straight'));
   });
 
-  it('labels abstract fixtures synthetic and founder media real', () => {
-    const abstracts = SHORT_CLIPS.filter((c) => c.id !== 'founder-cumdump');
-    expect(abstracts.every((c) => c.synthetic && c.contentWarning === 'abstract-only')).toBe(true);
-    const cumdump = SHORT_CLIPS.find((c) => c.id === 'founder-cumdump');
-    expect(cumdump).toBeDefined();
-    expect(cumdump!.synthetic).toBe(false);
-    expect(cumdump!.mediaSrc).toBe('/media/cumdump.webm');
-    expect(cumdump!.title).toContain('EVIL');
-    expect(cumdump!.title).not.toContain('EFIL');
-  });
-
-  it('ranks founder CUMDUMP near the top in all mode', () => {
-    const ranked = rankShorts('all', 5);
-    expect(ranked.some((c) => c.id === 'founder-cumdump')).toBe(true);
-    expect(ranked[0]!.id).toBe('founder-cumdump');
+  it('labels fixtures synthetic', () => {
+    expect(SHORT_CLIPS.every((c) => c.synthetic && c.contentWarning === 'abstract-only')).toBe(
+      true,
+    );
   });
 });
 

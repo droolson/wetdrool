@@ -20,10 +20,9 @@ export function GET(): Response {
       'social',
       'market',
       'rooms',
-      'cumdump',
       'status',
     ],
-    media: 'mixed-synthetic-plus-founder',
+    media: 'synthetic-fixtures',
     droolMint: 'does-not-exist',
     mesh: false,
     marketplace: {

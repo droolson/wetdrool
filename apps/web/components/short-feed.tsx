@@ -116,9 +116,9 @@ export function ShortFeed() {
         <p className="section-kicker">Shorts · RedGIFs energy</p>
         <h1 id="shorts-gate-title">18+ NSFW shorts</h1>
         <p>
-          Vertical discovery for consensual adult clips. Alpha mixes{' '}
-          <strong>synthetic abstract cards</strong> with founder-owned drops (e.g. CUMDUMP). No
-          scraped porn APIs. Confirm age to enter NSFW mode (self-attest; no government ID).
+          Vertical discovery for consensual adult clips. Current alpha shows{' '}
+          <strong>synthetic abstract cards only</strong> — no scraped porn APIs. Confirm age to
+          enter NSFW mode (self-attest; no government ID).
         </p>
         <button type="button" className="shorts-gate__cta" onClick={confirmAge}>
           I am 18+ · enter shorts
@@ -126,9 +126,6 @@ export function ShortFeed() {
         <p className="field-help">
           Swiss foundation operator (planned) · E2EE private drops on creator surfaces · illegal
           content banned.
-        </p>
-        <p>
-          <Link href="/video/cumdump">Secret entrance · CUMDUMP · HAIL SATAN · EVIL →</Link>
         </p>
       </section>
     );
@@ -166,8 +163,7 @@ export function ShortFeed() {
 
       <p className="shorts-hint">
         Pride emphasizes trans, femboy, and queer creators. Mode is local and never inferred.
-        Complete a short to earn watch points when the ad-funded pool allows.{' '}
-        <Link href="/video/cumdump">CUMDUMP drop →</Link>
+        Complete a short to earn watch points when the ad-funded pool allows.
       </p>
 
       <ul className="shorts-rail" aria-label="Short feed">
@@ -206,7 +202,7 @@ export function ShortFeed() {
                   <div className="short-card__tags">
                     <span>{clip.category}</span>
                     <span>{clip.mode}</span>
-                    <span>{clip.synthetic ? 'abstract' : 'founder media'}</span>
+                    <span>{clip.synthetic ? 'abstract' : 'licensed media'}</span>
                     {!clip.synthetic ? <span>18+</span> : null}
                   </div>
                   <h2>{clip.title}</h2>

@@ -31,7 +31,7 @@ export default function VideoPage() {
             tone: 'sky',
           },
         ]}
-        detail="Video delivery can be fast and replaceable while the signed media object, accessibility metadata, and viewer consent remain authoritative. Founder drop: CUMDUMP · HAIL SATAN · EVIL at /video/cumdump."
+        detail="Video delivery can be fast and replaceable while the signed media object, accessibility metadata, and viewer consent remain authoritative."
         eyebrow="Video"
         format="Long and short form"
         title="Motion on your terms."

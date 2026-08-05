@@ -18,7 +18,6 @@ describe('product api helpers', () => {
     expect(items.length).toBeGreaterThan(0);
     expect(items[0]).toHaveProperty('score');
     expect(items[0]).toHaveProperty('synthetic');
-    // Pride lane stays synthetic fixtures (founder CUMDUMP is straight mode).
     expect(items.every((c) => c.mode === 'pride' && c.synthetic)).toBe(true);
   });
 

@@ -16,7 +16,7 @@ export interface AgeGatePanelProps {
 }
 
 /**
- * Shared 18+ self-attest gate for adult product surfaces (market, CUMDUMP, etc.).
+ * Shared 18+ self-attest gate for adult product surfaces (market, shorts, etc.).
  * LocalStorage only — no government ID, fail-closed until confirmed.
  */
 export function AgeGatePanel({

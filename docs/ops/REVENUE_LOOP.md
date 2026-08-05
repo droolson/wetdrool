@@ -13,7 +13,7 @@
 | Legacy static | `https://wallet-alpha-dun.vercel.app` = wallet-alpha only (not product) |
 | Marketplace x402 | Live API on interim URL; **in-memory store**; RPC env set (devnet public); `revenueReady: false` |
 | `$DROOL` mint | **Does not exist** — never invent it |
-| CUMDUMP founder drop | Live at `/video/cumdump` + `/media/cumdump.webm` on interim URL |
+| Founder music-video drop | **Removed** (poor taste) — no `/video/cumdump` |
 | Onion gateway | Code in `apps/onion`; needs real `.onion` host |
 
 ## Revenue blockers (ordered)
@@ -22,10 +22,16 @@
 2. ~~**Deploy product shell**~~ — interim URL live; keep redeploys on monorepo build path.
 3. **Mainnet RPC + operator `payTo`:** production still on devnet public RPC for verify demos only.
 4. **Durable marketplace store:** Replace process-global `Map` with Redis/Postgres (or accepted single-region risk with external DB).
-5. **Traffic + age policy:** 18+ self-attest on shorts/market/CUMDUMP (UI gate shipped); legal/ToS for adult sales still needed.
+5. **Traffic + age policy:** 18+ self-attest on shorts/market (UI gate shipped); legal/ToS for adult sales still needed.
 6. **First paid unlock:** Confirmed mainnet (or declared devnet demo) tx → unlock secret released.
 
 ## Sprint log
+
+### 2026-08-05 — remove CUMDUMP drop (poor taste)
+
+- Deleted `/video/cumdump`, `cumdump-drop` component, `/media/cumdump.webm`, shorts/hub links, evil-drop CSS.
+- Shorts corpus back to synthetic-only fixtures.
+- Redeploy required so production interim URL returns 404 for the path.
 
 ### 2026-08-05T16:08Z — P0/P1 product live on Vercel interim URL
 

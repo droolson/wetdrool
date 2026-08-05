@@ -24,7 +24,7 @@ export function GET(request: Request): Response {
     synthetic: allSynthetic,
     note: allSynthetic
       ? 'Abstract fixtures until licensed, consented media pipeline is live.'
-      : 'Mixed corpus: synthetic fixtures plus founder-owned media (e.g. CUMDUMP). Third-party adult media still needs consent + licensing.',
+      : 'Mixed corpus: synthetic fixtures plus licensed media. Third-party adult media still needs consent + licensing.',
   });
 }
 
