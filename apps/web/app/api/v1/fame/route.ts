@@ -5,8 +5,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/v1/fame?limit=&offset=
- * Seed leaderboard only. Browser merges local grind client-side on /fame.
+ * GET /api/v1/fame?limit=&offset=&q=
+ * Seed leaderboard only (seedOnly). Optional q filters handle/display/badges.
+ * Browser merges local grind client-side on /fame. Not a global multiplayer ledger.
  */
 export function GET(request: Request): Response {
   const url = new URL(request.url);
