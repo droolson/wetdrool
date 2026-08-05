@@ -5,6 +5,7 @@ import { SEAL_PROTOCOL } from '@/lib/e2ee-seal';
 import {
   buildPaymentRequirements,
   getDefaultNetwork,
+  getMarketplaceRpcUrl,
   isValidSolanaAddress,
   lamportsFromSol,
 } from '@/lib/x402';
@@ -15,11 +16,20 @@ export const dynamic = 'force-dynamic';
 
 export function GET(): Response {
   const items = listListings().map(publicListing);
+  const rpcConfigured = getMarketplaceRpcUrl() !== null;
+  const network = getDefaultNetwork();
   return jsonOk({
     ok: true,
     count: items.length,
     listings: items,
     note: 'E2EE marketplace. Content unlock requires Solana x402-style payment then client decrypt.',
+    paymentVerify: {
+      rpcConfigured,
+      network,
+      note: rpcConfigured
+        ? 'Unlock verifies SOL transfer via getTransaction against configured RPC.'
+        : 'No RPC URL — unlocks fail closed with payment_unverified/no_rpc (except non-production WETDROOL_X402_DEV_ACCEPT=1).',
+    },
   });
 }
 

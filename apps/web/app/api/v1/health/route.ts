@@ -26,6 +26,12 @@ export function GET(): Response {
     media: 'mixed-synthetic-plus-founder',
     droolMint: 'does-not-exist',
     mesh: false,
+    marketplace: {
+      path: '/market',
+      unlock: 'x402_solana_rpc_verify',
+      ageGate: 'self_attest_18',
+      rpcConfigured: revenue.checks.rpcConfigured,
+    },
     revenueReady: revenue.revenueReady,
     earningClaimed: false,
     readiness: '/api/v1/status',

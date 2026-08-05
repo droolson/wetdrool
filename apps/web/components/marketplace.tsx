@@ -368,5 +368,6 @@ export function Marketplace() {
         <Link href="/rooms/lobby">Free E2EE rooms</Link>
       </p>
     </div>
+    </AgeGatePanel>
   );
 }

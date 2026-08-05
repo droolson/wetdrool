@@ -22,10 +22,24 @@
 3. **RPC:** Set `WETDROOL_SOLANA_RPC_URL` (or `NEXT_PUBLIC_SOLANA_RPC_URL`) so x402 verification is not `no_rpc`.
 4. **Treasury `payTo`:** Operator Solana address for marketplace listings (mainnet when ready).
 5. **Durable marketplace store:** Replace process-global `Map` with Redis/Postgres (or accepted single-region risk with external DB).
-6. **Traffic + age policy:** 18+ self-attest on NSFW/market; legal/ToS for adult sales.
+6. **Traffic + age policy:** 18+ self-attest on shorts/market/CUMDUMP (UI gate shipped); legal/ToS for adult sales still needed.
 7. **First paid unlock:** Confirmed mainnet (or declared devnet demo) tx → unlock secret released.
 
 ## Sprint log
+
+### 2026-08-05T15:30Z — P4 age gate + x402 fail-closed tests
+
+- Shared `AgeGatePanel` (localStorage 18+ self-attest, no gov ID).
+- Gated `/market` marketplace UI and `/video/cumdump` player behind age gate.
+- Market `GET /api/v1/market` exposes `paymentVerify.rpcConfigured` so UI can show fail-closed RPC state.
+- Health JSON includes marketplace unlock + age-gate metadata (still `revenueReady: false`).
+- Extended `tests/x402.test.ts`: no_rpc / invalid sig / insufficient amount / happy-path balance delta.
+
+**Verify:** `apps/web` vitest `tests/x402.test.ts` + `tests/revenue-readiness.test.ts` — 10 passed.
+
+**Still blocking revenue:** no production `apps/web` on wetdrool.com; ephemeral market Map; RPC/payTo not set in prod; DNS A/AAAA missing.
+
+**Next sprint pick:** deploy `apps/web` to a Vercel product URL (monorepo install/build per `DEPLOY_WEB.md`) + set `WETDROOL_SOLANA_RPC_URL` on that project.
 
 ### 2026-08-05 — loop boot + P0 deploy readiness
 
