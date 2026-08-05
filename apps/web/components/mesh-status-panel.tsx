@@ -66,13 +66,16 @@ export function MeshStatusPanel({
       <div className="mesh-status-panel" role="alert">
         <p className="field-help">
           {error}{' '}
-          <button type="button" className="text-button" onClick={retry}>
+          <button type="button" onClick={retry}>
             Retry
           </button>
         </p>
         {!compact ? (
           <p className="field-help">
-            Machine JSON: <ButtonLink href="/api/v1/mesh" variant="quiet">/api/v1/mesh</ButtonLink>
+            Machine JSON:{' '}
+            <ButtonLink href="/api/v1/mesh" variant="quiet">
+              /api/v1/mesh
+            </ButtonLink>
           </p>
         ) : null}
       </div>
@@ -81,10 +84,11 @@ export function MeshStatusPanel({
 
   if (!data) return null;
 
+  // API contract: these fields are always false/null — surface them literally, never invent peers.
   const relayConfigured = data.relay.configured === true;
-  const productionMesh = data.mesh.productionMeshDeployed === false ? false : false;
-  const multiReplicaSafe = data.relay.multiReplicaSafe === false ? false : false;
-  const livePeerCount = data.relay.livePeerCount;
+  const productionMeshDeployed = false as const;
+  const multiReplicaSafe = false as const;
+  const livePeerCount = data.relay.livePeerCount ?? null;
   const foundation = data.mesh.foundation ?? 'anyproto/any-sync';
   const note =
     data.note ??
@@ -119,7 +123,7 @@ export function MeshStatusPanel({
           ) : (
             <>
               {' '}
-              <button type="button" className="text-button" onClick={retry}>
+              <button type="button" onClick={retry}>
                 Refresh
               </button>
             </>
@@ -165,7 +169,7 @@ export function MeshStatusPanel({
         <div>
           <dt>productionMeshDeployed</dt>
           <dd>
-            <strong>{String(productionMesh)}</strong>
+            <strong>{String(productionMeshDeployed)}</strong>
           </dd>
         </div>
         <div>
@@ -198,13 +202,8 @@ export function MeshStatusPanel({
         <div>
           <dt>livePeerCount</dt>
           <dd>
-            <strong>
-              {livePeerCount === null || livePeerCount === undefined
-                ? 'null'
-                : String(livePeerCount)}
-            </strong>{' '}
-            · live mesh peers unclaimed (
-            {data.relay.liveMeshPeersClaimed === false ? 'false' : 'false'})
+            <strong>{livePeerCount === null ? 'null' : String(livePeerCount)}</strong> · live mesh
+            peers unclaimed (liveMeshPeersClaimed: false)
           </dd>
         </div>
         {data.mesh.localFirst !== undefined ? (
@@ -235,7 +234,7 @@ export function MeshStatusPanel({
       ) : null}
 
       <p className="field-help">
-        <button type="button" className="text-button" onClick={retry} disabled={loading}>
+        <button type="button" onClick={retry} disabled={loading}>
           {loading ? 'Refreshing…' : 'Refresh status'}
         </button>
         {' · '}
