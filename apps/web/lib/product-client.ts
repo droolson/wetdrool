@@ -79,6 +79,35 @@ export interface CreatorApiResponse {
 export interface TokenApiResponse {
   readonly ok: true;
   readonly token: DroolTokenConfig;
+  readonly pro?: {
+    readonly monthlyUsd: number;
+    readonly points: number;
+    readonly perks: readonly string[];
+  };
+  readonly exampleTaxOn100?: number;
+  readonly honest?: {
+    readonly mintExists: boolean;
+    readonly droolMintInvented: boolean;
+    readonly earningClaimed: boolean;
+    readonly pointsAreNotToken: boolean;
+    readonly solIsNotDrool: boolean;
+    readonly tradeExecutable: boolean;
+  };
+  readonly note?: string;
+}
+
+export interface AgePolicyApiResponse {
+  readonly ok: true;
+  readonly policy: import('./age-access-policy').AgeAccessDecision;
+  readonly policyVersion?: number;
+  readonly flags?: {
+    readonly collectGovernmentId: false;
+    readonly walletIsAgeProof: false;
+    readonly minimumAge: 18;
+    readonly defaultProof: string;
+    readonly outcome: string;
+  };
+  readonly note?: string;
 }
 
 export interface HealthApiResponse {
@@ -127,6 +156,15 @@ export function fetchCreator(
 
 export function fetchToken(): Promise<ProductClientResult<TokenApiResponse>> {
   return getJson<TokenApiResponse>('/api/v1/token');
+}
+
+export function fetchAgePolicy(
+  region?: string | null,
+): Promise<ProductClientResult<AgePolicyApiResponse>> {
+  const q = new URLSearchParams();
+  if (region) q.set('region', region);
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<AgePolicyApiResponse>(`/api/v1/policy/age${suffix}`);
 }
 
 export function fetchHealth(): Promise<ProductClientResult<HealthApiResponse>> {

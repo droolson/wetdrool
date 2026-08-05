@@ -22,6 +22,17 @@ export function NsfwModeToggle() {
     setAgeOk(readAgeGate(window.localStorage).confirmed);
     setMode(readContentMode(window.localStorage));
     setPolicy(readAgeAccessPolicy(window.localStorage));
+    void (async () => {
+      try {
+        const { fetchAgePolicy } = await import('@/lib/product-client');
+        const result = await fetchAgePolicy();
+        if (result.kind === 'ok' && result.data.policy) {
+          setPolicy(result.data.policy);
+        }
+      } catch {
+        /* keep local snapshot */
+      }
+    })();
   }, []);
 
   const applyMode = useCallback((next: ContentMode) => {

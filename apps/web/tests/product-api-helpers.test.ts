@@ -29,9 +29,13 @@ describe('product api helpers', () => {
     expect(items.every((c) => c.mode === 'pride' && c.synthetic)).toBe(true);
   });
 
-  it('token tax is 3%', () => {
-    expect(getDroolTokenConfig({}).transferTaxBps).toBe(300);
+  it('token tax is 3% and mint stays empty without env', () => {
+    const cfg = getDroolTokenConfig({});
+    expect(cfg.transferTaxBps).toBe(300);
     expect(transferTaxAmount(100)).toBe(3);
+    expect(cfg.status).toBe('mint-pending');
+    expect(cfg.mint).toBe('');
+    expect(cfg.notClaims.some((c) => c.includes('never labeled'))).toBe(true);
   });
 
   it('fame board ranks seed', () => {
