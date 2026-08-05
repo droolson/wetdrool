@@ -19,6 +19,11 @@ export {
   pageSyntheticProductEvents,
 } from './product-events';
 
+export {
+  buildProductPhotosResponse,
+  pageSyntheticProductPhotos,
+} from './product-photos';
+
 /** Stable product API surface ids (paths under /api/v1). Deduped, honest. */
 export const PRODUCT_API_SURFACES = [
   { id: 'health', path: '/api/v1/health', methods: ['GET'] as const },
@@ -360,6 +365,8 @@ export function buildProductStatusReport(
       notifications: PRODUCT_API_LINKS.notifications,
       events: PRODUCT_API_LINKS.events,
       companions: PRODUCT_API_LINKS.companions,
+      photos: PRODUCT_API_LINKS.photos,
+      stories: PRODUCT_API_LINKS.stories,
       e2ee: PRODUCT_API_LINKS.e2ee,
       creatorsDirectory: PRODUCT_API_LINKS.creatorsDirectory,
       agePolicy: PRODUCT_API_LINKS.agePolicy,

@@ -5,6 +5,7 @@ import {
   buildEmptyNotificationsInbox,
   buildMeshProductStatus,
   buildProductEventsResponse,
+  buildProductPhotosResponse,
   buildProductHealthReport,
   buildProductStatusReport,
   jsonError,
@@ -92,6 +93,7 @@ describe('product api helpers', () => {
     expect(ids).toContain('search');
     expect(ids).toContain('events');
     expect(ids).toContain('companions');
+    expect(ids).toContain('photos');
     expect(ids).not.toContain('social'); // not a real /api/v1 route
     const market = PRODUCT_API_SURFACES.find((s) => s.id === 'market');
     expect(market?.methods).toEqual(['GET', 'POST']);
@@ -275,6 +277,38 @@ describe('product api helpers', () => {
     const status = buildProductStatusReport({});
     expect(status.surfaces).toContain('vanity');
     expect(status.links.vanity).toBe('/api/v1/vanity');
+  });
+
+  it('photos surface is cataloged and never invents licensed performer media', () => {
+    const ids = listProductApiSurfaceIds();
+    expect(ids).toContain('photos');
+    const photosSurface = PRODUCT_API_SURFACES.find((s) => s.id === 'photos');
+    expect(photosSurface?.path).toBe('/api/v1/photos');
+    expect(photosSurface?.methods).toEqual(['GET']);
+    expect(PRODUCT_API_LINKS.photos).toBe('/api/v1/photos');
+
+    const body = buildProductPhotosResponse({ limit: 2, offset: 0 });
+    expect(body.ok).toBe(true);
+    expect(body.configured).toBe(false);
+    expect(body.syntheticOnly).toBe(true);
+    expect(body.licensedMedia).toBe(false);
+    expect(body.inventsPerformerMedia).toBe(false);
+    expect(body.uploadLive).toBe(false);
+    expect(body.mediaPipelineLive).toBe(false);
+    expect(body.items.every((p) => p.synthetic === true)).toBe(true);
+    expect(body.items.every((p) => p.licensedMedia === false)).toBe(true);
+    expect(body.items.every((p) => p.mediaSrc === null)).toBe(true);
+
+    const health = buildProductHealthReport({});
+    expect(health.surfaces).toContain('photos');
+    expect(health.links.photos).toBe('/api/v1/photos');
+    expect(health.surfaceCatalog.some((s) => s.id === 'photos' && s.path === '/api/v1/photos')).toBe(
+      true,
+    );
+
+    const status = buildProductStatusReport({});
+    expect(status.surfaces).toContain('photos');
+    expect(status.links.photos).toBe('/api/v1/photos');
   });
 
   it('honest flags never invent $DROOL mint or earnings', () => {
