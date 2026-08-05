@@ -49,7 +49,7 @@ export function GET(request: Request): Response {
   const store = toMarketplaceStoreApi();
 
   const nextOffset = page.hasMore ? offset + items.length : null;
-  const applied = Boolean(q) || networkFilter !== null;
+  const applied = Boolean(q) || networkFilter !== null || sort !== 'newest';
   const noteParts: string[] = [];
   if (q) {
     noteParts.push(
