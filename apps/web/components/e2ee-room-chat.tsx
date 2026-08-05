@@ -110,7 +110,11 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           setLoadError(result.message);
           return;
         }
-        if (result.data.store?.note) setStoreNote(result.data.store.note);
+        if (result.data.store?.note) {
+          const durable =
+            result.data.store.durableAcrossRestart === true ? ' · durable restart' : ' · ephemeral';
+          setStoreNote(`${result.data.store.note}${durable}`);
+        }
         const incoming = result.data.messages ?? [];
         if (mode === 'poll' && after) {
           if (incoming.length === 0) return;

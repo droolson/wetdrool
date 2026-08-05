@@ -1,8 +1,14 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it, afterEach } from 'vitest';
 
 import { SEAL_PROTOCOL, type SealedEnvelope } from '../lib/e2ee-seal';
 import {
   appendMessage,
+  getRoomBag,
+  getRoomStoreKind,
   getRoomStoreMeta,
   isValidMessageId,
   listMessages,
@@ -42,7 +48,7 @@ describe('room-store', () => {
     expect(isValidMessageId(crypto.randomUUID())).toBe(true);
   });
 
-  it('appends, dedupes, and paginates', () => {
+  it('appends, dedupes, and paginates in memory', () => {
     const room = 'test-room';
     expect(appendMessage(env(room, 'msg-00001'))).toBe('appended');
     expect(appendMessage(env(room, 'msg-00001'))).toBe('duplicate');
@@ -65,6 +71,24 @@ describe('room-store', () => {
     expect(after.messages.map((m) => m.messageId)).toEqual(['msg-00002', 'msg-00003']);
 
     expect(getRoomStoreMeta().kind).toBe('memory-ephemeral');
+    expect(getRoomStoreMeta().durableAcrossRestart).toBe(false);
     expect(getRoomStoreMeta().multiReplicaSafe).toBe(false);
+  });
+
+  it('file store survives re-open', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wd-rooms-'));
+    const path = join(dir, 'rooms.json');
+    try {
+      const envMap = { WETDROOL_ROOMS_DATA_PATH: path };
+      expect(getRoomStoreKind(envMap)).toBe('file-local');
+      const a = getRoomBag(envMap, { forceNew: true });
+      expect(a.kind).toBe('file-local');
+      expect(a.append(env('lobby', 'msg-file-01'))).toBe('appended');
+      const b = getRoomBag(envMap, { forceNew: true });
+      expect(b.list('lobby').map((m) => m.messageId)).toEqual(['msg-file-01']);
+      expect(getRoomStoreMeta(envMap).durableAcrossRestart).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

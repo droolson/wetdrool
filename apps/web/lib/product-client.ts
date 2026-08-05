@@ -289,6 +289,7 @@ export interface RoomMessagesApiResponse {
   readonly store?: {
     readonly kind: string;
     readonly multiReplicaSafe?: boolean;
+    readonly durableAcrossRestart?: boolean;
     readonly note?: string;
   };
   readonly note?: string;

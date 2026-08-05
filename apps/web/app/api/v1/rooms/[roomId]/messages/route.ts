@@ -100,12 +100,17 @@ export async function POST(
   };
 
   const result = appendMessage(sealed);
+  const store = getRoomStoreMeta();
   return jsonOk(
     {
       ok: true,
       messageId: sealed.messageId,
       duplicate: result === 'duplicate',
-      store: getRoomStoreMeta().kind,
+      store: {
+        kind: store.kind,
+        durableAcrossRestart: store.durableAcrossRestart,
+        multiReplicaSafe: store.multiReplicaSafe,
+      },
     },
     { status: result === 'duplicate' ? 200 : 201 },
   );

@@ -1,7 +1,12 @@
 /**
- * Ephemeral in-process ciphertext store for E2EE rooms (Vercel alpha).
- * Production: Cloudflare KV / Durable Objects — ciphertext only, same schema.
+ * Ciphertext store for E2EE rooms.
+ * Default: in-process memory (Vercel alpha).
+ * Optional single-node durability: WETDROOL_ROOMS_DATA_PATH (absolute JSON path).
+ * Production target: Cloudflare KV / Durable Objects — ciphertext only, same schema.
  */
+
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 import type { SealedEnvelope } from './e2ee-seal';
 
@@ -11,9 +16,7 @@ export interface RoomRecord {
 }
 
 export interface ListMessagesOptions {
-  /** Max messages to return (newest-first after slice of history). */
   readonly limit?: number;
-  /** Return only messages after this messageId (exclusive), in store order. */
   readonly after?: string;
 }
 
@@ -24,37 +27,163 @@ export interface ListMessagesResult {
   readonly truncated: boolean;
 }
 
-const globalStore = globalThis as unknown as {
-  __wetdroolRooms?: Map<string, SealedEnvelope[]>;
-};
+export type RoomStoreKind = 'memory-ephemeral' | 'file-local';
 
-function bag(): Map<string, SealedEnvelope[]> {
-  if (!globalStore.__wetdroolRooms) {
-    globalStore.__wetdroolRooms = new Map();
-  }
-  return globalStore.__wetdroolRooms;
+export interface RoomStoreMeta {
+  readonly kind: RoomStoreKind;
+  readonly multiReplicaSafe: false;
+  readonly durableAcrossRestart: boolean;
+  readonly maxMessagesPerRoom: number;
+  readonly note: string;
+}
+
+interface RoomsSnapshot {
+  readonly version: 1;
+  readonly rooms: Readonly<Record<string, readonly SealedEnvelope[]>>;
 }
 
 export const MAX_MESSAGES_PER_ROOM = 200;
 export const DEFAULT_MESSAGE_LIMIT = 50;
 export const MAX_MESSAGE_LIMIT = 100;
 
-/** Test helper. */
-export function resetRoomStoreCache(): void {
-  delete globalStore.__wetdroolRooms;
+interface RoomBag {
+  readonly kind: RoomStoreKind;
+  list(roomId: string): SealedEnvelope[];
+  append(envelope: SealedEnvelope): 'appended' | 'duplicate';
 }
 
-export function getRoomStoreMeta(): {
-  readonly kind: 'memory-ephemeral';
-  readonly multiReplicaSafe: false;
-  readonly maxMessagesPerRoom: number;
-  readonly note: string;
-} {
+const g = globalThis as unknown as {
+  __wetdroolRoomBag?: RoomBag;
+  __wetdroolRooms?: Map<string, SealedEnvelope[]>;
+};
+
+function resolveDataPath(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string | null {
+  const raw = env.WETDROOL_ROOMS_DATA_PATH?.trim();
+  if (!raw) return null;
+  if (!raw.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(raw)) return null;
+  return raw;
+}
+
+class MemoryRoomBag implements RoomBag {
+  readonly kind = 'memory-ephemeral' as const;
+  private readonly bag = new Map<string, SealedEnvelope[]>();
+
+  list(roomId: string): SealedEnvelope[] {
+    return this.bag.get(roomId) ?? [];
+  }
+
+  append(envelope: SealedEnvelope): 'appended' | 'duplicate' {
+    const id = envelope.roomId;
+    const prev = this.bag.get(id) ?? [];
+    if (prev.some((m) => m.messageId === envelope.messageId)) return 'duplicate';
+    const next = [...prev, envelope].slice(-MAX_MESSAGES_PER_ROOM);
+    this.bag.set(id, next);
+    return 'appended';
+  }
+}
+
+class FileRoomBag implements RoomBag {
+  readonly kind = 'file-local' as const;
+  private readonly bag = new Map<string, SealedEnvelope[]>();
+  private loaded = false;
+
+  constructor(private readonly path: string) {}
+
+  private ensureLoaded(): void {
+    if (this.loaded) return;
+    this.loaded = true;
+    try {
+      if (!existsSync(this.path)) return;
+      const raw = readFileSync(this.path, 'utf8');
+      const parsed = JSON.parse(raw) as Partial<RoomsSnapshot>;
+      if (parsed.version !== 1 || !parsed.rooms || typeof parsed.rooms !== 'object') return;
+      for (const [roomId, messages] of Object.entries(parsed.rooms)) {
+        if (!Array.isArray(messages)) continue;
+        const sealed = messages.filter(
+          (m): m is SealedEnvelope =>
+            Boolean(m) &&
+            typeof m === 'object' &&
+            typeof (m as SealedEnvelope).messageId === 'string' &&
+            typeof (m as SealedEnvelope).ciphertextBase64 === 'string',
+        );
+        this.bag.set(roomId, sealed.slice(-MAX_MESSAGES_PER_ROOM));
+      }
+    } catch {
+      // Corrupt file: start empty rather than crash chat.
+    }
+  }
+
+  private persist(): void {
+    const rooms: Record<string, readonly SealedEnvelope[]> = {};
+    for (const [id, messages] of this.bag.entries()) {
+      rooms[id] = messages;
+    }
+    const snapshot: RoomsSnapshot = { version: 1, rooms };
+    const dir = dirname(this.path);
+    mkdirSync(dir, { recursive: true });
+    const tmp = `${this.path}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(snapshot), 'utf8');
+    renameSync(tmp, this.path);
+  }
+
+  list(roomId: string): SealedEnvelope[] {
+    this.ensureLoaded();
+    return this.bag.get(roomId) ?? [];
+  }
+
+  append(envelope: SealedEnvelope): 'appended' | 'duplicate' {
+    this.ensureLoaded();
+    const id = envelope.roomId;
+    const prev = this.bag.get(id) ?? [];
+    if (prev.some((m) => m.messageId === envelope.messageId)) return 'duplicate';
+    const next = [...prev, envelope].slice(-MAX_MESSAGES_PER_ROOM);
+    this.bag.set(id, next);
+    this.persist();
+    return 'appended';
+  }
+}
+
+export function getRoomBag(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  options?: { readonly forceNew?: boolean },
+): RoomBag {
+  if (!options?.forceNew && g.__wetdroolRoomBag && env === process.env) {
+    return g.__wetdroolRoomBag;
+  }
+  const path = resolveDataPath(env);
+  const store: RoomBag = path ? new FileRoomBag(path) : new MemoryRoomBag();
+  if (!options?.forceNew && env === process.env) {
+    g.__wetdroolRoomBag = store;
+  }
+  return store;
+}
+
+export function resetRoomStoreCache(): void {
+  delete g.__wetdroolRoomBag;
+  delete g.__wetdroolRooms;
+}
+
+export function getRoomStoreKind(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): RoomStoreKind {
+  return resolveDataPath(env) ? 'file-local' : 'memory-ephemeral';
+}
+
+export function getRoomStoreMeta(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): RoomStoreMeta {
+  const kind = getRoomStoreKind(env);
+  const durable = kind === 'file-local';
   return {
-    kind: 'memory-ephemeral',
+    kind,
     multiReplicaSafe: false,
+    durableAcrossRestart: durable,
     maxMessagesPerRoom: MAX_MESSAGES_PER_ROOM,
-    note: 'In-process ciphertext only. Lost on cold start / multi-instance. Decrypt client-side.',
+    note: durable
+      ? 'File-backed ciphertext store on one node. Survives restarts; not multi-replica. Decrypt client-side.'
+      : 'In-process ciphertext only. Lost on cold start / multi-instance. Set WETDROOL_ROOMS_DATA_PATH for single-node durability. Decrypt client-side.',
   };
 }
 
@@ -62,7 +191,7 @@ export function listMessages(
   roomId: string,
   options: ListMessagesOptions = {},
 ): ListMessagesResult {
-  const all = bag().get(roomId) ?? [];
+  const all = getRoomBag().list(roomId);
   const total = all.length;
   const limit = Math.min(
     Math.max(1, options.limit ?? DEFAULT_MESSAGE_LIMIT),
@@ -75,12 +204,10 @@ export function listMessages(
     if (idx >= 0) {
       slice = all.slice(idx + 1);
     } else {
-      // Unknown cursor: return latest window (client should full-refresh).
       slice = all;
     }
   }
 
-  // Prefer newest when over limit and no after cursor (full history window).
   const truncated = slice.length > limit;
   const messages =
     options.after || slice.length <= limit ? slice.slice(0, limit) : slice.slice(-limit);
@@ -95,17 +222,9 @@ export function listMessages(
 
 /**
  * Append ciphertext. Dedupes by messageId (idempotent client retries).
- * @returns 'appended' | 'duplicate'
  */
 export function appendMessage(envelope: SealedEnvelope): 'appended' | 'duplicate' {
-  const id = envelope.roomId;
-  const prev = bag().get(id) ?? [];
-  if (prev.some((m) => m.messageId === envelope.messageId)) {
-    return 'duplicate';
-  }
-  const next = [...prev, envelope].slice(-MAX_MESSAGES_PER_ROOM);
-  bag().set(id, next);
-  return 'appended';
+  return getRoomBag().append(envelope);
 }
 
 export function normalizeRoomId(raw: string): string | null {

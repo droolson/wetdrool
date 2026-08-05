@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T20:26Z — E2EE rooms optional file-backed store
+
+- **Task:** P4 room ciphertext store abstraction (memory | file via `WETDROOL_ROOMS_DATA_PATH`).
+- **BE:** `lib/room-store.ts` file/memory bags; messages API + `/api/v1/e2ee` report durable flags.
+- **FE:** room chat notes durable vs ephemeral store; `.env.example` documents path.
+- **Verify:** vitest room-store → 4 passed.
+- **Next:** explore discovery product API, or health aggregate of store kinds.
+
 ### 2026-08-05T19:56Z — fame seed pagination + providers auth status
 
 - **Task:** P1 fame API pagination; providers page auth deep-link.
