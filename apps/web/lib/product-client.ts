@@ -374,28 +374,52 @@ export function fetchProductStatus(): Promise<ProductClientResult<ProductStatusA
   return getJson<ProductStatusApiResponse>('/api/v1/status');
 }
 
+/**
+ * GET /api/v1/events?limit=&offset=
+ * Honest events calendar: synthetic fixtures only; global calendar unconfigured.
+ * Never invents live attendance. Callers must not re-fanout local fixtures on error.
+ */
+export interface ProductEventDto {
+  readonly id: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly timezone?: string;
+  readonly href: string;
+  readonly locationLabel?: string;
+  readonly source: 'synthetic-catalog' | string;
+  readonly synthetic: true | boolean;
+  readonly attendanceClaimed: false | boolean;
+  readonly liveAttendance?: null;
+  readonly rsvpOpen?: false | boolean;
+  readonly ticketsLive?: false | boolean;
+  readonly mode?: 'online' | 'hybrid' | 'venue-tbd' | string;
+  readonly tags?: readonly string[];
+}
+
 export interface EventsApiResponse {
   readonly ok: true;
-  readonly events: readonly {
-    readonly id: string;
-    readonly title: string;
-    readonly summary: string;
-    readonly startsAt: string;
-    readonly endsAt: string;
-    readonly mode: string;
-    readonly tags: readonly string[];
-    readonly attendanceClaimed: false;
-    readonly ticketsLive: false;
-    readonly synthetic: true;
-    readonly href: string;
-  }[];
+  readonly product?: 'wetdrool';
+  readonly path?: string;
+  /** Preferred list field from the product API. */
+  readonly items: readonly ProductEventDto[];
+  /** Alias for clients that still read `events`. */
+  readonly events: readonly ProductEventDto[];
   readonly count?: number;
   readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
   readonly hasMore?: boolean;
-  readonly syntheticOnly?: true;
-  readonly globalCalendar?: false;
-  readonly attendanceClaimed?: false;
-  readonly ticketsLive?: false;
+  readonly configured: false | boolean;
+  readonly syntheticOnly: true | boolean;
+  readonly globalCalendar?: false | boolean;
+  readonly inventsLiveAttendance?: false | boolean;
+  readonly attendanceProjection?: false | boolean;
+  readonly attendanceClaimed?: false | boolean;
+  readonly rsvpLive?: false | boolean;
+  readonly ticketsLive?: false | boolean;
+  readonly media?: string;
   readonly note?: string;
 }
 
@@ -409,6 +433,7 @@ export function fetchEvents(options?: {
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
 }
+
 
 /** Alias for fetchProductStatus — product readiness client panel. */
 export function fetchStatus(): Promise<ProductClientResult<ProductStatusApiResponse>> {
@@ -956,103 +981,4 @@ export interface MeshStatusApiResponse {
 
 export function fetchMeshStatus(): Promise<ProductClientResult<MeshStatusApiResponse>> {
   return getJson<MeshStatusApiResponse>('/api/v1/mesh');
-}
-
-/** Synthetic product event row — never invent client-side attendance. */
-export interface ProductEventDto {
-  readonly id: string;
-  readonly title: string;
-  readonly summary?: string;
-  readonly startsAt?: string;
-  readonly endsAt?: string;
-  readonly timezone?: string;
-  readonly href?: string;
-  readonly locationLabel?: string;
-  readonly source: 'synthetic-catalog' | string;
-  readonly synthetic: true | boolean;
-  readonly attendanceClaimed?: false | boolean;
-  readonly liveAttendance?: null;
-  readonly rsvpOpen?: false | boolean;
-}
-
-/**
- * GET /api/v1/events?limit=&offset=
- * Honest events calendar: synthetic fixtures only; global calendar unconfigured.
- * Never invents live attendance.
- */
-export interface EventsApiResponse {
-  readonly ok: true;
-  readonly product?: 'wetdrool';
-  readonly path?: string;
-  readonly items: readonly ProductEventDto[];
-  readonly count?: number;
-  readonly total?: number;
-  readonly limit?: number;
-  readonly offset?: number;
-  readonly hasMore?: boolean;
-  readonly configured: false | boolean;
-  readonly syntheticOnly: true | boolean;
-  readonly globalCalendar?: false | boolean;
-  readonly inventsLiveAttendance?: false | boolean;
-  readonly attendanceProjection?: false | boolean;
-  readonly rsvpLive?: false | boolean;
-  readonly media?: string;
-  readonly note?: string;
-}
-
-export function fetchEvents(options?: {
-  readonly limit?: number;
-  readonly offset?: number;
-}): Promise<ProductClientResult<EventsApiResponse>> {
-  const q = new URLSearchParams();
-  if (options?.limit !== undefined) q.set('limit', String(options.limit));
-  if (options?.offset !== undefined) q.set('offset', String(options.offset));
-  const suffix = q.size > 0 ? `?${q}` : '';
-  return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
-}
-
-
-/**
- * GET /api/v1/events — synthetic product event fixtures only.
- * Never invents attendance counts, ticket sales, or a global calendar index.
- * On HTTP error (including 404), callers must fail closed to empty — no local fixture re-fanout.
- */
-export interface ProductEventDto {
-  readonly id: string;
-  readonly title: string;
-  readonly summary: string;
-  readonly startsAt: string;
-  readonly endsAt: string;
-  readonly mode: 'online' | 'hybrid' | 'venue-tbd';
-  readonly tags: readonly string[];
-  readonly attendanceClaimed: false;
-  readonly ticketsLive: false;
-  readonly synthetic: boolean;
-  readonly href: string;
-}
-
-export interface EventsApiResponse {
-  readonly ok: true;
-  readonly events: readonly ProductEventDto[];
-  readonly count?: number;
-  readonly total?: number;
-  readonly limit?: number;
-  readonly offset?: number;
-  readonly hasMore?: boolean;
-  readonly syntheticOnly?: boolean;
-  readonly globalCalendar?: false | boolean;
-  readonly attendanceClaimed?: false | boolean;
-  readonly ticketsLive?: false | boolean;
-  readonly note?: string;
-}
-
-export function fetchEvents(options?: {
-  readonly limit?: number;
-  readonly offset?: number;
-}): Promise<ProductClientResult<EventsApiResponse>> {
-  const q = new URLSearchParams();
-  if (options?.limit !== undefined) q.set('limit', String(options.limit));
-  if (options?.offset !== undefined) q.set('offset', String(options.offset));
-  const suffix = q.size > 0 ? `?${q}` : '';
-  return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
 }

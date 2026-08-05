@@ -1,30 +1,29 @@
 import type { Metadata } from 'next';
-import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
+import { StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { ProductEvents } from '@/components/product-events';
 
 export const metadata: Metadata = {
   title: 'Events',
-  description: 'Portable event discovery awaiting verified event and attendance projections.',
+  description:
+    'Honest event discovery via product API — synthetic fixtures only until a verified calendar and attendance projection exist.',
 };
 
 export default function EventsPage() {
   return (
     <div className="product-page page-shell">
       <AppPageHeader
-        actions={<StatusBadge tone="pending">synthetic fixtures · no attendance</StatusBadge>}
+        actions={<StatusBadge tone="pending">Events via product API</StatusBadge>}
         eyebrow="Events"
         title="Gather with context, not exposure."
       >
         <p>
           Events combine public discovery with sensitive attendance, location, accessibility, and
-          safety choices. Each field needs an explicit audience. Product API fixtures are labeled
-          synthetic and never invent RSVPs.
+          safety choices. Rows appear only after a successful <code>/api/v1/events</code> response —
+          never as silent local re-fanout. HTTP errors (including 404) fail closed to empty.
         </p>
       </AppPageHeader>
-
-      <ProductEvents />
 
       <section className="event-agenda" aria-labelledby="event-agenda-title">
         <div>
@@ -47,33 +46,7 @@ export default function EventsPage() {
         </dl>
       </section>
 
-      <StatePanel
-        action={
-          <ButtonLink href="/communities" variant="secondary">
-            Browse community readiness
-          </ButtonLink>
-        }
-        eyebrow="No event directory"
-        title="No fictional RSVPs or nearby events are shown."
-        tone="empty"
-      >
-        <p>
-          A compatible event projection, viewer-aware field visibility, timezone handling, and
-          attendance privacy must be connected before this page can list or join an event.
-        </p>
-      </StatePanel>
-
-      <section className="product-card-grid" aria-label="Event privacy commitments">
-        <InfoCard eyebrow="Attendance" title="RSVP visibility is separate" tone="plum">
-          <p>Joining an event never has to publish attendance to the entire network.</p>
-        </InfoCard>
-        <InfoCard eyebrow="Location" title="Reveal it at the right time" tone="coral">
-          <p>Private venue details can remain limited to approved attendees.</p>
-        </InfoCard>
-        <InfoCard eyebrow="Cancellation" title="Changes are signed state" tone="sky">
-          <p>Clients distinguish updates and cancellation from disappearance or stale indexing.</p>
-        </InfoCard>
-      </section>
+      <ProductEvents />
     </div>
   );
 }

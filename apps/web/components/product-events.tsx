@@ -12,7 +12,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Accept only well-formed event rows from the product API.
- * Never invents attendance, tickets, or calendar authority.
+ * Never invents attendance, tickets, RSVPs, or calendar authority.
  */
 export function normalizeProductEvents(raw: unknown): readonly ProductEventDto[] {
   if (!Array.isArray(raw)) return [];
@@ -23,28 +23,40 @@ export function normalizeProductEvents(raw: unknown): readonly ProductEventDto[]
     const title = entry.title;
     if (typeof id !== 'string' || id.length === 0) continue;
     if (typeof title !== 'string' || title.length === 0) continue;
-    const modeRaw = entry.mode;
-    const mode =
-      modeRaw === 'online' || modeRaw === 'hybrid' || modeRaw === 'venue-tbd' ? modeRaw : 'venue-tbd';
     const tags = Array.isArray(entry.tags)
       ? entry.tags.filter((t): t is string => typeof t === 'string' && t.length > 0)
-      : [];
+      : undefined;
     const item: ProductEventDto = {
       id,
       title,
       summary: typeof entry.summary === 'string' ? entry.summary : '',
       startsAt: typeof entry.startsAt === 'string' ? entry.startsAt : '',
       endsAt: typeof entry.endsAt === 'string' ? entry.endsAt : '',
-      mode,
-      tags,
-      attendanceClaimed: false,
-      ticketsLive: false,
-      synthetic: entry.synthetic !== false,
       href: typeof entry.href === 'string' && entry.href.length > 0 ? entry.href : '/events',
+      source:
+        typeof entry.source === 'string' && entry.source.length > 0
+          ? entry.source
+          : 'synthetic-catalog',
+      synthetic: entry.synthetic !== false,
+      attendanceClaimed: false,
+      ...(typeof entry.timezone === 'string' ? { timezone: entry.timezone } : {}),
+      ...(typeof entry.locationLabel === 'string' ? { locationLabel: entry.locationLabel } : {}),
+      ...(entry.liveAttendance === null ? { liveAttendance: null } : {}),
+      ...(entry.rsvpOpen === false ? { rsvpOpen: false as const } : {}),
+      ...(typeof entry.mode === 'string' ? { mode: entry.mode } : {}),
+      ...(tags ? { tags } : {}),
+      ticketsLive: false,
     };
     out.push(item);
   }
   return out;
+}
+
+/** Prefer `items` (slot A); tolerate lag if the route still returns `events`. */
+export function extractEventsPayload(data: EventsApiResponse): unknown {
+  if (Array.isArray(data.items)) return data.items;
+  if (Array.isArray(data.events)) return data.events;
+  return [];
 }
 
 function formatWhen(iso: string): string | null {
@@ -103,8 +115,7 @@ export function ProductEvents() {
   const [note, setNote] = useState<string | null>(null);
   const [syntheticOnly, setSyntheticOnly] = useState(true);
   const [globalCalendar, setGlobalCalendar] = useState(false);
-  const [attendanceClaimed, setAttendanceClaimed] = useState(false);
-  const [ticketsLive, setTicketsLive] = useState(false);
+  const [configured, setConfigured] = useState<boolean | null>(null);
   const [total, setTotal] = useState(0);
   const [attempt, setAttempt] = useState(0);
 
@@ -118,27 +129,24 @@ export function ProductEvents() {
         offset: 0,
       });
       if (result.kind !== 'ok') {
-        // Fail closed: 404 and any error → empty list, no invented fixtures.
+        // Fail closed (including 404): empty list, no invented fixtures / re-fanout.
         setError({ status: result.status, message: result.message });
         setItems([]);
         setNote(null);
         setTotal(0);
         setSyntheticOnly(true);
         setGlobalCalendar(false);
-        setAttendanceClaimed(false);
-        setTicketsLive(false);
+        setConfigured(null);
         return;
       }
       const data = result.data;
-      const rawList = data.events ?? data.items ?? [];
-      const normalized = normalizeProductEvents(rawList as readonly unknown[]);
+      const normalized = normalizeProductEvents(extractEventsPayload(data));
       setItems(normalized);
       setTotal(typeof data.total === 'number' ? data.total : normalized.length);
       setNote(typeof data.note === 'string' ? data.note : null);
       setSyntheticOnly(data.syntheticOnly !== false);
       setGlobalCalendar(data.globalCalendar === true);
-      setAttendanceClaimed(data.attendanceClaimed === true);
-      setTicketsLive(data.ticketsLive === true);
+      setConfigured(data.configured === true);
     } catch {
       setError({ status: 0, message: 'Network error talking to product API.' });
       setItems([]);
@@ -146,8 +154,7 @@ export function ProductEvents() {
       setTotal(0);
       setSyntheticOnly(true);
       setGlobalCalendar(false);
-      setAttendanceClaimed(false);
-      setTicketsLive(false);
+      setConfigured(null);
     } finally {
       setLoading(false);
     }
@@ -199,13 +206,11 @@ export function ProductEvents() {
   }
 
   const empty = items.length === 0;
-  const badgeTone = empty
-    ? 'neutral'
-    : syntheticOnly
-      ? 'pending'
-      : 'verified';
+  const badgeTone = empty ? 'neutral' : syntheticOnly ? 'pending' : 'verified';
   const badgeLabel = empty
-    ? 'Empty catalog'
+    ? configured === false
+      ? 'Empty · unconfigured'
+      : 'Empty catalog'
     : syntheticOnly
       ? `Synthetic · ${items.length}`
       : `${items.length} event${items.length === 1 ? '' : 's'}`;
@@ -217,13 +222,14 @@ export function ProductEvents() {
         {syntheticOnly && !empty ? (
           <StatusBadge tone="pending">Demo fixtures only</StatusBadge>
         ) : null}
+        {configured === false ? (
+          <StatusBadge tone="neutral">Calendar unconfigured</StatusBadge>
+        ) : null}
         {!globalCalendar ? (
           <StatusBadge tone="neutral">No global calendar</StatusBadge>
         ) : null}
-        {!attendanceClaimed ? (
-          <StatusBadge tone="neutral">Attendance not claimed</StatusBadge>
-        ) : null}
-        {!ticketsLive ? <StatusBadge tone="neutral">Tickets not live</StatusBadge> : null}
+        <StatusBadge tone="neutral">Attendance not claimed</StatusBadge>
+        <StatusBadge tone="neutral">Tickets not live</StatusBadge>
         <button
           type="button"
           className="auth-service-status__retry"
@@ -261,12 +267,13 @@ export function ProductEvents() {
           {items.map((event) => {
             const start = formatWhen(event.startsAt);
             const end = formatWhen(event.endsAt);
+            const modeOrLocation = event.mode ?? event.locationLabel ?? event.source;
             return (
               <li key={event.id} data-event-id={event.id} data-synthetic={event.synthetic}>
                 <article className="product-events__card">
                   <div className="product-events__card-head">
                     <p className="section-kicker">
-                      {event.mode}
+                      {modeOrLocation}
                       {event.synthetic ? ' · synthetic' : ''}
                     </p>
                     <StatusBadge tone={event.synthetic ? 'pending' : 'verified'}>
@@ -287,18 +294,19 @@ export function ProductEvents() {
                             <time dateTime={event.endsAt}>{end}</time>
                           </>
                         ) : null}
+                        {event.timezone ? ` · ${event.timezone}` : null}
                       </>
                     ) : (
                       'Schedule unknown'
                     )}
                   </p>
-                  {event.tags.length > 0 ? (
+                  {event.tags && event.tags.length > 0 ? (
                     <p className="field-help" aria-label="Tags">
                       {event.tags.join(' · ')}
                     </p>
                   ) : null}
                   <p className="field-help">
-                    Attendance not counted · tickets not live
+                    Attendance not counted · tickets not live · RSVP not open
                     {total > items.length ? ` · showing ${items.length} of ${total}` : null}
                   </p>
                 </article>

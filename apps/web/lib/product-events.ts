@@ -13,12 +13,15 @@ export interface SyntheticProductEvent {
   readonly timezone: string;
   readonly href: string;
   readonly locationLabel: string;
+  readonly mode: 'online' | 'hybrid' | 'venue-tbd';
+  readonly tags: readonly string[];
   readonly source: 'synthetic-catalog';
   readonly synthetic: true;
   /** Attendance is never claimed for fixtures. */
   readonly attendanceClaimed: false;
   readonly liveAttendance: null;
   readonly rsvpOpen: false;
+  readonly ticketsLive: false;
 }
 
 /**
@@ -36,11 +39,14 @@ export const SYNTHETIC_PRODUCT_EVENTS: readonly SyntheticProductEvent[] = [
     timezone: 'UTC',
     href: '/events',
     locationLabel: 'synthetic · no venue',
+    mode: 'online',
+    tags: ['synthetic', 'protocol', 'preview'],
     source: 'synthetic-catalog',
     synthetic: true,
     attendanceClaimed: false,
     liveAttendance: null,
     rsvpOpen: false,
+    ticketsLive: false,
   },
   {
     id: 'synth-event-mesh-lab',
@@ -52,11 +58,14 @@ export const SYNTHETIC_PRODUCT_EVENTS: readonly SyntheticProductEvent[] = [
     timezone: 'UTC',
     href: '/events',
     locationLabel: 'synthetic · online-only label',
+    mode: 'hybrid',
+    tags: ['synthetic', 'mesh', 'lab'],
     source: 'synthetic-catalog',
     synthetic: true,
     attendanceClaimed: false,
     liveAttendance: null,
     rsvpOpen: false,
+    ticketsLive: false,
   },
 ] as const;
 
@@ -75,7 +84,9 @@ export function pageSyntheticProductEvents(options?: {
   readonly globalCalendar: false;
   readonly inventsLiveAttendance: false;
   readonly attendanceProjection: false;
+  readonly attendanceClaimed: false;
   readonly rsvpLive: false;
+  readonly ticketsLive: false;
 } {
   const limit = Math.min(Math.max(1, options?.limit ?? 24), 48);
   const offset = Math.min(Math.max(0, options?.offset ?? 0), 10_000);
@@ -93,13 +104,16 @@ export function pageSyntheticProductEvents(options?: {
     globalCalendar: false,
     inventsLiveAttendance: false,
     attendanceProjection: false,
+    attendanceClaimed: false,
     rsvpLive: false,
+    ticketsLive: false,
   };
 }
 
 /**
  * Honest events product payload for GET /api/v1/events.
  * Global calendar is unconfigured; page is synthetic fixtures only (or empty at high offset).
+ * `items` and `events` are the same list (alias for older clients).
  */
 export function buildProductEventsResponse(options?: {
   readonly limit?: number;
@@ -111,6 +125,7 @@ export function buildProductEventsResponse(options?: {
     product: 'wetdrool' as const,
     path: '/api/v1/events' as const,
     items: page.items,
+    events: page.items,
     count: page.count,
     total: page.total,
     limit: page.limit,
@@ -121,8 +136,10 @@ export function buildProductEventsResponse(options?: {
     globalCalendar: page.globalCalendar,
     inventsLiveAttendance: page.inventsLiveAttendance,
     attendanceProjection: page.attendanceProjection,
+    attendanceClaimed: page.attendanceClaimed,
     rsvpLive: page.rsvpLive,
+    ticketsLive: page.ticketsLive,
     media: 'synthetic-fixtures' as const,
-    note: 'Events API returns tiny in-repo synthetic fixtures only. Global events calendar is not configured. Live attendance, RSVP counts, and nearby discovery are never invented.',
+    note: 'Events API returns tiny in-repo synthetic fixtures only. Global events calendar is not configured. Live attendance, RSVP counts, tickets, and nearby discovery are never invented.',
   };
 }
