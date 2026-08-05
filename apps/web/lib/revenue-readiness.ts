@@ -4,7 +4,7 @@
  */
 
 import { getDefaultNetwork, getMarketplaceRpcUrl } from './x402';
-import { getMarketplaceStoreKind, listListings } from './marketplace-store';
+import { getMarketplaceStoreKind, getMarketplaceStoreMeta, listListings } from './marketplace-store';
 import { getMarketplaceGateMode } from './marketplace-unlock';
 import { getRoomStoreKind, getRoomStoreMeta } from './room-store';
 
@@ -55,6 +55,7 @@ export function buildProductStoreKinds(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): ProductStoreKinds {
   const marketplace = getMarketplaceStoreKind(env);
+  const marketMeta = getMarketplaceStoreMeta(env);
   const rooms = getRoomStoreKind(env);
   const roomsMeta = getRoomStoreMeta(env);
   return {
@@ -62,7 +63,7 @@ export function buildProductStoreKinds(
     rooms,
     multiReplicaSafe: false,
     authStatusPath: '/api/v1/auth/status',
-    note: `Market=${marketplace}; rooms=${rooms} (durableAcrossRestart=${roomsMeta.durableAcrossRestart}). Neither store is multi-replica safe.`,
+    note: `Market=${marketMeta.label}; rooms=${roomsMeta.label}. Neither store is multi-replica safe; revenueReady remains false.`,
   };
 }
 

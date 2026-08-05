@@ -467,6 +467,17 @@ export function Marketplace() {
     } catch {
       setUnlockStep('payment_required');
       setStatus('Claim failed (network or decrypt error).');
+      if (activeId) {
+        const { recordUnlockAttempt, signatureHintFromTx } = await import('@/lib/product-client');
+        setAttemptLog(
+          recordUnlockAttempt({
+            listingId: activeId,
+            status: 'fail',
+            reason: 'client_error',
+            signatureHint: signatureHintFromTx(txSig),
+          }),
+        );
+      }
     } finally {
       setBusy(false);
     }
