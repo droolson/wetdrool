@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  LIVE_JOIN_STATUS,
   LIVE_ROOMS,
+  emptyLiveRoomsMessage,
   filterLiveRooms,
   listLiveTags,
   normalizeLiveTag,
@@ -25,6 +27,35 @@ describe('live catalog pagination', () => {
     expect(page.items.every((r) => !r.nsfw)).toBe(true);
     expect(page.total).toBe(LIVE_ROOMS.filter((r) => !r.nsfw).length);
     expect(page.hasMore).toBe(false);
+  });
+});
+
+describe('live catalog join honesty', () => {
+  it('exports join status as disabled only', () => {
+    expect(LIVE_JOIN_STATUS).toBe('disabled');
+  });
+
+  it('emptyLiveRoomsMessage is null when rooms exist', () => {
+    expect(
+      emptyLiveRoomsMessage({ total: 2, tag: null, nsfwAllowed: true }),
+    ).toBeNull();
+  });
+
+  it('emptyLiveRoomsMessage is honest for unknown tag (no invented matches)', () => {
+    const msg = emptyLiveRoomsMessage({
+      total: 0,
+      tag: 'not-a-real-tag',
+      nsfwAllowed: true,
+    });
+    expect(msg).toMatch(/not-a-real-tag/);
+    expect(msg).toMatch(/Join stays disabled/i);
+    expect(msg).not.toMatch(/viewers online/i);
+  });
+
+  it('emptyLiveRoomsMessage is honest for SFW-only empty', () => {
+    const msg = emptyLiveRoomsMessage({ total: 0, tag: null, nsfwAllowed: false });
+    expect(msg).toMatch(/SFW/i);
+    expect(msg).toMatch(/disabled/i);
   });
 });
 
@@ -75,6 +106,13 @@ describe('live catalog tag filter', () => {
     expect(page.items).toEqual([]);
     expect(page.total).toBe(0);
     expect(page.tag).toBe('not-a-real-tag');
+    const msg = emptyLiveRoomsMessage({
+      tag: page.tag,
+      nsfwAllowed: true,
+      total: page.total,
+    });
+    expect(msg).toBeTruthy();
+    expect(msg).toMatch(/not-a-real-tag/);
   });
 
   it('combines SFW and tag filters', () => {

@@ -77,7 +77,10 @@ export interface LiveApiResponse {
   readonly limit?: number;
   readonly offset?: number;
   readonly hasMore?: boolean;
-  readonly join?: string;
+  /** Always 'disabled' until SFU/media pipeline ships. */
+  readonly join?: 'disabled' | string;
+  readonly empty?: boolean;
+  readonly emptyMessage?: string | null;
   readonly synthetic?: boolean;
   readonly note?: string;
   /** Echo of normalized tag filter, or null when unfiltered. */

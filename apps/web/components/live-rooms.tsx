@@ -14,14 +14,21 @@ import { StatusBadge } from '@wetdrool/ui';
 
 import { readAgeGate, readContentMode } from '@/lib/nsfw-mode';
 import {
+  LIVE_JOIN_STATUS,
   LIVE_ROOMS,
+  emptyLiveRoomsMessage,
   filterLiveRooms,
   listLiveTags,
+  type LiveJoinStatus,
   type LiveRoom,
 } from '@/lib/live-catalog';
 import { chipKeyNavIndex } from '@/lib/short-feed';
 
 const PAGE_SIZE = 2;
+
+function isJoinDisabled(join: string | null | undefined): join is LiveJoinStatus {
+  return join == null || join === 'disabled';
+}
 
 export function LiveRooms() {
   const [nsfw, setNsfw] = useState(false);
@@ -36,6 +43,8 @@ export function LiveRooms() {
   const [synthetic, setSynthetic] = useState(true);
   const [tag, setTag] = useState<string | null>(null);
   const [availableTags, setAvailableTags] = useState<readonly string[]>(() => listLiveTags());
+  const [join, setJoin] = useState<string>(LIVE_JOIN_STATUS);
+  const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
   const tagListId = useId();
   const tagRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -46,6 +55,31 @@ export function LiveRooms() {
   }, []);
 
   const tagOptions = useMemo(() => ['all', ...availableTags], [availableTags]);
+  const joinDisabled = isJoinDisabled(join);
+
+  const applyLocalFallback = useCallback((activeTag: string | null, message: string) => {
+    // Never re-fanout full fixtures when a tag filter is active — keep empty + honest copy.
+    if (activeTag) {
+      setRooms([]);
+      setSource('api');
+      setHasMore(false);
+      setJoin(LIVE_JOIN_STATUS);
+      setEmptyMessage(
+        emptyLiveRoomsMessage({ tag: activeTag, nsfwAllowed: true, total: 0 }) ??
+          `No live rooms match tag “${activeTag}”.`,
+      );
+      setError(message);
+      setNote('Tag filter returned no rooms (or catalog unavailable). Join remains disabled.');
+      return;
+    }
+    setRooms(LIVE_ROOMS);
+    setSource('local');
+    setHasMore(false);
+    setJoin(LIVE_JOIN_STATUS);
+    setEmptyMessage(null);
+    setError(message);
+    setNote('Offline/local catalog fallback. Join remains disabled.');
+  }, []);
 
   const loadPage = useCallback(
     async (nextOffset: number, append: boolean, activeTag: string | null) => {
@@ -66,38 +100,53 @@ export function LiveRooms() {
           setHasMore(Boolean(result.data.hasMore));
           setOffset(nextOffset + result.data.rooms.length);
           setSynthetic(result.data.synthetic !== false);
+          setJoin(
+            typeof result.data.join === 'string' && result.data.join.length > 0
+              ? result.data.join
+              : LIVE_JOIN_STATUS,
+          );
           if (Array.isArray(result.data.tags) && result.data.tags.length > 0) {
             setAvailableTags(result.data.tags);
           }
-          if (!append && result.data.rooms.length === 0 && !activeTag) {
-            setRooms(LIVE_ROOMS);
-            setSource('local');
-            setHasMore(false);
-            setError('Live catalog empty — showing local fixtures.');
-            setNote('Offline/local catalog fallback. Join remains disabled.');
+          const total =
+            typeof result.data.total === 'number' ? result.data.total : result.data.rooms.length;
+          const apiEmpty =
+            result.data.empty === true || (!append && result.data.rooms.length === 0);
+          if (apiEmpty) {
+            setEmptyMessage(
+              typeof result.data.emptyMessage === 'string' && result.data.emptyMessage.length > 0
+                ? result.data.emptyMessage
+                : emptyLiveRoomsMessage({
+                    tag: activeTag ?? result.data.tag ?? null,
+                    nsfwAllowed: true,
+                    total: 0,
+                  }),
+            );
+          } else {
+            setEmptyMessage(null);
+          }
+          // Unfiltered empty catalog → local fixtures only (no re-fanout under tag filter).
+          if (!append && result.data.rooms.length === 0 && !activeTag && total === 0) {
+            applyLocalFallback(
+              null,
+              'Live catalog empty — showing local fixtures.',
+            );
           }
         } else {
           if (!append) {
-            setRooms(LIVE_ROOMS);
-            setSource('local');
-            setHasMore(false);
-            setError(
+            applyLocalFallback(
+              activeTag,
               result.kind === 'error'
                 ? result.message
                 : 'Live catalog empty — showing local fixtures.',
             );
-            setNote('Offline/local catalog fallback. Join remains disabled.');
           } else {
             setError(result.kind === 'error' ? result.message : 'Load more failed.');
           }
         }
       } catch {
         if (!append) {
-          setRooms(LIVE_ROOMS);
-          setSource('local');
-          setHasMore(false);
-          setError('Network error loading live catalog.');
-          setNote('Offline/local catalog fallback. Join remains disabled.');
+          applyLocalFallback(activeTag, 'Network error loading live catalog.');
         } else {
           setError('Network error loading more rooms.');
         }
@@ -106,7 +155,7 @@ export function LiveRooms() {
         setLoadingMore(false);
       }
     },
-    [],
+    [applyLocalFallback],
   );
 
   useEffect(() => {
@@ -137,6 +186,17 @@ export function LiveRooms() {
     tag: source === 'api' ? null : tag,
   });
 
+  const clientEmptyMessage =
+    !loading && visible.length === 0
+      ? emptyMessage ??
+        emptyLiveRoomsMessage({
+          tag,
+          nsfwAllowed: nsfw,
+          total: 0,
+        }) ??
+        'No rooms match your filters.'
+      : null;
+
   return (
     <div className="live-app">
       <header className="live-app__header">
@@ -157,8 +217,12 @@ export function LiveRooms() {
       <p className="live-app__lede">
         Livestream cards for chat, reactions, and tips. No fake viewer counts. Media ingress and
         SFU wiring stay off until a reviewed pipeline exists. NSFW rooms require the global 18+
-        toggle. Tag chips filter synthetic fixtures only.
+        toggle. Tag chips filter synthetic fixtures only. Join is always disabled until media is
+        online.
       </p>
+      <div className="live-app__meta" role="status" aria-label="Live join capability">
+        <StatusBadge tone="degraded">join: {joinDisabled ? 'disabled' : join}</StatusBadge>
+      </div>
       <div
         className="shorts-modes"
         role="toolbar"
@@ -203,7 +267,7 @@ export function LiveRooms() {
       ) : null}
       {!loading && visible.length === 0 ? (
         <p className="field-help" role="status">
-          No rooms match your filters.
+          {clientEmptyMessage}
         </p>
       ) : null}
       <ul className="live-grid" aria-label="Live rooms" aria-busy={loading}>
@@ -212,6 +276,10 @@ export function LiveRooms() {
             <article className="live-room-card" data-nsfw={room.nsfw ? 'true' : 'false'}>
               <div className="live-room-card__preview" aria-hidden="true">
                 <span className="live-room-card__dot" /> LIVE
+              </div>
+              <div className="live-room-card__badges" role="group" aria-label="Room honesty badges">
+                <StatusBadge tone="degraded">join: disabled</StatusBadge>
+                {room.nsfw ? <StatusBadge tone="pending">18+</StatusBadge> : null}
               </div>
               <h2>{room.title}</h2>
               <p>
@@ -225,11 +293,19 @@ export function LiveRooms() {
                 ))}
               </ul>
               <p className="field-help">
-                Viewers: {room.viewersHint} · tips staged · chat staged ·{' '}
-                <StatusBadge tone="pending">join: disabled</StatusBadge>
+                Viewers: {room.viewersHint} · tips staged · chat staged · no live attendance
               </p>
-              <button type="button" disabled aria-disabled="true" title="SFU join not online">
-                Join (disabled)
+              <button
+                type="button"
+                disabled={joinDisabled}
+                aria-disabled={joinDisabled}
+                title={
+                  joinDisabled
+                    ? 'Join disabled — live SFU / media pipeline not online'
+                    : undefined
+                }
+              >
+                {joinDisabled ? 'Join disabled' : 'Join'}
               </button>
             </article>
           </li>
@@ -249,7 +325,7 @@ export function LiveRooms() {
       <p className="field-help">
         Private gifts and whisper chat target E2EE pairwise messaging when the web adapter is
         wired. Operator seat: Swiss foundation (planned). Catalog:{' '}
-        <code>/api/v1/live?tag=</code> (synthetic fixtures).
+        <code>/api/v1/live?tag=</code> (synthetic fixtures, join:disabled).
       </p>
     </div>
   );
