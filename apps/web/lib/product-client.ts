@@ -397,8 +397,11 @@ export interface MarketApiResponse {
   readonly hasMore?: boolean;
   readonly nextOffset?: number | null;
   readonly q?: string | null;
+  /** Active x402 network filter when set (solana:devnet | solana:mainnet). */
+  readonly network?: string | null;
   readonly filter?: {
     readonly q: string | null;
+    readonly network?: string | null;
     readonly applied: boolean;
     readonly matched?: number;
     readonly note?: string;
@@ -426,11 +429,14 @@ export function fetchMarket(options?: {
   readonly limit?: number;
   readonly offset?: number;
   readonly q?: string | null;
+  /** Exact x402 network id or cluster alias (devnet / mainnet). */
+  readonly network?: string | null;
 }): Promise<ProductClientResult<MarketApiResponse>> {
   const q = new URLSearchParams();
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
   if (options?.q) q.set('q', options.q);
+  if (options?.network) q.set('network', options.network);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
 }
