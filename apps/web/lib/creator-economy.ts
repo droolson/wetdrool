@@ -131,7 +131,8 @@ export function resolveCreatorProfile(handleRaw: string): CreatorStudioProfile |
   const clip = SHORT_CLIPS.find((c) => c.creator.replace(/^@/, '').toLowerCase() === normalized);
   const displayName = clip ? clip.creator.replace(/^@/, '') : normalized;
   return {
-    handle: displayName.slice(0, 96),
+    // Handle is always the normalized id; display name may keep fixture casing.
+    handle: normalized,
     displayName: displayName.slice(0, 96),
     pronouns: 'not set',
     bio: 'Creator surface awaiting signed profile + offerings.',

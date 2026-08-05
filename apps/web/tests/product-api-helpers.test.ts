@@ -105,4 +105,30 @@ describe('product api helpers', () => {
     expect(founder?.handle).toBe('kingofqueens6ix');
     expect(resolveCreatorProfile('../evil')).toBe(null);
   });
+
+  it('pages creator directory with hasMore and empty trailing offset', () => {
+    const first = listCreatorDirectory({ limit: 1, offset: 0 });
+    expect(first.items).toHaveLength(1);
+    expect(first.offset).toBe(0);
+    expect(first.limit).toBe(1);
+    expect(first.hasMore).toBe(first.total > 1);
+
+    const mid = listCreatorDirectory({ limit: 1, offset: 1 });
+    expect(mid.items).toHaveLength(1);
+    expect(mid.items[0]!.handle).not.toBe(first.items[0]!.handle);
+    expect(mid.offset).toBe(1);
+
+    const pastEnd = listCreatorDirectory({ limit: 10, offset: first.total });
+    expect(pastEnd.items).toHaveLength(0);
+    expect(pastEnd.hasMore).toBe(false);
+    expect(pastEnd.total).toBe(first.total);
+    expect(pastEnd.synthetic).toBe(true);
+  });
+
+  it('resolves non-founder profiles with normalized handle not display casing', () => {
+    const profile = resolveCreatorProfile('@NeonAngel');
+    expect(profile).not.toBeNull();
+    expect(profile!.handle).toBe('neonangel');
+    expect(profile!.offerings.every((o) => o.status === 'staged')).toBe(true);
+  });
 });

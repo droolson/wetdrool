@@ -34,12 +34,16 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
   const [source, setSource] = useState<'api' | 'local'>('local');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [synthetic, setSynthetic] = useState(true);
+  const [checkoutLive, setCheckoutLive] = useState(false);
+  const [apiNote, setApiNote] = useState<string | null>(null);
 
   useEffect(() => {
     const resolved = (handle ?? founderHandle).replace(/^@/, '');
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setApiNote(null);
     void (async () => {
       const { fetchCreator } = await import('@/lib/product-client');
       const result = await fetchCreator(resolved);
@@ -47,13 +51,21 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
       if (result.kind === 'ok' && result.data.profile) {
         setProfile(result.data.profile);
         setSource('api');
+        // Badge honesty: API may mark founder preview as non-synthetic; default synthetic.
+        setSynthetic(result.data.synthetic !== false);
+        setCheckoutLive(result.data.checkoutLive === true);
+        setApiNote(typeof result.data.note === 'string' ? result.data.note : null);
+        setError(null);
       } else {
-        setProfile(
+        const localProfile =
           resolved === founderHandle || resolved === 'kingofqueens6ix'
             ? getFounderStudio()
-            : placeholderProfile(resolved),
-        );
+            : placeholderProfile(resolved);
+        setProfile(localProfile);
         setSource('local');
+        setSynthetic(localProfile.handle !== founderHandle);
+        setCheckoutLive(false);
+        setApiNote(null);
         setError(result.kind === 'error' ? result.message : 'Creator API unavailable.');
       }
       setLoading(false);
@@ -66,6 +78,14 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
   const token = getDroolTokenConfig();
   const e2ee = getE2eeCapabilityReport();
   const pro = proModeQuote();
+
+  const profileBadge = loading
+    ? 'loading'
+    : source === 'api'
+      ? synthetic
+        ? 'api · synthetic'
+        : 'api · founder preview'
+      : 'local fallback';
 
   return (
     <div className="creator-studio">
@@ -85,8 +105,11 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
           </ul>
         </div>
         <div className="creator-studio__badges">
-          <StatusBadge tone={source === 'api' ? 'verified' : 'degraded'}>
-            {loading ? 'loading' : source === 'api' ? 'api profile' : 'local profile'}
+          <StatusBadge tone={source === 'api' && !synthetic ? 'verified' : source === 'api' ? 'pending' : 'degraded'}>
+            {profileBadge}
+          </StatusBadge>
+          <StatusBadge tone={checkoutLive ? 'verified' : 'pending'}>
+            {checkoutLive ? 'checkout live' : 'checkout staged'}
           </StatusBadge>
           <StatusBadge tone="pending">E2EE DMs {e2ee.pairwise}</StatusBadge>
           <StatusBadge tone={token.status === 'live' ? 'verified' : 'degraded'}>
@@ -99,6 +122,11 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
       {error ? (
         <p className="field-help" role="status">
           {error}
+        </p>
+      ) : null}
+      {apiNote && source === 'api' ? (
+        <p className="field-help" role="status">
+          {apiNote}
         </p>
       ) : null}
       {loading ? (

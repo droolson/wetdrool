@@ -12,6 +12,8 @@ export type ProductClientResult<T> =
   | { readonly kind: 'ok'; readonly data: T }
   | { readonly kind: 'error'; readonly status: number; readonly message: string };
 
+import { readProductApiErrorMessage } from './product-api';
+
 async function getJson<T>(path: string): Promise<ProductClientResult<T>> {
   try {
     const res = await fetch(path, {
@@ -21,17 +23,11 @@ async function getJson<T>(path: string): Promise<ProductClientResult<T>> {
     });
     const body: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      const msg =
-        body &&
-        typeof body === 'object' &&
-        'error' in body &&
-        body.error &&
-        typeof body.error === 'object' &&
-        'message' in body.error &&
-        typeof (body.error as { message: unknown }).message === 'string'
-          ? (body.error as { message: string }).message
-          : `Request failed (${res.status})`;
-      return { kind: 'error', status: res.status, message: msg };
+      return {
+        kind: 'error',
+        status: res.status,
+        message: readProductApiErrorMessage(body, `Request failed (${res.status})`),
+      };
     }
     return { kind: 'ok', data: body as T };
   } catch {
@@ -74,6 +70,11 @@ export interface LiveApiResponse {
 export interface CreatorApiResponse {
   readonly ok: true;
   readonly profile: CreatorStudioProfile;
+  /** True when profile is a catalog placeholder, not a signed portable object. */
+  readonly synthetic?: boolean;
+  /** Always false until mint + recipient + entitlement proofs exist. */
+  readonly checkoutLive?: boolean;
+  readonly note?: string;
 }
 
 export interface TokenApiResponse {
@@ -113,7 +114,55 @@ export interface AgePolicyApiResponse {
 export interface HealthApiResponse {
   readonly ok: true;
   readonly service: string;
+  readonly product?: 'wetdrool';
   readonly surfaces: readonly string[];
+  readonly surfaceCatalog?: readonly {
+    readonly id: string;
+    readonly path: string;
+    readonly methods: readonly string[];
+  }[];
+  readonly links?: {
+    readonly authStatus?: string;
+    readonly readiness?: string;
+    readonly creatorsDirectory?: string;
+    readonly agePolicy?: string;
+    readonly token?: string;
+    readonly e2ee?: string;
+  };
+  readonly stores?: {
+    readonly marketplace: {
+      readonly kind: string;
+      readonly gate: string;
+      readonly durableAcrossRestart: boolean;
+      readonly multiReplicaSafe: false;
+    };
+    readonly rooms: {
+      readonly kind: string;
+      readonly durableAcrossRestart: boolean;
+      readonly multiReplicaSafe: boolean;
+    };
+  };
+  readonly auth?: {
+    readonly configured: boolean;
+    readonly loopback: boolean;
+    readonly source: string | null;
+    readonly probePath: string;
+    readonly protocolIdentityEstablished: false;
+  };
+  readonly honest?: {
+    readonly droolMint: 'does-not-exist';
+    readonly droolMintInvented: false;
+    readonly earningClaimed: false;
+    readonly pointsAreNotToken: true;
+    readonly solIsNotDrool: true;
+    readonly droolTickerForbidden: true;
+    readonly revenueReady: false;
+  };
+  readonly droolMint?: 'does-not-exist';
+  readonly earningClaimed?: false;
+  readonly revenueReady?: boolean;
+  readonly media?: string;
+  readonly mesh?: boolean;
 }
 
 export interface FameBoardRow extends FameEntry {
