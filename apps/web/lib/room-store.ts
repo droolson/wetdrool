@@ -364,36 +364,10 @@ export function summarizeRoomIndex(
 }
 
 /**
- * Export ciphertext-only index metadata as JSON (no envelopes/plaintext).
+ * Export ciphertext-only index rows as JSON array (no envelopes/plaintext).
+ * Strips unknown fields; sanitizes non-finite counts and empty activity.
  */
-export function exportRoomsIndexJson(
-  rooms: readonly RoomIndexEntry[],
-  options?: { readonly exportedAt?: string },
-): string {
-  const payload = {
-    version: 1 as const,
-    product: 'wetdrool' as const,
-    kind: 'rooms-index-metadata' as const,
-    exportedAt: options?.exportedAt ?? new Date().toISOString(),
-    ciphertextOnly: true as const,
-    rooms: rooms.map((r) => ({
-      roomId: r.roomId,
-      messageCount: r.messageCount,
-      lastActivityAt: r.lastActivityAt ?? null,
-    })),
-    totals: summarizeRoomIndex(rooms),
-  };
-  return `${JSON.stringify(payload, null, 2)}\n`;
-}
-
-/**
- * Pure: serialize ciphertext-only room index metadata for client download.
- * Emits roomId + messageCount + lastActivityAt only — never ciphertext or plaintext.
- * Unknown / non-finite counts become 0; missing activity is null.
- */
-export function exportRoomsIndexJson(
-  rooms: readonly Pick<RoomIndexEntry, 'roomId' | 'messageCount' | 'lastActivityAt'>[],
-): string {
+export function exportRoomsIndexJson(rooms: readonly RoomIndexEntry[]): string {
   const rows = rooms.map((room) => {
     const rawCount = room.messageCount;
     const messageCount =
@@ -401,15 +375,17 @@ export function exportRoomsIndexJson(
         ? Math.floor(rawCount)
         : 0;
     const at = room.lastActivityAt;
-    const lastActivityAt = typeof at === 'string' && at.length > 0 ? at : null;
+    const lastActivityAt =
+      typeof at === 'string' && at.trim().length > 0 ? at : null;
     return {
-      roomId: typeof room.roomId === 'string' ? room.roomId : '',
+      roomId: room.roomId,
       messageCount,
       lastActivityAt,
     };
   });
   return `${JSON.stringify(rows, null, 2)}\n`;
 }
+
 
 export function normalizeRoomId(raw: string): string | null {
   const t = raw.trim().toLowerCase();

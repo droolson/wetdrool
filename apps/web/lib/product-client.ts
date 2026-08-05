@@ -326,6 +326,8 @@ export interface VanityApiResponse {
   readonly version?: number;
   readonly registryLive: false | boolean;
   readonly claimExecutable: false | boolean;
+  readonly settlementLive?: false | boolean;
+  readonly monthlyUsd?: number;
   readonly claims: readonly {
     readonly handle: string;
     readonly ownerIdentityId?: string;
@@ -353,6 +355,11 @@ export interface VanityApiResponse {
 
 export function fetchVanity(): Promise<ProductClientResult<VanityApiResponse>> {
   return getJson<VanityApiResponse>('/api/v1/vanity');
+}
+
+/** Alias — same honest vanity status surface. */
+export function fetchVanityStatus(): Promise<ProductClientResult<VanityApiResponse>> {
+  return fetchVanity();
 }
 
 export function fetchAgePolicy(
@@ -545,20 +552,57 @@ export function fetchCompanions(options?: {
   return getJson<CompanionsApiResponse>(`/api/v1/companions${suffix}`);
 }
 
+/**
+ * GET /api/v1/photos?limit=&offset=
+ * Honest photo gallery: synthetic abstract fixtures only; never invents licensed stills.
+ * Callers must not re-fanout local fixtures on error (including 404).
+ */
+export type PhotoContentWarningDto = 'abstract-only' | 'adult-artistic' | 'adult-explicit' | string;
+
+export interface ProductPhotoDto {
+  readonly id: string;
+  readonly title: string;
+  readonly creator: string;
+  readonly alt?: string;
+  readonly tags?: readonly string[];
+  readonly nsfw?: boolean;
+  readonly contentWarning?: PhotoContentWarningDto;
+  /** CSS gradient tones only until media CDN ships — never treat as image URLs. */
+  readonly toneA?: string;
+  readonly toneB?: string;
+  /** Legacy category label if present. */
+  readonly category?: string;
+  readonly href: string;
+  readonly source?: 'synthetic-catalog' | string;
+  readonly synthetic?: true | boolean;
+  readonly licensedMedia?: false | boolean;
+  readonly mediaSrc?: null | string;
+  readonly uploadLive?: false | boolean;
+}
+
 export interface PhotosApiResponse {
   readonly ok: true;
-  readonly photos: readonly {
-    readonly id: string;
-    readonly title: string;
-    readonly creator: string;
-    readonly category: string;
-    readonly synthetic: true;
-    readonly licensedMedia: false;
-    readonly href: string;
-  }[];
+  readonly product?: 'wetdrool';
+  readonly path?: string;
+  /** Preferred list field from the product API. */
+  readonly items?: readonly ProductPhotoDto[];
+  /** Alias for clients that still read `photos`. */
+  readonly photos?: readonly ProductPhotoDto[];
+  readonly count?: number;
   readonly total?: number;
-  readonly syntheticOnly?: true;
-  readonly licensedMedia?: false;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly empty?: boolean;
+  readonly emptyMessage?: string | null;
+  readonly configured?: false | boolean;
+  readonly syntheticOnly?: true | boolean;
+  readonly synthetic?: boolean;
+  readonly licensedMedia?: false | boolean;
+  readonly inventsPerformerMedia?: false | boolean;
+  readonly mediaPipelineLive?: false | boolean;
+  readonly uploadLive?: false | boolean;
+  readonly media?: string;
   readonly note?: string;
 }
 
@@ -573,20 +617,43 @@ export function fetchPhotos(options?: {
   return getJson<PhotosApiResponse>(`/api/v1/photos${suffix}`);
 }
 
+/**
+ * GET /api/v1/stories?limit=&offset=
+ * Honest stories rail: synthetic ephemeral fixtures only.
+ * Never invents view counts or network-wide deletion. No local re-fanout on error.
+ */
+export interface ProductStoryDto {
+  readonly id: string;
+  readonly ownerHandle: string;
+  readonly title: string;
+  readonly expiresAt: string;
+  readonly href: string;
+  readonly source?: 'synthetic-catalog' | string;
+  readonly synthetic?: true | boolean;
+  readonly viewCountClaimed?: false | boolean;
+  readonly deletionGuaranteed?: false | boolean;
+}
+
 export interface StoriesApiResponse {
   readonly ok: true;
-  readonly stories: readonly {
-    readonly id: string;
-    readonly ownerHandle: string;
-    readonly title: string;
-    readonly expiresAt: string;
-    readonly synthetic: true;
-    readonly viewCountClaimed: false;
-    readonly href: string;
-  }[];
+  readonly product?: 'wetdrool';
+  readonly path?: string;
+  /** Preferred list field from the product API. */
+  readonly stories?: readonly ProductStoryDto[];
+  /** Alias for lag if the route returns `items`. */
+  readonly items?: readonly ProductStoryDto[];
+  readonly count?: number;
   readonly total?: number;
-  readonly syntheticOnly?: true;
-  readonly viewCountsInvented?: false;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly empty?: boolean;
+  readonly emptyMessage?: string | null;
+  readonly configured?: false | boolean;
+  readonly syntheticOnly?: true | boolean;
+  readonly synthetic?: boolean;
+  readonly viewCountsInvented?: false | boolean;
+  readonly globalDeletionClaimed?: false | boolean;
   readonly note?: string;
 }
 
@@ -601,19 +668,6 @@ export function fetchStories(options?: {
   return getJson<StoriesApiResponse>(`/api/v1/stories${suffix}`);
 }
 
-export interface VanityApiResponse {
-  readonly ok: true;
-  readonly registryLive: false;
-  readonly claimExecutable: false;
-  readonly settlementLive: false;
-  readonly monthlyUsd: number;
-  readonly claims: readonly unknown[];
-  readonly note?: string;
-}
-
-export function fetchVanityStatus(): Promise<ProductClientResult<VanityApiResponse>> {
-  return getJson<VanityApiResponse>('/api/v1/vanity');
-}
 
 /** Alias for fetchProductStatus — product readiness client panel. */
 export function fetchStatus(): Promise<ProductClientResult<ProductStatusApiResponse>> {

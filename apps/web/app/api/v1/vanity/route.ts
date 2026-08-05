@@ -1,4 +1,4 @@
-import { getVanityRegistryStatus } from '@/lib/points';
+import { buildVanityRegistryStatus } from '@/lib/product-vanity';
 import { jsonOk, methodNotAllowed } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * empty claims list — never invents owned names.
  */
 export function GET(): Response {
-  const status = getVanityRegistryStatus();
+  const status = buildVanityRegistryStatus();
 
   return jsonOk({
     ok: true as const,
@@ -19,6 +19,8 @@ export function GET(): Response {
     version: status.version,
     registryLive: status.registryLive,
     claimExecutable: status.claimExecutable,
+    settlementLive: status.settlementLive,
+    monthlyUsd: status.monthlyUsd,
     claims: status.claims,
     claimCount: status.claimCount,
     quote: status.quote,
