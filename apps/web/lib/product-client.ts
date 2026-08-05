@@ -762,63 +762,6 @@ export function fetchNotifications(options?: {
   return getJson<NotificationsApiResponse>(`/api/v1/notifications${suffix}`);
 }
 
-/** GET /api/v1/mesh — honest mesh/relay readiness (never invents live peers). */
-export interface MeshStatusApiResponse {
-  readonly ok: true;
-  readonly product?: 'wetdrool';
-  readonly mesh?: {
-    readonly foundation?: string;
-    readonly productionMeshDeployed?: false;
-    readonly localFirst?: true;
-    readonly notes?: readonly string[];
-  };
-  readonly relay?: {
-    readonly configured?: boolean;
-    readonly displayEndpoints?: readonly string[];
-    readonly multiReplicaSafe?: false;
-    readonly liveMeshPeersClaimed?: false;
-    readonly livePeerCount?: null;
-    readonly note?: string;
-  };
-  readonly note?: string;
-}
-
-export function fetchMeshStatus(): Promise<ProductClientResult<MeshStatusApiResponse>> {
-  return getJson<MeshStatusApiResponse>('/api/v1/mesh');
-}
-
-/** GET /api/v1/search — synthetic fixture catalog only (not a global index). */
-export interface ProductSearchApiResponse {
-  readonly ok: true;
-  readonly q: string | null;
-  readonly results: readonly {
-    readonly id: string;
-    readonly kind: string;
-    readonly title: string;
-    readonly subtitle: string;
-    readonly href: string;
-    readonly source: 'synthetic-catalog';
-    readonly tags: readonly string[];
-  }[];
-  readonly count?: number;
-  readonly total?: number;
-  readonly configured: false;
-  readonly globalIndex?: false;
-  readonly syntheticOnly?: true;
-  readonly note?: string;
-}
-
-export function fetchProductSearch(options?: {
-  readonly q?: string | null;
-  readonly limit?: number;
-}): Promise<ProductClientResult<ProductSearchApiResponse>> {
-  const params = new URLSearchParams();
-  if (options?.q?.trim()) params.set('q', options.q.trim().slice(0, 64));
-  if (options?.limit !== undefined) params.set('limit', String(options.limit));
-  const suffix = params.size > 0 ? `?${params}` : '';
-  return getJson<ProductSearchApiResponse>(`/api/v1/search${suffix}`);
-}
-
 export type ProductSearchHitDto = {
   readonly id: string;
   readonly kind: 'short' | 'creator' | 'live' | 'fame' | string;
@@ -847,16 +790,26 @@ export interface SearchApiResponse {
   readonly note?: string;
 }
 
+/** Alias used by some call sites. */
+export type ProductSearchApiResponse = SearchApiResponse;
+
 export function fetchSearch(options?: {
   readonly q?: string | null;
   readonly limit?: number;
 }): Promise<ProductClientResult<SearchApiResponse>> {
   const params = new URLSearchParams();
   const q = options?.q?.trim();
-  if (q) params.set('q', q);
+  if (q) params.set('q', q.slice(0, 64));
   if (options?.limit !== undefined) params.set('limit', String(options.limit));
   const suffix = params.size > 0 ? `?${params}` : '';
   return getJson<SearchApiResponse>(`/api/v1/search${suffix}`);
+}
+
+export function fetchProductSearch(options?: {
+  readonly q?: string | null;
+  readonly limit?: number;
+}): Promise<ProductClientResult<SearchApiResponse>> {
+  return fetchSearch(options);
 }
 
 /**
