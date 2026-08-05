@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
-import { buildRoomShareUrl, normalizeRoomId } from '@/lib/room-store';
+import { buildRoomShareUrl, normalizeRoomId, summarizeRoomIndex } from '@/lib/room-store';
 
 interface RoomRow {
   readonly roomId: string;
@@ -129,6 +129,8 @@ export function RoomsIndexClient() {
   }, [load]);
 
   const sortedRooms = useMemo(() => sortRooms(rooms, sortMode), [rooms, sortMode]);
+  const totals = useMemo(() => summarizeRoomIndex(rooms), [rooms]);
+
 
   const flashCopied = useCallback((key: string) => {
     setCopiedKey(key);
@@ -286,7 +288,22 @@ export function RoomsIndexClient() {
 
       <section aria-labelledby="rooms-index-heading">
         <div className="rooms-index__heading-row">
-          <h2 id="rooms-index-heading">Known rooms</h2>
+          <div className="rooms-index__heading-title">
+            <h2 id="rooms-index-heading">Known rooms</h2>
+            {!loading && !error ? (
+              <p
+                id="rooms-index-totals"
+                className="field-help rooms-index__totals"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {totals.roomCount === 0
+                  ? '0 rooms · 0 sealed messages on this node'
+                  : `${totals.roomCount} room${totals.roomCount === 1 ? '' : 's'} · ${totals.sealedMessageCount} sealed message${totals.sealedMessageCount === 1 ? '' : 's'} on this node`}
+              </p>
+            ) : null}
+          </div>
           <div className="rooms-index__heading-actions">
             <div className="rooms-index__sort" role="group" aria-label="Sort rooms">
               <button
@@ -330,12 +347,18 @@ export function RoomsIndexClient() {
         {!loading && !error && rooms.length === 0 ? (
           <p className="field-help" role="status">
             No sealed messages on this node yet. Open a room above and post ciphertext — it will
-            appear here with a count and last activity.
+            appear here with a count and last activity.{' '}
+            <Link href="/chat">Start from secret entrance</Link>
           </p>
         ) : null}
 
         {sortedRooms.length > 0 ? (
-          <ul className="rooms-index__list" aria-label="Local room index" aria-busy={loading}>
+          <ul
+            className="rooms-index__list"
+            aria-label="Local room index"
+            aria-describedby="rooms-index-totals"
+            aria-busy={loading}
+          >
             {sortedRooms.map((r) => (
               <li key={r.roomId} className="rooms-index__item">
                 <Link href={`/rooms/${encodeURIComponent(r.roomId)}`}>#{r.roomId}</Link>

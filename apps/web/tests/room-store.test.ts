@@ -18,6 +18,7 @@ import {
   normalizeRoomId,
   resetRoomStoreCache,
   sortRoomsByActivity,
+  summarizeRoomIndex,
   type RoomIndexEntry,
 } from '../lib/room-store';
 
@@ -176,6 +177,25 @@ describe('room-store', () => {
 
   it('listRooms is empty when bag is empty', () => {
     expect(listRooms()).toEqual([]);
+  });
+
+  it('summarizeRoomIndex totals rooms and sealed messages', () => {
+    expect(summarizeRoomIndex([])).toEqual({ roomCount: 0, sealedMessageCount: 0 });
+    expect(
+      summarizeRoomIndex([
+        { roomId: 'a', messageCount: 1, lastActivityAt: null },
+        { roomId: 'b', messageCount: 3, lastActivityAt: '2026-01-01T00:00:00.000Z' },
+        { roomId: 'c', messageCount: 0, lastActivityAt: null },
+      ]),
+    ).toEqual({ roomCount: 3, sealedMessageCount: 4 });
+    // Ignores non-positive / non-finite counts when summing messages
+    expect(
+      summarizeRoomIndex([
+        { messageCount: 2 },
+        { messageCount: -1 },
+        { messageCount: Number.NaN },
+      ]),
+    ).toEqual({ roomCount: 3, sealedMessageCount: 2 });
   });
 
   it('file store survives re-open', () => {
