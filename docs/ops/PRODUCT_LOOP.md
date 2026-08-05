@@ -30,6 +30,12 @@
 
 ## Sprint log
 
+### 2026-08-05T21:39Z — 15m product swarm (A–F)
+
+- **Task:** Mesh status API; feed-service config probe; market a11y/network; rooms e2ee status; synthetic search API/UI; fame `q=` UI.
+- **Verify:** vitest 123 passed (product suites + product-search + feed-service-config + hall-of-fame).
+- **Next:** Playwright e2e for new surfaces; multi-replica market/rooms; feed ranking only after verified provider.
+
 ### 2026-08-05T21:23Z — 15m product swarm (A–F)
 
 - **Task:** Notifications API+UI empty inbox; market attempt clear; hub sort; rooms polish; live tags; fame `q=`.

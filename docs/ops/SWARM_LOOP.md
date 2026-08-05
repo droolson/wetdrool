@@ -26,6 +26,22 @@
 
 ## Swarm log
 
+### 2026-08-05T21:39Z — 15m scheduled swarm (A–F)
+
+| Slot | Focus | Result / tip |
+|------|--------|----------------|
+| A | Mesh/relay product status API | `1ab1f90` / `7e5d968` honest mesh |
+| B | Feed-service config probe fail-closed | `b138c7c` |
+| C | Market network filter / empty-search a11y | `fe0b918` |
+| D | Rooms e2ee status + copy link | `5a966a3` |
+| E | Synthetic product search API + UI | `5bd4da8` + product-search component |
+| F | Fame board search filter UI | hall-of-fame board `q=` |
+
+- **Verify:** vitest 13 files → **123 passed**.
+- **Pushed:** `origin/main` through hof-synced tip (product commits on main).
+- **Note:** spawn wait IDs still flaky; specialists + orchestrator landed product commits; hof occasionally scoops intermediate stages.
+- **Next:** e2e Playwright for search/mesh/fame filter; multi-replica stores; optional feed ranking only with fail-closed labels.
+
 ### 2026-08-05T21:23Z — 15m scheduled swarm (A–F)
 
 | Slot | Focus | Result / tip |
