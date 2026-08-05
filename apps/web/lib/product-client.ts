@@ -567,6 +567,28 @@ export function recordUnlockAttempt(
   return next;
 }
 
+/** Clear local unlock attempt history (browser storage). Returns empty log. */
+export function clearUnlockAttemptLog(storage?: Storage | null): MarketUnlockAttempt[] {
+  const s = resolveStorage(storage);
+  if (s) {
+    try {
+      s.removeItem(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY);
+    } catch {
+      // Private mode / blocked storage — still return empty for UI.
+    }
+  }
+  return [];
+}
+
+/**
+ * Pure: serialize sanitized attempt log for client download (no secrets).
+ * Re-parses through parseUnlockAttemptLog so export never reintroduces fields.
+ */
+export function exportUnlockAttemptsJson(log: readonly MarketUnlockAttempt[]): string {
+  const sanitized = parseUnlockAttemptLog(JSON.stringify(log));
+  return `${JSON.stringify(sanitized, null, 2)}\n`;
+}
+
 export function signatureHintFromTx(signature: string): string {
   const t = signature.trim();
   if (t.length <= 12) return t;
