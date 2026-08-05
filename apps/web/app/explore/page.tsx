@@ -6,7 +6,7 @@ import { ProductState } from '@/components/product-state';
 export const metadata: Metadata = {
   title: 'Explore',
   description:
-    'Transparent discovery over the shorts product API. No manufactured trends or engagement counts.',
+    'Transparent discovery over the shorts product API. No manufactured trends or engagement counts. Personalization unconfigured.',
 };
 
 export default function ExplorePage() {
@@ -39,9 +39,9 @@ export default function ExplorePage() {
             tone: 'sky',
           },
         ]}
-        detail="Sample cards above come from GET /api/v1/shorts with droolrank-lite. No recommendation provider invents people or trends. Public search remains the indexer-backed path."
+        detail="Sample cards above come from GET /api/v1/shorts with droolrank-lite (trending) or recency sort. personalization.configured is always false until a real provider ships. Public search remains the indexer-backed path."
         eyebrow="Boundaries"
-        intro="Personalization and social-graph explore stay unconfigured. The catalog sample is honest scaffolding, not a live recommendation engine."
+        intro="Personalization and social-graph explore stay unconfigured. The catalog sample is honest scaffolding, not a live recommendation engine or for-you feed."
         stateEyebrow="No personalized explore"
         stateTitle="No synthetic trends or people lists."
         title="Provider-backed recommendations still await."

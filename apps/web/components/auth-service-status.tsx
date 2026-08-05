@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ButtonLink, StatusBadge } from '@wetdrool/ui';
 
 import {
+  devConfigureHintText,
   reachabilityDetail,
   reachabilityLabel,
   type AuthServiceStatusReport,
@@ -34,7 +35,14 @@ function formatCheckedAt(iso: string): string {
   }
 }
 
-export function AuthServiceStatus({ compact = false }: { readonly compact?: boolean }) {
+export function AuthServiceStatus({
+  compact = false,
+  /** When true, emphasize settings deep links (devices vs providers). */
+  settingsContext = false,
+}: {
+  readonly compact?: boolean;
+  readonly settingsContext?: boolean;
+}) {
   const [report, setReport] = useState<AuthServiceStatusReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +80,8 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
     void load();
   }, [load, attempt]);
 
+  const retry = () => setAttempt((n) => n + 1);
+
   if (loading && !report) {
     return (
       <div className="auth-service-status" role="status" aria-busy="true">
@@ -85,11 +95,7 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
       <div className="auth-service-status" role="alert">
         <p className="field-help">
           {error}{' '}
-          <button
-            type="button"
-            className="auth-service-status__retry"
-            onClick={() => setAttempt((n) => n + 1)}
-          >
+          <button type="button" className="auth-service-status__retry" onClick={retry}>
             Retry probe
           </button>
         </p>
@@ -111,6 +117,24 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
 
   const ceremoniesOk = report.reachability === 'ready';
   const showActions = !ceremoniesOk || !compact;
+  const actionSummary =
+    typeof report.actionSummary === 'string' && report.actionSummary.length > 0
+      ? report.actionSummary
+      : report.nextStepLabel;
+  const links =
+    Array.isArray(report.links) && report.links.length > 0
+      ? report.links
+      : ceremoniesOk
+        ? [
+            { href: '/settings/devices', label: 'Manage passkeys' },
+            { href: '/signin', label: 'Sign in' },
+            { href: '/onboarding', label: 'Create passkey account' },
+          ]
+        : [
+            { href: '/settings/providers', label: 'Review connection readiness' },
+            { href: '/settings/devices', label: 'Passkeys & devices' },
+          ];
+  const showDevHint = report.showDevConfigureHint === true;
 
   return (
     <div className="auth-service-status" role="status" aria-live="polite" aria-busy={loading}>
@@ -129,7 +153,7 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
         <button
           type="button"
           className="auth-service-status__retry"
-          onClick={() => setAttempt((n) => n + 1)}
+          onClick={retry}
           disabled={loading}
         >
           {loading ? 'Probing…' : 'Retry probe'}
@@ -137,9 +161,19 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
       </div>
 
       <p className="field-help">{report.note}</p>
-      {report.nextStepLabel ? (
-        <p className="field-help" data-next-step={report.nextStep ?? 'none'}>
-          Suggested next step: <strong>{report.nextStep ?? 'none'}</strong> — {report.nextStepLabel}
+      <p className="field-help" data-next-step={report.nextStep ?? 'none'} data-primary-action={report.primaryAction ?? 'retry_probe'}>
+        <strong>Next step:</strong> {actionSummary}
+        {report.nextStepLabel && report.nextStepLabel !== actionSummary ? (
+          <>
+            {' '}
+            <span>({report.nextStepLabel})</span>
+          </>
+        ) : null}
+      </p>
+
+      {showDevHint ? (
+        <p className="field-help" role="note" data-dev-configure-hint="true">
+          {devConfigureHintText()}
         </p>
       ) : null}
 
@@ -164,31 +198,28 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
 
       {showActions ? (
         <div className="auth-service-status__links">
-          {report.reachability === 'ready' ? (
-            <>
-              <ButtonLink href="/signin" variant="quiet">
-                Sign in
-              </ButtonLink>
-              <ButtonLink href="/onboarding" variant="quiet">
-                Create passkey account
-              </ButtonLink>
-              <ButtonLink href="/settings/devices" variant="quiet">
-                Manage passkeys
-              </ButtonLink>
-            </>
-          ) : (
-            <>
-              <ButtonLink href="/settings/providers" variant="secondary">
-                Review connection readiness
-              </ButtonLink>
-              <ButtonLink href="/settings/devices" variant="quiet">
-                Passkeys &amp; devices
-              </ButtonLink>
-              <ButtonLink href="/onboarding" variant="quiet">
-                Onboarding
-              </ButtonLink>
-            </>
-          )}
+          {links.map((link) => (
+            <ButtonLink
+              key={`${link.href}:${link.label}`}
+              href={link.href}
+              variant={
+                ceremoniesOk
+                  ? link.href === '/settings/devices'
+                    ? 'secondary'
+                    : 'quiet'
+                  : link.href === '/settings/providers'
+                    ? 'secondary'
+                    : 'quiet'
+              }
+            >
+              {link.label}
+            </ButtonLink>
+          ))}
+          {settingsContext && ceremoniesOk ? (
+            <ButtonLink href="/settings/providers" variant="quiet">
+              Providers
+            </ButtonLink>
+          ) : null}
         </div>
       ) : null}
 
@@ -196,7 +227,8 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
         <p className="field-help" role="note">
           Passkey create/sign-in buttons on other pages remain available for local debugging, but
           this probe does <strong>not</strong> claim the authentication service is online until
-          reachability is <strong>ready</strong>.
+          reachability is <strong>ready</strong>. Prefer <strong>Retry probe</strong>, then open{' '}
+          <strong>Passkeys &amp; devices</strong> only after readiness is verified.
         </p>
       ) : null}
     </div>

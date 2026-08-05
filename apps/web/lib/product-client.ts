@@ -2,7 +2,7 @@
  * Browser client for /api/v1 product endpoints.
  */
 
-import type { DiscoveryMode, RankedShort } from './short-feed';
+import type { DiscoveryMode, RankedShort, ShortSortMode } from './short-feed';
 import type { DroolTokenConfig } from './drool-token';
 import type { CreatorStudioProfile } from './creator-economy';
 import type { LiveRoom } from './live-catalog';
@@ -41,6 +41,8 @@ export interface ShortsApiResponse {
   /** True only when every item is a synthetic fixture (or the page is empty). */
   readonly synthetic: boolean;
   readonly category?: string | null;
+  readonly sort?: ShortSortMode;
+  readonly sortLabel?: string;
   readonly total?: number;
   readonly limit?: number;
   readonly offset?: number;
@@ -52,8 +54,15 @@ export interface ShortsApiResponse {
   readonly emptyMessage?: string | null;
   readonly ranking?: {
     readonly name: string;
+    readonly sort?: ShortSortMode;
     readonly note?: string;
     readonly weights?: unknown;
+  };
+  /** Explicit empty personalization — never a silent for-you feed. */
+  readonly personalization?: {
+    readonly configured: false;
+    readonly mode: 'unconfigured';
+    readonly note: string;
   };
   readonly note?: string;
 }
@@ -219,11 +228,16 @@ export interface FameApiResponse {
 export function fetchShorts(
   mode: DiscoveryMode,
   limit = 24,
-  options?: { readonly category?: string | null; readonly offset?: number },
+  options?: {
+    readonly category?: string | null;
+    readonly offset?: number;
+    readonly sort?: ShortSortMode;
+  },
 ): Promise<ProductClientResult<ShortsApiResponse>> {
   const q = new URLSearchParams({ mode, limit: String(limit) });
   if (options?.category) q.set('category', options.category);
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  if (options?.sort) q.set('sort', options.sort);
   return getJson<ShortsApiResponse>(`/api/v1/shorts?${q}`);
 }
 
