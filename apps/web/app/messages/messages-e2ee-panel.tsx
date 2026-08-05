@@ -7,7 +7,7 @@ import { ButtonLink, StatePanel, StatusBadge, type StatusTone } from '@wetdrool/
 import type { E2eeApiResponse, ProductClientResult } from '@/lib/product-client';
 
 type LoadState =
-  | { readonly phase: 'loading' }
+  | { readonly phase: 'loading'; readonly previous: E2eeApiResponse | null }
   | { readonly phase: 'error'; readonly message: string; readonly status: number }
   | { readonly phase: 'ready'; readonly data: E2eeApiResponse };
 
@@ -28,24 +28,35 @@ function badgeTone(status: string): StatusTone {
 }
 
 function headerBadge(state: LoadState): { readonly tone: StatusTone; readonly label: string } {
-  if (state.phase === 'loading') {
+  if (state.phase === 'loading' && !state.previous) {
     return { tone: 'pending', label: 'Loading E2EE status…' };
   }
   if (state.phase === 'error') {
     return { tone: 'degraded', label: 'E2EE status unavailable' };
   }
-  const pairwise = state.data.e2ee.pairwise;
+  const data = state.phase === 'ready' ? state.data : state.previous;
+  if (!data) {
+    return { tone: 'pending', label: 'Loading E2EE status…' };
+  }
+  const pairwise = data.e2ee.pairwise;
   if (pairwise === 'web_not_wired') {
     return { tone: 'degraded', label: 'Pairwise · web not wired' };
   }
   return { tone: 'neutral', label: `Pairwise · ${pairwise}` };
 }
 
+/**
+ * /messages capability surface.
+ * Fetches GET /api/v1/e2ee only — never fabricates DM threads or unread counts.
+ */
 export function MessagesE2eePanel() {
-  const [state, setState] = useState<LoadState>({ phase: 'loading' });
+  const [state, setState] = useState<LoadState>({ phase: 'loading', previous: null });
 
   const load = useCallback(async () => {
-    setState({ phase: 'loading' });
+    setState((prev) => ({
+      phase: 'loading',
+      previous: prev.phase === 'ready' ? prev.data : prev.phase === 'loading' ? prev.previous : null,
+    }));
     try {
       const { fetchE2eeStatus } = await import('@/lib/product-client');
       const result: ProductClientResult<E2eeApiResponse> = await fetchE2eeStatus();
@@ -72,25 +83,34 @@ export function MessagesE2eePanel() {
   }, [load]);
 
   const badge = headerBadge(state);
+  const data =
+    state.phase === 'ready'
+      ? state.data
+      : state.phase === 'loading'
+        ? state.previous
+        : null;
+  const initialLoading = state.phase === 'loading' && !data;
+  const refreshing = state.phase === 'loading' && data !== null;
 
   return (
     <>
       <div className="rooms-index__meta" aria-live="polite">
         <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
-        {state.phase === 'ready' && state.data.e2ee.serverReadableFallback === false ? (
+        {data && data.e2ee.serverReadableFallback === false ? (
           <StatusBadge tone="verified">no server plaintext fallback</StatusBadge>
         ) : null}
-        {state.phase === 'ready' && state.data.rooms.ciphertextOnly ? (
+        {data?.rooms.ciphertextOnly ? (
           <StatusBadge tone="verified">rooms · ciphertext-only</StatusBadge>
         ) : null}
-        {state.phase === 'ready' ? (
-          <StatusBadge tone={badgeTone(state.data.e2ee.passphraseRooms)}>
-            {state.data.e2ee.passphraseRooms}
+        {data ? (
+          <StatusBadge tone={badgeTone(data.e2ee.passphraseRooms)}>
+            {data.e2ee.passphraseRooms}
           </StatusBadge>
         ) : null}
+        {refreshing ? <StatusBadge tone="pending">Refreshing…</StatusBadge> : null}
       </div>
 
-      {state.phase === 'loading' ? (
+      {initialLoading ? (
         <StatePanel eyebrow="E2EE capability" title="Loading capability report…" tone="loading">
           <p role="status">
             Fetching <code>GET /api/v1/e2ee</code>. No inbox is shown until pairwise E2EE is wired.
@@ -120,47 +140,46 @@ export function MessagesE2eePanel() {
         </StatePanel>
       ) : null}
 
-      {state.phase === 'ready' ? (
+      {data ? (
         <>
-          <section className="e2ee-status" aria-labelledby="e2ee-status-title">
+          <section className="e2ee-status" aria-labelledby="e2ee-status-title" aria-busy={refreshing}>
             <div className="rooms-index__meta">
               <h2 id="e2ee-status-title">Capability report</h2>
-              <button type="button" onClick={() => void load()}>
-                Refresh
+              <button type="button" onClick={() => void load()} disabled={refreshing}>
+                {refreshing ? 'Refreshing…' : 'Refresh'}
               </button>
             </div>
             <p className="field-help" role="note">
-              Protocol <code className="inline-identifier">{state.data.e2ee.protocol}</code>
+              Protocol <code className="inline-identifier">{data.e2ee.protocol}</code>
               {' · '}
-              room seal <code className="inline-identifier">{state.data.e2ee.roomSealProtocol}</code>
+              room seal <code className="inline-identifier">{data.e2ee.roomSealProtocol}</code>
               {' · '}
-              server-readable fallback:{' '}
-              <strong>{String(state.data.e2ee.serverReadableFallback)}</strong>
+              server-readable fallback: <strong>{String(data.e2ee.serverReadableFallback)}</strong>
               {' · '}
-              private by default: <strong>{String(state.data.e2ee.privateByDefault)}</strong>
+              private by default: <strong>{String(data.e2ee.privateByDefault)}</strong>
             </p>
             <dl className="e2ee-status__grid">
               <div>
                 <dt>Pairwise DMs</dt>
                 <dd>
-                  <StatusBadge tone={badgeTone(state.data.e2ee.pairwise)}>
-                    {state.data.e2ee.pairwise}
+                  <StatusBadge tone={badgeTone(data.e2ee.pairwise)}>
+                    {data.e2ee.pairwise}
                   </StatusBadge>
                 </dd>
               </div>
               <div>
                 <dt>Group rooms (Olm)</dt>
                 <dd>
-                  <StatusBadge tone={badgeTone(state.data.e2ee.groupRooms)}>
-                    {state.data.e2ee.groupRooms}
+                  <StatusBadge tone={badgeTone(data.e2ee.groupRooms)}>
+                    {data.e2ee.groupRooms}
                   </StatusBadge>
                 </dd>
               </div>
               <div>
                 <dt>Passphrase rooms</dt>
                 <dd>
-                  <StatusBadge tone={badgeTone(state.data.e2ee.passphraseRooms)}>
-                    {state.data.e2ee.passphraseRooms}
+                  <StatusBadge tone={badgeTone(data.e2ee.passphraseRooms)}>
+                    {data.e2ee.passphraseRooms}
                   </StatusBadge>{' '}
                   <Link href="/rooms">Open /rooms</Link>
                 </dd>
@@ -168,15 +187,15 @@ export function MessagesE2eePanel() {
               <div>
                 <dt>Room store</dt>
                 <dd>
-                  <StatusBadge tone="neutral">{state.data.rooms.durability}</StatusBadge>
+                  <StatusBadge tone="neutral">{data.rooms.durability}</StatusBadge>
                 </dd>
               </div>
             </dl>
             <ul className="e2ee-status__details">
-              {state.data.e2ee.details.map((line) => (
+              {data.e2ee.details.map((line) => (
                 <li key={line}>{line}</li>
               ))}
-              {state.data.note ? <li key="api-note">{state.data.note}</li> : null}
+              {data.note ? <li key="api-note">{data.note}</li> : null}
             </ul>
             <div className="hero__actions">
               <ButtonLink href="/rooms" variant="secondary">
@@ -197,14 +216,14 @@ export function MessagesE2eePanel() {
             tone="empty"
           >
             <p>
-              Pairwise status is <code>{state.data.e2ee.pairwise}</code> — the web client is not
-              connected to a browser-safe device store or key directory. This surface stays locked
-              and does not invent threads, previews, or unread badges.
+              Pairwise status is <code>{data.e2ee.pairwise}</code> — the web client is not connected
+              to a browser-safe device store or key directory. This surface stays locked and does
+              not invent threads, previews, or unread badges.
             </p>
             <p>
               For shared-passphrase sealed rooms (alpha, not identity-bound Olm), open the{' '}
               <Link href="/rooms">rooms index</Link>. Ciphertext-only store:{' '}
-              {state.data.rooms.hostReadsPlaintext
+              {data.rooms.hostReadsPlaintext
                 ? 'host may read plaintext (unexpected)'
                 : 'host does not read plaintext'}
               .
