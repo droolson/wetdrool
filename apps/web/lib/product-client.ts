@@ -670,6 +670,42 @@ export function fetchRoomsIndex(): Promise<ProductClientResult<RoomsIndexApiResp
   return getJson<RoomsIndexApiResponse>('/api/v1/rooms');
 }
 
+export interface E2eeApiResponse {
+  readonly ok: true;
+  readonly e2ee: {
+    readonly protocol: string;
+    readonly pairwise: string;
+    readonly groupRooms: string;
+    readonly passphraseRooms: string;
+    readonly roomSealProtocol: string;
+    readonly serverReadableFallback: false;
+    readonly privateByDefault: true;
+    readonly details: readonly string[];
+  };
+  readonly rooms: {
+    readonly store: {
+      readonly kind: string;
+      readonly multiReplicaSafe?: boolean;
+      readonly durableAcrossRestart?: boolean;
+      readonly maxMessagesPerRoom?: number;
+      readonly label?: string;
+      readonly note?: string;
+    };
+    readonly messagesPath: string;
+    readonly ciphertextOnly: boolean;
+    readonly hostReadsPlaintext: boolean;
+    readonly durability: string;
+    readonly maxMessagesPerRoom?: number;
+  };
+  readonly note?: string;
+}
+
+/** GET /api/v1/e2ee — seal protocol + room store honesty (no secrets). */
+export function fetchE2eeStatus(): Promise<ProductClientResult<E2eeApiResponse>> {
+  return getJson<E2eeApiResponse>('/api/v1/e2ee');
+}
+
+
 /** In-app notification row — only fields a product API may return (never invent client-side). */
 export interface NotificationItemDto {
   readonly id: string;
