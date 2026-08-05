@@ -1,6 +1,6 @@
 # WetDrool product FE/BE loop
 
-**Loop:** durable scheduler every **30 minutes**.  
+**Loop:** durable scheduler every **15 minutes** with **parallel agent swarm fanout** (see `docs/ops/SWARM_LOOP.md`).  
 **Focus:** frontend + backend development for the WetDrool **platform/app** (`apps/web` + service APIs + shared packages as needed).  
 **Not the focus:** revenue theater, deploy thrash, marketing pages, re-adding removed founder video drops.
 
