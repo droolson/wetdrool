@@ -63,6 +63,14 @@ describe('marketplace store', () => {
     expect(page.hasMore).toBe(false);
     expect(parseOffset('3')).toBe(3);
     expect(parseOffset('-1')).toBe(0);
+
+    const first = pageListings(all, 2, 0);
+    expect(first.hasMore).toBe(true);
+    expect(first.items.map((l) => l.id)).toEqual(['a', 'b']);
+    const nextOffset = 0 + first.items.length;
+    const second = pageListings(all, 2, nextOffset);
+    expect(second.items.map((l) => l.id)).toEqual(['c']);
+    expect(second.hasMore).toBe(false);
   });
 
   it('filters listings by query substring', () => {
@@ -84,12 +92,18 @@ describe('marketplace store', () => {
     store.putListing(listing);
     expect(store.getListing(id)?.title).toBe('Drop');
     expect(publicListing(listing).e2ee).toBe(true);
+    const sig = '5'.repeat(88);
     store.recordPurchase({
       listingId: id,
-      signature: '5'.repeat(88),
+      signature: sig,
       verifiedAt: new Date().toISOString(),
+      verification: 'rpc_verified',
+      slot: 12,
     });
-    expect(store.hasPurchase(id, '5'.repeat(88))).toBe(true);
+    expect(store.hasPurchase(id, sig)).toBe(true);
+    const receipt = store.getPurchase(id, sig);
+    expect(receipt?.verification).toBe('rpc_verified');
+    expect(receipt?.slot).toBe(12);
   });
 
   it('file store survives re-open on same path', () => {

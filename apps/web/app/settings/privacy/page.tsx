@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { InfoCard, StatusBadge } from '@wetdrool/ui';
+import { ButtonLink, InfoCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { AgeAccessPolicyPanel } from '@/components/age-access-policy-panel';
@@ -21,10 +21,26 @@ export default function PrivacySettingsPage() {
       >
         <p>
           These controls save preference intent only in this browser. Relays, messages, and
-          discovery providers cannot honor them until their signed contracts are integrated.
+          discovery providers cannot honor them until their signed contracts are integrated. Age
+          access policy below is transparent configuration — not a claim of geo-blocking or ID
+          collection.
         </p>
       </AppPageHeader>
       <SettingsNav />
+      <p className="field-help">
+        Related:{' '}
+        <ButtonLink href="/settings/safety" variant="quiet">
+          Safety
+        </ButtonLink>
+        {' · '}
+        <ButtonLink href="/settings/devices" variant="quiet">
+          Passkeys &amp; devices
+        </ButtonLink>
+        {' · '}
+        <ButtonLink href="/settings/blocks" variant="quiet">
+          Local blocks
+        </ButtonLink>
+      </p>
       <LocalPreferenceEditor kind="privacy" />
       <AgeAccessPolicyPanel />
       <section className="product-card-grid" aria-label="Privacy setting boundaries">

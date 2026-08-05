@@ -36,6 +36,8 @@ export function GET(request: Request): Response {
   const store = getMarketplaceStoreKind();
   const gate = getMarketplaceGateMode();
 
+  const nextOffset = page.hasMore ? offset + items.length : null;
+
   return jsonOk({
     ok: true,
     count: items.length,
@@ -43,6 +45,7 @@ export function GET(request: Request): Response {
     limit,
     offset,
     hasMore: page.hasMore,
+    nextOffset,
     q: q || null,
     filter: {
       q: q || null,
@@ -57,18 +60,19 @@ export function GET(request: Request): Response {
       kind: store,
       durableAcrossRestart: store === 'file-local',
       multiReplicaSafe: false,
+      revenueReady: false as const,
       gate: gate,
       note:
         store === 'file-local'
-          ? 'File-backed local store. Survives restarts on one node when gate secret is set. Not multi-instance.'
-          : 'In-process memory. Listings vanish on cold start / multi-instance. Set WETDROOL_MARKETPLACE_DATA_PATH for local durability.',
+          ? 'File-backed local store. Survives restarts on one node when gate secret is set. Not multi-instance. revenueReady remains false.'
+          : 'In-process memory. Listings vanish on cold start / multi-instance. Set WETDROOL_MARKETPLACE_DATA_PATH for local durability. revenueReady remains false.',
     },
-    note: 'E2EE marketplace. Content unlock requires Solana x402-style payment then client decrypt.',
+    note: 'E2EE marketplace. Content unlock requires Solana x402-style payment then client decrypt. Not revenue-ready commerce.',
     paymentVerify: {
       rpcConfigured,
       network,
       note: rpcConfigured
-        ? 'Unlock verifies SOL transfer via getTransaction against configured RPC.'
+        ? 'Unlock verifies SOL transfer via getTransaction against configured RPC. Host receipt is not multi-replica settlement.'
         : 'No RPC URL — unlocks fail closed with payment_unverified/no_rpc (except non-production WETDROOL_X402_DEV_ACCEPT=1).',
     },
   });

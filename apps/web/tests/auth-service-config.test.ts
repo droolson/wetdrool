@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   parseAuthServiceOrigin,
+  passkeyCeremoniesAllowed,
   probeAuthServiceStatus,
+  reachabilityDetail,
+  reachabilityLabel,
   resolveAuthServiceConfig,
   tryResolveAuthServiceConfig,
 } from '../lib/auth/auth-service-config';
@@ -96,5 +99,17 @@ describe('auth service config', () => {
     });
     expect(report.reachability).toBe('degraded');
     expect(report.readyz).toBe(false);
+    expect(report.note).toMatch(/Fail closed/i);
+    expect(reachabilityLabel(report.reachability)).toBe('Degraded — not ready');
+    expect(passkeyCeremoniesAllowed(report.reachability)).toBe(false);
+    expect(reachabilityDetail(report)).toMatch(/healthz/i);
+  });
+
+  it('labels never claim online for ready reachability', () => {
+    expect(reachabilityLabel('ready')).toBe('Passkey service ready');
+    expect(reachabilityLabel('ready').toLowerCase()).not.toContain('online');
+    expect(passkeyCeremoniesAllowed('ready')).toBe(true);
+    expect(passkeyCeremoniesAllowed('unreachable')).toBe(false);
+    expect(reachabilityLabel('unreachable')).toBe('Unreachable');
   });
 });

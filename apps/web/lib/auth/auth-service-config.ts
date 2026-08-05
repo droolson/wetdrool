@@ -12,6 +12,14 @@ export type AuthServiceReachability =
   | 'degraded'
   | 'ready';
 
+/** Suggested UI step derived from probe — never invents online ceremonies. */
+export type AuthServiceNextStep =
+  | 'configure_url'
+  | 'start_auth_service'
+  | 'wait_ready'
+  | 'ready'
+  | 'none';
+
 export interface AuthServiceConfig {
   /** Origin without trailing slash, e.g. http://localhost:4300 */
   readonly origin: string;
@@ -38,6 +46,44 @@ export interface AuthServiceStatusReport {
   /** Protocol identity is never established by auth-service alone. */
   readonly protocolIdentityEstablished: false;
   readonly webAuthnOrigin: 'wetdrool.com' | 'local-dev' | 'unknown';
+  readonly nextStep: AuthServiceNextStep;
+  readonly nextStepLabel: string;
+}
+
+export function deriveAuthNextStep(
+  reachability: AuthServiceReachability,
+): { readonly nextStep: AuthServiceNextStep; readonly nextStepLabel: string } {
+  switch (reachability) {
+    case 'invalid_origin':
+      return {
+        nextStep: 'configure_url',
+        nextStepLabel:
+          'Fix WETDROOL_AUTH_URL / NEXT_PUBLIC_AUTH_SERVICE_URL (https or loopback http; never legacy redirect hosts).',
+      };
+    case 'unconfigured':
+      return {
+        nextStep: 'configure_url',
+        nextStepLabel: 'Set an auth service URL for this environment.',
+      };
+    case 'unreachable':
+      return {
+        nextStep: 'start_auth_service',
+        nextStepLabel: 'Start auth-service (local :4300) or point env at a reachable origin.',
+      };
+    case 'degraded':
+      return {
+        nextStep: 'wait_ready',
+        nextStepLabel: 'Auth healthz ok but readyz failed — wait for store/rate-limit readiness; do not register yet.',
+      };
+    case 'ready':
+      return {
+        nextStep: 'ready',
+        nextStepLabel:
+          'Auth service ready for passkey ceremonies when browser origin matches RP config. Protocol identity still separate.',
+      };
+    default:
+      return { nextStep: 'none', nextStepLabel: 'No suggested step.' };
+  }
 }
 
 /**
@@ -199,6 +245,7 @@ export async function probeAuthServiceStatus(
 
   const resolved = tryResolveAuthServiceConfig(env);
   if (!resolved.ok) {
+    const step = deriveAuthNextStep('invalid_origin');
     return {
       ok: true,
       product: 'wetdrool',
@@ -213,6 +260,8 @@ export async function probeAuthServiceStatus(
       note: 'Auth service URL is invalid or uses a forbidden host (legacy redirect hosts are never WebAuthn origins).',
       protocolIdentityEstablished: false,
       webAuthnOrigin: 'unknown',
+      nextStep: step.nextStep,
+      nextStepLabel: step.nextStepLabel,
     };
   }
 
@@ -240,6 +289,7 @@ export async function probeAuthServiceStatus(
           ? `Cannot reach ${config.origin}. Start auth-service locally (port 4300) or set WETDROOL_AUTH_URL / NEXT_PUBLIC_AUTH_SERVICE_URL to a valid origin. Status is unreachable — not “offline product,” just an unanswered probe.`
           : 'Auth service status unknown.';
 
+  const step = deriveAuthNextStep(reachability);
   return {
     ok: true,
     product: 'wetdrool',
@@ -254,5 +304,7 @@ export async function probeAuthServiceStatus(
     note,
     protocolIdentityEstablished: false,
     webAuthnOrigin: config.loopback ? 'local-dev' : 'wetdrool.com',
+    nextStep: step.nextStep,
+    nextStepLabel: step.nextStepLabel,
   };
 }

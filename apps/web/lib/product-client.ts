@@ -277,14 +277,21 @@ export function fetchFameBoard(options?: {
 
 export interface AuthStatusApiResponse {
   readonly ok: true;
+  readonly product: 'wetdrool';
+  readonly checkedAt: string;
+  readonly configured: boolean;
   readonly reachability: 'unconfigured' | 'invalid_origin' | 'unreachable' | 'degraded' | 'ready';
   readonly origin: string | null;
+  readonly source?: string | null;
+  readonly loopback?: boolean;
   readonly healthz: boolean | null;
   readonly readyz: boolean | null;
   readonly note: string;
   readonly protocolIdentityEstablished: false;
+  readonly webAuthnOrigin?: 'wetdrool.com' | 'local-dev' | 'unknown';
 }
 
+/** Honest auth-service probe — never invents online/product-live status. */
 export function fetchAuthStatus(): Promise<ProductClientResult<AuthStatusApiResponse>> {
   return getJson<AuthStatusApiResponse>('/api/v1/auth/status');
 }

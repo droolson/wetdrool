@@ -111,8 +111,14 @@ export default function OnboardingPage() {
             <ButtonLink href="/signin" variant="secondary">
               Use an existing passkey
             </ButtonLink>
+            <ButtonLink href="/settings/devices" variant="quiet">
+              Passkeys &amp; devices
+            </ButtonLink>
             <ButtonLink href="/settings/providers" variant="quiet">
               Review providers
+            </ButtonLink>
+            <ButtonLink href="/settings/privacy" variant="quiet">
+              Privacy &amp; age access
             </ButtonLink>
           </div>
         </div>

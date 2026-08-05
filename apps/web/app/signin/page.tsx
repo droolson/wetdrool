@@ -51,10 +51,17 @@ export default function SignInPage() {
 
           <p className="auth-panel__note">
             Wallet and recovery-kit fallback routes are not active in this build. Do not enter a
-            seed phrase or private key into this site.
+            seed phrase or private key into this site. Probe status above must be ready before you
+            treat passkey ceremonies as available — the UI will not invent “online.”
           </p>
           <ButtonLink href="/settings/providers" variant="secondary">
             Review connection readiness
+          </ButtonLink>
+          <ButtonLink href="/settings/devices" variant="quiet">
+            Passkeys &amp; devices
+          </ButtonLink>
+          <ButtonLink href="/onboarding" variant="quiet">
+            Create a new passkey account
           </ButtonLink>
           <ButtonLink href="/recovery" variant="quiet">
             Inspect recovery safeguards →

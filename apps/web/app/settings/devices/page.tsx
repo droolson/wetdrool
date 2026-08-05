@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { StatusBadge } from '@wetdrool/ui';
+import { ButtonLink, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { AuthServiceStatus } from '@/components/auth-service-status';
@@ -26,14 +26,32 @@ export default function DeviceSettingsPage() {
         title="Know which passkeys can open your account."
       >
         <p>
-          This page manages credential records reported by the configured authentication service.
-          Every addition and revocation requires a fresh user-verifying passkey action.
+          This page manages credential records reported by the configured authentication service (
+          <code className="inline-identifier">{authServiceUrl}</code>). Every addition and
+          revocation requires a fresh user-verifying passkey action. A listed passkey is not a
+          DroolNet device registration or onchain delegation.
         </p>
       </AppPageHeader>
 
       <SettingsNav />
 
       <AuthServiceStatus />
+
+      <p className="field-help">
+        Need a session first?{' '}
+        <ButtonLink href="/signin" variant="quiet">
+          Sign in
+        </ButtonLink>{' '}
+        or{' '}
+        <ButtonLink href="/onboarding" variant="quiet">
+          create a passkey account
+        </ButtonLink>
+        . Privacy and age-access controls live under{' '}
+        <ButtonLink href="/settings/privacy" variant="quiet">
+          Privacy
+        </ButtonLink>
+        .
+      </p>
 
       <section className="passkey-access-shell" aria-label="Passkey access manager">
         <PasskeyAccessManager authServiceUrl={authServiceUrl} />
@@ -56,6 +74,12 @@ export default function DeviceSettingsPage() {
           <div>
             <dt>Revocation policy</dt>
             <dd>All service sessions end; onchain authority requires a separate action</dd>
+          </div>
+          <div>
+            <dt>Honest readiness</dt>
+            <dd>
+              Use the probe above — never treat this page as proof the public network is online
+            </dd>
           </div>
         </dl>
       </section>

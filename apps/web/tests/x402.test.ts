@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildPaymentRequirements,
+  buildUnlockReceipt,
+  describePaymentFailureReason,
   encodePaymentHeader,
   getMarketplaceRpcUrl,
   isValidSolanaAddress,
@@ -153,5 +155,39 @@ describe('x402 helpers', () => {
       'https://api.devnet.solana.com/',
     );
     expect(getMarketplaceRpcUrl({ SOLANA_RPC_URL: 'ftp://evil' })).toBeNull();
+  });
+
+  it('maps fail-closed payment reasons to actionable copy', () => {
+    expect(describePaymentFailureReason('no_rpc')).toMatch(/No Solana RPC configured/i);
+    expect(describePaymentFailureReason('insufficient_amount')).toMatch(/below the listing price/i);
+    expect(describePaymentFailureReason('payee_not_in_tx')).toMatch(/payTo address/i);
+    expect(describePaymentFailureReason('weird_custom')).toMatch(/weird_custom/);
+  });
+
+  it('builds honest unlock receipts that never claim settlement authority', () => {
+    const rpc = buildUnlockReceipt({
+      listingId: 'lst_a',
+      signature: '5'.repeat(88),
+      network: 'solana:devnet',
+      payTo: '11111111111111111111111111111111',
+      lamports: '10000000',
+      verification: 'rpc_verified',
+      slot: 99,
+    });
+    expect(rpc.settlementAuthoritative).toBe(false);
+    expect(rpc.verification).toBe('rpc_verified');
+    expect(rpc.slot).toBe(99);
+    expect(rpc.note).toMatch(/not multi-replica/i);
+
+    const dev = buildUnlockReceipt({
+      listingId: 'lst_a',
+      signature: '5'.repeat(88),
+      network: 'solana:devnet',
+      payTo: '11111111111111111111111111111111',
+      lamports: '10000000',
+      verification: 'dev_accept',
+    });
+    expect(dev.settlementAuthoritative).toBe(false);
+    expect(dev.note).toMatch(/Dev-only/i);
   });
 });

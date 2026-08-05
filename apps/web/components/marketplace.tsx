@@ -7,20 +7,25 @@ import { StatusBadge } from '@wetdrool/ui';
 import { AgeGatePanel } from '@/components/age-gate-panel';
 import { sealBytes, sealText, openText, openEnvelope } from '@/lib/e2ee-seal';
 import {
+  describePaymentFailureReason,
   encodePaymentHeader,
   isValidSolanaAddress,
   isValidTxSignature,
   solFromLamports,
+  type UnlockReceipt,
   type X402PaymentRequirements,
 } from '@/lib/x402';
-import type { MarketListingDto } from '@/lib/product-client';
+import type { MarketListingDto, MarketUnlockReceiptDto } from '@/lib/product-client';
 
 type PublicListing = MarketListingDto;
+
+const PAGE_SIZE = 12;
 
 interface StoreMeta {
   readonly kind: 'memory-ephemeral' | 'file-local';
   readonly durableAcrossRestart?: boolean;
   readonly multiReplicaSafe?: boolean;
+  readonly revenueReady?: false;
   readonly gate?: 'env-stable' | 'ephemeral';
   readonly note?: string;
 }
@@ -31,18 +36,40 @@ interface PaymentMeta {
   readonly note?: string;
 }
 
+function shortAddr(addr: string): string {
+  if (addr.length <= 12) return addr;
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+}
+
+function receiptTone(v: UnlockReceipt['verification'] | MarketUnlockReceiptDto['verification']): {
+  label: string;
+  tone: 'verified' | 'pending' | 'degraded';
+} {
+  switch (v) {
+    case 'rpc_verified':
+      return { label: 'RPC verified', tone: 'verified' };
+    case 'prior_purchase':
+      return { label: 'Prior purchase (this host)', tone: 'pending' };
+    case 'dev_accept':
+      return { label: 'Dev accept only', tone: 'degraded' };
+    default:
+      return { label: 'Unknown', tone: 'degraded' };
+  }
+}
+
 export function Marketplace() {
   const [listings, setListings] = useState<readonly PublicListing[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [paymentMeta, setPaymentMeta] = useState<PaymentMeta | null>(null);
   const [storeMeta, setStoreMeta] = useState<StoreMeta | null>(null);
   const [total, setTotal] = useState(0);
-  const [searchInput, setSearchInput] = useState('');
-  const [activeQuery, setActiveQuery] = useState('');
-  const [filterNote, setFilterNote] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextOffset, setNextOffset] = useState<number | null>(null);
+  const [copyFlash, setCopyFlash] = useState<string | null>(null);
 
   // sell form
   const [title, setTitle] = useState('');
@@ -61,38 +88,86 @@ export function Marketplace() {
     mediaUrl?: string;
     contentType?: string;
   } | null>(null);
+  const [unlockReceipt, setUnlockReceipt] = useState<MarketUnlockReceiptDto | null>(null);
+  const [failReason, setFailReason] = useState<string | null>(null);
   const [unlockStep, setUnlockStep] = useState<'idle' | 'payment_required' | 'claiming' | 'done'>(
     'idle',
   );
 
-  const refresh = useCallback(async (q?: string) => {
+  const applyPage = useCallback(
+    (
+      data: {
+        listings?: readonly PublicListing[];
+        total?: number;
+        hasMore?: boolean;
+        nextOffset?: number | null;
+        offset?: number;
+        count?: number;
+        paymentVerify?: PaymentMeta | null;
+        store?: StoreMeta | null;
+      },
+      mode: 'replace' | 'append',
+    ) => {
+      const page = data.listings ?? [];
+      setListings((prev) => (mode === 'append' ? [...prev, ...page] : page));
+      setTotal(data.total ?? page.length);
+      setHasMore(Boolean(data.hasMore));
+      if (data.nextOffset !== undefined) {
+        setNextOffset(data.nextOffset);
+      } else if (data.hasMore) {
+        const base = data.offset ?? 0;
+        setNextOffset(base + (data.count ?? page.length));
+      } else {
+        setNextOffset(null);
+      }
+      if (data.paymentVerify) setPaymentMeta(data.paymentVerify);
+      if (data.store) setStoreMeta(data.store);
+    },
+    [],
+  );
+
+  const refresh = useCallback(async () => {
     setLoading(true);
     setListError(null);
-    const query = (q ?? activeQuery).trim();
     try {
       const { fetchMarket } = await import('@/lib/product-client');
-      const result = await fetchMarket({
-        limit: 48,
-        offset: 0,
-        q: query || null,
-      });
+      const result = await fetchMarket({ limit: PAGE_SIZE, offset: 0 });
       if (result.kind !== 'ok') {
         setListError(result.message);
         setListings([]);
+        setHasMore(false);
+        setNextOffset(null);
         return;
       }
-      setListings(result.data.listings ?? []);
-      setTotal(result.data.total ?? result.data.listings?.length ?? 0);
-      setPaymentMeta(result.data.paymentVerify ?? null);
-      setStoreMeta(result.data.store ?? null);
-      setFilterNote(result.data.filter?.note ?? null);
+      applyPage(result.data, 'replace');
     } catch {
       setListError('Network error loading market.');
       setListings([]);
+      setHasMore(false);
+      setNextOffset(null);
     } finally {
       setLoading(false);
     }
-  }, [activeQuery]);
+  }, [applyPage]);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset === null || loadingMore) return;
+    setLoadingMore(true);
+    setListError(null);
+    try {
+      const { fetchMarket } = await import('@/lib/product-client');
+      const result = await fetchMarket({ limit: PAGE_SIZE, offset: nextOffset });
+      if (result.kind !== 'ok') {
+        setListError(result.message);
+        return;
+      }
+      applyPage(result.data, 'append');
+    } catch {
+      setListError('Network error loading more listings.');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [applyPage, loadingMore, nextOffset]);
 
   useEffect(() => {
     void refresh();
@@ -168,20 +243,27 @@ export function Marketplace() {
   const openListing = async (id: string) => {
     setActiveId(id);
     setUnlocked(null);
+    setUnlockReceipt(null);
     setTxSig('');
     setAccepts(null);
     setStatus(null);
+    setFailReason(null);
     setUnlockStep('idle');
     const res = await fetch(`/api/v1/market/${id}`, { cache: 'no-store' });
     const body = (await res.json()) as {
       accepts?: X402PaymentRequirements[];
       listing?: PublicListing;
-      error?: { message?: string; code?: string };
+      error?: { message?: string; code?: string; reason?: string };
+      unlockHints?: { payTo?: string; lamports?: string };
     };
     if (res.status === 402) {
       setAccepts(body.accepts?.[0] ?? null);
       setUnlockStep('payment_required');
-      setStatus('HTTP 402 Payment Required — pay SOL, then paste the tx signature to unlock.');
+      setFailReason(null);
+      setStatus(
+        body.error?.message ||
+          describePaymentFailureReason('payment_required'),
+      );
       return;
     }
     setStatus(body.error?.message || `Unexpected ${res.status}`);
@@ -191,10 +273,12 @@ export function Marketplace() {
     if (!activeId || !txSig.trim()) return;
     setBusy(true);
     setStatus(null);
+    setFailReason(null);
     setUnlockStep('claiming');
     try {
       if (!isValidTxSignature(txSig.trim())) {
-        setStatus('Invalid Solana signature format.');
+        setFailReason('invalid_signature');
+        setStatus(describePaymentFailureReason('invalid_signature'));
         setUnlockStep('payment_required');
         return;
       }
@@ -215,14 +299,18 @@ export function Marketplace() {
         ok?: boolean;
         envelope?: Parameters<typeof openText>[1];
         unlockSecret?: string;
-        error?: { message?: string; reason?: string; code?: string };
+        error?: { message?: string; reason?: string; code?: string; reasonDetail?: string };
         devAccepted?: boolean;
+        receipt?: MarketUnlockReceiptDto;
       };
       if (!res.ok || !body.ok || !body.envelope || !body.unlockSecret) {
         setUnlockStep('payment_required');
+        const reason = body.error?.reason || 'payment_unverified';
+        setFailReason(reason);
         setStatus(
-          body.error?.message ||
-            `Unlock failed (${res.status}${body.error?.reason ? `: ${body.error.reason}` : ''}). Payment verify is fail-closed without RPC.`,
+          body.error?.reasonDetail ||
+            body.error?.message ||
+            describePaymentFailureReason(reason),
         );
         return;
       }
@@ -238,27 +326,74 @@ export function Marketplace() {
         const url = URL.createObjectURL(new Blob([copy], { type: contentType }));
         setUnlocked({ mediaUrl: url, contentType });
       }
+      setUnlockReceipt(body.receipt ?? null);
       setUnlockStep('done');
-      setStatus(
-        body.devAccepted
-          ? 'Unlocked (dev accept — configure RPC for real verify).'
-          : 'Unlocked after verified payment.',
-      );
+      if (body.receipt) {
+        const tone = receiptTone(body.receipt.verification);
+        setStatus(
+          `${tone.label}. ${body.receipt.note} settlementAuthoritative=${String(body.receipt.settlementAuthoritative)}.`,
+        );
+      } else {
+        setStatus(
+          body.devAccepted
+            ? 'Unlocked (dev accept — configure RPC for real verify). Not settlement-authoritative.'
+            : 'Unlocked after verified payment. Host-local receipt only.',
+        );
+      }
     } catch {
       setUnlockStep('payment_required');
-      setStatus('Claim failed.');
+      setStatus('Claim failed (network or decrypt error).');
     } finally {
       setBusy(false);
     }
+  };
+
+  const flashCopy = (label: string) => {
+    setCopyFlash(label);
+    window.setTimeout(() => setCopyFlash(null), 2000);
   };
 
   const copyPayTo = async () => {
     if (!accepts?.payTo) return;
     try {
       await navigator.clipboard.writeText(accepts.payTo);
-      setStatus('payTo address copied.');
+      flashCopy('payTo');
+      setStatus(`payTo copied: ${accepts.payTo}`);
     } catch {
-      setStatus('Could not copy — select the address manually.');
+      setStatus('Could not copy payTo — select the address manually.');
+    }
+  };
+
+  const copyAmountLamports = async () => {
+    if (!accepts?.maxAmountRequired) return;
+    try {
+      await navigator.clipboard.writeText(accepts.maxAmountRequired);
+      flashCopy('lamports');
+      setStatus(`Amount copied: ${accepts.maxAmountRequired} lamports.`);
+    } catch {
+      setStatus('Could not copy amount.');
+    }
+  };
+
+  const copyPayLine = async () => {
+    if (!accepts) return;
+    const line = `${solFromLamports(accepts.maxAmountRequired)} SOL → ${accepts.payTo} (${accepts.network})`;
+    try {
+      await navigator.clipboard.writeText(line);
+      flashCopy('pay line');
+      setStatus('Payment line copied (amount, payTo, network).');
+    } catch {
+      setStatus('Could not copy payment line.');
+    }
+  };
+
+  const copyTxSig = async () => {
+    if (!txSig.trim()) return;
+    try {
+      await navigator.clipboard.writeText(txSig.trim());
+      flashCopy('signature');
+    } catch {
+      setStatus('Could not copy signature.');
     }
   };
 
@@ -269,6 +404,8 @@ export function Marketplace() {
         ? 'file store · gate stable'
         : 'file store · gate ephemeral'
       : 'memory store';
+
+  const shown = listings.length;
 
   return (
     <AgeGatePanel
@@ -295,12 +432,14 @@ export function Marketplace() {
             <StatusBadge tone={storeMeta?.kind === 'file-local' ? 'pending' : 'degraded'}>
               {storeLabel}
             </StatusBadge>
+            <StatusBadge tone="degraded">not revenue-ready</StatusBadge>
           </div>
         </header>
         <p className="market__lede">
           List content sealed client-side (middle-out + AES). Buyers hit{' '}
           <strong>402 Payment Required</strong>, pay your Solana address, then unlock with the tx
-          signature. Host never holds plaintext.
+          signature. Host never holds plaintext. Unlock receipts are host-local and{' '}
+          <strong>settlementAuthoritative: false</strong>.
           {!rpcReady ? (
             <>
               {' '}
@@ -369,47 +508,15 @@ export function Marketplace() {
           </div>
         </section>
 
-        <section className="market__list">
-          <h2>Listings {total > 0 ? `(${total})` : ''}</h2>
-          <form
-            className="market__search"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const next = searchInput.trim().slice(0, 80);
-              setActiveQuery(next);
-              void refresh(next);
-            }}
-          >
-            <label htmlFor="market-search-q">
-              Filter listings
-              <input
-                id="market-search-q"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Title, seller, id…"
-                maxLength={80}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-            <button type="submit" disabled={loading}>
-              Search
+        <section className="market__list" aria-labelledby="market-listings-heading">
+          <div className="market__list-head">
+            <h2 id="market-listings-heading">
+              Listings {total > 0 ? `(${shown} of ${total})` : ''}
+            </h2>
+            <button type="button" onClick={() => void refresh()} disabled={loading || busy}>
+              Refresh
             </button>
-            {activeQuery ? (
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => {
-                  setSearchInput('');
-                  setActiveQuery('');
-                  void refresh('');
-                }}
-              >
-                Clear
-              </button>
-            ) : null}
-          </form>
-          {filterNote && activeQuery ? <p className="field-help">{filterNote}</p> : null}
+          </div>
           {loading ? (
             <p className="field-help" role="status">
               Loading catalog…
@@ -423,14 +530,19 @@ export function Marketplace() {
               </button>
             </p>
           ) : null}
-          <ul aria-busy={loading}>
-            {!loading && listings.length === 0 && !listError ? (
-              <li className="muted">
-                {activeQuery
-                  ? `No listings match “${activeQuery}” in this node’s store.`
-                  : 'No listings yet.'}
-              </li>
-            ) : null}
+          {!loading && listings.length === 0 && !listError ? (
+            <div className="market__empty card-panel" role="status">
+              <p>
+                <strong>No sealed drops yet.</strong>
+              </p>
+              <p className="field-help">
+                List a text or media drop above. Buyers will see HTTP 402 terms with your payTo
+                address. Catalog is {storeMeta?.kind === 'file-local' ? 'file-backed on this node' : 'in-process memory'}{' '}
+                — not multi-replica commerce.
+              </p>
+            </div>
+          ) : null}
+          <ul aria-busy={loading || loadingMore}>
             {listings.map((l) => (
               <li key={l.id}>
                 <article className="market-card">
@@ -440,7 +552,7 @@ export function Marketplace() {
                     {solFromLamports(l.lamports)} SOL · {l.network} · {l.contentType}
                   </p>
                   <p className="market-card__meta">
-                    payTo {l.payTo.slice(0, 4)}…{l.payTo.slice(-4)}
+                    payTo <code title={l.payTo}>{shortAddr(l.payTo)}</code>
                   </p>
                   <button type="button" onClick={() => void openListing(l.id)}>
                     Open / buy
@@ -449,6 +561,18 @@ export function Marketplace() {
               </li>
             ))}
           </ul>
+          {hasMore && nextOffset !== null ? (
+            <div className="market__actions">
+              <button type="button" disabled={loadingMore || loading} onClick={() => void loadMore()}>
+                {loadingMore ? 'Loading…' : `Load more (offset ${nextOffset})`}
+              </button>
+            </div>
+          ) : null}
+          {!loading && listings.length > 0 && !hasMore && total > PAGE_SIZE ? (
+            <p className="field-help" role="status">
+              End of catalog · {total} listing{total === 1 ? '' : 's'}.
+            </p>
+          ) : null}
         </section>
 
         {activeId ? (
@@ -457,7 +581,7 @@ export function Marketplace() {
             <ol className="market__steps">
               <li data-done={unlockStep !== 'idle' ? 'true' : 'false'}>Open listing → 402 terms</li>
               <li data-done={unlockStep === 'claiming' || unlockStep === 'done' ? 'true' : 'false'}>
-                Pay exact SOL to payTo
+                Pay exact SOL to payTo (copy address)
               </li>
               <li data-done={unlockStep === 'done' ? 'true' : 'false'}>
                 Paste tx signature → server verifies → decrypt on device
@@ -466,16 +590,31 @@ export function Marketplace() {
             {accepts ? (
               <>
                 <p>
-                  Pay <strong>{solFromLamports(accepts.maxAmountRequired)} SOL</strong> to{' '}
-                  <code>{accepts.payTo}</code>{' '}
-                  <button type="button" onClick={() => void copyPayTo()}>
-                    Copy address
-                  </button>
+                  Pay <strong>{solFromLamports(accepts.maxAmountRequired)} SOL</strong> (
+                  <code>{accepts.maxAmountRequired}</code> lamports) to{' '}
+                  <code className="market__payto">{accepts.payTo}</code>
                 </p>
+                <div className="market__actions" role="group" aria-label="Copy payment details">
+                  <button type="button" onClick={() => void copyPayTo()}>
+                    {copyFlash === 'payTo' ? 'Copied payTo' : 'Copy payTo'}
+                  </button>
+                  <button type="button" onClick={() => void copyAmountLamports()}>
+                    {copyFlash === 'lamports' ? 'Copied amount' : 'Copy lamports'}
+                  </button>
+                  <button type="button" onClick={() => void copyPayLine()}>
+                    {copyFlash === 'pay line' ? 'Copied line' : 'Copy pay line'}
+                  </button>
+                </div>
                 <p className="field-help">
                   Network: {accepts.network}. Unverified payments never unlock (fail-closed
                   {!rpcReady ? ' — RPC not configured' : ''}).
                 </p>
+                {failReason ? (
+                  <p className="field-help" role="alert">
+                    <strong>Fail-closed reason:</strong> <code>{failReason}</code> —{' '}
+                    {describePaymentFailureReason(failReason)}
+                  </p>
+                ) : null}
                 <label>
                   Solana tx signature
                   <input
@@ -483,15 +622,45 @@ export function Marketplace() {
                     onChange={(e) => setTxSig(e.target.value)}
                     spellCheck={false}
                     autoComplete="off"
+                    aria-invalid={failReason === 'invalid_signature' ? true : undefined}
                   />
                 </label>
-                <button type="button" disabled={busy} onClick={() => void claimWithPayment()}>
-                  {busy && unlockStep === 'claiming' ? 'Verifying…' : 'Verify payment & unlock'}
-                </button>
+                <div className="market__actions">
+                  <button type="button" disabled={busy} onClick={() => void claimWithPayment()}>
+                    {busy && unlockStep === 'claiming' ? 'Verifying…' : 'Verify payment & unlock'}
+                  </button>
+                  {txSig.trim() ? (
+                    <button type="button" onClick={() => void copyTxSig()}>
+                      {copyFlash === 'signature' ? 'Copied sig' : 'Copy signature'}
+                    </button>
+                  ) : null}
+                </div>
               </>
             ) : (
               <p className="field-help">Select a listing to load payment requirements.</p>
             )}
+            {unlockReceipt ? (
+              <div className="market__receipt" role="status">
+                <p>
+                  <StatusBadge tone={receiptTone(unlockReceipt.verification).tone}>
+                    {receiptTone(unlockReceipt.verification).label}
+                  </StatusBadge>{' '}
+                  <span className="field-help">settlementAuthoritative: false</span>
+                </p>
+                <ul className="field-help">
+                  <li>
+                    sig <code>{shortAddr(unlockReceipt.signature)}</code>
+                  </li>
+                  <li>
+                    payTo <code>{shortAddr(unlockReceipt.payTo)}</code> · {unlockReceipt.lamports}{' '}
+                    lamports · {unlockReceipt.network}
+                  </li>
+                  <li>verifiedAt {unlockReceipt.verifiedAt}</li>
+                  {unlockReceipt.slot !== undefined ? <li>slot {unlockReceipt.slot}</li> : null}
+                  <li>{unlockReceipt.note}</li>
+                </ul>
+              </div>
+            ) : null}
             {unlocked?.text ? <pre className="market__plain">{unlocked.text}</pre> : null}
             {unlocked?.mediaUrl && unlocked.contentType?.startsWith('image/') ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -513,6 +682,7 @@ export function Marketplace() {
           RPC: <code>WETDROOL_SOLANA_RPC_URL</code>. Local durable store:{' '}
           <code>WETDROOL_MARKETPLACE_DATA_PATH</code> + <code>WETDROOL_MARKETPLACE_GATE_SECRET</code>{' '}
           (≥16). Dev without RPC: <code>WETDROOL_X402_DEV_ACCEPT=1</code> (non-production only).{' '}
+          Never claim revenue readiness without durable multi-replica proof.{' '}
           <Link href="/rooms/lobby">Free E2EE rooms</Link>
         </p>
       </div>
