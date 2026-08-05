@@ -27,6 +27,8 @@ export const PRODUCT_API_SURFACES = [
   { id: 'e2ee', path: '/api/v1/e2ee', methods: ['GET'] as const },
   { id: 'policy/age', path: '/api/v1/policy/age', methods: ['GET'] as const },
   { id: 'notifications', path: '/api/v1/notifications', methods: ['GET'] as const },
+  { id: 'mesh', path: '/api/v1/mesh', methods: ['GET'] as const },
+  { id: 'search', path: '/api/v1/search', methods: ['GET'] as const },
   { id: 'ai/chat', path: '/api/v1/ai/chat', methods: ['POST'] as const },
 ] as const;
 
