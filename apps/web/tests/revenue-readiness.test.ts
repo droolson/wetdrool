@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { getMarketplaceStoreMeta } from '../lib/marketplace-store';
 import { buildRevenueReadiness } from '../lib/revenue-readiness';
 
 describe('revenue readiness', () => {
@@ -48,5 +49,19 @@ describe('revenue readiness', () => {
     expect(report.revenueReady).toBe(false);
     expect(report.blockers.some((b) => b.id === 'market_store_ephemeral')).toBe(false);
     expect(report.blockers.some((b) => b.id === 'market_store_not_multi_replica')).toBe(true);
+  });
+
+  it('aligns storeKinds with marketplace store meta (replica-unsafe)', () => {
+    const env = {
+      WETDROOL_MARKETPLACE_DATA_PATH: '/tmp/wetdrool-market-ready.json',
+      WETDROOL_MARKETPLACE_GATE_SECRET: 'stable-gate-secret-ok',
+    };
+    const meta = getMarketplaceStoreMeta(env);
+    const report = buildRevenueReadiness(env);
+    expect(report.storeKinds.marketplace).toBe(meta.kind);
+    expect(report.storeKinds.multiReplicaSafe).toBe(false);
+    expect(meta.multiReplicaSafe).toBe(false);
+    expect(meta.revenueReady).toBe(false);
+    expect(report.revenueReady).toBe(false);
   });
 });

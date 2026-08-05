@@ -2,6 +2,7 @@ import {
   createListingId,
   filterListingsByQuery,
   getMarketplaceStoreKind,
+  getMarketplaceStoreMeta,
   listListings,
   pageListings,
   putListing,
@@ -33,8 +34,7 @@ export function GET(request: Request): Response {
   const items = page.items.map(publicListing);
   const rpcConfigured = getMarketplaceRpcUrl() !== null;
   const network = getDefaultNetwork();
-  const store = getMarketplaceStoreKind();
-  const gate = getMarketplaceGateMode();
+  const storeMeta = getMarketplaceStoreMeta();
 
   const nextOffset = page.hasMore ? offset + items.length : null;
 
@@ -57,15 +57,13 @@ export function GET(request: Request): Response {
     },
     listings: items,
     store: {
-      kind: store,
-      durableAcrossRestart: store === 'file-local',
-      multiReplicaSafe: false,
-      revenueReady: false as const,
-      gate: gate,
-      note:
-        store === 'file-local'
-          ? 'File-backed local store. Survives restarts on one node when gate secret is set. Not multi-instance. revenueReady remains false.'
-          : 'In-process memory. Listings vanish on cold start / multi-instance. Set WETDROOL_MARKETPLACE_DATA_PATH for local durability. revenueReady remains false.',
+      kind: storeMeta.kind,
+      durableAcrossRestart: storeMeta.durableAcrossRestart,
+      multiReplicaSafe: storeMeta.multiReplicaSafe,
+      revenueReady: storeMeta.revenueReady,
+      gate: storeMeta.gate,
+      label: storeMeta.label,
+      note: storeMeta.note,
     },
     note: 'E2EE marketplace. Content unlock requires Solana x402-style payment then client decrypt. Not revenue-ready commerce.',
     paymentVerify: {

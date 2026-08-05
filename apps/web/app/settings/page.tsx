@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ButtonLink, InfoCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { AuthServiceStatus } from '@/components/auth-service-status';
 import { SettingsNav } from '@/components/settings-nav';
 
 export const metadata: Metadata = {
@@ -24,6 +25,41 @@ export default function SettingsPage() {
       </AppPageHeader>
 
       <SettingsNav />
+
+      <section className="settings-account-readiness" aria-labelledby="account-readiness-title">
+        <div>
+          <p className="section-kicker">Account readiness</p>
+          <h2 id="account-readiness-title">Authentication service before passkeys.</h2>
+          <p className="field-help">
+            Passkey create/sign-in and device management depend on a reachable, ready
+            authentication service. This probe never invents “online,” never establishes protocol
+            identity, and never uses a legacy redirect host as WebAuthn RP. If the service is
+            unconfigured, invalid, or unreachable, treat account controls as empty until you fix
+            readiness and retry.
+          </p>
+        </div>
+        <AuthServiceStatus settingsContext />
+        <p className="field-help">
+          When ready:{' '}
+          <ButtonLink href="/settings/devices" variant="quiet">
+            Passkeys &amp; devices
+          </ButtonLink>
+          {' · '}
+          <ButtonLink href="/signin" variant="quiet">
+            Sign in
+          </ButtonLink>
+          {' · '}
+          <ButtonLink href="/onboarding" variant="quiet">
+            Create passkey account
+          </ButtonLink>
+          . When not ready:{' '}
+          <ButtonLink href="/settings/providers" variant="quiet">
+            Provider settings
+          </ButtonLink>
+          {' '}
+          (retry probe from the status card above).
+        </p>
+      </section>
 
       <section className="settings-grid" aria-label="Settings categories">
         <InfoCard
@@ -66,13 +102,14 @@ export default function SettingsPage() {
           eyebrow="Account"
           footer={
             <ButtonLink href="/settings/devices" variant="quiet">
-              Inspect device boundaries →
+              Passkeys &amp; devices →
             </ButtonLink>
           }
           title="Devices and delegations"
         >
           <p>
-            Session and scoped-authority controls remain locked until identity is authenticated.
+            Manage auth-service passkeys when the probe above is ready. Session and scoped-authority
+            protocol controls remain locked until identity is authenticated onchain.
           </p>
         </InfoCard>
         <InfoCard

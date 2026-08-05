@@ -56,6 +56,12 @@ export default function OnboardingPage() {
       </AppPageHeader>
 
       <AuthServiceStatus />
+      <p className="field-help" role="note">
+        Follow the status card next step: <strong>Retry probe</strong> if the service is unreachable
+        or degraded; open <strong>Passkeys &amp; devices</strong> after readiness; configure auth
+        URL env vars only on loopback/dev. Registration stays fail-closed until reachability is{' '}
+        <strong>ready</strong> — this page does not invent “online.”
+      </p>
 
       <section className="onboarding-ledger" aria-labelledby="onboarding-ledger-title">
         <div>
@@ -113,6 +119,9 @@ export default function OnboardingPage() {
             </ButtonLink>
             <ButtonLink href="/settings/devices" variant="quiet">
               Passkeys &amp; devices
+            </ButtonLink>
+            <ButtonLink href="/settings" variant="quiet">
+              Account readiness
             </ButtonLink>
             <ButtonLink href="/settings/providers" variant="quiet">
               Review providers

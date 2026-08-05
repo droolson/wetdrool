@@ -20,6 +20,40 @@ export type AuthServiceNextStep =
   | 'ready'
   | 'none';
 
+/** Primary UI action for a next step (client may map to retry vs navigate). */
+export type AuthServiceNextStepAction =
+  | 'retry_probe'
+  | 'open_devices'
+  | 'open_providers'
+  | 'open_signin'
+  | 'open_onboarding'
+  | 'configure_env';
+
+export interface AuthServiceNextStepLink {
+  readonly href: string;
+  readonly label: string;
+}
+
+export interface AuthServiceNextStepGuidance {
+  readonly nextStep: AuthServiceNextStep;
+  /** Operator-facing explanation of what to do next. */
+  readonly nextStepLabel: string;
+  /** Short actionable line for banners (sign-in / onboarding / settings). */
+  readonly actionSummary: string;
+  /** Primary client action kind. */
+  readonly primaryAction: AuthServiceNextStepAction;
+  /**
+   * Deep links shown when not ready / when ready.
+   * configure_url links to providers only; env var names stay in copy (dev hint separate).
+   */
+  readonly links: readonly AuthServiceNextStepLink[];
+  /**
+   * When true, UI may show loopback/dev env-var configure hint.
+   * Never shows production secrets; never treats legacy hosts as RP.
+   */
+  readonly showDevConfigureHint: boolean;
+}
+
 export interface AuthServiceConfig {
   /** Origin without trailing slash, e.g. http://localhost:4300 */
   readonly origin: string;
@@ -48,41 +82,106 @@ export interface AuthServiceStatusReport {
   readonly webAuthnOrigin: 'wetdrool.com' | 'local-dev' | 'unknown';
   readonly nextStep: AuthServiceNextStep;
   readonly nextStepLabel: string;
+  readonly actionSummary: string;
+  readonly primaryAction: AuthServiceNextStepAction;
+  readonly links: readonly AuthServiceNextStepLink[];
+  readonly showDevConfigureHint: boolean;
 }
 
+const DEV_CONFIGURE_HINT =
+  'Local/dev only: set WETDROOL_AUTH_URL or NEXT_PUBLIC_AUTH_SERVICE_URL to https or loopback http (e.g. http://127.0.0.1:4300). Never use legacy redirect hosts as WebAuthn RP.';
+
+export function devConfigureHintText(): string {
+  return DEV_CONFIGURE_HINT;
+}
+
+/**
+ * Suggested next step for UI. Labels are actionable (retry, open devices, configure in dev).
+ * Never claims the product network is “online.”
+ */
 export function deriveAuthNextStep(
   reachability: AuthServiceReachability,
-): { readonly nextStep: AuthServiceNextStep; readonly nextStepLabel: string } {
+  options: { readonly loopback?: boolean } = {},
+): AuthServiceNextStepGuidance {
+  const loopback = options.loopback ?? false;
+
   switch (reachability) {
     case 'invalid_origin':
       return {
         nextStep: 'configure_url',
         nextStepLabel:
           'Fix WETDROOL_AUTH_URL / NEXT_PUBLIC_AUTH_SERVICE_URL (https or loopback http; never legacy redirect hosts).',
+        actionSummary: 'Invalid auth origin — fix env, then retry the status probe.',
+        primaryAction: 'configure_env',
+        links: [
+          { href: '/settings/providers', label: 'Provider settings' },
+          { href: '/settings/devices', label: 'Passkeys & devices' },
+        ],
+        showDevConfigureHint: true,
       };
     case 'unconfigured':
       return {
         nextStep: 'configure_url',
-        nextStepLabel: 'Set an auth service URL for this environment.',
+        nextStepLabel: 'Set an auth service URL for this environment, then retry the probe.',
+        actionSummary: 'Auth service unconfigured — set a valid origin, then open devices when ready.',
+        primaryAction: 'configure_env',
+        links: [
+          { href: '/settings/providers', label: 'Provider settings' },
+          { href: '/settings/devices', label: 'Passkeys & devices' },
+        ],
+        showDevConfigureHint: true,
       };
     case 'unreachable':
       return {
         nextStep: 'start_auth_service',
-        nextStepLabel: 'Start auth-service (local :4300) or point env at a reachable origin.',
+        nextStepLabel: loopback
+          ? 'Start auth-service locally (port 4300), then use Retry probe. Or point env at a reachable origin.'
+          : 'Start or restore the authentication service, then use Retry probe. Or set env to a reachable origin.',
+        actionSummary: 'Auth service unreachable — start it, retry probe, then manage passkeys when ready.',
+        primaryAction: 'retry_probe',
+        links: [
+          { href: '/settings/providers', label: 'Review connection readiness' },
+          { href: '/settings/devices', label: 'Passkeys & devices' },
+        ],
+        showDevConfigureHint: loopback,
       };
     case 'degraded':
       return {
         nextStep: 'wait_ready',
-        nextStepLabel: 'Auth healthz ok but readyz failed — wait for store/rate-limit readiness; do not register yet.',
+        nextStepLabel:
+          'Auth healthz ok but readyz failed — wait for store/rate-limit readiness, then Retry probe. Do not register yet.',
+        actionSummary: 'Auth not ready — wait, retry probe; passkey create/sign-in stays fail-closed.',
+        primaryAction: 'retry_probe',
+        links: [
+          { href: '/settings/providers', label: 'Review connection readiness' },
+          { href: '/settings/devices', label: 'Passkeys & devices' },
+        ],
+        showDevConfigureHint: false,
       };
     case 'ready':
       return {
         nextStep: 'ready',
         nextStepLabel:
           'Auth service ready for passkey ceremonies when browser origin matches RP config. Protocol identity still separate.',
+        actionSummary:
+          'Passkey service ready — open devices to manage credentials, or sign in / create an account.',
+        primaryAction: 'open_devices',
+        links: [
+          { href: '/settings/devices', label: 'Manage passkeys' },
+          { href: '/signin', label: 'Sign in' },
+          { href: '/onboarding', label: 'Create passkey account' },
+        ],
+        showDevConfigureHint: false,
       };
     default:
-      return { nextStep: 'none', nextStepLabel: 'No suggested step.' };
+      return {
+        nextStep: 'none',
+        nextStepLabel: 'No suggested step.',
+        actionSummary: 'No suggested auth next step.',
+        primaryAction: 'retry_probe',
+        links: [{ href: '/settings/providers', label: 'Provider settings' }],
+        showDevConfigureHint: false,
+      };
   }
 }
 
@@ -231,6 +330,22 @@ async function probeJsonOk(
   }
 }
 
+function attachNextStepFields(
+  step: AuthServiceNextStepGuidance,
+): Pick<
+  AuthServiceStatusReport,
+  'nextStep' | 'nextStepLabel' | 'actionSummary' | 'primaryAction' | 'links' | 'showDevConfigureHint'
+> {
+  return {
+    nextStep: step.nextStep,
+    nextStepLabel: step.nextStepLabel,
+    actionSummary: step.actionSummary,
+    primaryAction: step.primaryAction,
+    links: step.links,
+    showDevConfigureHint: step.showDevConfigureHint,
+  };
+}
+
 export async function probeAuthServiceStatus(
   options: {
     readonly env?: Readonly<Record<string, string | undefined>>;
@@ -260,8 +375,7 @@ export async function probeAuthServiceStatus(
       note: 'Auth service URL is invalid or uses a forbidden host (legacy redirect hosts are never WebAuthn origins).',
       protocolIdentityEstablished: false,
       webAuthnOrigin: 'unknown',
-      nextStep: step.nextStep,
-      nextStepLabel: step.nextStepLabel,
+      ...attachNextStepFields(step),
     };
   }
 
@@ -289,7 +403,7 @@ export async function probeAuthServiceStatus(
           ? `Cannot reach ${config.origin}. Start auth-service locally (port 4300) or set WETDROOL_AUTH_URL / NEXT_PUBLIC_AUTH_SERVICE_URL to a valid origin. Status is unreachable — not “offline product,” just an unanswered probe.`
           : 'Auth service status unknown.';
 
-  const step = deriveAuthNextStep(reachability);
+  const step = deriveAuthNextStep(reachability, { loopback: config.loopback });
   return {
     ok: true,
     product: 'wetdrool',
@@ -304,7 +418,6 @@ export async function probeAuthServiceStatus(
     note,
     protocolIdentityEstablished: false,
     webAuthnOrigin: config.loopback ? 'local-dev' : 'wetdrool.com',
-    nextStep: step.nextStep,
-    nextStepLabel: step.nextStepLabel,
+    ...attachNextStepFields(step),
   };
 }

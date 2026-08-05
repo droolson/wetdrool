@@ -155,9 +155,26 @@ export interface CreatorDirectoryEntry {
  * Public directory of known fixture creators (not a discovery of real users).
  * Honest: synthetic until signed portable profiles exist.
  */
+/** Normalize free-text directory filter (handle/display/tags). Empty → null. */
+export function normalizeCreatorSearchQuery(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const q = raw.trim().toLowerCase().replace(/^@/, '');
+  if (q.length === 0) return null;
+  // Cap noise; directory is synthetic and small.
+  return q.slice(0, 64);
+}
+
+function creatorMatchesQuery(entry: CreatorDirectoryEntry, q: string): boolean {
+  if (entry.handle.includes(q)) return true;
+  if (entry.displayName.toLowerCase().includes(q)) return true;
+  return entry.tags.some((t) => t.toLowerCase().includes(q));
+}
+
 export function listCreatorDirectory(options?: {
   readonly limit?: number;
   readonly offset?: number;
+  /** Case-insensitive substring over handle, display name, and tags. */
+  readonly q?: string | null;
 }): {
   readonly items: readonly CreatorDirectoryEntry[];
   readonly total: number;
@@ -165,9 +182,11 @@ export function listCreatorDirectory(options?: {
   readonly offset: number;
   readonly hasMore: boolean;
   readonly synthetic: true;
+  readonly q: string | null;
 } {
   const limit = Math.min(Math.max(1, options?.limit ?? 24), 48);
   const offset = Math.max(0, options?.offset ?? 0);
+  const q = normalizeCreatorSearchQuery(options?.q ?? null);
   const founder = getFounderStudio();
   const byHandle = new Map<string, CreatorDirectoryEntry>();
 
@@ -191,7 +210,10 @@ export function listCreatorDirectory(options?: {
     });
   }
 
-  const all = [...byHandle.values()].sort((a, b) => a.handle.localeCompare(b.handle));
+  let all = [...byHandle.values()].sort((a, b) => a.handle.localeCompare(b.handle));
+  if (q) {
+    all = all.filter((entry) => creatorMatchesQuery(entry, q));
+  }
   const items = all.slice(offset, offset + limit);
   return {
     items,
@@ -200,5 +222,6 @@ export function listCreatorDirectory(options?: {
     offset,
     hasMore: offset + items.length < all.length,
     synthetic: true,
+    q,
   };
 }

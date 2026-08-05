@@ -12,7 +12,8 @@ export function GET(request: Request): Response {
   const url = new URL(request.url);
   const limit = parseLimit(url.searchParams.get('limit'), 24, 48);
   const offset = parseOffset(url.searchParams.get('offset'), 0);
-  const page = listCreatorDirectory({ limit, offset });
+  const q = url.searchParams.get('q');
+  const page = listCreatorDirectory({ limit, offset, q });
 
   return jsonOk({
     ok: true,
@@ -21,9 +22,10 @@ export function GET(request: Request): Response {
     limit: page.limit,
     offset: page.offset,
     hasMore: page.hasMore,
+    q: page.q,
     creators: page.items,
     synthetic: page.synthetic,
-    note: 'Synthetic catalog + founder preview only. Not a search of real accounts or earnings.',
+    note: 'Synthetic catalog + founder preview only. Fixture filter via q= (handle/display/tags). Not a search of real accounts or earnings.',
   });
 }
 

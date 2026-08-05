@@ -42,6 +42,127 @@ export const PRODUCT_HONEST_FLAGS = {
   droolTickerForbidden: true as const,
 };
 
+/**
+ * Shorts / live / creator catalog source for product discovery APIs.
+ * Local ranking uses in-repo fixtures only until licensed media + external catalog ship.
+ */
+export type DiscoveryCatalogMode = 'local-synthetic' | 'external';
+
+/**
+ * Honest feed-service / personalization flags.
+ * Product routes do not invent ranking from an unconfigured or unwired feed-service.
+ */
+export interface FeedPersonalizationHonesty {
+  /** True only when NEXT_PUBLIC_FEED_SERVICE_URL is a non-empty absolute URL. */
+  readonly configured: boolean;
+  /** Origin of the feed URL when configured; never a fabricated host. */
+  readonly origin: string | null;
+  /**
+   * True only when product discovery actually calls feed-service for ranking.
+   * Today product shorts/explore use local synthetic ranking → always false.
+   */
+  readonly personalizationActive: false;
+  readonly note: string;
+}
+
+export interface DiscoveryProviderHonesty {
+  readonly shorts: {
+    readonly catalogMode: DiscoveryCatalogMode;
+    readonly syntheticFixturesOnly: boolean;
+    readonly ranking: 'local-droolrank-lite' | 'feed-service';
+    readonly note: string;
+  };
+  readonly live: {
+    readonly catalogMode: DiscoveryCatalogMode;
+    readonly syntheticFixturesOnly: boolean;
+    readonly note: string;
+  };
+  readonly creators: {
+    readonly catalogMode: DiscoveryCatalogMode;
+    readonly syntheticFixturesOnly: boolean;
+    readonly note: string;
+  };
+  readonly feedService: FeedPersonalizationHonesty;
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1';
+}
+
+/**
+ * Resolve feed-service URL honesty from raw env (no network probe).
+ * Empty / missing / invalid → configured: false (honest empty personalization).
+ */
+export function resolveFeedPersonalizationHonesty(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): FeedPersonalizationHonesty {
+  const raw = env.NEXT_PUBLIC_FEED_SERVICE_URL?.trim() ?? '';
+  if (!raw) {
+    return {
+      configured: false,
+      origin: null,
+      personalizationActive: false,
+      note: 'Feed-service URL unset — personalization is empty, not faked from local ranking.',
+    };
+  }
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return {
+        configured: false,
+        origin: null,
+        personalizationActive: false,
+        note: 'Feed-service URL protocol invalid — personalization stays unconfigured.',
+      };
+    }
+    return {
+      configured: true,
+      origin: url.origin,
+      personalizationActive: false,
+      note: isLoopbackHostname(url.hostname)
+        ? 'Feed-service URL is set (loopback) but product discovery does not call it yet — ranking stays local synthetic.'
+        : 'Feed-service URL is set but product discovery does not call it yet — ranking stays local synthetic.',
+    };
+  } catch {
+    return {
+      configured: false,
+      origin: null,
+      personalizationActive: false,
+      note: 'Feed-service URL malformed — personalization stays unconfigured.',
+    };
+  }
+}
+
+/**
+ * Discovery provider honesty for health/status (local flags only, no probes).
+ * Catalogs are local-synthetic fixtures; feed personalization is never invented.
+ */
+export function buildDiscoveryProviderHonesty(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): DiscoveryProviderHonesty {
+  const feedService = resolveFeedPersonalizationHonesty(env);
+  return {
+    shorts: {
+      catalogMode: 'local-synthetic',
+      syntheticFixturesOnly: true,
+      ranking: 'local-droolrank-lite',
+      note: 'Shorts API ranks in-repo synthetic fixtures only — not an external media catalog.',
+    },
+    live: {
+      catalogMode: 'local-synthetic',
+      syntheticFixturesOnly: true,
+      note: 'Live rooms API serves synthetic fixtures only — not a live mesh directory.',
+    },
+    creators: {
+      catalogMode: 'local-synthetic',
+      syntheticFixturesOnly: true,
+      note: 'Creator directory is synthetic catalog placeholders until signed portable profiles ship.',
+    },
+    feedService,
+  };
+}
+
 export function listProductApiSurfaceIds(): readonly ProductApiSurfaceId[] {
   return PRODUCT_API_SURFACES.map((s) => s.id);
 }
@@ -128,6 +249,7 @@ export function buildProductHealthReport(
   const marketGate = getMarketplaceGateMode(env);
   const rooms = getRoomStoreMeta(env);
   const auth = tryResolveAuthServiceConfig(env);
+  const discovery = buildDiscoveryProviderHonesty(env);
 
   return {
     ok: true as const,
@@ -149,15 +271,19 @@ export function buildProductHealthReport(
     },
     media: 'synthetic-fixtures' as const,
     mesh: false as const,
+    /** Discovery providers: catalog mode + feed personalization honesty. */
+    discovery,
     stores: {
       marketplace: {
         kind: marketStore,
         gate: marketGate,
+        /** file-local = single-node JSON durability; memory = process-local only. */
         durableAcrossRestart: marketStore === 'file-local',
         multiReplicaSafe: false as const,
       },
       rooms: {
         kind: rooms.kind,
+        /** file-local when WETDROOL_ROOMS_DATA_PATH set; else memory-ephemeral. */
         durableAcrossRestart: rooms.durableAcrossRestart,
         multiReplicaSafe: rooms.multiReplicaSafe,
       },
@@ -180,6 +306,8 @@ export function buildProductHealthReport(
     honest: {
       ...PRODUCT_HONEST_FLAGS,
       revenueReady: false as const,
+      feedPersonalizationActive: false as const,
+      shortsCatalogExternal: false as const,
     },
     droolMint: PRODUCT_HONEST_FLAGS.droolMint,
     earningClaimed: PRODUCT_HONEST_FLAGS.earningClaimed,
@@ -195,19 +323,23 @@ export function buildProductStatusReport(
   const revenue = buildRevenueReadiness(env);
   const rooms = getRoomStoreMeta(env);
   const auth = tryResolveAuthServiceConfig(env);
+  const discovery = buildDiscoveryProviderHonesty(env);
 
   return {
     ...revenue,
+    discovery,
     stores: {
       marketplace: {
         kind: revenue.checks.marketplaceStore,
         gate: revenue.checks.marketplaceGate,
+        /** file-local = single-node JSON durability; memory = process-local only. */
         durableAcrossRestart: revenue.checks.marketplaceStore === 'file-local',
         multiReplicaSafe: false as const,
         listings: revenue.checks.marketplaceListings,
       },
       rooms: {
         kind: rooms.kind,
+        /** file-local when WETDROOL_ROOMS_DATA_PATH set; else memory-ephemeral. */
         durableAcrossRestart: rooms.durableAcrossRestart,
         multiReplicaSafe: rooms.multiReplicaSafe,
         maxMessagesPerRoom: rooms.maxMessagesPerRoom,
@@ -225,6 +357,8 @@ export function buildProductStatusReport(
       ...PRODUCT_HONEST_FLAGS,
       revenueReady: revenue.revenueReady,
       founderMediaPath: revenue.checks.founderMediaPath,
+      feedPersonalizationActive: false as const,
+      shortsCatalogExternal: false as const,
     },
   };
 }

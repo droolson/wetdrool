@@ -8,6 +8,8 @@ import {
   createListingId,
   filterListingsByQuery,
   getMarketplaceStore,
+  getMarketplaceStoreKind,
+  getMarketplaceStoreMeta,
   pageListings,
   publicListing,
   resetMarketplaceStoreCache,
@@ -130,5 +132,128 @@ describe('marketplace store', () => {
     resetMarketplaceGateCache();
     const plain = await unwrapUnlockSecret(wrapped.ciphertext, wrapped.iv, env);
     expect(plain).toBe('buyer-pass-phrase');
+  });
+
+  it('reports honest store meta flags (always replica-unsafe, never revenue-ready)', () => {
+    const mem = getMarketplaceStoreMeta({});
+    expect(mem.kind).toBe('memory-ephemeral');
+    expect(getMarketplaceStoreKind({})).toBe('memory-ephemeral');
+    expect(mem.multiReplicaSafe).toBe(false);
+    expect(mem.durableAcrossRestart).toBe(false);
+    expect(mem.revenueReady).toBe(false);
+    expect(mem.gate).toBe('ephemeral');
+    expect(mem.label).toMatch(/replica-unsafe/i);
+    expect(mem.note).toMatch(/In-process memory/i);
+
+    const file = getMarketplaceStoreMeta({
+      WETDROOL_MARKETPLACE_DATA_PATH: '/tmp/wetdrool-market-meta-test.json',
+      WETDROOL_MARKETPLACE_GATE_SECRET: 'stable-gate-secret-ok',
+    });
+    expect(file.kind).toBe('file-local');
+    expect(file.durableAcrossRestart).toBe(true);
+    expect(file.multiReplicaSafe).toBe(false);
+    expect(file.revenueReady).toBe(false);
+    expect(file.gate).toBe('env-stable');
+    expect(file.label).toMatch(/single-node/i);
+    expect(file.label).toMatch(/replica-unsafe/i);
+    expect(file.note).toMatch(/one node only/i);
+  });
+
+  it('file store without gate secret is still replica-unsafe with ephemeral gate', () => {
+    const meta = getMarketplaceStoreMeta({
+      WETDROOL_MARKETPLACE_DATA_PATH: '/tmp/wetdrool-market-meta-test2.json',
+    });
+    expect(meta.kind).toBe('file-local');
+    expect(meta.gate).toBe('ephemeral');
+    expect(meta.multiReplicaSafe).toBe(false);
+    expect(meta.revenueReady).toBe(false);
+    expect(meta.label).toMatch(/gate ephemeral/i);
+  });
+
+});
+
+describe('market unlock attempt log (client helpers)', () => {
+  it('parses, appends, filters without storing secrets', async () => {
+    const {
+      appendUnlockAttempt,
+      filterUnlockAttemptsForListing,
+      parseUnlockAttemptLog,
+      signatureHintFromTx,
+      MARKET_UNLOCK_ATTEMPT_MAX,
+    } = await import('../lib/product-client');
+
+    expect(parseUnlockAttemptLog(null)).toEqual([]);
+    expect(parseUnlockAttemptLog('not-json')).toEqual([]);
+    expect(parseUnlockAttemptLog('{}')).toEqual([]);
+
+    const base = appendUnlockAttempt([], {
+      listingId: 'lst_one',
+      status: 'fail',
+      reason: 'no_rpc',
+      signatureHint: signatureHintFromTx('5'.repeat(88)),
+      at: '2026-01-01T00:00:00.000Z',
+      id: 'att_1',
+    });
+    expect(base).toHaveLength(1);
+    expect(base[0]?.status).toBe('fail');
+    expect(base[0]?.reason).toBe('no_rpc');
+    expect(base[0]?.signatureHint).toMatch(/…/);
+    expect(JSON.stringify(base)).not.toMatch(/unlockSecret/);
+
+    const withSuccess = appendUnlockAttempt(base, {
+      listingId: 'lst_two',
+      status: 'success',
+      verification: 'rpc_verified',
+      at: '2026-01-02T00:00:00.000Z',
+      id: 'att_2',
+    });
+    expect(withSuccess[0]?.listingId).toBe('lst_two');
+    expect(filterUnlockAttemptsForListing(withSuccess, 'lst_one')).toHaveLength(1);
+
+    const roundTrip = parseUnlockAttemptLog(JSON.stringify(withSuccess));
+    expect(roundTrip).toHaveLength(2);
+
+    let log = withSuccess;
+    for (let i = 0; i < MARKET_UNLOCK_ATTEMPT_MAX + 5; i++) {
+      log = appendUnlockAttempt(log, {
+        listingId: `lst_${i}`,
+        status: 'fail',
+        reason: 'payment_unverified',
+      });
+    }
+    expect(log.length).toBe(MARKET_UNLOCK_ATTEMPT_MAX);
+  });
+
+  it('persists to injected storage without secrets', async () => {
+    const map = new Map<string, string>();
+    const storage = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        map.set(k, v);
+      },
+      removeItem: (k: string) => {
+        map.delete(k);
+      },
+      clear: () => map.clear(),
+      key: () => null,
+      length: 0,
+    } as Storage;
+
+    const { recordUnlockAttempt, readUnlockAttemptLog, MARKET_UNLOCK_ATTEMPT_STORAGE_KEY } =
+      await import('../lib/product-client');
+
+    const next = recordUnlockAttempt(
+      {
+        listingId: 'lst_persist',
+        status: 'fail',
+        reason: 'tx_failed_or_missing',
+      },
+      storage,
+    );
+    expect(next).toHaveLength(1);
+    expect(map.has(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY)).toBe(true);
+    const again = readUnlockAttemptLog(storage);
+    expect(again[0]?.listingId).toBe('lst_persist');
+    expect(map.get(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY)).not.toMatch(/secret|ciphertext/i);
   });
 });

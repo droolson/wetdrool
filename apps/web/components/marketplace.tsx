@@ -15,7 +15,11 @@ import {
   type UnlockReceipt,
   type X402PaymentRequirements,
 } from '@/lib/x402';
-import type { MarketListingDto, MarketUnlockReceiptDto } from '@/lib/product-client';
+import type {
+  MarketListingDto,
+  MarketUnlockAttempt,
+  MarketUnlockReceiptDto,
+} from '@/lib/product-client';
 
 type PublicListing = MarketListingDto;
 
@@ -27,6 +31,7 @@ interface StoreMeta {
   readonly multiReplicaSafe?: boolean;
   readonly revenueReady?: false;
   readonly gate?: 'env-stable' | 'ephemeral';
+  readonly label?: string;
   readonly note?: string;
 }
 
@@ -55,6 +60,66 @@ function receiptTone(v: UnlockReceipt['verification'] | MarketUnlockReceiptDto['
     default:
       return { label: 'Unknown', tone: 'degraded' };
   }
+}
+
+
+function UnlockAttemptHistory({
+  log,
+  listingId,
+}: {
+  readonly log: readonly MarketUnlockAttempt[];
+  readonly listingId: string | null;
+}) {
+  const forListing = listingId
+    ? log.filter((a) => a.listingId === listingId)
+    : [];
+  const recent = log.slice(0, 8);
+  if (recent.length === 0) {
+    return (
+      <div className="market__attempts" role="status">
+        <h3 className="market__attempts-title">Unlock attempts (this browser)</h3>
+        <p className="field-help">
+          No attempts yet. Failures and successes are logged locally (listing id, time, status) —
+          never secrets or full payment payloads. Host store remains replica-unsafe.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="market__attempts" role="region" aria-label="Unlock attempt history">
+      <h3 className="market__attempts-title">Unlock attempts (this browser)</h3>
+      <p className="field-help">
+        Local-only log (localStorage). Success here does not prove multi-replica settlement.
+        {listingId && forListing.length > 0
+          ? ` Showing ${forListing.length} for this listing; ${recent.length} recent overall.`
+          : null}
+      </p>
+      <ul className="market__attempt-list">
+        {(listingId && forListing.length > 0 ? forListing : recent).slice(0, 12).map((a) => (
+          <li key={a.id}>
+            <StatusBadge tone={a.status === 'success' ? 'verified' : 'degraded'}>
+              {a.status}
+            </StatusBadge>{' '}
+            <code>{a.listingId}</code> ·{' '}
+            <time dateTime={a.at}>{a.at}</time>
+            {a.reason ? (
+              <>
+                {' '}
+                · <code>{a.reason}</code>
+              </>
+            ) : null}
+            {a.verification ? <> · {a.verification}</> : null}
+            {a.signatureHint ? (
+              <>
+                {' '}
+                · sig <code>{a.signatureHint}</code>
+              </>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export function Marketplace() {
@@ -96,6 +161,7 @@ export function Marketplace() {
   const [unlockStep, setUnlockStep] = useState<'idle' | 'payment_required' | 'claiming' | 'done'>(
     'idle',
   );
+  const [attemptLog, setAttemptLog] = useState<readonly MarketUnlockAttempt[]>([]);
 
   const applyPage = useCallback(
     (
@@ -186,6 +252,17 @@ export function Marketplace() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { readUnlockAttemptLog } = await import('@/lib/product-client');
+      if (!cancelled) setAttemptLog(readUnlockAttemptLog());
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const sell = async (file?: File | null) => {
     setBusy(true);
@@ -294,6 +371,15 @@ export function Marketplace() {
         setFailReason('invalid_signature');
         setStatus(describePaymentFailureReason('invalid_signature'));
         setUnlockStep('payment_required');
+        const { recordUnlockAttempt, signatureHintFromTx } = await import('@/lib/product-client');
+        setAttemptLog(
+          recordUnlockAttempt({
+            listingId: activeId,
+            status: 'fail',
+            reason: 'invalid_signature',
+            signatureHint: signatureHintFromTx(txSig),
+          }),
+        );
         return;
       }
       const payment = {
@@ -326,6 +412,15 @@ export function Marketplace() {
             body.error?.message ||
             describePaymentFailureReason(reason),
         );
+        const { recordUnlockAttempt, signatureHintFromTx } = await import('@/lib/product-client');
+        setAttemptLog(
+          recordUnlockAttempt({
+            listingId: activeId,
+            status: 'fail',
+            reason,
+            signatureHint: signatureHintFromTx(txSig),
+          }),
+        );
         return;
       }
       const env = body.envelope;
@@ -342,6 +437,21 @@ export function Marketplace() {
       }
       setUnlockReceipt(body.receipt ?? null);
       setUnlockStep('done');
+      {
+        const { recordUnlockAttempt, signatureHintFromTx } = await import('@/lib/product-client');
+        setAttemptLog(
+          recordUnlockAttempt({
+            listingId: activeId,
+            status: 'success',
+            ...(body.receipt?.verification
+              ? { verification: body.receipt.verification }
+              : body.devAccepted
+                ? { verification: 'dev_accept' as const }
+                : {}),
+            signatureHint: signatureHintFromTx(txSig),
+          }),
+        );
+      }
       if (body.receipt) {
         const tone = receiptTone(body.receipt.verification);
         setStatus(
@@ -444,8 +554,9 @@ export function Marketplace() {
               {rpcReady ? 'RPC verify on' : 'HTTP 402 · RPC unset'}
             </StatusBadge>
             <StatusBadge tone={storeMeta?.kind === 'file-local' ? 'pending' : 'degraded'}>
-              {storeLabel}
+              {storeMeta?.label ?? storeLabel}
             </StatusBadge>
+            <StatusBadge tone="degraded">replica-unsafe</StatusBadge>
             <StatusBadge tone="degraded">not revenue-ready</StatusBadge>
           </div>
         </header>
@@ -718,6 +829,7 @@ export function Marketplace() {
                 </ul>
               </div>
             ) : null}
+            <UnlockAttemptHistory log={attemptLog} listingId={activeId} />
             {unlocked?.text ? <pre className="market__plain">{unlocked.text}</pre> : null}
             {unlocked?.mediaUrl && unlocked.contentType?.startsWith('image/') ? (
               // eslint-disable-next-line @next/next/no-img-element

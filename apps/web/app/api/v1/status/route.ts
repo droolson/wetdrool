@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Honest production/revenue readiness. Never invent earnings or a $DROOL mint.
- * Aggregates marketplace + room store + auth config flags (auth network probe is separate).
+ * Aggregates marketplace + room store + auth config + discovery provider flags
+ * (auth network probe is separate; feed personalization is never faked).
  * GET /api/v1/status
  */
 export function GET(): Response {

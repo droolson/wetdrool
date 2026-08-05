@@ -7,12 +7,16 @@ import {
   emptyDiscoveryMessage,
   listShortCategories,
   parseDiscoveryMode,
+  parseShortSortMode,
+  personalizationStatus,
+  personalizationUnconfiguredNote,
   rankShorts,
   rankShortsPage,
   scoreShort,
   SHORT_CLIPS,
   SHORT_RANK_WEIGHTS,
   SHORTS_PAGE_SIZE,
+  shortSortLabel,
   syntheticMediaLabel,
 } from '../lib/short-feed';
 import { transferTaxAmount, getDroolTokenConfig } from '../lib/drool-token';
@@ -49,6 +53,7 @@ describe('short feed ranking', () => {
     expect(page.syntheticCount).toBe(page.items.length);
     expect(page.licensedCount).toBe(0);
     expect(page.items[0]!.syntheticLabel).toContain('SYNTHETIC');
+    expect(page.sort).toBe('trending');
 
     const cats = listShortCategories();
     expect(cats).toContain('trans');
@@ -99,6 +104,37 @@ describe('short feed ranking', () => {
     expect(page.hasMore).toBe(false);
     expect(page.syntheticCount).toBe(0);
     expect(page.licensedCount).toBe(0);
+  });
+
+  it('personalization stays explicitly unconfigured', () => {
+    const status = personalizationStatus();
+    expect(status.configured).toBe(false);
+    expect(status.mode).toBe('unconfigured');
+    expect(status.note).toMatch(/unconfigured/i);
+    expect(status.note).toMatch(/for-you/i);
+    expect(personalizationUnconfiguredNote()).toBe(status.note);
+  });
+
+  it('sort modes: trending by score, recent by recency', () => {
+    expect(parseShortSortMode('recent')).toBe('recent');
+    expect(parseShortSortMode('trending')).toBe('trending');
+    expect(parseShortSortMode('nope')).toBe('trending');
+    expect(shortSortLabel('recent')).toMatch(/Recent/i);
+    expect(shortSortLabel('trending')).toMatch(/Trending/i);
+
+    const trending = rankShortsPage('all', { sort: 'trending', limit: 24 });
+    const recent = rankShortsPage('all', { sort: 'recent', limit: 24 });
+    expect(trending.sort).toBe('trending');
+    expect(recent.sort).toBe('recent');
+    expect(trending.items.length).toBe(recent.items.length);
+
+    for (let i = 1; i < recent.items.length; i++) {
+      expect(recent.items[i - 1]!.recency).toBeGreaterThanOrEqual(recent.items[i]!.recency);
+    }
+    for (let i = 1; i < trending.items.length; i++) {
+      expect(trending.items[i - 1]!.score).toBeGreaterThanOrEqual(trending.items[i]!.score);
+    }
+    expect(recent.items[0]!.why.some((w) => w.includes('sort recent'))).toBe(true);
   });
 });
 

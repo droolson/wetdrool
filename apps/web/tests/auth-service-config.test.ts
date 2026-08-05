@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   deriveAuthNextStep,
+  devConfigureHintText,
   parseAuthServiceOrigin,
   passkeyCeremoniesAllowed,
   probeAuthServiceStatus,
@@ -45,11 +46,46 @@ describe('auth service config', () => {
     expect(bad.ok).toBe(false);
   });
 
-  it('derives nextStep from reachability', () => {
+  it('derives nextStep from reachability with actionable guidance', () => {
     expect(deriveAuthNextStep('ready').nextStep).toBe('ready');
+    expect(deriveAuthNextStep('ready').primaryAction).toBe('open_devices');
+    expect(deriveAuthNextStep('ready').links.some((l) => l.href === '/settings/devices')).toBe(
+      true,
+    );
+    expect(deriveAuthNextStep('ready').actionSummary.toLowerCase()).toMatch(/passkey|devices/);
+    expect(deriveAuthNextStep('ready').showDevConfigureHint).toBe(false);
+
     expect(deriveAuthNextStep('unreachable').nextStep).toBe('start_auth_service');
+    expect(deriveAuthNextStep('unreachable').primaryAction).toBe('retry_probe');
+    expect(deriveAuthNextStep('unreachable').links.some((l) => l.href === '/settings/providers')).toBe(
+      true,
+    );
+
+    const unreachableLoopback = deriveAuthNextStep('unreachable', { loopback: true });
+    expect(unreachableLoopback.showDevConfigureHint).toBe(true);
+    expect(unreachableLoopback.nextStepLabel).toMatch(/Retry probe/i);
+
     expect(deriveAuthNextStep('degraded').nextStep).toBe('wait_ready');
+    expect(deriveAuthNextStep('degraded').primaryAction).toBe('retry_probe');
+    expect(deriveAuthNextStep('degraded').actionSummary.toLowerCase()).toMatch(/retry|not ready/);
+    expect(deriveAuthNextStep('degraded').showDevConfigureHint).toBe(false);
+
     expect(deriveAuthNextStep('invalid_origin').nextStep).toBe('configure_url');
+    expect(deriveAuthNextStep('invalid_origin').primaryAction).toBe('configure_env');
+    expect(deriveAuthNextStep('invalid_origin').showDevConfigureHint).toBe(true);
+
+    expect(deriveAuthNextStep('unconfigured').nextStep).toBe('configure_url');
+    expect(deriveAuthNextStep('unconfigured').links.some((l) => l.href === '/settings/devices')).toBe(
+      true,
+    );
+  });
+
+  it('dev configure hint is local-only and never promotes legacy RP hosts', () => {
+    const hint = devConfigureHintText().toLowerCase();
+    expect(hint).toMatch(/wetdrool_auth_url|next_public_auth_service_url/);
+    expect(hint).toMatch(/loopback|127\.0\.0\.1|local/);
+    expect(hint).not.toContain('online');
+    expect(hint).toMatch(/legacy/);
   });
 
   it('probe reports ready when healthz and readyz succeed', async () => {
@@ -79,6 +115,10 @@ describe('auth service config', () => {
     expect(report.webAuthnOrigin).toBe('local-dev');
     expect(report.nextStep).toBe('ready');
     expect(report.nextStepLabel.toLowerCase()).not.toContain('online');
+    expect(report.actionSummary.toLowerCase()).toMatch(/ready|passkey|devices/);
+    expect(report.primaryAction).toBe('open_devices');
+    expect(report.links.some((l) => l.href === '/settings/devices')).toBe(true);
+    expect(report.showDevConfigureHint).toBe(false);
   });
 
   it('probe reports unreachable when fetch fails', async () => {
@@ -94,6 +134,9 @@ describe('auth service config', () => {
     expect(report.healthz).toBe(null);
     expect(report.note).toMatch(/Cannot reach/i);
     expect(report.nextStep).toBe('start_auth_service');
+    expect(report.primaryAction).toBe('retry_probe');
+    expect(report.actionSummary.toLowerCase()).toMatch(/unreachable|retry|start/);
+    expect(report.showDevConfigureHint).toBe(true);
   });
 
   it('probe reports degraded when healthz ok but readyz fails', async () => {
@@ -114,6 +157,21 @@ describe('auth service config', () => {
     expect(reachabilityLabel(report.reachability)).toBe('Degraded — not ready');
     expect(passkeyCeremoniesAllowed(report.reachability)).toBe(false);
     expect(reachabilityDetail(report)).toMatch(/healthz/i);
+    expect(report.nextStep).toBe('wait_ready');
+    expect(report.primaryAction).toBe('retry_probe');
+  });
+
+  it('probe invalid origin attaches configure next-step fields', async () => {
+    const report = await probeAuthServiceStatus({
+      env: { WETDROOL_AUTH_URL: 'https://droolhouse.com' },
+      fetchImpl: vi.fn() as unknown as typeof fetch,
+    });
+    expect(report.reachability).toBe('invalid_origin');
+    expect(report.configured).toBe(false);
+    expect(report.nextStep).toBe('configure_url');
+    expect(report.primaryAction).toBe('configure_env');
+    expect(report.showDevConfigureHint).toBe(true);
+    expect(report.links.some((l) => l.href === '/settings/providers')).toBe(true);
   });
 
   it('labels never claim online for ready reachability', () => {

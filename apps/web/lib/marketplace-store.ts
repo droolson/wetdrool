@@ -12,8 +12,22 @@ import { dirname } from 'node:path';
 
 import type { SealedEnvelope } from './e2ee-seal';
 import type { X402Network } from './x402';
+import { getMarketplaceGateMode } from './marketplace-unlock';
 
 export type MarketplaceStoreKind = 'memory-ephemeral' | 'file-local';
+
+export interface MarketplaceStoreMeta {
+  readonly kind: MarketplaceStoreKind;
+  /** Always false — file store is single-node only; memory is process-local. */
+  readonly multiReplicaSafe: false;
+  readonly durableAcrossRestart: boolean;
+  /** Always false until multi-replica commerce + settlement proof exists. */
+  readonly revenueReady: false;
+  readonly gate: 'env-stable' | 'ephemeral';
+  /** Short badge label for UI. */
+  readonly label: string;
+  readonly note: string;
+}
 
 export interface MarketplaceListing {
   readonly id: string;
@@ -216,6 +230,30 @@ export function getMarketplaceStoreKind(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): MarketplaceStoreKind {
   return resolveDataPath(env) ? 'file-local' : 'memory-ephemeral';
+}
+
+/** Honest store flags for API + UI badges (never multi-replica safe). */
+export function getMarketplaceStoreMeta(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): MarketplaceStoreMeta {
+  const kind = getMarketplaceStoreKind(env);
+  const durable = kind === 'file-local';
+  const gate = getMarketplaceGateMode(env);
+  return {
+    kind,
+    multiReplicaSafe: false,
+    durableAcrossRestart: durable,
+    revenueReady: false,
+    gate,
+    label: durable
+      ? gate === 'env-stable'
+        ? 'file · single-node · replica-unsafe'
+        : 'file · gate ephemeral · replica-unsafe'
+      : 'memory · ephemeral · replica-unsafe',
+    note: durable
+      ? 'File-backed local store on one node only. Survives restarts when WETDROOL_MARKETPLACE_GATE_SECRET is set. Not multi-instance / serverless-safe. revenueReady remains false.'
+      : 'In-process memory. Listings and host receipts vanish on cold start / multi-instance. Set WETDROOL_MARKETPLACE_DATA_PATH (+ GATE_SECRET) for single-node durability. revenueReady remains false.',
+  };
 }
 
 export function createListingId(): string {

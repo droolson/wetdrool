@@ -254,9 +254,12 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     [applyStoreMeta, roomId],
   );
 
+  // Session presence only — rekey must NOT reset poll cursor (`after` / lastIdRef).
+  const hasSession = session !== null;
+
   // Visibility-aware poll with exponential backoff on failures.
   useEffect(() => {
-    if (!session) return;
+    if (!hasSession) return;
 
     const onVis = () => {
       visibleRef.current = document.visibilityState === 'visible';
@@ -280,7 +283,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       document.removeEventListener('visibilitychange', onVis);
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
     };
-  }, [load, session]);
+  }, [load, hasSession]);
 
   useEffect(() => {
     let cancelled = false;
@@ -388,12 +391,13 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       setStatus('Enter the correct shared room key.');
       return;
     }
+    // Password-only update: keep envelopes + poll cursor (lastIdRef / after) stable.
     const next = { username: session.username, password: rekeyPass };
     saveSession(roomId, next);
     setSession(next);
     setRekeyPass('');
     setRekeyOpen(false);
-    setStatus('Room key updated — re-decrypting…');
+    setStatus('Room key updated — re-decrypting sealed messages…');
   };
 
   const leave = () => {
@@ -547,7 +551,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         ) : null}
         <p className="field-help">
           Host never sees plaintext.{' '}
-          <Link href="/chat">Secret entrance</Link> · <Link href="/rooms/lobby">lobby</Link>
+          <Link href="/rooms">All rooms</Link> · <Link href="/chat">Secret entrance</Link> ·{' '}
+          <Link href="/rooms/lobby">lobby</Link>
         </p>
       </div>
     );
@@ -700,7 +705,12 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           <li className="e2ee-room__empty">No messages — say hi or drop a GIF.</li>
         ) : null}
         {visible.map((m) => (
-          <li key={m.id} className="e2ee-card" data-kind={m.kind}>
+          <li
+            key={m.id}
+            className="e2ee-card"
+            data-kind={m.kind}
+            aria-label={`Message from ${m.from}, ${m.kind}`}
+          >
             <div className="e2ee-card__meta">
               <span className="e2ee-card__from">{m.from}</span>
               <span className="e2ee-card__kind">{m.kind}</span>
