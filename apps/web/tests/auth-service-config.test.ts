@@ -45,6 +45,13 @@ describe('auth service config', () => {
     expect(bad.ok).toBe(false);
   });
 
+  it('derives nextStep from reachability', () => {
+    expect(deriveAuthNextStep('ready').nextStep).toBe('ready');
+    expect(deriveAuthNextStep('unreachable').nextStep).toBe('start_auth_service');
+    expect(deriveAuthNextStep('degraded').nextStep).toBe('wait_ready');
+    expect(deriveAuthNextStep('invalid_origin').nextStep).toBe('configure_url');
+  });
+
   it('probe reports ready when healthz and readyz succeed', async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

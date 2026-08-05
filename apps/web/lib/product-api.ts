@@ -22,6 +22,7 @@ export const PRODUCT_API_SURFACES = [
   { id: 'token', path: '/api/v1/token', methods: ['GET'] as const },
   { id: 'market', path: '/api/v1/market', methods: ['GET', 'POST'] as const },
   { id: 'market/:id', path: '/api/v1/market/:id', methods: ['GET', 'POST'] as const },
+  { id: 'rooms', path: '/api/v1/rooms', methods: ['GET'] as const },
   { id: 'rooms/:roomId/messages', path: '/api/v1/rooms/:roomId/messages', methods: ['GET', 'POST'] as const },
   { id: 'e2ee', path: '/api/v1/e2ee', methods: ['GET'] as const },
   { id: 'policy/age', path: '/api/v1/policy/age', methods: ['GET'] as const },

@@ -70,6 +70,9 @@ export function Marketplace() {
   const [hasMore, setHasMore] = useState(false);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [copyFlash, setCopyFlash] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
+  const [filterNote, setFilterNote] = useState<string | null>(null);
 
   // sell form
   const [title, setTitle] = useState('');
@@ -105,6 +108,7 @@ export function Marketplace() {
         count?: number;
         paymentVerify?: PaymentMeta | null;
         store?: StoreMeta | null;
+        filter?: { readonly note?: string | null };
       },
       mode: 'replace' | 'append',
     ) => {
@@ -122,16 +126,22 @@ export function Marketplace() {
       }
       if (data.paymentVerify) setPaymentMeta(data.paymentVerify);
       if (data.store) setStoreMeta(data.store);
+      if (data.filter?.note !== undefined) setFilterNote(data.filter.note ?? null);
     },
     [],
   );
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (qOverride?: string) => {
     setLoading(true);
     setListError(null);
+    const q = (qOverride !== undefined ? qOverride : activeQuery).trim();
     try {
       const { fetchMarket } = await import('@/lib/product-client');
-      const result = await fetchMarket({ limit: PAGE_SIZE, offset: 0 });
+      const result = await fetchMarket({
+        limit: PAGE_SIZE,
+        offset: 0,
+        q: q || null,
+      });
       if (result.kind !== 'ok') {
         setListError(result.message);
         setListings([]);
@@ -148,7 +158,7 @@ export function Marketplace() {
     } finally {
       setLoading(false);
     }
-  }, [applyPage]);
+  }, [activeQuery, applyPage]);
 
   const loadMore = useCallback(async () => {
     if (nextOffset === null || loadingMore) return;
@@ -156,7 +166,11 @@ export function Marketplace() {
     setListError(null);
     try {
       const { fetchMarket } = await import('@/lib/product-client');
-      const result = await fetchMarket({ limit: PAGE_SIZE, offset: nextOffset });
+      const result = await fetchMarket({
+        limit: PAGE_SIZE,
+        offset: nextOffset,
+        q: activeQuery.trim() || null,
+      });
       if (result.kind !== 'ok') {
         setListError(result.message);
         return;
@@ -167,7 +181,7 @@ export function Marketplace() {
     } finally {
       setLoadingMore(false);
     }
-  }, [applyPage, loadingMore, nextOffset]);
+  }, [activeQuery, applyPage, loadingMore, nextOffset]);
 
   useEffect(() => {
     void refresh();
@@ -517,6 +531,45 @@ export function Marketplace() {
               Refresh
             </button>
           </div>
+          <form
+            className="market__search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const next = searchInput.trim().slice(0, 80);
+              setActiveQuery(next);
+              void refresh(next);
+            }}
+          >
+            <label htmlFor="market-search-q">
+              Filter listings
+              <input
+                id="market-search-q"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Title, seller, id…"
+                maxLength={80}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <button type="submit" disabled={loading || busy}>
+              Search
+            </button>
+            {activeQuery ? (
+              <button
+                type="button"
+                disabled={loading || busy}
+                onClick={() => {
+                  setSearchInput('');
+                  setActiveQuery('');
+                  void refresh('');
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+          </form>
+          {filterNote && activeQuery ? <p className="field-help">{filterNote}</p> : null}
           {loading ? (
             <p className="field-help" role="status">
               Loading catalog…
@@ -533,12 +586,16 @@ export function Marketplace() {
           {!loading && listings.length === 0 && !listError ? (
             <div className="market__empty card-panel" role="status">
               <p>
-                <strong>No sealed drops yet.</strong>
+                <strong>
+                  {activeQuery
+                    ? `No listings match “${activeQuery}” on this node.`
+                    : 'No sealed drops yet.'}
+                </strong>
               </p>
               <p className="field-help">
-                List a text or media drop above. Buyers will see HTTP 402 terms with your payTo
-                address. Catalog is {storeMeta?.kind === 'file-local' ? 'file-backed on this node' : 'in-process memory'}{' '}
-                — not multi-replica commerce.
+                {activeQuery
+                  ? 'Filter is a local substring over this host’s store — not a global search index.'
+                  : `List a text or media drop above. Buyers will see HTTP 402 terms with your payTo address. Catalog is ${storeMeta?.kind === 'file-local' ? 'file-backed on this node' : 'in-process memory'} — not multi-replica commerce.`}
               </p>
             </div>
           ) : null}
