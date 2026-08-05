@@ -8,6 +8,9 @@
 
 export type DiscoveryMode = 'all' | 'straight' | 'pride';
 
+/** Public sort over the same ranked catalog — not a personalized for-you feed. */
+export type ShortSortMode = 'trending' | 'recent';
+
 export type ShortContentWarning = 'abstract-only' | 'adult-artistic' | 'adult-explicit';
 
 export interface ShortClip {
@@ -186,6 +189,8 @@ export interface RankShortsOptions {
   readonly limit?: number;
   readonly offset?: number;
   readonly category?: string | null;
+  /** Default `trending` (DroolRank-lite score). `recent` sorts by recency signal only. */
+  readonly sort?: ShortSortMode;
 }
 
 export interface RankShortsPage {
@@ -196,13 +201,26 @@ export interface RankShortsPage {
   readonly hasMore: boolean;
   readonly mode: DiscoveryMode;
   readonly category: string | null;
+  readonly sort: ShortSortMode;
   readonly syntheticCount: number;
   readonly licensedCount: number;
+}
+
+/** Explicit personalization status — never implied by ranked catalog order. */
+export interface PersonalizationStatus {
+  readonly configured: false;
+  readonly mode: 'unconfigured';
+  readonly note: string;
 }
 
 export function parseDiscoveryMode(raw: string | null | undefined): DiscoveryMode {
   if (raw === 'straight' || raw === 'pride' || raw === 'all') return raw;
   return 'all';
+}
+
+export function parseShortSortMode(raw: string | null | undefined): ShortSortMode {
+  if (raw === 'recent' || raw === 'trending') return raw;
+  return 'trending';
 }
 
 export function listShortCategories(): readonly string[] {
@@ -258,6 +276,29 @@ export function emptyDiscoveryMessage(
 }
 
 /**
+ * Honest personalization empty state — ranked catalogs are public recipes,
+ * not a for-you / social-graph recommendation engine.
+ */
+export function personalizationUnconfiguredNote(): string {
+  return (
+    'Personalization is unconfigured: no follow-graph, watch history, or preference model is applied. ' +
+    'This is a public DroolRank-lite / recency catalog, not a for-you feed.'
+  );
+}
+
+export function personalizationStatus(): PersonalizationStatus {
+  return {
+    configured: false,
+    mode: 'unconfigured',
+    note: personalizationUnconfiguredNote(),
+  };
+}
+
+export function shortSortLabel(sort: ShortSortMode): string {
+  return sort === 'recent' ? 'Recent (recency signal)' : 'Trending (DroolRank-lite)';
+}
+
+/**
  * Arrow/Home/End navigation for chip toolbars and tablists.
  * Returns the next index, or null if the key is not a navigation key.
  */
@@ -291,9 +332,13 @@ export function scoreShort(item: ShortClip, mode: DiscoveryMode): number {
   );
 }
 
-function rankAll(mode: DiscoveryMode, category?: string | null): RankedShort[] {
+function rankAll(
+  mode: DiscoveryMode,
+  category?: string | null,
+  sort: ShortSortMode = 'trending',
+): RankedShort[] {
   const cat = category?.trim().toLowerCase() || null;
-  return SHORT_CLIPS.filter((item) => mode === 'all' || item.mode === mode)
+  const ranked = SHORT_CLIPS.filter((item) => mode === 'all' || item.mode === mode)
     .filter((item) => !cat || item.category === cat)
     .map((item) => {
       const score = scoreShort(item, mode);
@@ -303,6 +348,7 @@ function rankAll(mode: DiscoveryMode, category?: string | null): RankedShort[] {
         mode === 'all' ? 'mode all' : item.mode === mode ? `mode ${mode}` : 'mode mismatch',
         item.synthetic ? 'synthetic fixture' : 'licensed media',
         contentWarningLabel(item.contentWarning),
+        sort === 'recent' ? 'sort recent' : 'sort trending',
       ];
       return {
         ...item,
@@ -310,8 +356,14 @@ function rankAll(mode: DiscoveryMode, category?: string | null): RankedShort[] {
         why,
         syntheticLabel: syntheticMediaLabel(item),
       };
-    })
-    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+    });
+
+  if (sort === 'recent') {
+    return ranked.sort(
+      (a, b) => b.recency - a.recency || b.score - a.score || a.id.localeCompare(b.id),
+    );
+  }
+  return ranked.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }
 
 /** Full ranked page with offset pagination. */
@@ -322,7 +374,8 @@ export function rankShortsPage(
   const limit = Math.min(Math.max(1, options.limit ?? 24), 48);
   const offset = Math.max(0, options.offset ?? 0);
   const category = options.category?.trim().toLowerCase() || null;
-  const ranked = rankAll(mode, category);
+  const sort = options.sort ?? 'trending';
+  const ranked = rankAll(mode, category, sort);
   const items = ranked.slice(offset, offset + limit);
   const syntheticCount = items.filter((i) => i.synthetic).length;
   return {
@@ -333,6 +386,7 @@ export function rankShortsPage(
     hasMore: offset + items.length < ranked.length,
     mode,
     category,
+    sort,
     syntheticCount,
     licensedCount: items.length - syntheticCount,
   };

@@ -59,6 +59,11 @@ export const MAX_MESSAGE_LIMIT = 100;
 export interface RoomIndexEntry {
   readonly roomId: string;
   readonly messageCount: number;
+  /**
+   * ISO timestamp of the newest sealed envelope's `createdAt`, when present.
+   * Ciphertext metadata only — never plaintext.
+   */
+  readonly lastActivityAt: string | null;
 }
 
 interface RoomBag {
@@ -80,6 +85,17 @@ function resolveDataPath(
   if (!raw) return null;
   if (!raw.startsWith('/') && !/^[A-Za-z]:[\\/]/.test(raw)) return null;
   return raw;
+}
+
+/** Newest `createdAt` among sealed messages (string compare works for ISO-8601). */
+export function newestActivityAt(messages: readonly SealedEnvelope[]): string | null {
+  let best: string | null = null;
+  for (const m of messages) {
+    const at = m.createdAt;
+    if (typeof at !== 'string' || at.length === 0) continue;
+    if (best === null || at > best) best = at;
+  }
+  return best;
 }
 
 class MemoryRoomBag implements RoomBag {
@@ -289,14 +305,36 @@ export function appendMessage(envelope: SealedEnvelope): 'appended' | 'duplicate
 }
 
 /**
- * Ciphertext-only room index: roomId + message counts. Never returns plaintext.
+ * Ciphertext-only room index: roomId, counts, last activity. Never returns plaintext.
+ * Sorted by roomId ascending (stable); callers may re-sort by lastActivityAt.
  */
 export function listRooms(): readonly RoomIndexEntry[] {
   const store = getRoomBag();
-  return store.listRoomIds().map((roomId) => ({
-    roomId,
-    messageCount: store.list(roomId).length,
-  }));
+  return store.listRoomIds().map((roomId) => {
+    const messages = store.list(roomId);
+    return {
+      roomId,
+      messageCount: messages.length,
+      lastActivityAt: newestActivityAt(messages),
+    };
+  });
+}
+
+/**
+ * Sort index entries by last activity (newest first). Rooms without activity stay last.
+ * Pure helper for index UI — does not touch the bag.
+ */
+export function sortRoomsByActivity(
+  rooms: readonly RoomIndexEntry[],
+): readonly RoomIndexEntry[] {
+  return [...rooms].sort((a, b) => {
+    const at = a.lastActivityAt ?? '';
+    const bt = b.lastActivityAt ?? '';
+    if (at === bt) return a.roomId.localeCompare(b.roomId);
+    if (!at) return 1;
+    if (!bt) return -1;
+    return bt.localeCompare(at);
+  });
 }
 
 export function normalizeRoomId(raw: string): string | null {

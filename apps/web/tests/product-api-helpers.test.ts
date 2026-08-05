@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildDiscoveryProviderHonesty,
   buildProductHealthReport,
   buildProductStatusReport,
   jsonError,
@@ -11,6 +12,7 @@ import {
   PRODUCT_API_SURFACES,
   PRODUCT_HONEST_FLAGS,
   readProductApiErrorMessage,
+  resolveFeedPersonalizationHonesty,
 } from '../lib/product-api';
 import { rankShorts } from '../lib/short-feed';
 import { getDroolTokenConfig, transferTaxAmount } from '../lib/drool-token';
@@ -105,6 +107,8 @@ describe('product api helpers', () => {
     expect(body.honest.droolMintInvented).toBe(false);
     expect(body.honest.earningClaimed).toBe(false);
     expect(body.honest.revenueReady).toBe(false);
+    expect(body.honest.feedPersonalizationActive).toBe(false);
+    expect(body.honest.shortsCatalogExternal).toBe(false);
     expect(body.revenueReady).toBe(false);
     expect(body.stores.marketplace.multiReplicaSafe).toBe(false);
     expect(body.stores.rooms.multiReplicaSafe).toBe(false);
@@ -113,6 +117,12 @@ describe('product api helpers', () => {
     expect(body.surfaceCatalog.some((s) => s.id === 'ai/chat' && s.methods.includes('POST'))).toBe(
       true,
     );
+    expect(body.discovery.shorts.catalogMode).toBe('local-synthetic');
+    expect(body.discovery.shorts.syntheticFixturesOnly).toBe(true);
+    expect(body.discovery.shorts.ranking).toBe('local-droolrank-lite');
+    expect(body.discovery.feedService.configured).toBe(false);
+    expect(body.discovery.feedService.personalizationActive).toBe(false);
+    expect(body.discovery.feedService.origin).toBeNull();
   });
 
   it('status aggregates stores + auth and never claims earnings', () => {
@@ -127,6 +137,37 @@ describe('product api helpers', () => {
     expect(body.auth.protocolIdentityEstablished).toBe(false);
     expect(body.honest.droolMint).toBe('does-not-exist');
     expect(body.honest.earningClaimed).toBe(false);
+    expect(body.honest.feedPersonalizationActive).toBe(false);
+    expect(body.honest.shortsCatalogExternal).toBe(false);
+    expect(body.discovery.shorts.catalogMode).toBe('local-synthetic');
+    expect(body.discovery.feedService.configured).toBe(false);
+    expect(body.discovery.feedService.personalizationActive).toBe(false);
+  });
+
+  it('feed personalization is unconfigured without URL and never active today', () => {
+    expect(resolveFeedPersonalizationHonesty({}).configured).toBe(false);
+    expect(resolveFeedPersonalizationHonesty({ NEXT_PUBLIC_FEED_SERVICE_URL: '' }).configured).toBe(
+      false,
+    );
+    expect(
+      resolveFeedPersonalizationHonesty({ NEXT_PUBLIC_FEED_SERVICE_URL: 'not-a-url' }).configured,
+    ).toBe(false);
+    const loopback = resolveFeedPersonalizationHonesty({
+      NEXT_PUBLIC_FEED_SERVICE_URL: 'http://localhost:4100',
+    });
+    expect(loopback.configured).toBe(true);
+    expect(loopback.origin).toBe('http://localhost:4100');
+    expect(loopback.personalizationActive).toBe(false);
+
+    const discovery = buildDiscoveryProviderHonesty({
+      NEXT_PUBLIC_FEED_SERVICE_URL: 'https://feed.wetdrool.com',
+    });
+    expect(discovery.feedService.configured).toBe(true);
+    expect(discovery.feedService.origin).toBe('https://feed.wetdrool.com');
+    expect(discovery.feedService.personalizationActive).toBe(false);
+    expect(discovery.shorts.catalogMode).toBe('local-synthetic');
+    expect(discovery.live.catalogMode).toBe('local-synthetic');
+    expect(discovery.creators.syntheticFixturesOnly).toBe(true);
   });
 
   it('ranks shorts for api payload shape', () => {
