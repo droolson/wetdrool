@@ -983,6 +983,10 @@ export function Marketplace() {
                 </strong>
               </p>
               <p className="field-help">
+                Sort: {activeMarketSortLabel(activeSort)} ({activeSort}). multiReplicaSafe: false —
+                single-node host catalog only.
+              </p>
+              <p className="field-help">
                 {activeQuery || activeNetwork
                   ? 'Text filter is a local substring; network is an exact match on listing.network. Neither is a global search index. Clear filters or list a drop above.'
                   : `List a text or media drop above. Buyers will see HTTP 402 terms with your payTo address. Catalog is ${storeMeta?.kind === 'file-local' ? 'file-backed on this node' : 'in-process memory'} — not multi-replica commerce.`}
