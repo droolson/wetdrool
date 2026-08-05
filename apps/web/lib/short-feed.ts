@@ -169,6 +169,66 @@ export const SHORT_CLIPS: readonly ShortClip[] = [
 export interface RankedShort extends ShortClip {
   readonly score: number;
   readonly why: readonly string[];
+  readonly syntheticLabel: string;
+}
+
+/** Public ranking weights (DroolRank-lite). */
+export const SHORT_RANK_WEIGHTS = {
+  provenance: 0.35,
+  recency: 0.2,
+  novelty: 0.2,
+  engagement: 0.1,
+  mode: 0.15,
+  engagementCap: 0.75,
+} as const;
+
+export interface RankShortsOptions {
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly category?: string | null;
+}
+
+export interface RankShortsPage {
+  readonly items: readonly RankedShort[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+  readonly mode: DiscoveryMode;
+  readonly category: string | null;
+  readonly syntheticCount: number;
+  readonly licensedCount: number;
+}
+
+export function parseDiscoveryMode(raw: string | null | undefined): DiscoveryMode {
+  if (raw === 'straight' || raw === 'pride' || raw === 'all') return raw;
+  return 'all';
+}
+
+export function listShortCategories(): readonly string[] {
+  const set = new Set<string>();
+  for (const c of SHORT_CLIPS) set.add(c.category);
+  return [...set].sort();
+}
+
+export function contentWarningLabel(warning: ShortContentWarning): string {
+  switch (warning) {
+    case 'abstract-only':
+      return 'Synthetic abstract fixture — not real performer media';
+    case 'adult-artistic':
+      return 'Adult artistic media — licensed / consented path required';
+    case 'adult-explicit':
+      return 'Adult explicit media — age gate + consent records required';
+    default:
+      return 'Content warning unknown';
+  }
+}
+
+export function syntheticMediaLabel(item: Pick<ShortClip, 'synthetic' | 'contentWarning'>): string {
+  if (item.synthetic || item.contentWarning === 'abstract-only') {
+    return 'SYNTHETIC · no licensed media';
+  }
+  return 'LICENSED MEDIA';
 }
 
 /**
@@ -177,18 +237,20 @@ export interface RankedShort extends ShortClip {
  */
 export function scoreShort(item: ShortClip, mode: DiscoveryMode): number {
   const modeMatch = mode === 'all' ? 0.5 : item.mode === mode ? 1 : 0;
-  const engagement = Math.min(item.engagement, 0.75);
+  const engagement = Math.min(item.engagement, SHORT_RANK_WEIGHTS.engagementCap);
   return (
-    item.provenance * 0.35 +
-    item.recency * 0.2 +
-    item.novelty * 0.2 +
-    engagement * 0.1 +
-    modeMatch * 0.15
+    item.provenance * SHORT_RANK_WEIGHTS.provenance +
+    item.recency * SHORT_RANK_WEIGHTS.recency +
+    item.novelty * SHORT_RANK_WEIGHTS.novelty +
+    engagement * SHORT_RANK_WEIGHTS.engagement +
+    modeMatch * SHORT_RANK_WEIGHTS.mode
   );
 }
 
-export function rankShorts(mode: DiscoveryMode, limit = 24): readonly RankedShort[] {
+function rankAll(mode: DiscoveryMode, category?: string | null): RankedShort[] {
+  const cat = category?.trim().toLowerCase() || null;
   return SHORT_CLIPS.filter((item) => mode === 'all' || item.mode === mode)
+    .filter((item) => !cat || item.category === cat)
     .map((item) => {
       const score = scoreShort(item, mode);
       const why = [
@@ -196,20 +258,61 @@ export function rankShorts(mode: DiscoveryMode, limit = 24): readonly RankedShor
         `recency ${(item.recency * 100).toFixed(0)}%`,
         mode === 'all' ? 'mode all' : item.mode === mode ? `mode ${mode}` : 'mode mismatch',
         item.synthetic ? 'synthetic fixture' : 'licensed media',
+        contentWarningLabel(item.contentWarning),
       ];
-      return { ...item, score, why };
+      return {
+        ...item,
+        score,
+        why,
+        syntheticLabel: syntheticMediaLabel(item),
+      };
     })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+}
+
+/** Full ranked page with offset pagination. */
+export function rankShortsPage(
+  mode: DiscoveryMode,
+  options: RankShortsOptions = {},
+): RankShortsPage {
+  const limit = Math.min(Math.max(1, options.limit ?? 24), 48);
+  const offset = Math.max(0, options.offset ?? 0);
+  const category = options.category?.trim().toLowerCase() || null;
+  const ranked = rankAll(mode, category);
+  const items = ranked.slice(offset, offset + limit);
+  const syntheticCount = items.filter((i) => i.synthetic).length;
+  return {
+    items,
+    total: ranked.length,
+    limit,
+    offset,
+    hasMore: offset + items.length < ranked.length,
+    mode,
+    category,
+    syntheticCount,
+    licensedCount: items.length - syntheticCount,
+  };
+}
+
+/** Backward-compatible helper used by UI fallbacks. */
+export function rankShorts(mode: DiscoveryMode, limit = 24): readonly RankedShort[] {
+  return rankShortsPage(mode, { limit, offset: 0 }).items;
+}
+
+export function rankingPolicyNote(): string {
+  return (
+    `DroolRank-lite weights: provenance ${SHORT_RANK_WEIGHTS.provenance}, ` +
+    `recency ${SHORT_RANK_WEIGHTS.recency}, novelty ${SHORT_RANK_WEIGHTS.novelty}, ` +
+    `engagement ${SHORT_RANK_WEIGHTS.engagement} (cap ${SHORT_RANK_WEIGHTS.engagementCap}), ` +
+    `mode ${SHORT_RANK_WEIGHTS.mode}. Synthetic fixtures until licensed media pipeline.`
+  );
 }
 
 export const DISCOVERY_MODE_KEY = 'wetdrool.discovery.mode';
 
 export function readDiscoveryMode(storage: Pick<Storage, 'getItem'> | null): DiscoveryMode {
   if (!storage) return 'all';
-  const raw = storage.getItem(DISCOVERY_MODE_KEY);
-  if (raw === 'straight' || raw === 'pride' || raw === 'all') return raw;
-  return 'all';
+  return parseDiscoveryMode(storage.getItem(DISCOVERY_MODE_KEY));
 }
 
 export function writeDiscoveryMode(
