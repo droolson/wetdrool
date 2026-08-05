@@ -17,7 +17,9 @@ describe('product api helpers', () => {
     const items = rankShorts('pride', 5);
     expect(items.length).toBeGreaterThan(0);
     expect(items[0]).toHaveProperty('score');
-    expect(items[0]).toHaveProperty('synthetic', true);
+    expect(items[0]).toHaveProperty('synthetic');
+    // Pride lane stays synthetic fixtures (founder CUMDUMP is straight mode).
+    expect(items.every((c) => c.mode === 'pride' && c.synthetic)).toBe(true);
   });
 
   it('token tax is 3%', () => {

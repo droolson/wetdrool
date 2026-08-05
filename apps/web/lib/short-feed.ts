@@ -1,12 +1,15 @@
 /**
  * RedGIFs-class short feed: ranking + fixtures.
  *
- * Live alpha uses synthetic, non-explicit cards only. Real media requires
- * performer age/consent records, licensing, and takedown paths — never a
- * random scrape API.
+ * Live alpha mostly uses synthetic, non-explicit cards. Founder-owned media
+ * (e.g. CUMDUMP) may ship with a real mediaSrc when the operator owns the
+ * rights. Third-party porn still requires performer age/consent records,
+ * licensing, and takedown paths — never a random scrape API.
  */
 
 export type DiscoveryMode = 'all' | 'straight' | 'pride';
+
+export type ShortContentWarning = 'abstract-only' | 'adult-artistic' | 'adult-explicit';
 
 export interface ShortClip {
   readonly id: string;
@@ -21,12 +24,41 @@ export interface ShortClip {
   readonly engagement: number;
   readonly toneA: string;
   readonly toneB: string;
-  /** Always true for current fixtures — UI must label them. */
-  readonly synthetic: true;
-  readonly contentWarning: 'abstract-only';
+  /**
+   * True when the card is an abstract fixture (no real performer media).
+   * Founder-owned drops set this false and provide mediaSrc.
+   */
+  readonly synthetic: boolean;
+  readonly contentWarning: ShortContentWarning;
+  /** Loopback/public path to playable media when not synthetic. */
+  readonly mediaSrc?: string;
+  /** Optional deep-link to a dedicated drop page. */
+  readonly dropHref?: string;
 }
 
+/** Founder-owned music-video drop — rights held by WetDrool operator. */
+export const CUMDUMP_MEDIA_SRC = '/media/cumdump.webm' as const;
+export const CUMDUMP_DROP_HREF = '/video/cumdump' as const;
+
 export const SHORT_CLIPS: readonly ShortClip[] = [
+  {
+    id: 'founder-cumdump',
+    mode: 'straight',
+    category: 'music-video',
+    title: 'CUMDUMP · HAIL SATAN · EVIL',
+    creator: '@wetdrool',
+    durationSec: 180,
+    provenance: 1,
+    recency: 1,
+    novelty: 0.99,
+    engagement: 0.72,
+    toneA: 'rgba(180, 0, 24, .95)',
+    toneB: 'rgba(40, 0, 8, .9)',
+    synthetic: false,
+    contentWarning: 'adult-artistic',
+    mediaSrc: CUMDUMP_MEDIA_SRC,
+    dropHref: CUMDUMP_DROP_HREF,
+  },
   {
     id: 'pride-femboy-studio',
     mode: 'pride',
@@ -155,7 +187,7 @@ export const SHORT_CLIPS: readonly ShortClip[] = [
     synthetic: true,
     contentWarning: 'abstract-only',
   },
-] as const;
+];
 
 export interface RankedShort extends ShortClip {
   readonly score: number;
@@ -186,6 +218,7 @@ export function rankShorts(mode: DiscoveryMode, limit = 24): readonly RankedShor
         `provenance ${(item.provenance * 100).toFixed(0)}%`,
         `recency ${(item.recency * 100).toFixed(0)}%`,
         mode === 'all' ? 'mode all' : item.mode === mode ? `mode ${mode}` : 'mode mismatch',
+        item.synthetic ? 'synthetic fixture' : 'founder media',
       ];
       return { ...item, score, why };
     })

@@ -14,14 +14,17 @@ export function GET(request: Request): Response {
   const mode = parseMode(url.searchParams.get('mode'));
   const limit = parseLimit(url.searchParams.get('limit'), 24, 48);
   const items = rankShorts(mode, limit);
+  const allSynthetic = items.every((item) => item.synthetic);
   return jsonOk({
     ok: true,
     mode,
     limit,
     count: items.length,
     items,
-    synthetic: true as const,
-    note: 'Abstract fixtures until licensed, consented media pipeline is live.',
+    synthetic: allSynthetic,
+    note: allSynthetic
+      ? 'Abstract fixtures until licensed, consented media pipeline is live.'
+      : 'Mixed corpus: synthetic fixtures plus founder-owned media (e.g. CUMDUMP). Third-party adult media still needs consent + licensing.',
   });
 }
 

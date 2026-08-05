@@ -28,6 +28,12 @@ const MODES: readonly { id: DiscoveryMode; label: string }[] = [
   { id: 'pride', label: 'Pride' },
 ];
 
+function formatDuration(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export function ShortFeed() {
   const [mode, setMode] = useState<DiscoveryMode>('all');
   const [contentMode, setContentMode] = useState<ContentMode>('sfw');
@@ -97,15 +103,22 @@ export function ShortFeed() {
     [ageOk, contentMode],
   );
 
+  const hasRealMedia = clips.some((c) => Boolean(c.mediaSrc) && !c.synthetic);
+  const statusLabel = loading
+    ? 'loading…'
+    : hasRealMedia
+      ? `${source} · mixed media`
+      : `${source} · synthetic`;
+
   if (!ageOk || contentMode !== 'nsfw') {
     return (
       <section className="shorts-gate" aria-labelledby="shorts-gate-title">
         <p className="section-kicker">Shorts · RedGIFs energy</p>
         <h1 id="shorts-gate-title">18+ NSFW shorts</h1>
         <p>
-          Vertical discovery for consensual adult clips. Current alpha shows{' '}
-          <strong>synthetic abstract cards only</strong> — no scraped porn APIs. Confirm age to
-          enter NSFW mode (self-attest; no government ID).
+          Vertical discovery for consensual adult clips. Alpha mixes{' '}
+          <strong>synthetic abstract cards</strong> with founder-owned drops (e.g. CUMDUMP). No
+          scraped porn APIs. Confirm age to enter NSFW mode (self-attest; no government ID).
         </p>
         <button type="button" className="shorts-gate__cta" onClick={confirmAge}>
           I am 18+ · enter shorts
@@ -113,6 +126,9 @@ export function ShortFeed() {
         <p className="field-help">
           Swiss foundation operator (planned) · E2EE private drops on creator surfaces · illegal
           content banned.
+        </p>
+        <p>
+          <Link href="/video/cumdump">Secret entrance · CUMDUMP · HAIL SATAN · EVIL →</Link>
         </p>
       </section>
     );
@@ -126,9 +142,7 @@ export function ShortFeed() {
           <h1>Drool shorts</h1>
         </div>
         <div className="shorts-app__meta">
-          <StatusBadge tone="pending">
-            {loading ? 'loading…' : source === 'api' ? 'api · synthetic' : 'local · synthetic'}
-          </StatusBadge>
+          <StatusBadge tone="pending">{statusLabel}</StatusBadge>
           <span className="points-pill" title="Local points ledger">
             {ledger?.available ?? 0} pts
           </span>
@@ -152,56 +166,75 @@ export function ShortFeed() {
 
       <p className="shorts-hint">
         Pride emphasizes trans, femboy, and queer creators. Mode is local and never inferred.
-        Complete a short to earn watch points when the ad-funded pool allows.
+        Complete a short to earn watch points when the ad-funded pool allows.{' '}
+        <Link href="/video/cumdump">CUMDUMP drop →</Link>
       </p>
 
       <ul className="shorts-rail" aria-label="Short feed">
-        {clips.map((clip) => (
-          <li key={clip.id}>
-            <article
-              className="short-card"
-              data-active={activeId === clip.id ? 'true' : 'false'}
-              style={
-                {
-                  '--tone-a': clip.toneA,
-                  '--tone-b': clip.toneB,
-                } as CSSProperties
-              }
-            >
-              <div className="short-card__stage" aria-hidden="true">
-                <span className="short-card__pulse" />
-                <span className="short-card__dur">
-                  {Math.floor(clip.durationSec / 60)}:
-                  {String(clip.durationSec % 60).padStart(2, '0')}
-                </span>
-              </div>
-              <div className="short-card__body">
-                <div className="short-card__tags">
-                  <span>{clip.category}</span>
-                  <span>{clip.mode}</span>
-                  <span>abstract</span>
+        {clips.map((clip) => {
+          const playable = Boolean(clip.mediaSrc) && !clip.synthetic;
+          return (
+            <li key={clip.id}>
+              <article
+                className={
+                  playable ? 'short-card short-card--media' : 'short-card short-card--synthetic'
+                }
+                data-active={activeId === clip.id ? 'true' : 'false'}
+                style={
+                  {
+                    '--tone-a': clip.toneA,
+                    '--tone-b': clip.toneB,
+                  } as CSSProperties
+                }
+              >
+                <div className="short-card__stage">
+                  {playable && clip.mediaSrc ? (
+                    <video
+                      className="short-card__video"
+                      src={clip.mediaSrc}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label={`${clip.title} video`}
+                    />
+                  ) : (
+                    <span className="short-card__pulse" aria-hidden="true" />
+                  )}
+                  <span className="short-card__dur">{formatDuration(clip.durationSec)}</span>
                 </div>
-                <h2>{clip.title}</h2>
-                <p>
-                  <Link href={`/creator/${encodeURIComponent(clip.creator.replace(/^@/, ''))}`}>
-                    {clip.creator}
-                  </Link>
-                  <span className="short-card__score"> · score {clip.score.toFixed(2)}</span>
-                </p>
-                <p className="short-card__why">Why: {clip.why.join(' · ')}</p>
-                <div className="short-card__actions">
-                  <button type="button" onClick={() => completeWatch(clip)}>
-                    Finish · +pts
-                  </button>
-                  <Link href={`/creator/${encodeURIComponent(clip.creator.replace(/^@/, ''))}`}>
-                    Creator
-                  </Link>
-                  <Link href="/live">Go live rooms</Link>
+                <div className="short-card__body">
+                  <div className="short-card__tags">
+                    <span>{clip.category}</span>
+                    <span>{clip.mode}</span>
+                    <span>{clip.synthetic ? 'abstract' : 'founder media'}</span>
+                    {!clip.synthetic ? <span>18+</span> : null}
+                  </div>
+                  <h2>{clip.title}</h2>
+                  <p>
+                    <Link href={`/creator/${encodeURIComponent(clip.creator.replace(/^@/, ''))}`}>
+                      {clip.creator}
+                    </Link>
+                    <span className="short-card__score"> · score {clip.score.toFixed(2)}</span>
+                  </p>
+                  <p className="short-card__why">Why: {clip.why.join(' · ')}</p>
+                  <div className="short-card__actions">
+                    <button type="button" onClick={() => completeWatch(clip)}>
+                      Finish · +pts
+                    </button>
+                    {clip.dropHref ? (
+                      <Link href={clip.dropHref}>Full drop</Link>
+                    ) : (
+                      <Link href={`/creator/${encodeURIComponent(clip.creator.replace(/^@/, ''))}`}>
+                        Creator
+                      </Link>
+                    )}
+                    <Link href="/live">Go live rooms</Link>
+                  </div>
                 </div>
-              </div>
-            </article>
-          </li>
-        ))}
+              </article>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

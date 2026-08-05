@@ -7,6 +7,7 @@ import { rankShorts, type DiscoveryMode } from '@/lib/short-feed';
 
 const CATS = [
   { id: 'all', label: 'All' },
+  { id: 'music-video', label: 'Music video' },
   { id: 'femboy', label: 'Femboy' },
   { id: 'trans', label: 'Trans' },
   { id: 'queer', label: 'Queer' },
@@ -36,14 +37,19 @@ export function HubCatalog() {
           <p className="section-kicker">Hub · decentralized catalog</p>
           <h1>Browse. Filter. Own the client.</h1>
         </div>
-        <Link className="hub-catalog__shorts" href="/feeds">
-          Open shorts →
-        </Link>
+        <div className="hub-catalog__links">
+          <Link className="hub-catalog__shorts" href="/feeds">
+            Open shorts →
+          </Link>
+          <Link className="hub-catalog__shorts" href="/video/cumdump">
+            CUMDUMP · EVIL →
+          </Link>
+        </div>
       </header>
       <p className="hub-catalog__lede">
-        Tube-style discovery over portable manifests. Cards below are abstract fixtures until
-        licensed, consented creator media is online. Mesh/any-sync carries private objects; Solana
-        anchors identity.
+        Tube-style discovery over portable manifests. Most cards are abstract fixtures until
+        licensed, consented creator media is online. Founder-owned drops (CUMDUMP · HAIL SATAN ·
+        EVIL) may ship real media. Mesh/any-sync carries private objects; Solana anchors identity.
       </p>
       <div className="hub-cats" role="toolbar" aria-label="Categories">
         {CATS.map((c) => (
@@ -61,7 +67,7 @@ export function HubCatalog() {
         {items.map((item) => (
           <li key={item.id}>
             <Link
-              href="/feeds"
+              href={item.dropHref ?? '/feeds'}
               className="hub-tile"
               style={
                 {
@@ -72,7 +78,10 @@ export function HubCatalog() {
             >
               <span className="hub-tile__label">{item.category}</span>
               <span className="hub-tile__title">{item.title}</span>
-              <span className="hub-tile__creator">{item.creator}</span>
+              <span className="hub-tile__creator">
+                {item.creator}
+                {!item.synthetic ? ' · real media' : ''}
+              </span>
             </Link>
           </li>
         ))}

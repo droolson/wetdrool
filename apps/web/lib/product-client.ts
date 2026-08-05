@@ -41,7 +41,8 @@ export interface ShortsApiResponse {
   readonly ok: true;
   readonly mode: DiscoveryMode;
   readonly items: readonly RankedShort[];
-  readonly synthetic: true;
+  /** True only when every item is a synthetic fixture. */
+  readonly synthetic: boolean;
 }
 
 export interface LiveRoomDto {
