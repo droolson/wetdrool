@@ -6,6 +6,8 @@
  * random scrape API.
  */
 
+import { resolveFeedServiceConfig } from './feed-service-config';
+
 export type DiscoveryMode = 'all' | 'straight' | 'pride';
 
 /** Public sort over the same ranked catalog — not a personalized for-you feed. */
@@ -206,10 +208,22 @@ export interface RankShortsPage {
   readonly licensedCount: number;
 }
 
-/** Explicit personalization status — never implied by ranked catalog order. */
+/**
+ * Explicit personalization status — never implied by ranked catalog order.
+ * `configured` means a feed-service URL is set; personalizationActive stays false
+ * until product discovery actually consumes remote ranking (not invented).
+ */
 export interface PersonalizationStatus {
-  readonly configured: false;
-  readonly mode: 'unconfigured';
+  /** True when NEXT_PUBLIC_FEED_SERVICE_URL resolves to an absolute http(s) origin. */
+  readonly configured: boolean;
+  readonly mode: 'unconfigured' | 'configured-unwired';
+  /** Always false until feed-service ranking is fail-closed wired (not yet). */
+  readonly personalizationActive: false;
+  /** Origin only when configured; never path secrets. */
+  readonly origin: string | null;
+  readonly wiring: 'unconfigured' | 'invalid' | 'configured-unwired' | 'reachable' | 'unreachable' | 'degraded';
+  readonly healthz: boolean | null;
+  readonly rankingSource: 'local-droolrank-lite';
   readonly note: string;
 }
 
@@ -286,11 +300,70 @@ export function personalizationUnconfiguredNote(): string {
   );
 }
 
-export function personalizationStatus(): PersonalizationStatus {
+/** Sync honesty from pure feed-service config (no network). Used by tests and fallbacks. */
+export function personalizationStatus(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): PersonalizationStatus {
+  const cfg = resolveFeedServiceConfig(env);
+  if (!cfg.configured) {
+    return {
+      configured: false,
+      mode: 'unconfigured',
+      personalizationActive: false,
+      origin: null,
+      wiring: cfg.wiring,
+      healthz: null,
+      rankingSource: 'local-droolrank-lite',
+      note: personalizationUnconfiguredNote(),
+    };
+  }
   return {
-    configured: false,
-    mode: 'unconfigured',
-    note: personalizationUnconfiguredNote(),
+    configured: true,
+    mode: 'configured-unwired',
+    personalizationActive: false,
+    origin: cfg.origin,
+    wiring: 'configured-unwired',
+    healthz: null,
+    rankingSource: 'local-droolrank-lite',
+    note:
+      `Feed-service origin ${cfg.origin} is configured but personalization is not active. ` +
+      'Public DroolRank-lite / recency only — not a for-you feed.',
+  };
+}
+
+/** Map a probe report (or pure config) into API personalization honesty. */
+export function personalizationStatusFromProbe(report: {
+  readonly configured: boolean;
+  readonly origin: string | null;
+  readonly wiring: PersonalizationStatus['wiring'];
+  readonly healthz: boolean | null;
+  readonly note: string;
+}): PersonalizationStatus {
+  if (!report.configured) {
+    return {
+      configured: false,
+      mode: 'unconfigured',
+      personalizationActive: false,
+      origin: null,
+      wiring: report.wiring === 'invalid' ? 'invalid' : 'unconfigured',
+      healthz: null,
+      rankingSource: 'local-droolrank-lite',
+      note: personalizationUnconfiguredNote(),
+    };
+  }
+  return {
+    configured: true,
+    mode: 'configured-unwired',
+    personalizationActive: false,
+    origin: report.origin,
+    wiring: report.wiring,
+    healthz: report.healthz,
+    rankingSource: 'local-droolrank-lite',
+    note:
+      report.wiring === 'configured-unwired' || report.wiring === 'reachable'
+        ? `Feed-service origin ${report.origin ?? 'unknown'} (${report.wiring}). ` +
+          'Personalization stays inactive — local DroolRank-lite only, not a for-you feed.'
+        : report.note,
   };
 }
 

@@ -14,6 +14,7 @@ import {
   listMessages,
   listRooms,
   newestActivityAt,
+  buildRoomShareUrl,
   normalizeRoomId,
   resetRoomStoreCache,
   sortRoomsByActivity,
@@ -48,6 +49,15 @@ describe('room-store', () => {
     expect(normalizeRoomId('a')).toBe(null);
     expect(normalizeRoomId('ok-room_1')).toBe('ok-room_1');
     expect(normalizeRoomId('../x')).toBe(null);
+  });
+
+  it('builds share URLs without embedding secrets', () => {
+    expect(buildRoomShareUrl('lobby')).toBe('/rooms/lobby');
+    expect(buildRoomShareUrl('lobby', 'https://wetdrool.com')).toBe('https://wetdrool.com/rooms/lobby');
+    expect(buildRoomShareUrl('lobby', 'https://wetdrool.com/')).toBe('https://wetdrool.com/rooms/lobby');
+    expect(buildRoomShareUrl('a/b', 'http://127.0.0.1:3000')).toBe(
+      'http://127.0.0.1:3000/rooms/a%2Fb',
+    );
   });
 
   it('validates message ids', () => {

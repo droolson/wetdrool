@@ -1,5 +1,6 @@
 import {
   createListingId,
+  filterListingsByNetwork,
   filterListingsByQuery,
   getMarketplaceStoreKind,
   getMarketplaceStoreMeta,
@@ -17,6 +18,7 @@ import {
   getMarketplaceRpcUrl,
   isValidSolanaAddress,
   lamportsFromSol,
+  parseX402Network,
 } from '@/lib/x402';
 import { jsonError, jsonOk, parseLimit, parseOffset } from '@/lib/product-api';
 
@@ -29,7 +31,12 @@ export function GET(request: Request): Response {
   const offset = parseOffset(url.searchParams.get('offset'), 0);
   const qRaw = url.searchParams.get('q')?.trim() ?? '';
   const q = qRaw.slice(0, 80);
-  const all = filterListingsByQuery(listListings(), q || null);
+  const networkFilter = parseX402Network(url.searchParams.get('network'));
+  // Invalid network query is ignored (no filter) rather than 400 — list stays usable.
+  const all = filterListingsByNetwork(
+    filterListingsByQuery(listListings(), q || null),
+    networkFilter,
+  );
   const page = pageListings(all, limit, offset);
   const items = page.items.map(publicListing);
   const rpcConfigured = getMarketplaceRpcUrl() !== null;
@@ -37,6 +44,21 @@ export function GET(request: Request): Response {
   const storeMeta = getMarketplaceStoreMeta();
 
   const nextOffset = page.hasMore ? offset + items.length : null;
+  const applied = Boolean(q) || networkFilter !== null;
+  const noteParts: string[] = [];
+  if (q) {
+    noteParts.push(
+      'Case-insensitive substring over id, title, seller, description, payTo.',
+    );
+  }
+  if (networkFilter) {
+    noteParts.push(`Exact network match on listing.network (${networkFilter}).`);
+  }
+  if (!applied) {
+    noteParts.push('No filter; full local store page.');
+  } else {
+    noteParts.push('Host listings only — not a global search index.');
+  }
 
   return jsonOk({
     ok: true,
@@ -47,13 +69,13 @@ export function GET(request: Request): Response {
     hasMore: page.hasMore,
     nextOffset,
     q: q || null,
+    network: networkFilter,
     filter: {
       q: q || null,
-      applied: Boolean(q),
+      network: networkFilter,
+      applied,
       matched: page.total,
-      note: q
-        ? 'Case-insensitive substring over id, title, seller, description, payTo. Host listings only — not a global search index.'
-        : 'No filter; full local store page.',
+      note: noteParts.join(' '),
     },
     listings: items,
     store: {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
-import { normalizeRoomId } from '@/lib/room-store';
+import { buildRoomShareUrl, normalizeRoomId } from '@/lib/room-store';
 
 interface RoomRow {
   readonly roomId: string;
@@ -20,6 +20,18 @@ interface StoreMeta {
   readonly label?: string;
   readonly note?: string;
   readonly maxMessagesPerRoom?: number;
+}
+
+interface E2eeMeta {
+  readonly roomSealProtocol: string;
+  readonly passphraseRooms: string;
+  readonly pairwise: string;
+  readonly serverReadableFallback: false;
+  readonly privateByDefault: true;
+  readonly ciphertextOnly: boolean;
+  readonly hostReadsPlaintext: boolean;
+  readonly durability: string;
+  readonly note?: string;
 }
 
 type SortMode = 'activity' | 'name';
@@ -52,34 +64,61 @@ export function RoomsIndexClient() {
   const router = useRouter();
   const [rooms, setRooms] = useState<readonly RoomRow[]>([]);
   const [store, setStore] = useState<StoreMeta | null>(null);
+  const [e2ee, setE2ee] = useState<E2eeMeta | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [jump, setJump] = useState('');
   const [jumpError, setJumpError] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('activity');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { fetchRoomsIndex } = await import('@/lib/product-client');
-      const result = await fetchRoomsIndex();
-      if (result.kind !== 'ok') {
-        setError(result.message);
+      const { fetchRoomsIndex, fetchE2eeStatus } = await import('@/lib/product-client');
+      const [roomsResult, e2eeResult] = await Promise.all([fetchRoomsIndex(), fetchE2eeStatus()]);
+
+      if (roomsResult.kind !== 'ok') {
+        setError(roomsResult.message);
         setRooms([]);
         setStore(null);
-        return;
+      } else {
+        const data = roomsResult.data;
+        setRooms(data.rooms ?? []);
+        setStore(data.store ?? null);
+        setNote(data.store?.note ?? data.note ?? null);
       }
-      const data = result.data;
-      setRooms(data.rooms ?? []);
-      setStore(data.store ?? null);
-      setNote(data.store?.note ?? data.note ?? null);
+
+      if (e2eeResult.kind === 'ok') {
+        const report = e2eeResult.data;
+        setE2ee({
+          roomSealProtocol: report.e2ee.roomSealProtocol,
+          passphraseRooms: report.e2ee.passphraseRooms,
+          pairwise: report.e2ee.pairwise,
+          serverReadableFallback: report.e2ee.serverReadableFallback,
+          privateByDefault: report.e2ee.privateByDefault,
+          ciphertextOnly: report.rooms.ciphertextOnly,
+          hostReadsPlaintext: report.rooms.hostReadsPlaintext,
+          durability: report.rooms.durability,
+          note: report.note,
+        });
+        // Prefer e2ee store meta when rooms index failed or omitted store.
+        if (roomsResult.kind !== 'ok' || !roomsResult.data.store) {
+          setStore(report.rooms.store ?? null);
+        }
+        if (roomsResult.kind === 'ok' && !roomsResult.data.store?.note && !roomsResult.data.note) {
+          setNote(report.note ?? report.rooms.store?.note ?? null);
+        }
+      } else {
+        setE2ee(null);
+      }
     } catch {
       setError('Could not load room index.');
       setRooms([]);
       setStore(null);
+      setE2ee(null);
     } finally {
       setLoading(false);
     }
@@ -91,18 +130,38 @@ export function RoomsIndexClient() {
 
   const sortedRooms = useMemo(() => sortRooms(rooms, sortMode), [rooms, sortMode]);
 
-  const copyRoomId = useCallback(async (roomId: string) => {
-    try {
-      await navigator.clipboard.writeText(roomId);
-      setCopiedId(roomId);
-      window.setTimeout(() => {
-        setCopiedId((cur) => (cur === roomId ? null : cur));
-      }, 2000);
-    } catch {
-      // Clipboard may be blocked; leave UI quiet (no secrets).
-      setCopiedId(null);
-    }
+  const flashCopied = useCallback((key: string) => {
+    setCopiedKey(key);
+    window.setTimeout(() => {
+      setCopiedKey((cur) => (cur === key ? null : cur));
+    }, 2000);
   }, []);
+
+  const copyRoomId = useCallback(
+    async (roomId: string) => {
+      try {
+        await navigator.clipboard.writeText(roomId);
+        flashCopied(`id:${roomId}`);
+      } catch {
+        setCopiedKey(null);
+      }
+    },
+    [flashCopied],
+  );
+
+  const copyRoomUrl = useCallback(
+    async (roomId: string) => {
+      try {
+        const origin = typeof window !== 'undefined' ? window.location.origin : null;
+        const url = buildRoomShareUrl(roomId, origin);
+        await navigator.clipboard.writeText(url);
+        flashCopied(`url:${roomId}`);
+      } catch {
+        setCopiedKey(null);
+      }
+    },
+    [flashCopied],
+  );
 
   const durable = store?.durableAcrossRestart === true;
   const badgeLabel =
@@ -123,9 +182,32 @@ export function RoomsIndexClient() {
         {store?.multiReplicaSafe === false ? (
           <StatusBadge tone="pending">not multi-replica</StatusBadge>
         ) : null}
+        {e2ee ? (
+          <>
+            <StatusBadge tone="verified">seal {e2ee.roomSealProtocol}</StatusBadge>
+            <StatusBadge tone="pending">{e2ee.passphraseRooms}</StatusBadge>
+            {e2ee.ciphertextOnly && !e2ee.hostReadsPlaintext ? (
+              <StatusBadge tone="verified">ciphertext-only</StatusBadge>
+            ) : (
+              <StatusBadge tone="pending">plaintext risk</StatusBadge>
+            )}
+            <StatusBadge tone="neutral">pairwise {e2ee.pairwise}</StatusBadge>
+          </>
+        ) : null}
       </div>
 
-      {note ? (
+      {e2ee ? (
+        <p className="field-help" role="note" id="rooms-e2ee-status">
+          Protocol <code>{e2ee.roomSealProtocol}</code>
+          {e2ee.privateByDefault ? ' · private by default' : null}
+          {e2ee.serverReadableFallback === false ? ' · no server plaintext fallback' : null}
+          {' · '}
+          {e2ee.durability}
+          {e2ee.note ? ` · ${e2ee.note}` : null}
+        </p>
+      ) : null}
+
+      {note && note !== e2ee?.note ? (
         <p className="field-help" role="note">
           {note}
         </p>
@@ -166,8 +248,8 @@ export function RoomsIndexClient() {
           />
         </label>
         <p id="rooms-index-jump-help" className="field-help">
-          Share room id + passphrase out of band. Wrong key → ciphertext stays sealed until you
-          update the key in-room.
+          Share room URL + passphrase out of band. Wrong key → ciphertext stays sealed until you
+          update the key in-room. Copy link never includes the room key.
         </p>
         {jumpError ? (
           <p id="rooms-index-jump-error" className="field-help" role="alert">
@@ -179,18 +261,26 @@ export function RoomsIndexClient() {
 
       <nav aria-label="Featured rooms">
         <ul className="anon-entrance__rooms">
-          <li>
-            <Link href="/rooms/lobby">#lobby</Link>
-          </li>
-          <li>
-            <Link href="/rooms/shorts">#shorts</Link>
-          </li>
-          <li>
-            <Link href="/rooms/pride">#pride</Link>
-          </li>
-          <li>
-            <Link href="/rooms/afterdark">#afterdark</Link>
-          </li>
+          {(
+            [
+              ['lobby', 'lobby'],
+              ['shorts', 'shorts'],
+              ['pride', 'pride'],
+              ['afterdark', 'afterdark'],
+            ] as const
+          ).map(([id, label]) => (
+            <li key={id}>
+              <Link href={`/rooms/${id}`}>#{label}</Link>{' '}
+              <button
+                type="button"
+                className="rooms-index__copy"
+                onClick={() => void copyRoomUrl(id)}
+                aria-label={`Copy link for room ${id}`}
+              >
+                {copiedKey === `url:${id}` ? 'Copied' : 'Copy link'}
+              </button>
+            </li>
+          ))}
         </ul>
       </nav>
 
@@ -198,11 +288,7 @@ export function RoomsIndexClient() {
         <div className="rooms-index__heading-row">
           <h2 id="rooms-index-heading">Known rooms</h2>
           <div className="rooms-index__heading-actions">
-            <div
-              className="rooms-index__sort"
-              role="group"
-              aria-label="Sort rooms"
-            >
+            <div className="rooms-index__sort" role="group" aria-label="Sort rooms">
               <button
                 type="button"
                 aria-pressed={sortMode === 'activity'}
@@ -256,10 +342,18 @@ export function RoomsIndexClient() {
                 <button
                   type="button"
                   className="rooms-index__copy"
+                  onClick={() => void copyRoomUrl(r.roomId)}
+                  aria-label={`Copy link for room ${r.roomId}`}
+                >
+                  {copiedKey === `url:${r.roomId}` ? 'Copied' : 'Copy link'}
+                </button>
+                <button
+                  type="button"
+                  className="rooms-index__copy"
                   onClick={() => void copyRoomId(r.roomId)}
                   aria-label={`Copy room id ${r.roomId}`}
                 >
-                  {copiedId === r.roomId ? 'Copied' : 'Copy id'}
+                  {copiedKey === `id:${r.roomId}` ? 'Copied' : 'Copy id'}
                 </button>
                 <span className="field-help">
                   {' '}

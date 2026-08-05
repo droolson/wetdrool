@@ -1,13 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { StatusBadge } from '@wetdrool/ui';
 
 import {
   FAME_SEED,
+  fameEntryMatchesQuery,
   fameTier,
   loadLocalFame,
+  normalizeFameSearchQuery,
   rankBoardWithSeed,
   syncLocalFameFromPoints,
   type FameEntry,
@@ -32,9 +34,14 @@ export function HallOfFameBoard() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [apiNote, setApiNote] = useState<string | null>(null);
+  const [seedOnly, setSeedOnly] = useState(true);
   const [seedTotal, setSeedTotal] = useState(FAME_SEED.length);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
+  const [queryInput, setQueryInput] = useState('');
+  /** Debounced query sent to the API (or applied client-side on local seed). */
+  const [activeQuery, setActiveQuery] = useState('');
+  const loadGen = useRef(0);
   const pageSize = 3;
 
   const recompute = useCallback((seedBoard: readonly FameEntry[], profile: LocalFameProfile) => {
@@ -78,47 +85,68 @@ export function HallOfFameBoard() {
     }));
 
   useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setActiveQuery(queryInput.trim());
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [queryInput]);
+
+  useEffect(() => {
     let cancelled = false;
+    const gen = ++loadGen.current;
     setLoading(true);
     void (async () => {
       const { fetchFameBoard } = await import('@/lib/product-client');
-      const result = await fetchFameBoard({ limit: pageSize, offset: 0 });
-      if (cancelled) return;
-      if (result.kind === 'ok' && Array.isArray(result.data.board) && result.data.board.length > 0) {
+      const q = normalizeFameSearchQuery(activeQuery);
+      const result = await fetchFameBoard({
+        limit: pageSize,
+        offset: 0,
+        q,
+      });
+      if (cancelled || gen !== loadGen.current) return;
+      if (result.kind === 'ok' && Array.isArray(result.data.board)) {
         const apiSeed = mapApiSeed(result.data.board);
         setSeed(apiSeed);
         setSource('api');
+        setSeedOnly(result.data.seedOnly !== false);
         setSeedTotal(result.data.total ?? apiSeed.length);
         setHasMore(Boolean(result.data.hasMore));
         setOffset(apiSeed.length);
         setApiNote(typeof result.data.note === 'string' ? result.data.note : null);
         refreshLocal(apiSeed);
       } else {
-        setSeed(FAME_SEED);
+        // Offline / error: filter static fixtures client-side so search still works honestly.
+        const normalized = normalizeFameSearchQuery(activeQuery);
+        const localSeed = normalized
+          ? FAME_SEED.filter((e) => fameEntryMatchesQuery(e, normalized))
+          : FAME_SEED;
+        setSeed(localSeed);
         setSource('local');
-        setSeedTotal(FAME_SEED.length);
+        setSeedOnly(true);
+        setSeedTotal(localSeed.length);
         setHasMore(false);
-        setOffset(FAME_SEED.length);
+        setOffset(localSeed.length);
         setApiNote(
           result.kind === 'error'
-            ? result.message
+            ? `${result.message} — filtering local seed fixtures.`
             : 'Empty fame API — using local seed fixtures.',
         );
-        refreshLocal(FAME_SEED);
+        refreshLocal(localSeed);
       }
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [refreshLocal]);
+  }, [refreshLocal, activeQuery]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || source !== 'api') return;
     setLoadingMore(true);
     try {
       const { fetchFameBoard } = await import('@/lib/product-client');
-      const result = await fetchFameBoard({ limit: pageSize, offset });
+      const q = normalizeFameSearchQuery(activeQuery);
+      const result = await fetchFameBoard({ limit: pageSize, offset, q });
       if (result.kind === 'ok' && Array.isArray(result.data.board)) {
         const next = mapApiSeed(result.data.board);
         const merged = [...seed];
@@ -133,18 +161,22 @@ export function HallOfFameBoard() {
         setHasMore(Boolean(result.data.hasMore));
         setOffset(offset + next.length);
         setSeedTotal(result.data.total ?? merged.length);
+        if (result.data.seedOnly !== undefined) setSeedOnly(result.data.seedOnly !== false);
         refreshLocal(merged);
       }
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, source, offset, seed, refreshLocal]);
+  }, [hasMore, loadingMore, source, offset, seed, refreshLocal, activeQuery]);
 
   const youRank = useMemo(() => {
     if (!local) return null;
     const idx = board.findIndex((e) => e.source === 'local' && e.handle === local.handle);
     return idx >= 0 ? idx + 1 : null;
   }, [board, local]);
+
+  const filteredEmpty =
+    !loading && Boolean(normalizeFameSearchQuery(activeQuery)) && seed.length === 0;
 
   const grindCheckin = useCallback(() => {
     let cap = loadCap(window.localStorage);
@@ -184,6 +216,16 @@ export function HallOfFameBoard() {
     refreshLocal(seed);
   }, [refreshLocal, seed]);
 
+  const badgeLabel = loading
+    ? 'loading board'
+    : seedOnly
+      ? source === 'api'
+        ? 'seedOnly · api'
+        : 'seedOnly · local'
+      : source === 'api'
+        ? 'api board'
+        : 'local board';
+
   return (
     <div className="fame-board">
       <header className="fame-board__header">
@@ -191,9 +233,7 @@ export function HallOfFameBoard() {
           <p className="section-kicker">Hall of Fame</p>
           <h1>Grind points. Claim the board.</h1>
         </div>
-        <StatusBadge tone={source === 'api' ? 'pending' : 'degraded'}>
-          {loading ? 'loading board' : source === 'api' ? 'api seed + local' : 'local seed'}
-        </StatusBadge>
+        <StatusBadge tone={source === 'api' ? 'pending' : 'degraded'}>{badgeLabel}</StatusBadge>
       </header>
 
       <p className="fame-board__lede">
@@ -206,6 +246,42 @@ export function HallOfFameBoard() {
           {apiNote}
         </p>
       ) : null}
+
+      <form
+        className="fame-board__filter"
+        role="search"
+        aria-label="Filter seed Hall of Fame board"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setActiveQuery(queryInput.trim());
+        }}
+      >
+        <label htmlFor="fame-board-q">
+          Filter seed board
+          <input
+            id="fame-board-q"
+            name="q"
+            type="search"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="handle, name, or badge…"
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
+            maxLength={64}
+          />
+        </label>
+        {queryInput.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setQueryInput('');
+              setActiveQuery('');
+            }}
+          >
+            Clear
+          </button>
+        ) : null}
+      </form>
 
       <div className="fame-board__you">
         <div>
@@ -239,12 +315,25 @@ export function HallOfFameBoard() {
         </p>
       ) : null}
 
-      <p className="field-help">
+      <p className="field-help" role="status">
         Seed rows loaded: {seed.length}
-        {seedTotal > 0 ? ` / ${seedTotal}` : ''} (global multiplayer ledger: false)
+        {seedTotal > 0 ? ` / ${seedTotal}` : ''}
+        {activeQuery.trim() ? ` · filter “${activeQuery.trim()}”` : ''}
+        {seedOnly ? ' · seedOnly' : ''} (global multiplayer ledger: false)
       </p>
 
       <ol className="fame-board__list" aria-label="Hall of Fame leaderboard" aria-busy={loading}>
+        {filteredEmpty ? (
+          <li className="field-help" role="status">
+            No seed ranks match “{activeQuery.trim()}”. This is not a live multiplayer search — try
+            another handle, display name, or badge, or clear the filter.
+          </li>
+        ) : null}
+        {!loading && !filteredEmpty && board.length === 0 ? (
+          <li className="field-help" role="status">
+            Board empty until seed fixtures or local grind points appear.
+          </li>
+        ) : null}
         {board.map((entry, i) => (
           <li key={`${entry.source}-${entry.handle}`} data-source={entry.source}>
             <span className="fame-board__rank">#{i + 1}</span>
@@ -275,9 +364,16 @@ export function HallOfFameBoard() {
       ) : null}
 
       <p className="field-help">
-        Board seed: <code>/api/v1/fame</code> (paginated). Push-record ledger (ops): GitHub branch{' '}
-        <code>hall-of-fame</code> → <code>ops/hall-of-fame/counter.json</code>. Product points never
-        invent ad revenue; practice pool funds local demo only.
+        Board seed: <code>/api/v1/fame</code>
+        {activeQuery.trim() ? (
+          <>
+            {' '}
+            · <code>?q={activeQuery.trim()}</code>
+          </>
+        ) : null}{' '}
+        (paginated, seedOnly). Push-record ledger (ops): GitHub branch <code>hall-of-fame</code> →{' '}
+        <code>ops/hall-of-fame/counter.json</code>. Product points never invent ad revenue; practice
+        pool funds local demo only.
       </p>
     </div>
   );

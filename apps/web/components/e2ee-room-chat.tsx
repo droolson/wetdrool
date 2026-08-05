@@ -14,6 +14,8 @@ import {
   type SealedEnvelope,
 } from '@/lib/e2ee-seal';
 
+import { buildRoomShareUrl } from '@/lib/room-store';
+
 type FeedFilter = 'all' | 'media' | 'chat';
 
 interface Session {
@@ -124,6 +126,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
   const [dragOver, setDragOver] = useState(false);
   const [rekeyOpen, setRekeyOpen] = useState(false);
   const [rekeyPass, setRekeyPass] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
   const objectUrls = useRef<string[]>([]);
   const lastIdRef = useRef<string | null>(null);
   const oldestIdRef = useRef<string | null>(null);
@@ -560,6 +563,18 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
 
   const filterIds = ['all', 'media', 'chat'] as const;
 
+  const copyRoomLink = useCallback(async () => {
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : null;
+      await navigator.clipboard.writeText(buildRoomShareUrl(roomId, origin));
+      setCopiedLink(true);
+      window.setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      setCopiedLink(false);
+    }
+  }, [roomId]);
+
+
   return (
     <div
       className={`e2ee-room e2ee-room--redgifs${dragOver ? ' is-drag' : ''}`}
@@ -588,6 +603,14 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
             {storeKind === 'file-local' ? 'file store' : 'memory store'}
           </StatusBadge>
           <StatusBadge tone="neutral">no account</StatusBadge>
+          <button
+            type="button"
+            className="e2ee-room__leave"
+            onClick={() => void copyRoomLink()}
+            aria-label={`Copy share link for room ${roomId}`}
+          >
+            {copiedLink ? 'Copied link' : 'Copy link'}
+          </button>
           <button type="button" className="e2ee-room__leave" onClick={leave}>
             Leave
           </button>

@@ -625,6 +625,44 @@
   margin-bottom: 0.75rem;
 }
 
+
+.fame-board__filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: flex-end;
+  margin: 0 0 1.1rem;
+}
+
+.fame-board__filter label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex: 1 1 12rem;
+}
+
+.fame-board__filter input {
+  font: inherit;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid color-mix(in oklab, canvasText 18%, transparent);
+  background: canvas;
+  color: canvasText;
+}
+
+.fame-board__filter button {
+  appearance: none;
+  border: 1px solid color-mix(in oklab, canvasText 20%, transparent);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: color-mix(in oklab, canvas 92%, canvasText);
+}
+
 .fame-board__lede {
   opacity: 0.85;
   margin: 0 0 1.25rem;
