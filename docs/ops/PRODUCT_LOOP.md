@@ -30,6 +30,12 @@
 
 ## Sprint log
 
+### 2026-08-05T22:40Z — 15m product swarm (A–F)
+
+- **Task:** Photos/stories/vanity product APIs+UI; rooms index export; market empty-filter polish.
+- **Verify:** vitest product media + vanity + rooms export.
+- **Next:** multi-replica stores; e2e smoke for new media surfaces.
+
 ### 2026-08-05T22:23Z — 15m product swarm (A–F)
 
 - **Task:** Companions API+UI; messages e2ee probe; rooms max-messages meta; live join-disabled; market sort UI.

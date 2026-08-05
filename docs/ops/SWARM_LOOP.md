@@ -26,6 +26,22 @@
 
 ## Swarm log
 
+### 2026-08-05T22:40Z — 15m scheduled swarm (A–F)
+
+| Slot | Focus | Result / tip |
+|------|--------|----------------|
+| A | Photos product API | `/api/v1/photos` synthetic abstract |
+| B | Stories product API | `/api/v1/stories` no view inventing |
+| C | Market empty-filter polish | specialist/market UI |
+| D | Rooms index export JSON | `exportRoomsIndexJson` metadata-only |
+| E | Photos/stories page UI | galleries + rails |
+| F | Vanity registry honesty | `/api/v1/vanity` + UI |
+
+- **Verify:** vitest product-photos/stories/vanity + room-store + product-api-helpers.
+- **Pushed:** photos/stories/vanity product slice.
+- **Note:** spawn wait IDs still flaky; hof scoops stages.
+- **Next:** multi-replica backends; Playwright smoke for photos/stories/vanity/companions.
+
 ### 2026-08-05T22:23Z — 15m scheduled swarm (A–F)
 
 | Slot | Focus | Result / tip |
