@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
 import { normalizeRoomId } from '@/lib/room-store';
@@ -22,6 +22,8 @@ interface StoreMeta {
   readonly maxMessagesPerRoom?: number;
 }
 
+type SortMode = 'activity' | 'name';
+
 function formatActivity(iso: string | null | undefined): string {
   if (!iso) return '—';
   try {
@@ -29,6 +31,21 @@ function formatActivity(iso: string | null | undefined): string {
   } catch {
     return iso;
   }
+}
+
+function sortRooms(rooms: readonly RoomRow[], mode: SortMode): RoomRow[] {
+  const list = [...rooms];
+  if (mode === 'name') {
+    return list.sort((a, b) => a.roomId.localeCompare(b.roomId));
+  }
+  return list.sort((a, b) => {
+    const at = a.lastActivityAt ?? '';
+    const bt = b.lastActivityAt ?? '';
+    if (at === bt) return a.roomId.localeCompare(b.roomId);
+    if (!at) return 1;
+    if (!bt) return -1;
+    return bt.localeCompare(at);
+  });
 }
 
 export function RoomsIndexClient() {
@@ -40,6 +57,8 @@ export function RoomsIndexClient() {
   const [error, setError] = useState<string | null>(null);
   const [jump, setJump] = useState('');
   const [jumpError, setJumpError] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('activity');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,15 +73,7 @@ export function RoomsIndexClient() {
         return;
       }
       const data = result.data;
-      const list = [...(data.rooms ?? [])].sort((a, b) => {
-        const at = a.lastActivityAt ?? '';
-        const bt = b.lastActivityAt ?? '';
-        if (at === bt) return a.roomId.localeCompare(b.roomId);
-        if (!at) return 1;
-        if (!bt) return -1;
-        return bt.localeCompare(at);
-      });
-      setRooms(list);
+      setRooms(data.rooms ?? []);
       setStore(data.store ?? null);
       setNote(data.store?.note ?? data.note ?? null);
     } catch {
@@ -77,6 +88,21 @@ export function RoomsIndexClient() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const sortedRooms = useMemo(() => sortRooms(rooms, sortMode), [rooms, sortMode]);
+
+  const copyRoomId = useCallback(async (roomId: string) => {
+    try {
+      await navigator.clipboard.writeText(roomId);
+      setCopiedId(roomId);
+      window.setTimeout(() => {
+        setCopiedId((cur) => (cur === roomId ? null : cur));
+      }, 2000);
+    } catch {
+      // Clipboard may be blocked; leave UI quiet (no secrets).
+      setCopiedId(null);
+    }
+  }, []);
 
   const durable = store?.durableAcrossRestart === true;
   const badgeLabel =
@@ -171,9 +197,33 @@ export function RoomsIndexClient() {
       <section aria-labelledby="rooms-index-heading">
         <div className="rooms-index__heading-row">
           <h2 id="rooms-index-heading">Known rooms</h2>
-          <button type="button" onClick={() => void load()} disabled={loading}>
-            {loading ? 'Refreshing…' : 'Refresh'}
-          </button>
+          <div className="rooms-index__heading-actions">
+            <div
+              className="rooms-index__sort"
+              role="group"
+              aria-label="Sort rooms"
+            >
+              <button
+                type="button"
+                aria-pressed={sortMode === 'activity'}
+                className={sortMode === 'activity' ? 'is-active' : undefined}
+                onClick={() => setSortMode('activity')}
+              >
+                Activity
+              </button>
+              <button
+                type="button"
+                aria-pressed={sortMode === 'name'}
+                className={sortMode === 'name' ? 'is-active' : undefined}
+                onClick={() => setSortMode('name')}
+              >
+                Name
+              </button>
+            </div>
+            <button type="button" onClick={() => void load()} disabled={loading}>
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -198,11 +248,19 @@ export function RoomsIndexClient() {
           </p>
         ) : null}
 
-        {rooms.length > 0 ? (
+        {sortedRooms.length > 0 ? (
           <ul className="rooms-index__list" aria-label="Local room index" aria-busy={loading}>
-            {rooms.map((r) => (
+            {sortedRooms.map((r) => (
               <li key={r.roomId} className="rooms-index__item">
                 <Link href={`/rooms/${encodeURIComponent(r.roomId)}`}>#{r.roomId}</Link>
+                <button
+                  type="button"
+                  className="rooms-index__copy"
+                  onClick={() => void copyRoomId(r.roomId)}
+                  aria-label={`Copy room id ${r.roomId}`}
+                >
+                  {copiedId === r.roomId ? 'Copied' : 'Copy id'}
+                </button>
                 <span className="field-help">
                   {' '}
                   · {r.messageCount} sealed

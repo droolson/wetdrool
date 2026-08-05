@@ -80,6 +80,10 @@ export interface LiveApiResponse {
   readonly join?: string;
   readonly synthetic?: boolean;
   readonly note?: string;
+  /** Echo of normalized tag filter, or null when unfiltered. */
+  readonly tag?: string | null;
+  /** Known fixture tags for UI chips. */
+  readonly tags?: readonly string[];
 }
 
 export interface CreatorApiResponse {
@@ -245,12 +249,16 @@ export function fetchLiveRooms(options?: {
   readonly nsfw?: boolean;
   readonly limit?: number;
   readonly offset?: number;
+  /** Exact fixture tag filter (case-insensitive). */
+  readonly tag?: string | null;
 }): Promise<ProductClientResult<LiveApiResponse>> {
   const q = new URLSearchParams();
   if (options?.nsfw === false) q.set('nsfw', '0');
   if (options?.nsfw === true) q.set('nsfw', '1');
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const tag = options?.tag?.trim();
+  if (tag) q.set('tag', tag);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<LiveApiResponse>(`/api/v1/live${suffix}`);
 }
@@ -602,7 +610,10 @@ export interface RoomMessagesApiResponse {
   readonly messages: readonly import('./e2ee-seal').SealedEnvelope[];
   readonly count?: number;
   readonly total?: number;
+  /** @deprecated Prefer hasMoreOlder / hasMoreNewer. */
   readonly hasMore?: boolean;
+  readonly hasMoreOlder?: boolean;
+  readonly hasMoreNewer?: boolean;
   readonly store?: {
     readonly kind: string;
     readonly multiReplicaSafe?: boolean;
@@ -614,11 +625,18 @@ export interface RoomMessagesApiResponse {
 
 export function fetchRoomMessages(
   roomId: string,
-  options?: { readonly limit?: number; readonly after?: string },
+  options?: {
+    readonly limit?: number;
+    /** Exclusive cursor: messages after this id (newer / poll). */
+    readonly after?: string;
+    /** Exclusive cursor: messages before this id (older / history). */
+    readonly before?: string;
+  },
 ): Promise<ProductClientResult<RoomMessagesApiResponse>> {
   const q = new URLSearchParams();
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.after) q.set('after', options.after);
+  if (options?.before) q.set('before', options.before);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<RoomMessagesApiResponse>(
     `/api/v1/rooms/${encodeURIComponent(roomId)}/messages${suffix}`,
