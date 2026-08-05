@@ -257,6 +257,26 @@ describe('product api helpers', () => {
     expect(status.links.companions).toBe('/api/v1/companions');
   });
 
+  it('vanity surface is cataloged and stays registryLive false', () => {
+    const ids = listProductApiSurfaceIds();
+    expect(ids).toContain('vanity');
+    const vanitySurface = PRODUCT_API_SURFACES.find((s) => s.id === 'vanity');
+    expect(vanitySurface?.path).toBe('/api/v1/vanity');
+    expect(vanitySurface?.methods).toEqual(['GET']);
+    expect(PRODUCT_API_LINKS.vanity).toBe('/api/v1/vanity');
+
+    const health = buildProductHealthReport({});
+    expect(health.surfaces).toContain('vanity');
+    expect(health.links.vanity).toBe('/api/v1/vanity');
+    expect(
+      health.surfaceCatalog.some((s) => s.id === 'vanity' && s.path === '/api/v1/vanity'),
+    ).toBe(true);
+
+    const status = buildProductStatusReport({});
+    expect(status.surfaces).toContain('vanity');
+    expect(status.links.vanity).toBe('/api/v1/vanity');
+  });
+
   it('honest flags never invent $DROOL mint or earnings', () => {
     expect(PRODUCT_HONEST_FLAGS.droolMint).toBe('does-not-exist');
     expect(PRODUCT_HONEST_FLAGS.droolMintInvented).toBe(false);

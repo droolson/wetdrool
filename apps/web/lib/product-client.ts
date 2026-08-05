@@ -314,6 +314,47 @@ export function fetchToken(): Promise<ProductClientResult<TokenApiResponse>> {
   return getJson<TokenApiResponse>('/api/v1/token');
 }
 
+/**
+ * GET /api/v1/vanity — honest vanity /.drool registry status.
+ * registryLive and claimExecutable are always false; claims list is always empty.
+ * Never invents owned names. Callers must not re-fanout fake claims on error.
+ */
+export interface VanityApiResponse {
+  readonly ok: true;
+  readonly product?: 'wetdrool';
+  readonly path?: '/api/v1/vanity' | string;
+  readonly version?: number;
+  readonly registryLive: false | boolean;
+  readonly claimExecutable: false | boolean;
+  readonly claims: readonly {
+    readonly handle: string;
+    readonly ownerIdentityId?: string;
+    readonly claimedAt?: string;
+    readonly source?: string;
+  }[];
+  readonly claimCount?: number;
+  readonly quote?: {
+    readonly monthlyUsd: number;
+    readonly solEstimate: number | null;
+    readonly usdc: number;
+    readonly pointsPrice: number;
+    readonly perks: readonly string[];
+  };
+  readonly honest?: {
+    readonly registryLive: false | boolean;
+    readonly claimExecutable: false | boolean;
+    readonly inventsOwnedNames: false | boolean;
+    readonly anonymousCandidateIsNotClaim?: true | boolean;
+    readonly pointsDoNotClaim?: true | boolean;
+  };
+  readonly notClaims?: readonly string[];
+  readonly note?: string;
+}
+
+export function fetchVanity(): Promise<ProductClientResult<VanityApiResponse>> {
+  return getJson<VanityApiResponse>('/api/v1/vanity');
+}
+
 export function fetchAgePolicy(
   region?: string | null,
 ): Promise<ProductClientResult<AgePolicyApiResponse>> {
@@ -504,6 +545,75 @@ export function fetchCompanions(options?: {
   return getJson<CompanionsApiResponse>(`/api/v1/companions${suffix}`);
 }
 
+export interface PhotosApiResponse {
+  readonly ok: true;
+  readonly photos: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly creator: string;
+    readonly category: string;
+    readonly synthetic: true;
+    readonly licensedMedia: false;
+    readonly href: string;
+  }[];
+  readonly total?: number;
+  readonly syntheticOnly?: true;
+  readonly licensedMedia?: false;
+  readonly note?: string;
+}
+
+export function fetchPhotos(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<PhotosApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<PhotosApiResponse>(`/api/v1/photos${suffix}`);
+}
+
+export interface StoriesApiResponse {
+  readonly ok: true;
+  readonly stories: readonly {
+    readonly id: string;
+    readonly ownerHandle: string;
+    readonly title: string;
+    readonly expiresAt: string;
+    readonly synthetic: true;
+    readonly viewCountClaimed: false;
+    readonly href: string;
+  }[];
+  readonly total?: number;
+  readonly syntheticOnly?: true;
+  readonly viewCountsInvented?: false;
+  readonly note?: string;
+}
+
+export function fetchStories(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<StoriesApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<StoriesApiResponse>(`/api/v1/stories${suffix}`);
+}
+
+export interface VanityApiResponse {
+  readonly ok: true;
+  readonly registryLive: false;
+  readonly claimExecutable: false;
+  readonly settlementLive: false;
+  readonly monthlyUsd: number;
+  readonly claims: readonly unknown[];
+  readonly note?: string;
+}
+
+export function fetchVanityStatus(): Promise<ProductClientResult<VanityApiResponse>> {
+  return getJson<VanityApiResponse>('/api/v1/vanity');
+}
 
 /** Alias for fetchProductStatus — product readiness client panel. */
 export function fetchStatus(): Promise<ProductClientResult<ProductStatusApiResponse>> {
@@ -1056,4 +1166,67 @@ export interface MeshStatusApiResponse {
 
 export function fetchMeshStatus(): Promise<ProductClientResult<MeshStatusApiResponse>> {
   return getJson<MeshStatusApiResponse>('/api/v1/mesh');
+}
+
+/**
+ * GET /api/v1/stories?limit=&offset=
+ * Honest stories rail: synthetic rings only; never invents view counts or deletion.
+ * Callers must not re-fanout local fixtures on error.
+ */
+export interface ProductStoryDto {
+  readonly id: string;
+  readonly ownerHandle: string;
+  readonly displayName?: string;
+  readonly title: string;
+  readonly expiresAt: string;
+  readonly contentWarning?: string;
+  readonly toneA?: string;
+  readonly toneB?: string;
+  readonly href: string;
+  readonly source: 'synthetic-catalog' | string;
+  readonly synthetic: true | boolean;
+  readonly viewCountClaimed: false | boolean;
+  readonly viewCount?: null;
+  readonly watchers?: null;
+  readonly deletionGuaranteed: false | boolean;
+  readonly publishLive?: false | boolean;
+  readonly mediaSrc?: null;
+}
+
+export interface StoriesApiResponse {
+  readonly ok: true;
+  readonly product?: 'wetdrool';
+  readonly path?: string;
+  /** Preferred list field from the product API. */
+  readonly items?: readonly ProductStoryDto[];
+  /** Alias for clients that still read `stories`. */
+  readonly stories?: readonly ProductStoryDto[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly empty?: boolean;
+  readonly emptyMessage?: string | null;
+  /** Live stories backend is not online. */
+  readonly configured?: false | boolean;
+  readonly syntheticOnly?: true | boolean;
+  readonly viewCountsInvented?: false | boolean;
+  readonly inventsViewCounts?: false | boolean;
+  readonly globalDeletionClaimed?: false | boolean;
+  readonly publishLive?: false | boolean;
+  readonly mediaPipelineLive?: false | boolean;
+  readonly media?: string;
+  readonly note?: string;
+}
+
+export function fetchStories(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<StoriesApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<StoriesApiResponse>(`/api/v1/stories${suffix}`);
 }

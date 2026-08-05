@@ -78,9 +78,8 @@ export function VanityRegistry() {
             }
           : vanityQuote(),
       );
-      // Never invent owned names: ignore non-empty claims arrays from a buggy client path.
-      const claims = Array.isArray(data.claims) ? data.claims : [];
-      setClaimCount(claims.length === 0 ? 0 : 0);
+      // Never invent owned names: product rule forces empty claimCount until registryLive.
+      setClaimCount(0);
       setNotClaims(data.notClaims ?? getVanityRegistryStatus().notClaims);
       setNote(data.note ?? vanityRegistryNote());
     }

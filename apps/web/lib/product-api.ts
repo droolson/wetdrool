@@ -364,6 +364,7 @@ export function buildProductStatusReport(
       creatorsDirectory: PRODUCT_API_LINKS.creatorsDirectory,
       agePolicy: PRODUCT_API_LINKS.agePolicy,
       token: PRODUCT_API_LINKS.token,
+      vanity: PRODUCT_API_LINKS.vanity,
     },
     discovery,
     stores: {
