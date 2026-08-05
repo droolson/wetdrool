@@ -56,6 +56,13 @@ function unb64(s: string): Uint8Array {
   return out;
 }
 
+/** Copy into a fresh ArrayBuffer-backed view (WebCrypto BufferSource + TS strict). */
+function asBufferSource(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return copy;
+}
+
 export async function deriveRoomKey(
   roomId: string,
   passphrase: string,
@@ -90,7 +97,7 @@ export async function sealBytes(
   from?: string,
 ): Promise<SealedEnvelope> {
   const frame = await encodeMiddleOutLite(plaintext, kind, contentType);
-  const frameBytes = frameToBytes(frame);
+  const frameBytes = asBufferSource(frameToBytes(frame));
   const key = await deriveRoomKey(roomId, passphrase);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, frameBytes);
@@ -132,8 +139,8 @@ export async function openEnvelope(
     throw new Error('unsupported seal protocol');
   }
   const key = await deriveRoomKey(envelope.roomId, passphrase);
-  const iv = unb64(envelope.ivBase64);
-  const ct = unb64(envelope.ciphertextBase64);
+  const iv = asBufferSource(unb64(envelope.ivBase64));
+  const ct = asBufferSource(unb64(envelope.ciphertextBase64));
   const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
   const frame = frameFromBytes(new Uint8Array(plain));
   const bytes = await decodeMiddleOutLite(frame);
