@@ -26,6 +26,22 @@
 
 ## Swarm log
 
+### 2026-08-05T22:23Z — 15m scheduled swarm (A–F)
+
+| Slot | Focus | Result / tip |
+|------|--------|----------------|
+| A | Companions product API | `/api/v1/companions` + health links |
+| B | Market sort chips UI | marketplace sort polish |
+| C | Messages e2ee honesty | MessagesE2eePanel |
+| D | Rooms max messages meta | `60c504b` |
+| E | Companions page UI | companions-directory |
+| F | Live join-disabled badges | `60ad702` |
+
+- **Verify:** vitest companions, companions-directory, product-api-helpers, live-catalog, marketplace-store, room-store.
+- **Pushed:** companions + live + market/messages polish.
+- **Note:** spawn wait IDs still flaky.
+- **Next:** multi-replica backends; photos/stories product APIs; run Playwright smoke.
+
 ### 2026-08-05T22:09Z — 15m scheduled swarm (A–F)
 
 | Slot | Focus | Result / tip |

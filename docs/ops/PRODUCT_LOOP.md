@@ -30,6 +30,12 @@
 
 ## Sprint log
 
+### 2026-08-05T22:23Z — 15m product swarm (A–F)
+
+- **Task:** Companions API+UI; messages e2ee probe; rooms max-messages meta; live join-disabled; market sort UI.
+- **Verify:** vitest companions + product suites.
+- **Next:** multi-replica stores; photos/stories honesty surfaces.
+
 ### 2026-08-05T22:09Z — 15m product swarm (A–F)
 
 - **Task:** Events API+UI; status readiness panel; rooms chat a11y; shorts offline banner; market sort.
