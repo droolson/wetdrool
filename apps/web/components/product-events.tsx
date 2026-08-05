@@ -130,7 +130,8 @@ export function ProductEvents() {
         return;
       }
       const data = result.data;
-      const normalized = normalizeProductEvents(data.events as readonly unknown[]);
+      const rawList = data.events ?? data.items ?? [];
+      const normalized = normalizeProductEvents(rawList as readonly unknown[]);
       setItems(normalized);
       setTotal(typeof data.total === 'number' ? data.total : normalized.length);
       setNote(typeof data.note === 'string' ? data.note : null);

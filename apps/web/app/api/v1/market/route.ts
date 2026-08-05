@@ -4,6 +4,7 @@ import {
   filterListingsByQuery,
   getMarketplaceStoreKind,
   listListings,
+  marketSortLabel,
   pageListings,
   parseMarketplaceListSort,
   putListing,
@@ -58,6 +59,7 @@ export function GET(request: Request): Response {
   if (networkFilter) {
     noteParts.push(`Exact network match on listing.network (${networkFilter}).`);
   }
+  noteParts.push(`Sort: ${marketSortLabel(sort)} (${sort}).`);
   if (!applied) {
     noteParts.push('No filter; full local store page.');
   } else {
@@ -75,6 +77,7 @@ export function GET(request: Request): Response {
     q: q || null,
     network: networkFilter,
     sort,
+    sortLabel: marketSortLabel(sort),
     filter: {
       q: q || null,
       network: networkFilter,

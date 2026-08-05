@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ButtonLink, InfoCard, StatePanel, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { ProductEvents } from '@/components/product-events';
 
 export const metadata: Metadata = {
   title: 'Events',
@@ -12,15 +13,18 @@ export default function EventsPage() {
   return (
     <div className="product-page page-shell">
       <AppPageHeader
-        actions={<StatusBadge tone="degraded">Event projection unavailable</StatusBadge>}
+        actions={<StatusBadge tone="pending">synthetic fixtures · no attendance</StatusBadge>}
         eyebrow="Events"
         title="Gather with context, not exposure."
       >
         <p>
           Events combine public discovery with sensitive attendance, location, accessibility, and
-          safety choices. Each field needs an explicit audience.
+          safety choices. Each field needs an explicit audience. Product API fixtures are labeled
+          synthetic and never invent RSVPs.
         </p>
       </AppPageHeader>
+
+      <ProductEvents />
 
       <section className="event-agenda" aria-labelledby="event-agenda-title">
         <div>

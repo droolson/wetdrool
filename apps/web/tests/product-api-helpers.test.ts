@@ -4,6 +4,7 @@ import {
   buildDiscoveryProviderHonesty,
   buildEmptyNotificationsInbox,
   buildMeshProductStatus,
+  buildProductEventsResponse,
   buildProductHealthReport,
   buildProductStatusReport,
   jsonError,
@@ -89,6 +90,7 @@ describe('product api helpers', () => {
     expect(ids).toContain('notifications');
     expect(ids).toContain('mesh');
     expect(ids).toContain('search');
+    expect(ids).toContain('events');
     expect(ids).not.toContain('social'); // not a real /api/v1 route
     const market = PRODUCT_API_SURFACES.find((s) => s.id === 'market');
     expect(market?.methods).toEqual(['GET', 'POST']);
@@ -202,6 +204,36 @@ describe('product api helpers', () => {
     // Store honesty: never multi-replica safe for process/file-local product stores.
     expect(status.stores.marketplace.multiReplicaSafe).toBe(false);
     expect(status.stores.rooms.multiReplicaSafe).toBe(false);
+  });
+
+  it('events surface is cataloged and never invents live attendance', () => {
+    const ids = listProductApiSurfaceIds();
+    expect(ids).toContain('events');
+    const eventsSurface = PRODUCT_API_SURFACES.find((s) => s.id === 'events');
+    expect(eventsSurface?.path).toBe('/api/v1/events');
+    expect(eventsSurface?.methods).toEqual(['GET']);
+    expect(PRODUCT_API_LINKS.events).toBe('/api/v1/events');
+
+    const body = buildProductEventsResponse({ limit: 2, offset: 0 });
+    expect(body.ok).toBe(true);
+    expect(body.configured).toBe(false);
+    expect(body.syntheticOnly).toBe(true);
+    expect(body.globalCalendar).toBe(false);
+    expect(body.inventsLiveAttendance).toBe(false);
+    expect(body.rsvpLive).toBe(false);
+    expect(body.items.every((e) => e.synthetic === true)).toBe(true);
+    expect(body.items.every((e) => e.liveAttendance === null)).toBe(true);
+
+    const health = buildProductHealthReport({});
+    expect(health.surfaces).toContain('events');
+    expect(health.links.events).toBe('/api/v1/events');
+    expect(health.surfaceCatalog.some((s) => s.id === 'events' && s.path === '/api/v1/events')).toBe(
+      true,
+    );
+
+    const status = buildProductStatusReport({});
+    expect(status.surfaces).toContain('events');
+    expect(status.links.events).toBe('/api/v1/events');
   });
 
   it('honest flags never invent $DROOL mint or earnings', () => {

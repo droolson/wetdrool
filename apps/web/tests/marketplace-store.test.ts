@@ -11,10 +11,13 @@ import {
   getMarketplaceStore,
   getMarketplaceStoreKind,
   getMarketplaceStoreMeta,
-  toMarketplaceStoreApi,
+  marketSortLabel,
   pageListings,
+  parseMarketSortMode,
   publicListing,
   resetMarketplaceStoreCache,
+  sortListings,
+  toMarketplaceStoreApi,
   type MarketplaceListing,
 } from '../lib/marketplace-store';
 import {
@@ -103,6 +106,71 @@ describe('marketplace store', () => {
     );
     expect(combined).toHaveLength(1);
     expect(combined[0]?.id).toBe('lst_main');
+  });
+
+  it('parses market sort modes (default newest)', () => {
+    expect(parseMarketSortMode(null)).toBe('newest');
+    expect(parseMarketSortMode('')).toBe('newest');
+    expect(parseMarketSortMode('bogus')).toBe('newest');
+    expect(parseMarketSortMode('newest')).toBe('newest');
+    expect(parseMarketSortMode('price_asc')).toBe('price_asc');
+    expect(parseMarketSortMode('PRICE_DESC')).toBe('price_desc');
+    expect(marketSortLabel('newest')).toMatch(/Newest/i);
+    expect(marketSortLabel('price_asc')).toMatch(/Price/i);
+  });
+
+  it('sorts listings by newest and lamports price', () => {
+    const all: MarketplaceListing[] = [
+      {
+        ...sampleListing('lst_mid'),
+        lamports: '20000000',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        title: 'mid',
+      },
+      {
+        ...sampleListing('lst_cheap'),
+        lamports: '1000000',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        title: 'cheap',
+      },
+      {
+        ...sampleListing('lst_new'),
+        lamports: '5000000',
+        createdAt: '2026-01-03T00:00:00.000Z',
+        title: 'new',
+      },
+      {
+        ...sampleListing('lst_high'),
+        lamports: '90000000',
+        createdAt: '2026-01-01T12:00:00.000Z',
+        title: 'high',
+      },
+    ];
+    expect(sortListings(all, 'newest').map((l) => l.id)).toEqual([
+      'lst_new',
+      'lst_mid',
+      'lst_high',
+      'lst_cheap',
+    ]);
+    expect(sortListings(all, 'price_asc').map((l) => l.id)).toEqual([
+      'lst_cheap',
+      'lst_new',
+      'lst_mid',
+      'lst_high',
+    ]);
+    expect(sortListings(all, 'price_desc').map((l) => l.id)).toEqual([
+      'lst_high',
+      'lst_mid',
+      'lst_new',
+      'lst_cheap',
+    ]);
+    // Default arg is newest
+    expect(sortListings(all).map((l) => l.id)[0]).toBe('lst_new');
+    // Page after sort preserves order slice
+    const sorted = sortListings(all, 'price_asc');
+    const page = pageListings(sorted, 2, 0);
+    expect(page.items.map((l) => l.id)).toEqual(['lst_cheap', 'lst_new']);
+    expect(page.hasMore).toBe(true);
   });
 
   it('memory store round-trips listings and purchases', () => {
