@@ -45,6 +45,19 @@ export interface ShortsApiResponse {
   readonly items: readonly RankedShort[];
   /** True only when every item is a synthetic fixture. */
   readonly synthetic: boolean;
+  readonly category?: string | null;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly syntheticCount?: number;
+  readonly licensedCount?: number;
+  readonly categories?: readonly string[];
+  readonly ranking?: {
+    readonly name: string;
+    readonly note?: string;
+  };
+  readonly note?: string;
 }
 
 export type LiveRoomDto = LiveRoom;
@@ -88,8 +101,11 @@ export interface FameApiResponse {
 export function fetchShorts(
   mode: DiscoveryMode,
   limit = 24,
+  options?: { readonly category?: string | null; readonly offset?: number },
 ): Promise<ProductClientResult<ShortsApiResponse>> {
   const q = new URLSearchParams({ mode, limit: String(limit) });
+  if (options?.category) q.set('category', options.category);
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
   return getJson<ShortsApiResponse>(`/api/v1/shorts?${q}`);
 }
 

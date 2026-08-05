@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { StatusBadge } from '@wetdrool/ui';
 
 import {
+  listShortCategories,
   type DiscoveryMode,
   rankShorts,
   readDiscoveryMode,
   writeDiscoveryMode,
   type RankedShort,
+  contentWarningLabel,
 } from '@/lib/short-feed';
 import {
   awardPoints,
@@ -36,6 +38,8 @@ function formatDuration(sec: number): string {
 
 export function ShortFeed() {
   const [mode, setMode] = useState<DiscoveryMode>('all');
+  const [category, setCategory] = useState<string>('all');
+  const [categories, setCategories] = useState<readonly string[]>(() => listShortCategories());
   const [contentMode, setContentMode] = useState<ContentMode>('sfw');
   const [ageOk, setAgeOk] = useState(false);
   const [ledger, setLedger] = useState<PointsLedgerV1 | null>(null);
@@ -43,6 +47,9 @@ export function ShortFeed() {
   const [clips, setClips] = useState<readonly RankedShort[]>([]);
   const [source, setSource] = useState<'api' | 'local'>('local');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [apiNote, setApiNote] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     setMode(readDiscoveryMode(window.localStorage));
@@ -51,26 +58,50 @@ export function ShortFeed() {
     setLedger(loadLedger(window.localStorage));
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
     setLoading(true);
-    void (async () => {
+    setError(null);
+    try {
       const { fetchShorts } = await import('@/lib/product-client');
-      const result = await fetchShorts(mode, 24);
-      if (cancelled) return;
+      const result = await fetchShorts(mode, 24, {
+        category: category === 'all' ? null : category,
+      });
       if (result.kind === 'ok' && result.data.items.length > 0) {
         setClips(result.data.items);
         setSource('api');
+        setTotal(result.data.total ?? result.data.items.length);
+        setApiNote(result.data.note ?? result.data.ranking?.note ?? null);
+        if (result.data.categories?.length) setCategories(result.data.categories);
+      } else if (result.kind === 'ok') {
+        setClips([]);
+        setSource('api');
+        setTotal(0);
+        setApiNote(result.data.note ?? 'No clips for this filter.');
       } else {
-        setClips(rankShorts(mode, 24));
+        const local = rankShorts(mode, 24).filter(
+          (c) => category === 'all' || c.category === category,
+        );
+        setClips(local);
         setSource('local');
+        setTotal(local.length);
+        setError(result.message);
+        setApiNote('Local ranking fallback.');
       }
+    } catch {
+      const local = rankShorts(mode, 24).filter(
+        (c) => category === 'all' || c.category === category,
+      );
+      setClips(local);
+      setSource('local');
+      setError('Network error loading shorts.');
+    } finally {
       setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
+    }
+  }, [mode, category]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const selectMode = useCallback((next: DiscoveryMode) => {
     writeDiscoveryMode(window.localStorage, next);
@@ -88,7 +119,6 @@ export function ShortFeed() {
     (clip: RankedShort) => {
       if (!ageOk || contentMode !== 'nsfw') return;
       let cap = loadCap(window.localStorage);
-      // Demo: if ads have not funded the pool, allow a tiny local practice pool once.
       if (cap.adRevenuePointUnits === 0) {
         cap = fundAdCap(cap, 50);
         saveCap(window.localStorage, cap);
@@ -139,7 +169,7 @@ export function ShortFeed() {
           <h1>Drool shorts</h1>
         </div>
         <div className="shorts-app__meta">
-          <StatusBadge tone="pending">{statusLabel}</StatusBadge>
+          <StatusBadge tone={source === 'api' ? 'pending' : 'degraded'}>{statusLabel}</StatusBadge>
           <span className="points-pill" title="Local points ledger">
             {ledger?.available ?? 0} pts
           </span>
@@ -152,7 +182,9 @@ export function ShortFeed() {
             key={m.id}
             type="button"
             role="tab"
+            id={`shorts-mode-${m.id}`}
             aria-selected={mode === m.id}
+            aria-controls="shorts-rail"
             className={mode === m.id ? 'is-active' : undefined}
             onClick={() => selectMode(m.id)}
           >
@@ -161,12 +193,53 @@ export function ShortFeed() {
         ))}
       </div>
 
+      <div className="shorts-modes" role="toolbar" aria-label="Category filter">
+        <button
+          type="button"
+          className={category === 'all' ? 'is-active' : undefined}
+          aria-pressed={category === 'all'}
+          onClick={() => setCategory('all')}
+        >
+          All cats
+        </button>
+        {categories.map((c) => (
+          <button
+            key={c}
+            type="button"
+            className={category === c ? 'is-active' : undefined}
+            aria-pressed={category === c}
+            onClick={() => setCategory(c)}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
       <p className="shorts-hint">
         Pride emphasizes trans, femboy, and queer creators. Mode is local and never inferred.
-        Complete a short to earn watch points when the ad-funded pool allows.
+        Cards are labeled synthetic until licensed media exists. Complete a short for watch points
+        when the ad-funded pool allows.
+        {total > 0 ? ` · ${total} ranked` : ''}
       </p>
+      {apiNote ? <p className="field-help">{apiNote}</p> : null}
+      {error ? (
+        <p className="field-help" role="alert">
+          {error}{' '}
+          <button type="button" onClick={() => void load()}>
+            Retry
+          </button>
+        </p>
+      ) : null}
+      {loading ? (
+        <p className="field-help" role="status">
+          Ranking shorts…
+        </p>
+      ) : null}
 
-      <ul className="shorts-rail" aria-label="Short feed">
+      <ul id="shorts-rail" className="shorts-rail" aria-label="Short feed" aria-busy={loading}>
+        {!loading && clips.length === 0 ? (
+          <li className="field-help">No clips for this mode/category.</li>
+        ) : null}
         {clips.map((clip) => {
           const playable = Boolean(clip.mediaSrc) && !clip.synthetic;
           return (
@@ -176,6 +249,7 @@ export function ShortFeed() {
                   playable ? 'short-card short-card--media' : 'short-card short-card--synthetic'
                 }
                 data-active={activeId === clip.id ? 'true' : 'false'}
+                data-synthetic={clip.synthetic ? 'true' : 'false'}
                 style={
                   {
                     '--tone-a': clip.toneA,
@@ -197,6 +271,9 @@ export function ShortFeed() {
                     <span className="short-card__pulse" aria-hidden="true" />
                   )}
                   <span className="short-card__dur">{formatDuration(clip.durationSec)}</span>
+                  <span className="short-card__synth-badge">
+                    {clip.syntheticLabel ?? (clip.synthetic ? 'SYNTHETIC' : 'LICENSED')}
+                  </span>
                 </div>
                 <div className="short-card__body">
                   <div className="short-card__tags">
@@ -212,7 +289,11 @@ export function ShortFeed() {
                     </Link>
                     <span className="short-card__score"> · score {clip.score.toFixed(2)}</span>
                   </p>
-                  <p className="short-card__why">Why: {clip.why.join(' · ')}</p>
+                  <p className="short-card__why">
+                    <span className="visually-hidden">Ranking reasons: </span>
+                    Why: {clip.why.join(' · ')}
+                  </p>
+                  <p className="field-help">{contentWarningLabel(clip.contentWarning)}</p>
                   <div className="short-card__actions">
                     <button type="button" onClick={() => completeWatch(clip)}>
                       Finish · +pts
