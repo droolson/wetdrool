@@ -759,6 +759,8 @@ export interface RoomMessagesApiResponse {
     readonly kind: string;
     readonly multiReplicaSafe?: boolean;
     readonly durableAcrossRestart?: boolean;
+    readonly maxMessagesPerRoom?: number;
+    readonly label?: string;
     readonly note?: string;
   };
   readonly note?: string;

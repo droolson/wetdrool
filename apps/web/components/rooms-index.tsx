@@ -189,6 +189,9 @@ export function RoomsIndexClient() {
         {store?.multiReplicaSafe === false ? (
           <StatusBadge tone="pending">not multi-replica</StatusBadge>
         ) : null}
+        {typeof store?.maxMessagesPerRoom === 'number' && store.maxMessagesPerRoom > 0 ? (
+          <StatusBadge tone="neutral">max {store.maxMessagesPerRoom} msgs/room</StatusBadge>
+        ) : null}
         {e2ee ? (
           <>
             <StatusBadge tone="verified">seal {e2ee.roomSealProtocol}</StatusBadge>

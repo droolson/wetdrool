@@ -121,6 +121,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
   const [storeNote, setStoreNote] = useState<string | null>(null);
   const [storeKind, setStoreKind] = useState<string | null>(null);
   const [storeDurable, setStoreDurable] = useState<boolean | null>(null);
+  const [maxMessagesPerRoom, setMaxMessagesPerRoom] = useState<number | null>(null);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [totalServer, setTotalServer] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -143,6 +144,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     setEnvelopes([]);
     setHasMoreOlder(false);
     setTotalServer(null);
+    setMaxMessagesPerRoom(null);
     setLoadError(null);
     setArrivalAnnouncement('');
     setRekeyOpen(false);
@@ -153,11 +155,19 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     note?: string;
     durableAcrossRestart?: boolean;
     label?: string;
+    maxMessagesPerRoom?: number;
   } | undefined) => {
     if (!store) return;
     if (store.kind) setStoreKind(store.kind);
     if (typeof store.durableAcrossRestart === 'boolean') {
       setStoreDurable(store.durableAcrossRestart);
+    }
+    if (
+      typeof store.maxMessagesPerRoom === 'number' &&
+      Number.isFinite(store.maxMessagesPerRoom) &&
+      store.maxMessagesPerRoom > 0
+    ) {
+      setMaxMessagesPerRoom(Math.floor(store.maxMessagesPerRoom));
     }
     if (store.note) {
       const durable =
@@ -213,6 +223,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
             note?: string;
             durableAcrossRestart?: boolean;
             label?: string;
+            maxMessagesPerRoom?: number;
           };
         };
         pollFailRef.current = 0;
@@ -606,6 +617,19 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           <StatusBadge tone={storeDurable ? 'verified' : 'pending'}>
             {storeKind === 'file-local' ? 'file store' : 'memory store'}
           </StatusBadge>
+          {maxMessagesPerRoom !== null ? (
+            <StatusBadge
+              tone={
+                totalServer !== null && totalServer >= maxMessagesPerRoom
+                  ? 'pending'
+                  : 'neutral'
+              }
+            >
+              {totalServer !== null
+                ? `${totalServer}/${maxMessagesPerRoom} msgs`
+                : `max ${maxMessagesPerRoom} msgs`}
+            </StatusBadge>
+          ) : null}
           <StatusBadge tone="neutral">no account</StatusBadge>
           <button
             type="button"
@@ -624,7 +648,18 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       {storeNote ? (
         <p className="field-help" role="note" id="room-store-note">
           {storeNote}
-          {totalServer !== null ? ` · ${totalServer} sealed on server (cap applies).` : null}
+          {totalServer !== null
+            ? maxMessagesPerRoom !== null
+              ? ` · ${totalServer}/${maxMessagesPerRoom} sealed on server (oldest dropped past cap).`
+              : ` · ${totalServer} sealed on server (cap applies).`
+            : maxMessagesPerRoom !== null
+              ? ` · max ${maxMessagesPerRoom} sealed messages per room.`
+              : null}
+          {totalServer !== null &&
+          maxMessagesPerRoom !== null &&
+          totalServer >= maxMessagesPerRoom
+            ? ' At limit — new sends keep the newest; older ciphertext may already be gone on this node.'
+            : null}
         </p>
       ) : null}
 

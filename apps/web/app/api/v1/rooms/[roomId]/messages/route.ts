@@ -119,6 +119,7 @@ export async function POST(
         kind: store.kind,
         durableAcrossRestart: store.durableAcrossRestart,
         multiReplicaSafe: store.multiReplicaSafe,
+        maxMessagesPerRoom: store.maxMessagesPerRoom,
       },
     },
     { status: result === 'duplicate' ? 200 : 201 },

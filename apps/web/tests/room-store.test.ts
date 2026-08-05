@@ -10,6 +10,7 @@ import {
   getRoomBag,
   getRoomStoreKind,
   getRoomStoreMeta,
+  MAX_MESSAGES_PER_ROOM,
   isValidMessageId,
   listMessages,
   listRooms,
@@ -99,6 +100,8 @@ describe('room-store', () => {
     expect(getRoomStoreMeta().kind).toBe('memory-ephemeral');
     expect(getRoomStoreMeta().durableAcrossRestart).toBe(false);
     expect(getRoomStoreMeta().multiReplicaSafe).toBe(false);
+    expect(getRoomStoreMeta().maxMessagesPerRoom).toBe(MAX_MESSAGES_PER_ROOM);
+    expect(getRoomStoreMeta().maxMessagesPerRoom).toBe(200);
     expect(getRoomStoreMeta().label).toContain('ephemeral');
     expect(getRoomStoreMeta().note.toLowerCase()).toContain('cold start');
   });
