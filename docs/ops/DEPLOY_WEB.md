@@ -7,8 +7,12 @@
 | Package | `@wetdrool/web` → `apps/web` |
 | Framework | Next.js 16 App Router |
 | Canonical host | `wetdrool.com` (never legacy host as WebAuthn/app origin) |
+| **Interim production URL** | **https://wetdrool-web.vercel.app** (project `wetdrool-web`, team mythicagent) |
+| Vercel project id | `prj_XuGVbO9dFScPwXdJaclHcIzKPNkq` |
 | Node | `22.23.1` (see root `engines`) |
 | Package manager | pnpm `11.2.2` via Corepack |
+
+> **Honest:** interim URL is a real production *deployment* of the Next product shell. It is **not** the canonical origin and does **not** imply revenue-ready commerce (`/api/v1/status` → `revenueReady: false`).
 
 ## Vercel project settings
 
@@ -56,18 +60,40 @@ Observed: `wetdrool.com` NS → Cloudflare; **no A/AAAA** in public resolvers (s
 3. Proxy (orange cloud) optional; if orange-clouded, ensure SSL mode Full (strict) and no broken page rules.
 4. After DNS propagates: `curl -sI https://wetdrool.com/api/v1/status` should return JSON readiness.
 
+## Redeploy (CLI, monorepo root)
+
+Requires Vercel CLI auth and project link (`.vercel/project.json` is local/gitignored).
+
+```bash
+# from monorepo root
+export VERCEL_ORG_ID=team_Kj8kBMsK5NG2fA3woisruvT6
+export VERCEL_PROJECT_ID=prj_XuGVbO9dFScPwXdJaclHcIzKPNkq
+npx vercel@48 deploy --prod --yes --scope team_Kj8kBMsK5NG2fA3woisruvT6
+```
+
+Root `.vercelignore` must exclude `.anchor/`, `target/`, ledgers, and `node_modules` or upload fails.
+
 ## Smoke checklist after deploy
+
+Interim (live):
+
+```bash
+curl -sS https://wetdrool-web.vercel.app/api/v1/health | jq .
+curl -sS https://wetdrool-web.vercel.app/api/v1/status | jq .
+curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/feeds
+curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/video/cumdump
+curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/market
+curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool-web.vercel.app/media/cumdump.webm
+```
+
+Canonical (after DNS):
 
 ```bash
 curl -sS https://wetdrool.com/api/v1/health | jq .
 curl -sS https://wetdrool.com/api/v1/status | jq .
-curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool.com/feeds
-curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool.com/video/cumdump
-curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool.com/market
-curl -sS -o /dev/null -w '%{http_code}\n' https://wetdrool.com/media/cumdump.webm
 ```
 
-Expect status `revenue.ready === false` until RPC + durable market + real payTo path are production-complete.
+Expect `revenueReady === false` until durable market + real payTo path are production-complete.
 
 ## What is NOT production revenue
 

@@ -9,23 +9,36 @@
 | Item | State |
 |------|--------|
 | Full Next product (`apps/web`) on wetdrool.com | **Not live** — CF NS present, no public A/AAAA |
-| Public URL | `https://wallet-alpha-dun.vercel.app` = **wallet-alpha only** (not product) |
-| Marketplace x402 | Code present; **in-memory store**; needs RPC + payTo + durable storage for real revenue |
+| **Interim product URL** | **`https://wetdrool-web.vercel.app`** (Vercel project `wetdrool-web`, mythicagent team) |
+| Legacy static | `https://wallet-alpha-dun.vercel.app` = wallet-alpha only (not product) |
+| Marketplace x402 | Live API on interim URL; **in-memory store**; RPC env set (devnet public); `revenueReady: false` |
 | `$DROOL` mint | **Does not exist** — never invent it |
-| CUMDUMP founder drop | In repo at `/video/cumdump` + `/media/cumdump.webm` |
+| CUMDUMP founder drop | Live at `/video/cumdump` + `/media/cumdump.webm` on interim URL |
 | Onion gateway | Code in `apps/onion`; needs real `.onion` host |
 
 ## Revenue blockers (ordered)
 
-1. **DNS:** Point `wetdrool.com` / `www` A/AAAA (or CNAME) at Vercel for `apps/web`.
-2. **Deploy:** Production Vercel project with monorepo root → `apps/web` (see `DEPLOY_WEB.md`).
-3. **RPC:** Set `WETDROOL_SOLANA_RPC_URL` (or `NEXT_PUBLIC_SOLANA_RPC_URL`) so x402 verification is not `no_rpc`.
-4. **Treasury `payTo`:** Operator Solana address for marketplace listings (mainnet when ready).
-5. **Durable marketplace store:** Replace process-global `Map` with Redis/Postgres (or accepted single-region risk with external DB).
-6. **Traffic + age policy:** 18+ self-attest on shorts/market/CUMDUMP (UI gate shipped); legal/ToS for adult sales still needed.
-7. **First paid unlock:** Confirmed mainnet (or declared devnet demo) tx → unlock secret released.
+1. **DNS:** Point `wetdrool.com` / `www` A/AAAA (or CNAME) at Vercel project **wetdrool-web** (not wallet-alpha).
+2. ~~**Deploy product shell**~~ — interim URL live; keep redeploys on monorepo build path.
+3. **Mainnet RPC + operator `payTo`:** production still on devnet public RPC for verify demos only.
+4. **Durable marketplace store:** Replace process-global `Map` with Redis/Postgres (or accepted single-region risk with external DB).
+5. **Traffic + age policy:** 18+ self-attest on shorts/market/CUMDUMP (UI gate shipped); legal/ToS for adult sales still needed.
+6. **First paid unlock:** Confirmed mainnet (or declared devnet demo) tx → unlock secret released.
 
 ## Sprint log
+
+### 2026-08-05T16:08Z — P0/P1 product live on Vercel interim URL
+
+- Created Vercel project `wetdrool-web` (`prj_XuGVbO9dFScPwXdJaclHcIzKPNkq`, team mythicagent).
+- Fixed monorepo deploy blockers: restored `packages/protocol/schemas/wetdrool-signed-envelope-v1.schema.json`; WebCrypto `BufferSource` strict TS fixes; `apps/web/tsconfig.json` excludes e2e/tests so Next does not typecheck `auth-service`.
+- Added root `.vercelignore` (skip `.anchor`/ledgers/`node_modules`).
+- Production deploy: **https://wetdrool-web.vercel.app**
+- Smoke (HTTP): `/api/v1/health` 200, `/api/v1/status` 200 (`revenueReady:false`, `rpcConfigured:true`, store `memory-ephemeral`), `/feeds` `/market` `/video/cumdump` `/rooms/lobby` `/hub` 200, `/media/cumdump.webm` 200 video/webm.
+- Env on project: `WETDROOL_SOLANA_RPC_URL` + `NEXT_PUBLIC_SOLANA_*` → public **devnet** RPC (not mainnet earnings).
+
+**Still blocking revenue:** wetdrool.com DNS not attached; market store ephemeral; no durable receipts; no operator mainnet payTo; no verified paid unlock.
+
+**Next sprint pick:** durable marketplace store (Upstash/Redis REST or Postgres) + attach wetdrool.com DNS to `wetdrool-web` project.
 
 ### 2026-08-05T15:30Z — P4 age gate + x402 fail-closed tests
 
