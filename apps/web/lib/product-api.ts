@@ -40,6 +40,7 @@ export const PRODUCT_API_SURFACES = [
   { id: 'notifications', path: '/api/v1/notifications', methods: ['GET'] as const },
   { id: 'search', path: '/api/v1/search', methods: ['GET'] as const },
   { id: 'events', path: '/api/v1/events', methods: ['GET'] as const },
+  { id: 'companions', path: '/api/v1/companions', methods: ['GET'] as const },
   { id: 'ai/chat', path: '/api/v1/ai/chat', methods: ['POST'] as const },
 ] as const;
 
@@ -61,6 +62,7 @@ export const PRODUCT_API_LINKS = {
   notifications: '/api/v1/notifications',
   search: '/api/v1/search',
   events: '/api/v1/events',
+  companions: '/api/v1/companions',
 } as const;
 
 /** Explicit honesty flags shared by health/status (no invented mint or earnings). */

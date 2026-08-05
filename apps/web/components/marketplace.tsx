@@ -1,11 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
 import { AgeGatePanel } from '@/components/age-gate-panel';
 import { sealBytes, sealText, openText, openEnvelope } from '@/lib/e2ee-seal';
+import { marketSortLabel } from '@/lib/marketplace-store';
 import {
   describePaymentFailureReason,
   encodePaymentHeader,
@@ -226,6 +233,7 @@ export function Marketplace() {
   const [activeNetwork, setActiveNetwork] = useState('');
   const [activeSort, setActiveSort] = useState<MarketSortMode>('newest');
   const [filterNote, setFilterNote] = useState<string | null>(null);
+  const sortChipRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   // sell form
   const [title, setTitle] = useState('');
@@ -347,6 +355,36 @@ export function Marketplace() {
       setLoadingMore(false);
     }
   }, [activeQuery, activeNetwork, activeSort, applyPage, loadingMore, nextOffset]);
+
+  const selectSort = useCallback(
+    (sort: MarketSortMode) => {
+      setActiveSort(sort);
+      void refresh(activeQuery, activeNetwork, sort);
+    },
+    [activeQuery, activeNetwork, refresh],
+  );
+
+  const onSortKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (loading || busy) return;
+    const ids = MARKET_SORTS.map((s) => s.id);
+    const current = ids.indexOf(activeSort);
+    const i = current < 0 ? 0 : current;
+    let next: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      next = (i + 1) % ids.length;
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      next = (i - 1 + ids.length) % ids.length;
+    } else if (event.key === 'Home') {
+      next = 0;
+    } else if (event.key === 'End') {
+      next = ids.length - 1;
+    }
+    if (next === null) return;
+    event.preventDefault();
+    const id = ids[next]!;
+    selectSort(id);
+    sortChipRefs.current[next]?.focus();
+  };
 
   useEffect(() => {
     void refresh();
@@ -772,9 +810,13 @@ export function Marketplace() {
             <h2 id="market-listings-heading">
               Listings {total > 0 ? `(${shown} of ${total})` : ''}
             </h2>
-            <button type="button" onClick={() => void refresh()} disabled={loading || busy}>
-              Refresh
-            </button>
+            <div className="market__list-head-meta" role="group" aria-label="Catalog sort and store honesty">
+              <StatusBadge tone="pending">{marketSortLabel(activeSort)}</StatusBadge>
+              <StatusBadge tone="degraded">multiReplicaSafe: false</StatusBadge>
+              <button type="button" onClick={() => void refresh()} disabled={loading || busy}>
+                Refresh
+              </button>
+            </div>
           </div>
           <form
             className="market__search"
@@ -841,32 +883,41 @@ export function Marketplace() {
 
             <div
               className="market__network-chips"
-              role="group"
-              aria-label="Sort marketplace listings"
-              aria-describedby="market-search-help"
+              role="radiogroup"
+              aria-labelledby="market-sort-chips-label"
+              aria-describedby="market-search-help market-sort-active"
+              onKeyDown={onSortKeyDown}
             >
               <span className="field-help" id="market-sort-chips-label">
                 Sort
               </span>
-              {MARKET_SORTS.map((chip) => {
+              {MARKET_SORTS.map((chip, index) => {
                 const selected = activeSort === chip.id;
                 return (
                   <button
                     key={chip.id}
-                    type="button"
-                    className="button-secondary"
-                    aria-pressed={selected}
-                    disabled={loading || busy}
-                    onClick={() => {
-                      setActiveSort(chip.id);
-                      void refresh(activeQuery, activeNetwork, chip.id);
+                    ref={(el) => {
+                      sortChipRefs.current[index] = el;
                     }}
+                    type="button"
+                    role="radio"
+                    className="button-secondary"
+                    aria-checked={selected}
+                    tabIndex={selected ? 0 : -1}
+                    disabled={loading || busy}
+                    onClick={() => selectSort(chip.id)}
                   >
                     {chip.label}
                   </button>
                 );
               })}
             </div>
+            <p className="field-help" id="market-sort-active" role="status">
+              Active sort:{' '}
+              <StatusBadge tone="pending">{marketSortLabel(activeSort)}</StatusBadge>
+              {' · '}
+              <StatusBadge tone="degraded">multiReplicaSafe: false</StatusBadge>
+            </p>
             <button type="submit" disabled={loading || busy}>
               Search
             </button>

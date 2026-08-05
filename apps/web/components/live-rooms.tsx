@@ -224,9 +224,12 @@ export function LiveRooms() {
                   <li key={t}>{t}</li>
                 ))}
               </ul>
-              <p className="field-help">Viewers: {room.viewersHint} · tips staged · chat staged</p>
-              <button type="button" disabled>
-                Join (coming online)
+              <p className="field-help">
+                Viewers: {room.viewersHint} · tips staged · chat staged ·{' '}
+                <StatusBadge tone="pending">join: disabled</StatusBadge>
+              </p>
+              <button type="button" disabled aria-disabled="true" title="SFU join not online">
+                Join (disabled)
               </button>
             </article>
           </li>

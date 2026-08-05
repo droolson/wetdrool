@@ -5,6 +5,11 @@
 
 export type LiveRoomStatus = 'staged';
 
+/** Catalog-wide join capability. SFU not online — always disabled. */
+export type LiveJoinStatus = 'disabled';
+
+export const LIVE_JOIN_STATUS: LiveJoinStatus = 'disabled';
+
 export interface LiveRoom {
   readonly id: string;
   readonly title: string;
@@ -98,6 +103,26 @@ export interface LiveRoomsPage {
   readonly hasMore: boolean;
   /** Echo of normalized tag filter, or null when unfiltered. */
   readonly tag: string | null;
+}
+
+/**
+ * Honest empty copy when the page has zero rooms.
+ * Tag filters never invent matches; SFW-only is explicit.
+ */
+export function emptyLiveRoomsMessage(options: {
+  readonly tag?: string | null;
+  readonly nsfwAllowed?: boolean;
+  readonly total: number;
+}): string | null {
+  if (options.total > 0) return null;
+  const tag = normalizeLiveTag(options.tag ?? null);
+  if (tag) {
+    return `No live rooms match tag “${tag}”. Join stays disabled; catalog is synthetic fixtures only.`;
+  }
+  if (options.nsfwAllowed === false) {
+    return 'No SFW live rooms in the synthetic catalog. Join stays disabled.';
+  }
+  return 'Live catalog empty. Join stays disabled; no invented rooms or viewer counts.';
 }
 
 /** Page the live catalog after optional SFW + tag filters. Synthetic fixtures only. */

@@ -1,4 +1,10 @@
-import { LIVE_ROOMS, listLiveTags, pageLiveRooms } from '@/lib/live-catalog';
+import {
+  LIVE_JOIN_STATUS,
+  LIVE_ROOMS,
+  emptyLiveRoomsMessage,
+  listLiveTags,
+  pageLiveRooms,
+} from '@/lib/live-catalog';
 import { jsonOk, methodNotAllowed, parseLimit, parseOffset } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
@@ -18,6 +24,12 @@ export function GET(request: Request): Response {
     limit,
     offset,
   });
+  const empty = page.total === 0;
+  const emptyMessage = emptyLiveRoomsMessage({
+    tag: page.tag,
+    nsfwAllowed: !sfwOnly,
+    total: page.total,
+  });
 
   return jsonOk({
     ok: true,
@@ -30,9 +42,11 @@ export function GET(request: Request): Response {
     nextOffset: page.hasMore ? page.offset + page.items.length : null,
     tag: page.tag,
     tags: listLiveTags(LIVE_ROOMS),
-    join: 'disabled',
+    join: LIVE_JOIN_STATUS,
+    empty,
+    emptyMessage,
     synthetic: true,
-    note: 'Live SFU / chat / tips not online. Cards are product scaffolding.',
+    note: 'Live SFU / chat / tips not online. Cards are product scaffolding. join:disabled.',
   });
 }
 

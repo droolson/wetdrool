@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ButtonLink, SectionHeading, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { CompanionsDirectory } from '@/components/companions-directory';
 import { COMPANIONS, COMPANION_POLICY } from '@/lib/companions';
 import { MENTAL_HEALTH_RESOURCES } from '@/lib/nsfw-mode';
 
@@ -16,19 +17,28 @@ export default function CompanionsPage() {
   return (
     <div className="product-page page-shell">
       <AppPageHeader
-        actions={<StatusBadge tone="pending">Grok 4.5 + Mythic</StatusBadge>}
+        actions={
+          <>
+            <StatusBadge tone="pending">chatLive: false</StatusBadge>
+            <StatusBadge tone="degraded">earningsClaimed: false</StatusBadge>
+            <StatusBadge tone="pending">Grok 4.5 + Mythic</StatusBadge>
+          </>
+        }
         eyebrow="AI companions"
         title="Always available. Extremely immersive. Still AI."
       >
         <p>
           Sexbots and companions you can hire for DM RP that feels human — without pretending to be
           a non-consenting real person. Runtime: <strong>Grok 4.5</strong> and{' '}
-          <strong>Mythic/Hermes</strong>. Limits: illegal content only.
+          <strong>Mythic/Hermes</strong>. Limits: illegal content only. Chat is not live until
+          model keys and policy gates wire.
         </p>
       </AppPageHeader>
 
+      <CompanionsDirectory />
+
       <section aria-labelledby="companion-grid">
-        <SectionHeading eyebrow="For hire" title="Pick a vibe" />
+        <SectionHeading eyebrow="Local fixtures" title="SSR catalog (same synthetic set)" />
         <ul className="companion-grid" id="companion-grid">
           {COMPANIONS.map((c) => (
             <li key={c.id} className="companion-card">

@@ -434,6 +434,44 @@ export function fetchEvents(options?: {
   return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
 }
 
+export interface CompanionsApiResponse {
+  readonly ok: true;
+  readonly companions: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly tagline: string;
+    readonly tones: readonly string[];
+    readonly nsfw: boolean;
+    readonly hirePointsPerMinute: number;
+    readonly model: string;
+    readonly blurb: string;
+    readonly source: 'synthetic-catalog';
+    readonly chatLive: false;
+    readonly earningsClaimed: false;
+    readonly href: string;
+  }[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly hasMore?: boolean;
+  readonly syntheticOnly?: true;
+  readonly chatLive?: false;
+  readonly earningsClaimed?: false;
+  readonly note?: string;
+}
+
+export function fetchCompanions(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly nsfw?: boolean;
+}): Promise<ProductClientResult<CompanionsApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  if (options?.nsfw === false) q.set('nsfw', '0');
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<CompanionsApiResponse>(`/api/v1/companions${suffix}`);
+}
+
 
 /** Alias for fetchProductStatus — product readiness client panel. */
 export function fetchStatus(): Promise<ProductClientResult<ProductStatusApiResponse>> {
