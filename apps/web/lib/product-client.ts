@@ -666,27 +666,40 @@ export function fetchRoomsIndex(): Promise<ProductClientResult<RoomsIndexApiResp
   return getJson<RoomsIndexApiResponse>('/api/v1/rooms');
 }
 
+/** In-app notification row — only fields a product API may return (never invent client-side). */
+export interface NotificationItemDto {
+  readonly id: string;
+  readonly category: string;
+  readonly title: string;
+  readonly body?: string;
+  readonly createdAt?: string;
+  readonly read?: boolean;
+  readonly href?: string;
+  readonly actorHandle?: string;
+}
+
 /**
  * GET /api/v1/notifications — honest empty inbox until auth + relay + preferences wire.
  * Never invents social-graph rows; configured is always false today.
  */
 export interface NotificationsApiResponse {
   readonly ok: true;
-  readonly items: readonly never[];
-  readonly count: 0;
-  readonly total: 0;
-  readonly limit: number;
-  readonly offset: number;
-  readonly hasMore: false;
-  readonly filter: 'mentions' | 'communities' | 'system' | null;
-  readonly configured: false;
-  readonly delivery: 'none';
-  readonly unread: 0;
-  readonly protocolHistoryReconstructable: true;
-  readonly inventedSignals: false;
-  readonly pushLive?: false;
-  readonly inAppLive?: false;
-  readonly note: string;
+  readonly items: readonly NotificationItemDto[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly filter?: 'mentions' | 'communities' | 'system' | null;
+  readonly configured: boolean;
+  readonly delivery?: 'none' | string;
+  readonly unread?: number;
+  readonly unreadCount?: number;
+  readonly protocolHistoryReconstructable?: boolean;
+  readonly inventedSignals?: boolean;
+  readonly pushLive?: boolean;
+  readonly inAppLive?: boolean;
+  readonly note?: string;
 }
 
 export function fetchNotifications(options?: {
