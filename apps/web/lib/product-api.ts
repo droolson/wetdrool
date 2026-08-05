@@ -41,6 +41,9 @@ export const PRODUCT_API_SURFACES = [
   { id: 'search', path: '/api/v1/search', methods: ['GET'] as const },
   { id: 'events', path: '/api/v1/events', methods: ['GET'] as const },
   { id: 'companions', path: '/api/v1/companions', methods: ['GET'] as const },
+  { id: 'photos', path: '/api/v1/photos', methods: ['GET'] as const },
+  { id: 'stories', path: '/api/v1/stories', methods: ['GET'] as const },
+  { id: 'vanity', path: '/api/v1/vanity', methods: ['GET'] as const },
   { id: 'ai/chat', path: '/api/v1/ai/chat', methods: ['POST'] as const },
 ] as const;
 
@@ -63,6 +66,9 @@ export const PRODUCT_API_LINKS = {
   search: '/api/v1/search',
   events: '/api/v1/events',
   companions: '/api/v1/companions',
+  photos: '/api/v1/photos',
+  stories: '/api/v1/stories',
+  vanity: '/api/v1/vanity',
 } as const;
 
 /** Explicit honesty flags shared by health/status (no invented mint or earnings). */
@@ -275,6 +281,9 @@ export function buildProductHealthReport(
       search: PRODUCT_API_LINKS.search,
       events: PRODUCT_API_LINKS.events,
       companions: PRODUCT_API_LINKS.companions,
+      photos: PRODUCT_API_LINKS.photos,
+      stories: PRODUCT_API_LINKS.stories,
+      vanity: PRODUCT_API_LINKS.vanity,
     },
     media: 'synthetic-fixtures' as const,
     mesh: false as const,

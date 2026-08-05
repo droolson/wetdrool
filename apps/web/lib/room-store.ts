@@ -364,6 +364,29 @@ export function summarizeRoomIndex(
 }
 
 /**
+ * Export ciphertext-only index metadata as JSON (no envelopes/plaintext).
+ */
+export function exportRoomsIndexJson(
+  rooms: readonly RoomIndexEntry[],
+  options?: { readonly exportedAt?: string },
+): string {
+  const payload = {
+    version: 1 as const,
+    product: 'wetdrool' as const,
+    kind: 'rooms-index-metadata' as const,
+    exportedAt: options?.exportedAt ?? new Date().toISOString(),
+    ciphertextOnly: true as const,
+    rooms: rooms.map((r) => ({
+      roomId: r.roomId,
+      messageCount: r.messageCount,
+      lastActivityAt: r.lastActivityAt ?? null,
+    })),
+    totals: summarizeRoomIndex(rooms),
+  };
+  return `${JSON.stringify(payload, null, 2)}\n`;
+}
+
+/**
  * Pure: serialize ciphertext-only room index metadata for client download.
  * Emits roomId + messageCount + lastActivityAt only — never ciphertext or plaintext.
  * Unknown / non-finite counts become 0; missing activity is null.
