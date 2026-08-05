@@ -1,7 +1,7 @@
 'use client';
 
 import { ButtonLink } from '@wetdrool/ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { BrowserAuthClient, type BrowserAuthClientOptions } from '@/lib/auth/browser-auth-client';
 import type { AuthSessionView, PasskeyCredentialView } from '@/lib/auth/auth-api';
@@ -20,10 +20,17 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
+  const [reloadToken, setReloadToken] = useState(0);
+
   const activeCredentials = useMemo(
     () => credentials.filter((credential) => credential.revokedAt === undefined),
     [credentials],
   );
+  const revokedCount = credentials.length - activeCredentials.length;
+
+  const retryLoad = useCallback(() => {
+    setReloadToken((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     let current = true;
@@ -38,6 +45,7 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
       setNotice(undefined);
       setCredentials([]);
       setConfirming(undefined);
+      setSession(undefined);
       let next: BrowserAuthClient;
       try {
         const options: BrowserAuthClientOptions = { baseUrl: authServiceUrl };
@@ -58,12 +66,16 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
           setCredentials(await next.listPasskeys());
         }
       } catch (caught) {
-        if (current) setError(safeAuthMessage(caught));
+        if (current) {
+          setError(
+            `${safeAuthMessage(caught)} Could not load passkeys from the authentication service.`,
+          );
+        }
       } finally {
         if (current) setLoading(false);
       }
     }
-  }, [authServiceUrl]);
+  }, [authServiceUrl, reloadToken]);
 
   const addPasskey = async () => {
     if (client === undefined || busy) return;
@@ -106,8 +118,8 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
 
   if (loading) {
     return (
-      <p className="passkey-auth__status" role="status">
-        Checking the authentication service…
+      <p className="passkey-auth__status" role="status" aria-busy="true">
+        Checking authentication-service session and passkey records…
       </p>
     );
   }
@@ -115,13 +127,32 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
   if (session === undefined) {
     return (
       <div className="passkey-access__empty">
+        <p className="section-kicker">No service session</p>
+        <h2>Sign in before managing passkeys</h2>
         <p>
-          No active authentication-service session is available in this browser. Sign in before
-          listing or changing passkeys.
+          No active authentication-service session is available in this browser. Listing and
+          changing passkeys requires a user-verifying sign-in. This empty state is not a claim that
+          WetDrool is “offline” — only that this browser has no service session cookie.
         </p>
-        <ButtonLink href="/signin" variant="primary">
-          Sign in with a passkey
-        </ButtonLink>
+        <div className="passkey-auth__links">
+          <ButtonLink href="/signin" variant="primary">
+            Sign in with a passkey
+          </ButtonLink>
+          <ButtonLink href="/onboarding" variant="secondary">
+            Create a passkey account
+          </ButtonLink>
+          <button
+            className="passkey-auth__secondary"
+            type="button"
+            onClick={retryLoad}
+            disabled={busy}
+          >
+            Retry session check
+          </button>
+        </div>
+        <p className="field-help">
+          Configured service origin: <code className="inline-identifier">{authServiceUrl}</code>
+        </p>
         {notice === undefined ? null : (
           <p className="passkey-auth__status" role="status">
             {notice}
@@ -143,24 +174,51 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
           <p className="section-kicker">Authentication-service provenance</p>
           <h2>Passkeys for this service account</h2>
           <p className="passkey-auth__status">
-            Account <span className="inline-identifier">{session.accountId}</span>. Activity dates
-            below come only from the configured authentication service.
+            Account <span className="inline-identifier">{session.accountId}</span>
+            {session.expiresAt === undefined
+              ? null
+              : ` · session until ${formatDate(session.expiresAt)}`}
+            . Activity dates below come only from the configured authentication service — not from
+            Solana or DroolNet.
+          </p>
+          <p className="field-help" role="status">
+            {activeCredentials.length} active
+            {revokedCount > 0 ? ` · ${revokedCount} revoked` : ''}
+            {credentials.length === 0 ? ' · no credential rows returned' : ''}
           </p>
         </div>
-        <button
-          className="passkey-auth__primary"
-          disabled={client === undefined || busy}
-          onClick={addPasskey}
-          type="button"
-        >
-          {busy ? 'Waiting for passkey…' : 'Add another passkey'}
-        </button>
+        <div className="passkey-access__heading-actions">
+          <button
+            className="passkey-auth__primary"
+            disabled={client === undefined || busy}
+            onClick={addPasskey}
+            type="button"
+          >
+            {busy ? 'Waiting for passkey…' : 'Add another passkey'}
+          </button>
+          <button
+            className="passkey-auth__secondary"
+            disabled={busy}
+            onClick={retryLoad}
+            type="button"
+          >
+            Refresh list
+          </button>
+        </div>
       </div>
 
       {credentials.length === 0 ? (
-        <p className="passkey-auth__status">
-          The service returned no credential records for this account.
-        </p>
+        <div className="passkey-access__empty">
+          <p className="passkey-auth__status">
+            The service returned no credential records for this account. You can add a passkey
+            above, or sign in again if this looks unexpected.
+          </p>
+          <div className="passkey-auth__links">
+            <ButtonLink href="/signin" variant="quiet">
+              Re-check sign-in
+            </ButtonLink>
+          </div>
+        </div>
       ) : (
         <ul className="passkey-access__list" aria-label="Authentication-service passkeys">
           {credentials.map((credential, index) => {
@@ -198,6 +256,15 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
                       <dt>Status</dt>
                       <dd>{active ? 'Active' : `Revoked ${formatDate(credential.revokedAt)}`}</dd>
                     </div>
+                    <div>
+                      <dt>Device class</dt>
+                      <dd>
+                        {credential.deviceType === 'multiDevice'
+                          ? 'Multi-device (may sync)'
+                          : 'Single-device'}
+                        {credential.backedUp ? ' · backed up flag set' : ''}
+                      </dd>
+                    </div>
                   </dl>
                 </div>
 
@@ -205,7 +272,8 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
                   <div className="passkey-access__confirmation">
                     <p>
                       Confirm after a fresh passkey check. This revokes the selected credential and
-                      ends every authentication-service session for the account.
+                      ends every authentication-service session for the account. DroolNet authority
+                      is not changed here.
                     </p>
                     <div>
                       <button
@@ -254,9 +322,24 @@ export function PasskeyAccessManager({ authServiceUrl }: PasskeyAccessManagerPro
       )}
       {error === undefined ? null : (
         <p className="passkey-auth__error" role="alert">
-          {error}
+          {error}{' '}
+          <button type="button" className="passkey-auth__secondary" onClick={retryLoad}>
+            Retry
+          </button>
         </p>
       )}
+
+      <div className="passkey-auth__links">
+        <ButtonLink href="/settings/delegations" variant="quiet">
+          Protocol delegations (separate)
+        </ButtonLink>
+        <ButtonLink href="/settings/privacy" variant="quiet">
+          Privacy &amp; age access
+        </ButtonLink>
+        <ButtonLink href="/settings/providers" variant="quiet">
+          Providers
+        </ButtonLink>
+      </div>
     </div>
   );
 }

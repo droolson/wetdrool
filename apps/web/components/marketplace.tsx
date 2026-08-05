@@ -40,6 +40,9 @@ export function Marketplace() {
   const [paymentMeta, setPaymentMeta] = useState<PaymentMeta | null>(null);
   const [storeMeta, setStoreMeta] = useState<StoreMeta | null>(null);
   const [total, setTotal] = useState(0);
+  const [searchInput, setSearchInput] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
+  const [filterNote, setFilterNote] = useState<string | null>(null);
 
   // sell form
   const [title, setTitle] = useState('');
@@ -62,12 +65,17 @@ export function Marketplace() {
     'idle',
   );
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (q?: string) => {
     setLoading(true);
     setListError(null);
+    const query = (q ?? activeQuery).trim();
     try {
       const { fetchMarket } = await import('@/lib/product-client');
-      const result = await fetchMarket({ limit: 48, offset: 0 });
+      const result = await fetchMarket({
+        limit: 48,
+        offset: 0,
+        q: query || null,
+      });
       if (result.kind !== 'ok') {
         setListError(result.message);
         setListings([]);
@@ -77,13 +85,14 @@ export function Marketplace() {
       setTotal(result.data.total ?? result.data.listings?.length ?? 0);
       setPaymentMeta(result.data.paymentVerify ?? null);
       setStoreMeta(result.data.store ?? null);
+      setFilterNote(result.data.filter?.note ?? null);
     } catch {
       setListError('Network error loading market.');
       setListings([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeQuery]);
 
   useEffect(() => {
     void refresh();
@@ -362,6 +371,45 @@ export function Marketplace() {
 
         <section className="market__list">
           <h2>Listings {total > 0 ? `(${total})` : ''}</h2>
+          <form
+            className="market__search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const next = searchInput.trim().slice(0, 80);
+              setActiveQuery(next);
+              void refresh(next);
+            }}
+          >
+            <label htmlFor="market-search-q">
+              Filter listings
+              <input
+                id="market-search-q"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Title, seller, id…"
+                maxLength={80}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <button type="submit" disabled={loading}>
+              Search
+            </button>
+            {activeQuery ? (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setSearchInput('');
+                  setActiveQuery('');
+                  void refresh('');
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+          </form>
+          {filterNote && activeQuery ? <p className="field-help">{filterNote}</p> : null}
           {loading ? (
             <p className="field-help" role="status">
               Loading catalog…
@@ -377,7 +425,11 @@ export function Marketplace() {
           ) : null}
           <ul aria-busy={loading}>
             {!loading && listings.length === 0 && !listError ? (
-              <li className="muted">No listings yet.</li>
+              <li className="muted">
+                {activeQuery
+                  ? `No listings match “${activeQuery}” in this node’s store.`
+                  : 'No listings yet.'}
+              </li>
             ) : null}
             {listings.map((l) => (
               <li key={l.id}>

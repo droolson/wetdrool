@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createListingId,
+  filterListingsByQuery,
   getMarketplaceStore,
   pageListings,
   publicListing,
@@ -62,6 +63,17 @@ describe('marketplace store', () => {
     expect(page.hasMore).toBe(false);
     expect(parseOffset('3')).toBe(3);
     expect(parseOffset('-1')).toBe(0);
+  });
+
+  it('filters listings by query substring', () => {
+    const all = [
+      { ...sampleListing('lst_aaa'), title: 'Neon drops' },
+      { ...sampleListing('lst_bbb'), title: 'Quiet loft', seller: 'violet' },
+    ];
+    expect(filterListingsByQuery(all, '')).toHaveLength(2);
+    expect(filterListingsByQuery(all, 'neon')).toHaveLength(1);
+    expect(filterListingsByQuery(all, 'VIOLET')[0]?.id).toBe('lst_bbb');
+    expect(filterListingsByQuery(all, 'zzz')).toHaveLength(0);
   });
 
   it('memory store round-trips listings and purchases', () => {

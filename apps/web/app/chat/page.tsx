@@ -19,24 +19,27 @@ export default function SecretChatEntrancePage() {
         No signup. No email. Open a room, enter a <strong>username</strong> +{' '}
         <strong>password</strong> once. Password is the shared E2EE key. Img / GIF / video supported.
       </p>
-      <ul className="anon-entrance__rooms">
-        <li>
-          <Link href="/rooms/lobby">#lobby</Link>
-        </li>
-        <li>
-          <Link href="/rooms/shorts">#shorts</Link>
-        </li>
-        <li>
-          <Link href="/rooms/pride">#pride</Link>
-        </li>
-        <li>
-          <Link href="/rooms/afterdark">#afterdark</Link>
-        </li>
-      </ul>
+      <nav aria-label="Featured rooms">
+        <ul className="anon-entrance__rooms">
+          <li>
+            <Link href="/rooms/lobby">#lobby</Link>
+          </li>
+          <li>
+            <Link href="/rooms/shorts">#shorts</Link>
+          </li>
+          <li>
+            <Link href="/rooms/pride">#pride</Link>
+          </li>
+          <li>
+            <Link href="/rooms/afterdark">#afterdark</Link>
+          </li>
+        </ul>
+      </nav>
       <CustomRoomJumpClient />
       <p className="field-help">
         Session is tab-only (<code>sessionStorage</code>). Close tab = leave. Host never gets your
-        password.
+        password. Ciphertext store defaults to <strong>in-process memory</strong> (ephemeral across
+        cold starts / multi-instance); optional single-node file path is ops-only — not multi-replica.
       </p>
     </div>
   );

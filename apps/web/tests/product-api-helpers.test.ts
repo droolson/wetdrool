@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseLimit } from '../lib/product-api';
+import {
+  jsonError,
+  listProductApiSurfaceIds,
+  methodNotAllowed,
+  parseLimit,
+  parseOffset,
+  PRODUCT_API_SURFACES,
+  PRODUCT_HONEST_FLAGS,
+  readProductApiErrorMessage,
+} from '../lib/product-api';
 import { rankShorts } from '../lib/short-feed';
 import { getDroolTokenConfig, transferTaxAmount } from '../lib/drool-token';
 import {
@@ -18,6 +27,8 @@ import {
   normalizeCreatorHandle,
   resolveCreatorProfile,
 } from '../lib/creator-economy';
+import { GET as healthGet, POST as healthPost } from '../app/api/v1/health/route';
+import { GET as statusGet, POST as statusPost } from '../app/api/v1/status/route';
 
 describe('product api helpers', () => {
   it('clamps limit', () => {
@@ -25,6 +36,129 @@ describe('product api helpers', () => {
     expect(parseLimit('3')).toBe(3);
     expect(parseLimit('999', 24, 48)).toBe(48);
     expect(parseLimit('nope')).toBe(24);
+  });
+
+  it('clamps offset', () => {
+    expect(parseOffset(null)).toBe(0);
+    expect(parseOffset('5')).toBe(5);
+    expect(parseOffset('-1')).toBe(0);
+    expect(parseOffset('999999', 0, 100)).toBe(100);
+  });
+
+  it('jsonError shape is stable and methodNotAllowed sets Allow', async () => {
+    const err = jsonError(400, 'bad', 'nope', { field: 'x' });
+    expect(err.status).toBe(400);
+    const errBody = (await err.json()) as {
+      ok: false;
+      error: { code: string; message: string; field?: string };
+    };
+    expect(errBody.ok).toBe(false);
+    expect(errBody.error.code).toBe('bad');
+    expect(errBody.error.message).toBe('nope');
+    expect(errBody.error.field).toBe('x');
+
+    const res = methodNotAllowed(['GET'], 'Use GET only.');
+    expect(res.status).toBe(405);
+    expect(res.headers.get('Allow')).toBe('GET');
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+    const body = (await res.json()) as {
+      ok: false;
+      error: { code: string; message: string; allow: string[] };
+    };
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe('method_not_allowed');
+    expect(body.error.allow).toEqual(['GET']);
+    expect(readProductApiErrorMessage(body, 'fallback')).toBe('Use GET only.');
+    expect(readProductApiErrorMessage(null, 'fallback')).toBe('fallback');
+  });
+
+  it('product surface catalog is deduped and includes health + market write paths', () => {
+    const ids = listProductApiSurfaceIds();
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain('health');
+    expect(ids).toContain('status');
+    expect(ids).toContain('auth/status');
+    expect(ids).toContain('market');
+    expect(ids).toContain('ai/chat');
+    expect(ids).not.toContain('social'); // not a real /api/v1 route
+    const market = PRODUCT_API_SURFACES.find((s) => s.id === 'market');
+    expect(market?.methods).toEqual(['GET', 'POST']);
+    const health = PRODUCT_API_SURFACES.find((s) => s.id === 'health');
+    expect(health?.methods).toEqual(['GET']);
+  });
+
+  it('honest flags never invent $DROOL mint or earnings', () => {
+    expect(PRODUCT_HONEST_FLAGS.droolMint).toBe('does-not-exist');
+    expect(PRODUCT_HONEST_FLAGS.droolMintInvented).toBe(false);
+    expect(PRODUCT_HONEST_FLAGS.earningClaimed).toBe(false);
+    expect(PRODUCT_HONEST_FLAGS.solIsNotDrool).toBe(true);
+    expect(PRODUCT_HONEST_FLAGS.droolTickerForbidden).toBe(true);
+  });
+
+  it('health aggregates store/auth flags and rejects POST', async () => {
+    const res = healthGet();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: true;
+      surfaces: string[];
+      droolMint: string;
+      earningClaimed: boolean;
+      honest: { droolMintInvented: boolean; earningClaimed: boolean; revenueReady: boolean };
+      stores: {
+        marketplace: { multiReplicaSafe: boolean; kind: string };
+        rooms: { multiReplicaSafe: boolean };
+      };
+      auth: { protocolIdentityEstablished: boolean; probePath: string };
+      revenueReady: boolean;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.surfaces).toContain('health');
+    expect(body.surfaces.filter((s) => s === 'creators').length).toBe(1);
+    expect(body.droolMint).toBe('does-not-exist');
+    expect(body.earningClaimed).toBe(false);
+    expect(body.honest.droolMintInvented).toBe(false);
+    expect(body.honest.earningClaimed).toBe(false);
+    expect(body.honest.revenueReady).toBe(false);
+    expect(body.revenueReady).toBe(false);
+    expect(body.stores.marketplace.multiReplicaSafe).toBe(false);
+    expect(body.stores.rooms.multiReplicaSafe).toBe(false);
+    expect(body.auth.protocolIdentityEstablished).toBe(false);
+    expect(body.auth.probePath).toBe('/api/v1/auth/status');
+
+    const post = healthPost();
+    expect(post.status).toBe(405);
+    expect(post.headers.get('Allow')).toBe('GET');
+  });
+
+  it('status aggregates stores + auth and never claims earnings', async () => {
+    const res = statusGet();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: true;
+      earningClaimed: false;
+      revenueReady: false;
+      checks: { droolMint: string };
+      stores: {
+        marketplace: { multiReplicaSafe: false; listings: number };
+        rooms: { kind: string };
+      };
+      auth: { protocolIdentityEstablished: false; probePath: string };
+      honest: { droolMint: string; earningClaimed: false };
+    };
+    expect(body.ok).toBe(true);
+    expect(body.earningClaimed).toBe(false);
+    expect(body.revenueReady).toBe(false);
+    expect(body.checks.droolMint).toBe('does-not-exist');
+    expect(body.stores.marketplace.multiReplicaSafe).toBe(false);
+    expect(typeof body.stores.marketplace.listings).toBe('number');
+    expect(body.stores.rooms.kind.length).toBeGreaterThan(0);
+    expect(body.auth.protocolIdentityEstablished).toBe(false);
+    expect(body.honest.droolMint).toBe('does-not-exist');
+    expect(body.honest.earningClaimed).toBe(false);
+
+    const post = statusPost();
+    expect(post.status).toBe(405);
+    expect(post.headers.get('Allow')).toBe('GET');
   });
 
   it('ranks shorts for api payload shape', () => {

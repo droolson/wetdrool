@@ -56,9 +56,15 @@ export const MAX_MESSAGES_PER_ROOM = 200;
 export const DEFAULT_MESSAGE_LIMIT = 50;
 export const MAX_MESSAGE_LIMIT = 100;
 
+export interface RoomIndexEntry {
+  readonly roomId: string;
+  readonly messageCount: number;
+}
+
 interface RoomBag {
   readonly kind: RoomStoreKind;
   list(roomId: string): SealedEnvelope[];
+  listRoomIds(): readonly string[];
   append(envelope: SealedEnvelope): 'appended' | 'duplicate';
 }
 
@@ -82,6 +88,10 @@ class MemoryRoomBag implements RoomBag {
 
   list(roomId: string): SealedEnvelope[] {
     return this.bag.get(roomId) ?? [];
+  }
+
+  listRoomIds(): readonly string[] {
+    return [...this.bag.keys()].sort((a, b) => a.localeCompare(b));
   }
 
   append(envelope: SealedEnvelope): 'appended' | 'duplicate' {
@@ -141,6 +151,11 @@ class FileRoomBag implements RoomBag {
   list(roomId: string): SealedEnvelope[] {
     this.ensureLoaded();
     return this.bag.get(roomId) ?? [];
+  }
+
+  listRoomIds(): readonly string[] {
+    this.ensureLoaded();
+    return [...this.bag.keys()].sort((a, b) => a.localeCompare(b));
   }
 
   append(envelope: SealedEnvelope): 'appended' | 'duplicate' {
@@ -271,6 +286,17 @@ export function listMessages(
  */
 export function appendMessage(envelope: SealedEnvelope): 'appended' | 'duplicate' {
   return getRoomBag().append(envelope);
+}
+
+/**
+ * Ciphertext-only room index: roomId + message counts. Never returns plaintext.
+ */
+export function listRooms(): readonly RoomIndexEntry[] {
+  const store = getRoomBag();
+  return store.listRoomIds().map((roomId) => ({
+    roomId,
+    messageCount: store.list(roomId).length,
+  }));
 }
 
 export function normalizeRoomId(raw: string): string | null {

@@ -5,7 +5,7 @@ import { E2eeRoomChat } from '@/components/e2ee-room-chat';
 export const metadata: Metadata = {
   title: 'E2EE media room',
   description:
-    'Private RedGIFs-class img/GIF/video + chat — middle-out sealed, host sees ciphertext only.',
+    'Private RedGIFs-class img/GIF/video + chat — middle-out sealed, host sees ciphertext only. Ciphertext store may be ephemeral.',
 };
 
 export default async function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {

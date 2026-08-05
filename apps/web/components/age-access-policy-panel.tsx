@@ -1,14 +1,36 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { StatusBadge } from '@wetdrool/ui';
+import { ButtonLink, StatusBadge } from '@wetdrool/ui';
 
-import type { AgeAccessDecision } from '@/lib/age-access-policy';
+import type { AgeAccessDecision, AgeAccessOutcome } from '@/lib/age-access-policy';
 import { ageAccessPolicySnapshot } from '@/lib/age-access-policy';
 import {
   readRegionHint,
   writeRegionHint,
 } from '@/lib/nsfw-mode';
+
+function outcomeLabel(outcome: AgeAccessOutcome): string {
+  switch (outcome) {
+    case 'allow_self_attest':
+      return 'Self-attest allowed';
+    case 'require_age_assurance':
+      return 'Stronger assurance preferred';
+    case 'block_adult_surface':
+      return 'Adult surface blocked';
+  }
+}
+
+function outcomeTone(outcome: AgeAccessOutcome): 'verified' | 'pending' | 'degraded' | 'neutral' {
+  switch (outcome) {
+    case 'allow_self_attest':
+      return 'pending';
+    case 'require_age_assurance':
+      return 'degraded';
+    case 'block_adult_surface':
+      return 'degraded';
+  }
+}
 
 export function AgeAccessPolicyPanel() {
   const [policy, setPolicy] = useState<AgeAccessDecision>(() => ageAccessPolicySnapshot(null));
@@ -32,12 +54,16 @@ export function AgeAccessPolicyPanel() {
       } else {
         setPolicy(ageAccessPolicySnapshot(regionHint));
         setSource('local');
-        setError(result.kind === 'error' ? result.message : 'Policy API unavailable.');
+        setError(
+          result.kind === 'error'
+            ? `${result.message} Showing local policy snapshot until the API answers.`
+            : 'Policy API unavailable. Showing local policy snapshot — not a compliance claim.',
+        );
       }
     } catch {
       setPolicy(ageAccessPolicySnapshot(regionHint));
       setSource('local');
-      setError('Network error loading age policy.');
+      setError('Network error loading age policy. Local snapshot is active; retry when ready.');
     } finally {
       setLoading(false);
     }
@@ -73,7 +99,8 @@ export function AgeAccessPolicyPanel() {
       <p>
         Adult surfaces use a <strong>local self-attestation</strong> gate (minimum age{' '}
         {policy.minimumAge}). WetDrool does not collect government ID images or numbers by default.
-        A wallet signature is never age proof.
+        A wallet signature is never age proof. This panel is configuration transparency, not a live
+        geo-enforcement engine.
       </p>
 
       <div className="age-policy-region">
@@ -89,26 +116,31 @@ export function AgeAccessPolicyPanel() {
             autoComplete="off"
           />
         </label>
-        <button type="button" onClick={applyRegion}>
+        <button type="button" onClick={applyRegion} disabled={loading}>
           Apply region
+        </button>
+        <button
+          type="button"
+          onClick={() => void load(readRegionHint(window.localStorage))}
+          disabled={loading}
+        >
+          {loading ? 'Loading…' : 'Retry policy fetch'}
         </button>
       </div>
       <p className="field-help">
         Hint is stored in this browser and sent only to <code>/api/v1/policy/age</code> for
-        configuration — not a geo-block engine and not legal advice.
+        configuration — not a geo-block engine and not legal advice. Clearing browser storage
+        removes the hint.
       </p>
 
       {loading ? (
         <p className="field-help" role="status">
-          Loading policy…
+          Loading age-access policy…
         </p>
       ) : null}
       {error ? (
         <p className="field-help" role="alert">
-          {error}{' '}
-          <button type="button" onClick={() => void load(readRegionHint(window.localStorage))}>
-            Retry
-          </button>
+          {error}
         </p>
       ) : null}
       {note ? <p className="field-help">{note}</p> : null}
@@ -122,7 +154,12 @@ export function AgeAccessPolicyPanel() {
         <div>
           <dt>Outcome</dt>
           <dd>
-            <StatusBadge tone="neutral">{policy.outcome}</StatusBadge>
+            <StatusBadge tone={outcomeTone(policy.outcome)}>
+              {outcomeLabel(policy.outcome)}
+            </StatusBadge>
+            <span className="field-help">
+              <code className="inline-identifier">{policy.outcome}</code>
+            </span>
           </dd>
         </div>
         <div>
@@ -155,6 +192,10 @@ export function AgeAccessPolicyPanel() {
           <dt>Policy version</dt>
           <dd>{policy.version}</dd>
         </div>
+        <div>
+          <dt>Source</dt>
+          <dd>{source === 'api' ? 'Product API' : 'Embedded local snapshot'}</dd>
+        </div>
       </dl>
       <ul className="e2ee-status__details">
         {policy.reasons.map((line) => (
@@ -162,9 +203,17 @@ export function AgeAccessPolicyPanel() {
         ))}
       </ul>
       <p className="muted-copy">{policy.operator.detail}</p>
-      <p className="field-help">
-        Machine JSON: <a href="/api/v1/policy/age">/api/v1/policy/age</a>
-      </p>
+      <div className="passkey-auth__links">
+        <ButtonLink href="/settings/safety" variant="quiet">
+          Safety presentation defaults
+        </ButtonLink>
+        <ButtonLink href="/settings/privacy" variant="quiet">
+          Privacy controls
+        </ButtonLink>
+        <a className="field-help" href="/api/v1/policy/age">
+          Machine JSON: /api/v1/policy/age
+        </a>
+      </div>
     </section>
   );
 }

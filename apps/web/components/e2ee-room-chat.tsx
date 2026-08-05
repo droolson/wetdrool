@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
 import {
+  describeOpenError,
   normalizeUsername,
   openEnvelope,
   openText,
@@ -29,11 +30,14 @@ interface Decoded {
   readonly text?: string;
   readonly mediaUrl?: string;
   readonly error?: string;
+  readonly errorCode?: string;
 }
 
 const MAX_MEDIA_BYTES = 4_000_000;
 const SESSION_PREFIX = 'wetdrool.room.session.v1:';
-const POLL_MS = 3000;
+const POLL_BASE_MS = 3000;
+const POLL_MAX_MS = 30_000;
+const PAGE_LIMIT = 50;
 
 function mediaKind(contentType: string): 'image' | 'gif' | 'video' | 'text' {
   const c = contentType.toLowerCase();
@@ -71,6 +75,34 @@ function clearSession(roomId: string): void {
   sessionStorage.removeItem(SESSION_PREFIX + roomId);
 }
 
+function mergeEnvelopes(
+  prev: readonly SealedEnvelope[],
+  incoming: readonly SealedEnvelope[],
+  mode: 'append' | 'prepend' | 'replace',
+): SealedEnvelope[] {
+  if (mode === 'replace') return [...incoming].slice(-200);
+  const seen = new Set(prev.map((m) => m.messageId));
+  if (mode === 'append') {
+    const merged = [...prev];
+    for (const m of incoming) {
+      if (!seen.has(m.messageId)) {
+        seen.add(m.messageId);
+        merged.push(m);
+      }
+    }
+    return merged.slice(-200);
+  }
+  // prepend older history (keep chronological order: older first)
+  const older: SealedEnvelope[] = [];
+  for (const m of incoming) {
+    if (!seen.has(m.messageId)) {
+      seen.add(m.messageId);
+      older.push(m);
+    }
+  }
+  return [...older, ...prev].slice(-200);
+}
+
 export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
   const [session, setSession] = useState<Session | null>(null);
   const [gateUser, setGateUser] = useState('');
@@ -82,70 +114,154 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [storeNote, setStoreNote] = useState<string | null>(null);
+  const [storeKind, setStoreKind] = useState<string | null>(null);
+  const [storeDurable, setStoreDurable] = useState<boolean | null>(null);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [totalServer, setTotalServer] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [rekeyOpen, setRekeyOpen] = useState(false);
+  const [rekeyPass, setRekeyPass] = useState('');
   const objectUrls = useRef<string[]>([]);
   const lastIdRef = useRef<string | null>(null);
+  const oldestIdRef = useRef<string | null>(null);
+  const pollFailRef = useRef(0);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
+  const visibleRef = useRef(true);
 
   useEffect(() => {
     setSession(loadSession(roomId));
     lastIdRef.current = null;
+    oldestIdRef.current = null;
     setEnvelopes([]);
+    setHasMoreOlder(false);
+    setTotalServer(null);
+    setLoadError(null);
+    setRekeyOpen(false);
   }, [roomId]);
 
+  const applyStoreMeta = useCallback((store: {
+    kind?: string;
+    note?: string;
+    durableAcrossRestart?: boolean;
+    label?: string;
+  } | undefined) => {
+    if (!store) return;
+    if (store.kind) setStoreKind(store.kind);
+    if (typeof store.durableAcrossRestart === 'boolean') {
+      setStoreDurable(store.durableAcrossRestart);
+    }
+    if (store.note) {
+      const durable =
+        store.durableAcrossRestart === true
+          ? ' · durable across restart (single node)'
+          : ' · ephemeral (lost on cold start)';
+      setStoreNote(`${store.note}${durable}`);
+    } else if (store.label) {
+      setStoreNote(store.label);
+    }
+  }, []);
+
   const load = useCallback(
-    async (mode: 'full' | 'poll' = 'full') => {
+    async (mode: 'full' | 'poll' | 'older' = 'full') => {
+      if (mode === 'poll' && inFlightRef.current) return;
+      if (mode === 'poll' && !visibleRef.current) return;
       if (mode === 'full') setLoading(true);
-      setLoadError(null);
+      if (mode === 'older') setLoadingOlder(true);
+      if (mode !== 'poll') setLoadError(null);
+      inFlightRef.current = true;
       try {
         const { fetchRoomMessages } = await import('@/lib/product-client');
         const after =
           mode === 'poll' && lastIdRef.current ? lastIdRef.current : undefined;
+        const before =
+          mode === 'older' && oldestIdRef.current ? oldestIdRef.current : undefined;
         const result = await fetchRoomMessages(roomId, {
-          limit: 100,
+          limit: PAGE_LIMIT,
           ...(after ? { after } : {}),
+          ...(before ? { before } : {}),
         });
         if (result.kind !== 'ok') {
-          setLoadError(result.message);
+          if (mode === 'poll') {
+            pollFailRef.current += 1;
+          } else {
+            setLoadError(result.message);
+          }
           return;
         }
-        if (result.data.store?.note) {
-          const durable =
-            result.data.store.durableAcrossRestart === true ? ' · durable restart' : ' · ephemeral';
-          setStoreNote(`${result.data.store.note}${durable}`);
-        }
+        pollFailRef.current = 0;
+        applyStoreMeta(result.data.store);
+        if (typeof result.data.total === 'number') setTotalServer(result.data.total);
+
         const incoming = result.data.messages ?? [];
+        const moreOlder =
+          typeof result.data.hasMoreOlder === 'boolean'
+            ? result.data.hasMoreOlder
+            : Boolean(result.data.hasMore && mode !== 'poll');
+
         if (mode === 'poll' && after) {
           if (incoming.length === 0) return;
-          setEnvelopes((prev) => {
-            const seen = new Set(prev.map((m) => m.messageId));
-            const merged = [...prev];
-            for (const m of incoming) {
-              if (!seen.has(m.messageId)) merged.push(m);
-            }
-            return merged.slice(-200);
-          });
+          setEnvelopes((prev) => mergeEnvelopes(prev, incoming, 'append'));
+          const last = incoming[incoming.length - 1]?.messageId;
+          if (last) lastIdRef.current = last;
+        } else if (mode === 'older' && before) {
+          setEnvelopes((prev) => mergeEnvelopes(prev, incoming, 'prepend'));
+          setHasMoreOlder(moreOlder && incoming.length > 0);
+          const first = incoming[0]?.messageId;
+          if (first) oldestIdRef.current = first;
+          if (incoming.length === 0) setHasMoreOlder(false);
         } else {
-          setEnvelopes(incoming);
+          setEnvelopes(mergeEnvelopes([], incoming, 'replace'));
+          setHasMoreOlder(moreOlder);
+          const last = incoming[incoming.length - 1]?.messageId ?? null;
+          const first = incoming[0]?.messageId ?? null;
+          lastIdRef.current = last;
+          oldestIdRef.current = first;
         }
-        const last = incoming[incoming.length - 1]?.messageId;
-        if (last) lastIdRef.current = last;
-        else if (mode === 'full' && incoming.length === 0) lastIdRef.current = null;
       } catch {
-        setLoadError('Network error loading messages.');
+        if (mode === 'poll') {
+          pollFailRef.current += 1;
+        } else {
+          setLoadError('Network error loading messages.');
+        }
       } finally {
+        inFlightRef.current = false;
         if (mode === 'full') setLoading(false);
+        if (mode === 'older') setLoadingOlder(false);
       }
     },
-    [roomId],
+    [applyStoreMeta, roomId],
   );
 
+  // Visibility-aware poll with exponential backoff on failures.
   useEffect(() => {
     if (!session) return;
+
+    const onVis = () => {
+      visibleRef.current = document.visibilityState === 'visible';
+      if (visibleRef.current) void load('poll');
+    };
+    visibleRef.current = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
+    document.addEventListener('visibilitychange', onVis);
+
     void load('full');
-    const t = setInterval(() => void load('poll'), POLL_MS);
-    return () => clearInterval(t);
+
+    const schedule = () => {
+      const fails = pollFailRef.current;
+      const delay = Math.min(POLL_MAX_MS, POLL_BASE_MS * 2 ** Math.min(fails, 4));
+      pollTimerRef.current = setTimeout(() => {
+        void load('poll').finally(schedule);
+      }, delay);
+    };
+    schedule();
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
   }, [load, session]);
 
   useEffect(() => {
@@ -189,14 +305,16 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
               mediaUrl,
             });
           }
-        } catch {
+        } catch (err) {
+          const desc = describeOpenError(err);
           out.push({
             id: e.messageId,
             at: e.createdAt,
             from,
             contentType: e.contentType,
             kind: 'error',
-            error: 'Wrong password or corrupt message',
+            error: desc.message,
+            errorCode: desc.code,
           });
         }
       }
@@ -215,7 +333,11 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
   );
 
   const wrongKeyCount = useMemo(
-    () => decoded.filter((d) => d.kind === 'error').length,
+    () => decoded.filter((d) => d.errorCode === 'wrong_key' || d.kind === 'error').length,
+    [decoded],
+  );
+  const wrongKeyOnly = useMemo(
+    () => decoded.filter((d) => d.errorCode === 'wrong_key').length,
     [decoded],
   );
 
@@ -242,6 +364,20 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     setStatus(null);
   };
 
+  const applyRekey = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session || rekeyPass.length < 1) {
+      setStatus('Enter the correct shared room key.');
+      return;
+    }
+    const next = { username: session.username, password: rekeyPass };
+    saveSession(roomId, next);
+    setSession(next);
+    setRekeyPass('');
+    setRekeyOpen(false);
+    setStatus('Room key updated — re-decrypting…');
+  };
+
   const leave = () => {
     clearSession(roomId);
     setSession(null);
@@ -249,7 +385,9 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     setDecoded([]);
     setDraft('');
     lastIdRef.current = null;
+    oldestIdRef.current = null;
     setLoadError(null);
+    setRekeyOpen(false);
   };
 
   const postEnvelope = async (envelope: SealedEnvelope) => {
@@ -312,6 +450,23 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       setStatus(err instanceof Error ? err.message : 'Media failed.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const onFilterKeyDown = (e: React.KeyboardEvent, ids: readonly FeedFilter[]) => {
+    const idx = ids.indexOf(filter);
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      setFilter(ids[(idx + 1) % ids.length]!);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setFilter(ids[(idx - 1 + ids.length) % ids.length]!);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      setFilter(ids[0]!);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      setFilter(ids[ids.length - 1]!);
     }
   };
 
@@ -380,6 +535,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     );
   }
 
+  const filterIds = ['all', 'media', 'chat'] as const;
+
   return (
     <div
       className={`e2ee-room e2ee-room--redgifs${dragOver ? ' is-drag' : ''}`}
@@ -404,7 +561,9 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           </h1>
         </div>
         <div className="e2ee-room__header-actions">
-          <StatusBadge tone="pending">ciphertext store</StatusBadge>
+          <StatusBadge tone={storeDurable ? 'success' : 'pending'}>
+            {storeKind === 'file-local' ? 'file store' : 'memory store'}
+          </StatusBadge>
           <StatusBadge tone="neutral">no account</StatusBadge>
           <button type="button" className="e2ee-room__leave" onClick={leave}>
             Leave
@@ -412,13 +571,48 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         </div>
       </header>
 
-      {storeNote ? <p className="field-help">{storeNote}</p> : null}
-      {wrongKeyCount > 0 ? (
-        <p className="field-help" role="status">
-          {wrongKeyCount} message{wrongKeyCount === 1 ? '' : 's'} failed to decrypt — wrong room
-          key or corrupt payload.
+      {storeNote ? (
+        <p className="field-help" role="note" id="room-store-note">
+          {storeNote}
+          {totalServer !== null ? ` · ${totalServer} sealed on server (cap applies).` : null}
         </p>
       ) : null}
+
+      {wrongKeyCount > 0 ? (
+        <div className="field-help" role="alert" aria-live="assertive">
+          <p>
+            {wrongKeyOnly > 0
+              ? `${wrongKeyOnly} message${wrongKeyOnly === 1 ? '' : 's'} failed with wrong room key.`
+              : `${wrongKeyCount} message${wrongKeyCount === 1 ? '' : 's'} failed to decrypt.`}{' '}
+            Update the key if you joined with the wrong passphrase — leave only if you want a new
+            display name.
+          </p>
+          {!rekeyOpen ? (
+            <button type="button" onClick={() => setRekeyOpen(true)}>
+              Update room key
+            </button>
+          ) : (
+            <form onSubmit={applyRekey} aria-label="Update room key">
+              <label htmlFor="room-rekey-pass">
+                Correct room key
+                <input
+                  id="room-rekey-pass"
+                  type="password"
+                  value={rekeyPass}
+                  onChange={(e) => setRekeyPass(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <button type="submit">Re-decrypt</button>
+              <button type="button" onClick={() => setRekeyOpen(false)}>
+                Cancel
+              </button>
+            </form>
+          )}
+        </div>
+      ) : null}
+
       {loadError ? (
         <p className="field-help" role="alert">
           {loadError}{' '}
@@ -428,12 +622,17 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         </p>
       ) : null}
       {loading ? (
-        <p className="field-help" role="status">
+        <p className="field-help" role="status" aria-live="polite">
           Loading sealed messages…
         </p>
       ) : null}
 
-      <div className="e2ee-room__filters" role="tablist" aria-label="Feed filter">
+      <div
+        className="e2ee-room__filters"
+        role="tablist"
+        aria-label="Feed filter"
+        onKeyDown={(e) => onFilterKeyDown(e, filterIds)}
+      >
         {(
           [
             ['all', 'All'],
@@ -446,6 +645,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
             type="button"
             role="tab"
             id={`room-filter-${id}`}
+            tabIndex={filter === id ? 0 : -1}
             aria-selected={filter === id}
             aria-controls="room-message-feed"
             className={filter === id ? 'is-active' : undefined}
@@ -456,11 +656,26 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         ))}
       </div>
 
+      {hasMoreOlder ? (
+        <div className="e2ee-room__pagination">
+          <button
+            type="button"
+            disabled={loadingOlder}
+            onClick={() => void load('older')}
+            aria-describedby="room-store-note"
+          >
+            {loadingOlder ? 'Loading older…' : 'Load older messages'}
+          </button>
+        </div>
+      ) : null}
+
       <ul
         id="room-message-feed"
         className="e2ee-room__feed"
+        role="tabpanel"
+        aria-labelledby={`room-filter-${filter}`}
         aria-live="polite"
-        aria-busy={loading}
+        aria-busy={loading || loadingOlder}
         aria-label={`Messages in ${roomId}`}
       >
         {!loading && visible.length === 0 ? (
@@ -473,11 +688,20 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
               <span className="e2ee-card__kind">{m.kind}</span>
               <time dateTime={m.at}>{new Date(m.at).toLocaleString()}</time>
             </div>
-            {m.error ? <p className="e2ee-room__err">{m.error}</p> : null}
+            {m.error ? (
+              <p className="e2ee-room__err" role="status">
+                {m.error}
+              </p>
+            ) : null}
             {m.text ? <p className="e2ee-card__text">{m.text}</p> : null}
             {m.mediaUrl && (m.kind === 'image' || m.kind === 'gif') ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={m.mediaUrl} alt="" className="e2ee-card__media" loading="lazy" />
+              <img
+                src={m.mediaUrl}
+                alt={m.kind === 'gif' ? `GIF from ${m.from}` : `Image from ${m.from}`}
+                className="e2ee-card__media"
+                loading="lazy"
+              />
             ) : null}
             {m.mediaUrl && m.kind === 'video' ? (
               <video
@@ -488,6 +712,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
                 loop
                 muted
                 autoPlay
+                aria-label={`Video from ${m.from}`}
               />
             ) : null}
           </li>
@@ -520,6 +745,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           placeholder="Message (E2EE) — paste images OK"
           disabled={busy}
           aria-keyshortcuts="Enter"
+          aria-describedby="room-compose-help"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -527,6 +753,9 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
             }
           }}
         />
+        <p id="room-compose-help" className="visually-hidden">
+          Enter to send. Shift+Enter for newline. Attachments seal with the room key.
+        </p>
         <div className="e2ee-room__actions">
           <button type="button" disabled={busy || !draft.trim()} onClick={() => void sendText()}>
             Send
@@ -547,11 +776,15 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           </label>
         </div>
         {status ? (
-          <p role="status" className="e2ee-room__status">
+          <p role="status" className="e2ee-room__status" aria-live="polite">
             {status}
           </p>
         ) : null}
-        {dragOver ? <p className="e2ee-room__drop">Drop to seal &amp; share</p> : null}
+        {dragOver ? (
+          <p className="e2ee-room__drop" role="status">
+            Drop to seal &amp; share
+          </p>
+        ) : null}
       </div>
     </div>
   );

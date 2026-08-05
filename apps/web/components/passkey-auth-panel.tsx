@@ -3,7 +3,7 @@
 import { deriveRandomWokeName } from '@wetdrool/protocol';
 import { ButtonLink } from '@wetdrool/ui';
 import bs58 from 'bs58';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   BrowserAuthClient,
@@ -32,6 +32,11 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [error, setError] = useState<string>();
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const retrySessionCheck = useCallback(() => {
+    setReloadToken((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     let current = true;
@@ -67,16 +72,20 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
         setSession(toVisibleSession(activeSession));
         setNotice(
           activeSession === undefined
-            ? 'No active authentication-service session was found in this browser.'
-            : 'An authentication-service session is active in this browser.',
+            ? 'No active authentication-service session was found in this browser. That is not an “offline” product claim — only a missing service cookie/session.'
+            : 'An authentication-service session is active in this browser. Protocol identity is still not established.',
         );
       } catch (caught) {
-        if (current) setError(safeAuthMessage(caught));
+        if (current) {
+          setError(
+            `${safeAuthMessage(caught)} Session check failed; retry or open readiness links below.`,
+          );
+        }
       } finally {
         if (current) setCheckingSession(false);
       }
     }
-  }, [authServiceUrl]);
+  }, [authServiceUrl, reloadToken]);
 
   const authenticate = async () => {
     if (client === undefined || busy) return;
@@ -91,9 +100,9 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
       setNotice(
         completed.key.status === 'ready'
           ? mode === 'register'
-            ? 'The passkey credential and ciphertext-only key wrapper were committed together.'
-            : 'Passkey authentication completed and the synchronized key was checked locally.'
-          : 'Passkey authentication completed, but embedded signing remains unavailable.',
+            ? 'The passkey credential and ciphertext-only key wrapper were committed together. No onchain identity was created.'
+            : 'Passkey authentication completed and the synchronized key was checked locally. No protocol write occurred.'
+          : 'Passkey authentication completed, but embedded signing remains unavailable. Fail closed — do not treat this as a full local root.',
       );
       void refreshSession(client, setSession);
     } catch (caught) {
@@ -131,7 +140,7 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
   const descriptionId = `passkey-${mode}-description`;
 
   return (
-    <div className="passkey-auth" aria-busy={busy}>
+    <div className="passkey-auth" aria-busy={busy || checkingSession}>
       <div className="passkey-auth__method">
         <span aria-hidden="true">01</span>
         <div>
@@ -159,7 +168,7 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
             <dt>Session</dt>
             <dd>
               {session.expiresAt === undefined
-                ? 'Active'
+                ? 'Active (service session only)'
                 : `Active until ${formatDate(session.expiresAt)}`}
             </dd>
           </div>
@@ -178,7 +187,7 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
         <button
           aria-describedby={descriptionId}
           className="passkey-auth__primary"
-          disabled={client === undefined || busy}
+          disabled={client === undefined || busy || checkingSession}
           onClick={authenticate}
           type="button"
         >
@@ -197,6 +206,19 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
         </button>
       ) : null}
 
+      {error !== undefined || (!checkingSession && client === undefined) ? (
+        <div className="passkey-auth__links">
+          <button
+            className="passkey-auth__secondary"
+            disabled={busy}
+            onClick={retrySessionCheck}
+            type="button"
+          >
+            Retry session check
+          </button>
+        </div>
+      ) : null}
+
       {notice === undefined ? null : (
         <p aria-live="polite" className="passkey-auth__status" role="status">
           {notice}
@@ -210,9 +232,32 @@ export function PasskeyAuthPanel({ authServiceUrl, mode }: PasskeyAuthPanelProps
 
       {result === undefined ? null : <KeyOutcome result={result} />}
 
+      {hasSession && result === undefined ? (
+        <div className="passkey-auth__links">
+          <ButtonLink href="/settings/devices" variant="secondary">
+            Manage passkeys on this account
+          </ButtonLink>
+          <ButtonLink href="/settings/privacy" variant="quiet">
+            Privacy &amp; age access
+          </ButtonLink>
+        </div>
+      ) : null}
+
+      {error !== undefined ? (
+        <div className="passkey-auth__links">
+          <ButtonLink href="/settings/providers" variant="quiet">
+            Connection readiness
+          </ButtonLink>
+          <ButtonLink href={mode === 'register' ? '/signin' : '/onboarding'} variant="quiet">
+            {mode === 'register' ? 'Existing passkey sign-in' : 'Create a passkey account'}
+          </ButtonLink>
+        </div>
+      ) : null}
+
       <p className="auth-panel__note">
         This flow creates or resumes an authentication-service session only. It never submits a
-        transaction or claims that an onchain identity exists.
+        transaction or claims that an onchain identity exists. A green ceremony is still not
+        “product online.”
       </p>
     </div>
   );
@@ -263,6 +308,17 @@ function KeyOutcome({ result }: { readonly result: BrowserAuthFlowResult }) {
             Solana; it is never a native Solana address.
           </p>
         )}
+        <div className="passkey-auth__links">
+          <ButtonLink href="/settings/devices" variant="secondary">
+            Review passkeys &amp; devices
+          </ButtonLink>
+          <ButtonLink href="/settings/wallet" variant="quiet">
+            Wallet boundary
+          </ButtonLink>
+          <ButtonLink href="/settings/privacy" variant="quiet">
+            Privacy settings
+          </ButtonLink>
+        </div>
       </section>
     );
   }
@@ -282,6 +338,9 @@ function KeyOutcome({ result }: { readonly result: BrowserAuthFlowResult }) {
         </ButtonLink>
         <ButtonLink href="/recovery" variant="quiet">
           Review recovery safeguards
+        </ButtonLink>
+        <ButtonLink href="/settings/devices" variant="quiet">
+          Passkeys still on the service account
         </ButtonLink>
       </div>
     </section>
