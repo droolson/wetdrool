@@ -213,6 +213,9 @@ export function Marketplace() {
   const [copyFlash, setCopyFlash] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
+  /** Empty string = all networks; otherwise solana:devnet | solana:mainnet. */
+  const [networkInput, setNetworkInput] = useState('');
+  const [activeNetwork, setActiveNetwork] = useState('');
   const [filterNote, setFilterNote] = useState<string | null>(null);
 
   // sell form
@@ -273,16 +276,19 @@ export function Marketplace() {
     [],
   );
 
-  const refresh = useCallback(async (qOverride?: string) => {
+  const refresh = useCallback(async (qOverride?: string, networkOverride?: string) => {
     setLoading(true);
     setListError(null);
     const q = (qOverride !== undefined ? qOverride : activeQuery).trim();
+    const network =
+      networkOverride !== undefined ? networkOverride.trim() : activeNetwork.trim();
     try {
       const { fetchMarket } = await import('@/lib/product-client');
       const result = await fetchMarket({
         limit: PAGE_SIZE,
         offset: 0,
         q: q || null,
+        network: network || null,
       });
       if (result.kind !== 'ok') {
         setListError(result.message);
@@ -300,7 +306,7 @@ export function Marketplace() {
     } finally {
       setLoading(false);
     }
-  }, [activeQuery, applyPage]);
+  }, [activeQuery, activeNetwork, applyPage]);
 
   const loadMore = useCallback(async () => {
     if (nextOffset === null || loadingMore) return;
@@ -312,6 +318,7 @@ export function Marketplace() {
         limit: PAGE_SIZE,
         offset: nextOffset,
         q: activeQuery.trim() || null,
+        network: activeNetwork.trim() || null,
       });
       if (result.kind !== 'ok') {
         setListError(result.message);
@@ -323,7 +330,7 @@ export function Marketplace() {
     } finally {
       setLoadingMore(false);
     }
-  }, [activeQuery, applyPage, loadingMore, nextOffset]);
+  }, [activeQuery, activeNetwork, applyPage, loadingMore, nextOffset]);
 
   useEffect(() => {
     void refresh();
@@ -643,8 +650,16 @@ export function Marketplace() {
             <StatusBadge tone={storeMeta?.kind === 'file-local' ? 'pending' : 'degraded'}>
               {storeMeta?.label ?? storeLabel}
             </StatusBadge>
-            <StatusBadge tone="degraded">replica-unsafe</StatusBadge>
-            <StatusBadge tone="degraded">not revenue-ready</StatusBadge>
+            <StatusBadge tone="degraded">
+              {storeMeta?.multiReplicaSafe === false || storeMeta?.multiReplicaSafe == null
+                ? 'multiReplicaSafe: false'
+                : 'multiReplicaSafe'}
+            </StatusBadge>
+            <StatusBadge tone="degraded">
+              {storeMeta?.revenueReady === false || storeMeta?.revenueReady == null
+                ? 'revenueReady: false'
+                : 'revenue-ready'}
+            </StatusBadge>
           </div>
         </header>
         <p className="market__lede">
@@ -731,43 +746,70 @@ export function Marketplace() {
           </div>
           <form
             className="market__search"
+            role="search"
+            aria-label="Filter marketplace listings"
             onSubmit={(e) => {
               e.preventDefault();
               const next = searchInput.trim().slice(0, 80);
+              const nextNetwork = networkInput.trim();
               setActiveQuery(next);
-              void refresh(next);
+              setActiveNetwork(nextNetwork);
+              void refresh(next, nextNetwork);
             }}
           >
             <label htmlFor="market-search-q">
               Filter listings
               <input
                 id="market-search-q"
+                type="search"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Title, seller, id…"
                 maxLength={80}
                 autoComplete="off"
                 spellCheck={false}
+                aria-describedby="market-search-help"
               />
+            </label>
+            <label htmlFor="market-search-network">
+              Network
+              <select
+                id="market-search-network"
+                value={networkInput}
+                onChange={(e) => setNetworkInput(e.target.value)}
+                aria-describedby="market-search-help"
+              >
+                <option value="">All networks</option>
+                <option value="solana:devnet">solana:devnet</option>
+                <option value="solana:mainnet">solana:mainnet</option>
+              </select>
             </label>
             <button type="submit" disabled={loading || busy}>
               Search
             </button>
-            {activeQuery ? (
+            {activeQuery || activeNetwork ? (
               <button
                 type="button"
                 disabled={loading || busy}
                 onClick={() => {
                   setSearchInput('');
                   setActiveQuery('');
-                  void refresh('');
+                  setNetworkInput('');
+                  setActiveNetwork('');
+                  void refresh('', '');
                 }}
               >
                 Clear
               </button>
             ) : null}
           </form>
-          {filterNote && activeQuery ? <p className="field-help">{filterNote}</p> : null}
+          <p className="field-help" id="market-search-help">
+            Local host catalog only. Network filter matches listing.network exactly (x402
+            solana:devnet / solana:mainnet). Not a global index.
+          </p>
+          {filterNote && (activeQuery || activeNetwork) ? (
+            <p className="field-help">{filterNote}</p>
+          ) : null}
           {loading ? (
             <p className="field-help" role="status">
               Loading catalog…
@@ -785,14 +827,17 @@ export function Marketplace() {
             <div className="market__empty card-panel" role="status">
               <p>
                 <strong>
-                  {activeQuery
-                    ? `No listings match “${activeQuery}” on this node.`
+                  {activeQuery || activeNetwork
+                    ? [
+                        activeQuery ? `No listings match “${activeQuery}”` : 'No listings',
+                        activeNetwork ? `on ${activeNetwork}` : 'on this node',
+                      ].join(' ') + '.'
                     : 'No sealed drops yet.'}
                 </strong>
               </p>
               <p className="field-help">
-                {activeQuery
-                  ? 'Filter is a local substring over this host’s store — not a global search index.'
+                {activeQuery || activeNetwork
+                  ? 'Text filter is a local substring; network is an exact match on listing.network. Neither is a global search index. Clear filters or list a drop above.'
                   : `List a text or media drop above. Buyers will see HTTP 402 terms with your payTo address. Catalog is ${storeMeta?.kind === 'file-local' ? 'file-backed on this node' : 'in-process memory'} — not multi-replica commerce.`}
               </p>
             </div>

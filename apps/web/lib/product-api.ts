@@ -246,6 +246,7 @@ export function buildProductHealthReport(
       e2ee: '/api/v1/e2ee' as const,
       mesh: '/api/v1/mesh' as const,
       notifications: '/api/v1/notifications' as const,
+      search: '/api/v1/search' as const,
     },
     media: 'synthetic-fixtures' as const,
     mesh: false as const,

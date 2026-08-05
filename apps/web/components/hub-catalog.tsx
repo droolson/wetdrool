@@ -64,6 +64,8 @@ export function HubCatalog() {
   const [offset, setOffset] = useState(0);
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
   const [activeSortLabel, setActiveSortLabel] = useState(() => shortSortLabel('trending'));
+  const [feedOrigin, setFeedOrigin] = useState<string | null>(null);
+  const [feedConfigured, setFeedConfigured] = useState(false);
 
   useEffect(() => {
     setMode(readDiscoveryMode(window.localStorage));
@@ -135,6 +137,14 @@ export function HubCatalog() {
           if (result.data.categories?.length) {
             setCategories(['all', ...result.data.categories]);
           }
+          setFeedOrigin(
+            result.data.personalization?.origin ?? result.data.feedService?.origin ?? null,
+          );
+          setFeedConfigured(
+            Boolean(
+              result.data.personalization?.configured ?? result.data.feedService?.configured,
+            ),
+          );
         } else {
           applyLocal(mode, cat, sort, nextOffset, append);
           setError(result.message);
@@ -217,6 +227,18 @@ export function HubCatalog() {
         {` · ${activeSortLabel}`}
       </p>
       {note ? <p className="field-help">{note}</p> : null}
+      <p className="field-help" role="status" aria-label="Feed-service config">
+        Feed-service:{' '}
+        {feedConfigured && feedOrigin ? (
+          <>
+            configured origin <code>{feedOrigin}</code>
+          </>
+        ) : (
+          'unconfigured'
+        )}
+        {' · '}
+        personalizationActive: false · ranking stays local (not for-you)
+      </p>
       {error ? (
         <p className="field-help" role="alert">
           {error}{' '}

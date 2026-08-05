@@ -397,11 +397,8 @@ export interface MarketApiResponse {
   readonly hasMore?: boolean;
   readonly nextOffset?: number | null;
   readonly q?: string | null;
-  /** Active x402 network filter when set (solana:devnet | solana:mainnet). */
-  readonly network?: string | null;
   readonly filter?: {
     readonly q: string | null;
-    readonly network?: string | null;
     readonly applied: boolean;
     readonly matched?: number;
     readonly note?: string;
@@ -429,14 +426,11 @@ export function fetchMarket(options?: {
   readonly limit?: number;
   readonly offset?: number;
   readonly q?: string | null;
-  /** Exact x402 network id or cluster alias (devnet / mainnet). */
-  readonly network?: string | null;
 }): Promise<ProductClientResult<MarketApiResponse>> {
   const q = new URLSearchParams();
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
   if (options?.q) q.set('q', options.q);
-  if (options?.network) q.set('network', options.network);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
 }
@@ -676,42 +670,6 @@ export function fetchRoomsIndex(): Promise<ProductClientResult<RoomsIndexApiResp
   return getJson<RoomsIndexApiResponse>('/api/v1/rooms');
 }
 
-export interface E2eeApiResponse {
-  readonly ok: true;
-  readonly e2ee: {
-    readonly protocol: string;
-    readonly pairwise: string;
-    readonly groupRooms: string;
-    readonly passphraseRooms: string;
-    readonly roomSealProtocol: string;
-    readonly serverReadableFallback: false;
-    readonly privateByDefault: true;
-    readonly details: readonly string[];
-  };
-  readonly rooms: {
-    readonly store: {
-      readonly kind: string;
-      readonly multiReplicaSafe?: boolean;
-      readonly durableAcrossRestart?: boolean;
-      readonly maxMessagesPerRoom?: number;
-      readonly label?: string;
-      readonly note?: string;
-    };
-    readonly messagesPath: string;
-    readonly ciphertextOnly: boolean;
-    readonly hostReadsPlaintext: boolean;
-    readonly durability: string;
-    readonly maxMessagesPerRoom?: number;
-  };
-  readonly note?: string;
-}
-
-/** GET /api/v1/e2ee — seal protocol + room store honesty (no secrets). */
-export function fetchE2eeStatus(): Promise<ProductClientResult<E2eeApiResponse>> {
-  return getJson<E2eeApiResponse>('/api/v1/e2ee');
-}
-
-
 /** In-app notification row — only fields a product API may return (never invent client-side). */
 export interface NotificationItemDto {
   readonly id: string;
@@ -761,47 +719,3 @@ export function fetchNotifications(options?: {
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<NotificationsApiResponse>(`/api/v1/notifications${suffix}`);
 }
-
-/**
- * GET /api/v1/mesh — honest mesh/relay readiness (configuration only).
- * Never invents live mesh peers; multiReplicaSafe is always false.
- */
-export interface MeshStatusApiResponse {
-  readonly ok: true;
-  readonly product?: 'wetdrool';
-  readonly service?: string;
-  readonly path?: string;
-  readonly mesh: {
-    readonly foundation: string;
-    readonly productionMeshDeployed: false;
-    readonly localFirst?: boolean;
-    readonly e2eeSpaces?: boolean;
-    readonly transports?: readonly string[];
-    readonly notes?: readonly string[];
-  };
-  readonly relay: {
-    readonly configured: boolean;
-    readonly displayEndpoints: readonly string[];
-    readonly configuredCount?: number;
-    readonly invalidCount?: number;
-    readonly multiReplicaSafe: false;
-    readonly liveMeshPeersClaimed: false;
-    readonly livePeerCount: null;
-    readonly productionMeshDeployed?: false;
-    readonly note?: string;
-  };
-  readonly honest?: {
-    readonly configured: boolean;
-    readonly multiReplicaSafe: false;
-    readonly liveMeshPeersClaimed: false;
-    readonly livePeerCount: null;
-    readonly productionMeshDeployed: false;
-    readonly inventsLivePeers: false;
-  };
-  readonly note?: string;
-}
-
-export function fetchMeshStatus(): Promise<ProductClientResult<MeshStatusApiResponse>> {
-  return getJson<MeshStatusApiResponse>('/api/v1/mesh');
-}
-

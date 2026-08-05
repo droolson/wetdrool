@@ -86,6 +86,8 @@ describe('product api helpers', () => {
     expect(ids).toContain('market');
     expect(ids).toContain('ai/chat');
     expect(ids).toContain('notifications');
+    expect(ids).toContain('mesh');
+    expect(ids).toContain('search');
     expect(ids).not.toContain('social'); // not a real /api/v1 route
     const market = PRODUCT_API_SURFACES.find((s) => s.id === 'market');
     expect(market?.methods).toEqual(['GET', 'POST']);

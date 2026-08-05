@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   createListingId,
+  filterListingsByNetwork,
   filterListingsByQuery,
   getMarketplaceStore,
   getMarketplaceStoreKind,
@@ -84,6 +85,23 @@ describe('marketplace store', () => {
     expect(filterListingsByQuery(all, 'neon')).toHaveLength(1);
     expect(filterListingsByQuery(all, 'VIOLET')[0]?.id).toBe('lst_bbb');
     expect(filterListingsByQuery(all, 'zzz')).toHaveLength(0);
+  });
+
+  it('filters listings by x402 network exactly', () => {
+    const all = [
+      { ...sampleListing('lst_dev'), network: 'solana:devnet' as const },
+      { ...sampleListing('lst_main'), network: 'solana:mainnet' as const, title: 'Main drop' },
+    ];
+    expect(filterListingsByNetwork(all, null)).toHaveLength(2);
+    expect(filterListingsByNetwork(all, undefined)).toHaveLength(2);
+    expect(filterListingsByNetwork(all, 'solana:devnet').map((l) => l.id)).toEqual(['lst_dev']);
+    expect(filterListingsByNetwork(all, 'solana:mainnet').map((l) => l.id)).toEqual(['lst_main']);
+    const combined = filterListingsByNetwork(
+      filterListingsByQuery(all, 'Main'),
+      'solana:mainnet',
+    );
+    expect(combined).toHaveLength(1);
+    expect(combined[0]?.id).toBe('lst_main');
   });
 
   it('memory store round-trips listings and purchases', () => {

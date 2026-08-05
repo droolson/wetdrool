@@ -1,10 +1,11 @@
+import { probeFeedServiceConfig } from '@/lib/feed-service-config';
 import {
   discoveryHonestyNote,
   emptyDiscoveryMessage,
   listShortCategories,
   parseDiscoveryMode,
   parseShortSortMode,
-  personalizationStatus,
+  personalizationStatusFromProbe,
   rankingPolicyNote,
   rankShortsPage,
   SHORT_RANK_WEIGHTS,
@@ -15,7 +16,7 @@ import { jsonError, jsonOk, methodNotAllowed, parseLimit, parseOffset } from '@/
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export function GET(request: Request): Response {
+export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const mode = parseDiscoveryMode(url.searchParams.get('mode'));
   const sort = parseShortSortMode(url.searchParams.get('sort'));
@@ -30,12 +31,23 @@ export function GET(request: Request): Response {
     return jsonError(400, 'invalid_category', `Unknown category. Known: ${known.join(', ')}`);
   }
 
+  // Optional explicit probe for non-loopback (still never ranks via feed-service).
+  const explicitProbe =
+    url.searchParams.get('probe') === '1' || url.searchParams.get('probe') === 'true';
+
   const page = rankShortsPage(mode, { limit, offset, category, sort });
   const empty = page.total === 0;
   const allSynthetic =
     empty || (page.syntheticCount === page.items.length && page.licensedCount === 0);
   const honesty = discoveryHonestyNote(allSynthetic || empty);
-  const personalization = personalizationStatus();
+
+  // Config probe only — loopback auto; non-loopback needs explicit allow.
+  // Never call feed-service for ranking; personalizationActive stays false.
+  const feedProbe = await probeFeedServiceConfig({
+    explicit: explicitProbe,
+    timeoutMs: 1_200,
+  });
+  const personalization = personalizationStatusFromProbe(feedProbe);
 
   return jsonOk({
     ok: true,
@@ -60,8 +72,18 @@ export function GET(request: Request): Response {
       sort: page.sort,
       weights: SHORT_RANK_WEIGHTS,
       note: rankingPolicyNote(),
+      source: feedProbe.rankingSource,
     },
     personalization,
+    feedService: {
+      configured: feedProbe.configured,
+      origin: feedProbe.origin,
+      loopback: feedProbe.loopback,
+      wiring: feedProbe.wiring,
+      healthz: feedProbe.healthz,
+      personalizationActive: false as const,
+      note: feedProbe.note,
+    },
     note: empty ? emptyDiscoveryMessage(mode, page.category) : honesty,
   });
 }

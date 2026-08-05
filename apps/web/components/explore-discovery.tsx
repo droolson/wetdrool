@@ -44,6 +44,9 @@ export function ExploreDiscovery() {
   const [personalizationNote, setPersonalizationNote] = useState(
     personalizationUnconfiguredNote(),
   );
+  const [feedOrigin, setFeedOrigin] = useState<string | null>(null);
+  const [feedConfigured, setFeedConfigured] = useState(false);
+  const [personalizationActive, setPersonalizationActive] = useState(false);
   const [sort, setSort] = useState<ShortSortMode>('trending');
   const [sortLabel, setSortLabel] = useState(shortSortLabel('trending'));
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
@@ -72,6 +75,14 @@ export function ExploreDiscovery() {
       } else {
         setPersonalizationNote(personalizationUnconfiguredNote());
       }
+      const origin =
+        data.personalization?.origin ?? data.feedService?.origin ?? null;
+      setFeedOrigin(origin);
+      setFeedConfigured(
+        Boolean(data.personalization?.configured ?? data.feedService?.configured),
+      );
+      // Always false until remote ranking is fail-closed wired.
+      setPersonalizationActive(false);
       setEmptyMessage(
         data.empty || (data.items?.length ?? 0) === 0
           ? (data.emptyMessage ?? emptyDiscoveryMessage('all', null))
@@ -132,7 +143,20 @@ export function ExploreDiscovery() {
         aria-label="Personalization status"
       >
         <p className="field-help">
-          <strong>Personalization unconfigured.</strong> {personalizationNote}
+          <strong>
+            {feedConfigured
+              ? 'Personalization inactive (feed-service configured).'
+              : 'Personalization unconfigured.'}
+          </strong>{' '}
+          {personalizationNote}
+        </p>
+        <p className="field-help">
+          Feed-service origin:{' '}
+          {feedOrigin ? <code>{feedOrigin}</code> : <em>not set</em>}
+          {' · '}
+          personalizationActive: {personalizationActive ? 'true' : 'false'}
+          {' · '}
+          ranking: local DroolRank-lite
         </p>
       </aside>
 

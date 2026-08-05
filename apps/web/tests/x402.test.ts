@@ -10,6 +10,7 @@ import {
   isValidTxSignature,
   lamportsFromSol,
   parsePaymentHeader,
+  parseX402Network,
   solFromLamports,
   verifySolanaPayment,
 } from '../lib/x402';
@@ -23,6 +24,18 @@ describe('x402 helpers', () => {
   it('converts sol/lamports', () => {
     expect(lamportsFromSol(0.01).toString()).toBe('10000000');
     expect(solFromLamports(1_000_000_000)).toBe(1);
+  });
+
+  it('parses x402 network ids and cluster aliases', () => {
+    expect(parseX402Network(null)).toBeNull();
+    expect(parseX402Network('')).toBeNull();
+    expect(parseX402Network('solana:devnet')).toBe('solana:devnet');
+    expect(parseX402Network('devnet')).toBe('solana:devnet');
+    expect(parseX402Network('solana:mainnet')).toBe('solana:mainnet');
+    expect(parseX402Network('mainnet-beta')).toBe('solana:mainnet');
+    expect(parseX402Network('MAINNET')).toBe('solana:mainnet');
+    expect(parseX402Network('ethereum')).toBeNull();
+    expect(parseX402Network('solana:testnet')).toBeNull();
   });
 
   it('validates addresses and signatures shape', () => {
