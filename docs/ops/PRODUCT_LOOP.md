@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T19:56Z — fame seed pagination + providers auth status
+
+- **Task:** P1 fame API pagination; providers page auth deep-link.
+- **BE:** `pageFameSeed` + `GET /api/v1/fame?limit&offset` (`seedOnly`, `globalLedger: false`).
+- **FE:** Hall of Fame load-more seed ranks; settings/providers embeds `AuthServiceStatus`.
+- **Verify:** vitest product-api-helpers → 8 passed.
+- **Next:** e2ee rooms file store optional, or explore feed API polish.
+
 ### 2026-08-05T19:26Z — privacy age policy UI + creators directory API
 
 - **Task:** Settings/privacy age policy surface (API-backed) + creators list API/UI.

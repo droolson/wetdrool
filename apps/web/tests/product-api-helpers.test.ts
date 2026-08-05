@@ -6,6 +6,7 @@ import { getDroolTokenConfig, transferTaxAmount } from '../lib/drool-token';
 import {
   FAME_SEED,
   fameTier,
+  pageFameSeed,
   rankBoard,
   rankBoardWithSeed,
   emptyLocalProfile,
@@ -47,6 +48,18 @@ describe('product api helpers', () => {
     const board = rankBoard(emptyLocalProfile(), '2026-08-04');
     expect(board[0]!.lifetimePoints).toBeGreaterThanOrEqual(board[1]!.lifetimePoints);
     expect(fameTier(FAME_SEED[0]!.lifetimePoints).length).toBeGreaterThan(0);
+  });
+
+  it('pages fame seed with ranks and no global ledger claim', () => {
+    const page = pageFameSeed({ limit: 2, offset: 0 });
+    expect(page.board).toHaveLength(2);
+    expect(page.board[0]!.rank).toBe(1);
+    expect(page.board[0]!.tier.length).toBeGreaterThan(0);
+    expect(page.hasMore).toBe(true);
+    expect(page.seedOnly).toBe(true);
+    expect(page.globalLedger).toBe(false);
+    const next = pageFameSeed({ limit: 2, offset: 2 });
+    expect(next.board[0]!.rank).toBe(3);
   });
 
   it('merges api seed with local grinder and drops api local rows', () => {

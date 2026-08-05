@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { ProviderCard, SectionHeading, StatusBadge } from '@wetdrool/ui';
 
 import { getProviderSummaries, type ProviderSummary } from '@/lib/provider-config';
+import { AuthServiceStatus } from '@/components/auth-service-status';
 import { SettingsNav } from '@/components/settings-nav';
 
 export const metadata: Metadata = {
@@ -53,6 +55,22 @@ export default function ProviderSettingsPage() {
       </header>
 
       <SettingsNav />
+
+      <section className="product-card" aria-labelledby="auth-provider-title">
+        <div className="section-heading">
+          <p className="section-kicker">Authentication service</p>
+          <h2 id="auth-provider-title">Passkey RP readiness</h2>
+        </div>
+        <p className="field-help">
+          Replaceable WebAuthn service probed via{' '}
+          <Link href="/api/v1/auth/status">
+            <code>/api/v1/auth/status</code>
+          </Link>
+          . Protocol identity remains separate. Manage credentials on{' '}
+          <Link href="/settings/devices">devices</Link> or <Link href="/signin">sign in</Link>.
+        </p>
+        <AuthServiceStatus />
+      </section>
 
       <section className="provider-grid" aria-label="Configured providers">
         {providers.map((provider) => {

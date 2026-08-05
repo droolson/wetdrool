@@ -30,7 +30,12 @@ export function HallOfFameBoard() {
   const [message, setMessage] = useState<string | null>(null);
   const [source, setSource] = useState<'api' | 'local'>('local');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [apiNote, setApiNote] = useState<string | null>(null);
+  const [seedTotal, setSeedTotal] = useState(FAME_SEED.length);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const pageSize = 3;
 
   const recompute = useCallback((seedBoard: readonly FameEntry[], profile: LocalFameProfile) => {
     setLocal(profile);
@@ -53,29 +58,47 @@ export function HallOfFameBoard() {
     [recompute],
   );
 
+  const mapApiSeed = (
+    rows: readonly {
+      readonly handle: string;
+      readonly displayName: string;
+      readonly lifetimePoints: number;
+      readonly streakDays: number;
+      readonly badges: readonly string[];
+      readonly source?: string;
+    }[],
+  ): FameEntry[] =>
+    rows.map((row) => ({
+      handle: row.handle,
+      displayName: row.displayName,
+      lifetimePoints: row.lifetimePoints,
+      streakDays: row.streakDays,
+      badges: row.badges,
+      source: row.source === 'local' ? ('local' as const) : ('seed' as const),
+    }));
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     void (async () => {
       const { fetchFameBoard } = await import('@/lib/product-client');
-      const result = await fetchFameBoard();
+      const result = await fetchFameBoard({ limit: pageSize, offset: 0 });
       if (cancelled) return;
       if (result.kind === 'ok' && Array.isArray(result.data.board) && result.data.board.length > 0) {
-        const apiSeed: FameEntry[] = result.data.board.map((row) => ({
-          handle: row.handle,
-          displayName: row.displayName,
-          lifetimePoints: row.lifetimePoints,
-          streakDays: row.streakDays,
-          badges: row.badges,
-          source: row.source === 'local' ? ('local' as const) : ('seed' as const),
-        }));
+        const apiSeed = mapApiSeed(result.data.board);
         setSeed(apiSeed);
         setSource('api');
+        setSeedTotal(result.data.total ?? apiSeed.length);
+        setHasMore(Boolean(result.data.hasMore));
+        setOffset(apiSeed.length);
         setApiNote(typeof result.data.note === 'string' ? result.data.note : null);
         refreshLocal(apiSeed);
       } else {
         setSeed(FAME_SEED);
         setSource('local');
+        setSeedTotal(FAME_SEED.length);
+        setHasMore(false);
+        setOffset(FAME_SEED.length);
         setApiNote(
           result.kind === 'error'
             ? result.message
@@ -89,6 +112,33 @@ export function HallOfFameBoard() {
       cancelled = true;
     };
   }, [refreshLocal]);
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || source !== 'api') return;
+    setLoadingMore(true);
+    try {
+      const { fetchFameBoard } = await import('@/lib/product-client');
+      const result = await fetchFameBoard({ limit: pageSize, offset });
+      if (result.kind === 'ok' && Array.isArray(result.data.board)) {
+        const next = mapApiSeed(result.data.board);
+        const merged = [...seed];
+        const seen = new Set(merged.map((e) => e.handle));
+        for (const row of next) {
+          if (!seen.has(row.handle)) {
+            merged.push(row);
+            seen.add(row.handle);
+          }
+        }
+        setSeed(merged);
+        setHasMore(Boolean(result.data.hasMore));
+        setOffset(offset + next.length);
+        setSeedTotal(result.data.total ?? merged.length);
+        refreshLocal(merged);
+      }
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, source, offset, seed, refreshLocal]);
 
   const youRank = useMemo(() => {
     if (!local) return null;
@@ -189,6 +239,11 @@ export function HallOfFameBoard() {
         </p>
       ) : null}
 
+      <p className="field-help">
+        Seed rows loaded: {seed.length}
+        {seedTotal > 0 ? ` / ${seedTotal}` : ''} (global multiplayer ledger: false)
+      </p>
+
       <ol className="fame-board__list" aria-label="Hall of Fame leaderboard" aria-busy={loading}>
         {board.map((entry, i) => (
           <li key={`${entry.source}-${entry.handle}`} data-source={entry.source}>
@@ -211,8 +266,16 @@ export function HallOfFameBoard() {
         ))}
       </ol>
 
+      {hasMore && source === 'api' ? (
+        <p>
+          <button type="button" disabled={loadingMore} onClick={() => void loadMore()}>
+            {loadingMore ? 'Loading…' : 'Load more seed ranks'}
+          </button>
+        </p>
+      ) : null}
+
       <p className="field-help">
-        Board seed: <code>/api/v1/fame</code>. Push-record ledger (ops): GitHub branch{' '}
+        Board seed: <code>/api/v1/fame</code> (paginated). Push-record ledger (ops): GitHub branch{' '}
         <code>hall-of-fame</code> → <code>ops/hall-of-fame/counter.json</code>. Product points never
         invent ad revenue; practice pool funds local demo only.
       </p>

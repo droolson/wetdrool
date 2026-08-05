@@ -125,6 +125,13 @@ export interface FameApiResponse {
   readonly ok: true;
   readonly board: readonly FameBoardRow[];
   readonly note?: string;
+  readonly total?: number;
+  readonly count?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly seedOnly?: boolean;
+  readonly globalLedger?: false;
 }
 
 export function fetchShorts(
@@ -198,8 +205,15 @@ export function fetchHealth(): Promise<ProductClientResult<HealthApiResponse>> {
   return getJson<HealthApiResponse>('/api/v1/health');
 }
 
-export function fetchFameBoard(): Promise<ProductClientResult<FameApiResponse>> {
-  return getJson<FameApiResponse>('/api/v1/fame');
+export function fetchFameBoard(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<FameApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<FameApiResponse>(`/api/v1/fame${suffix}`);
 }
 
 export interface AuthStatusApiResponse {
