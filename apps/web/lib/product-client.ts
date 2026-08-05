@@ -289,6 +289,8 @@ export interface AuthStatusApiResponse {
   readonly note: string;
   readonly protocolIdentityEstablished: false;
   readonly webAuthnOrigin?: 'wetdrool.com' | 'local-dev' | 'unknown';
+  readonly nextStep?: 'configure_url' | 'start_auth_service' | 'wait_ready' | 'ready' | 'none';
+  readonly nextStepLabel?: string;
 }
 
 /** Honest auth-service probe — never invents online/product-live status. */

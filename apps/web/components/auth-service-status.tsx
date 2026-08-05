@@ -137,6 +137,11 @@ export function AuthServiceStatus({ compact = false }: { readonly compact?: bool
       </div>
 
       <p className="field-help">{report.note}</p>
+      {'nextStepLabel' in report && report.nextStepLabel ? (
+        <p className="field-help">
+          Next step: <strong>{report.nextStepLabel}</strong>
+        </p>
+      ) : null}
 
       {!compact ? (
         <>

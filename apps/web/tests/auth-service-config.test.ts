@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  deriveAuthNextStep,
   parseAuthServiceOrigin,
   passkeyCeremoniesAllowed,
   probeAuthServiceStatus,
@@ -69,6 +70,8 @@ describe('auth service config', () => {
     expect(report.readyz).toBe(true);
     expect(report.protocolIdentityEstablished).toBe(false);
     expect(report.webAuthnOrigin).toBe('local-dev');
+    expect(report.nextStep).toBe('ready');
+    expect(report.nextStepLabel.toLowerCase()).not.toContain('online');
   });
 
   it('probe reports unreachable when fetch fails', async () => {
@@ -83,6 +86,7 @@ describe('auth service config', () => {
     expect(report.reachability).toBe('unreachable');
     expect(report.healthz).toBe(null);
     expect(report.note).toMatch(/Cannot reach/i);
+    expect(report.nextStep).toBe('start_auth_service');
   });
 
   it('probe reports degraded when healthz ok but readyz fails', async () => {
@@ -111,5 +115,7 @@ describe('auth service config', () => {
     expect(passkeyCeremoniesAllowed('ready')).toBe(true);
     expect(passkeyCeremoniesAllowed('unreachable')).toBe(false);
     expect(reachabilityLabel('unreachable')).toBe('Unreachable');
+    expect(deriveAuthNextStep('degraded').nextStep).toBe('wait_ready');
+    expect(deriveAuthNextStep('invalid_origin').nextStep).toBe('configure_url');
   });
 });
