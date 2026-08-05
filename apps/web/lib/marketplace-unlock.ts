@@ -1,6 +1,9 @@
 /**
  * Gate unlock-secret: stored encrypted so it is only returned after x402 payment.
- * Uses AES-GCM with a process key (ephemeral per cold start in alpha).
+ *
+ * Prefer WETDROOL_MARKETPLACE_GATE_SECRET (≥16 chars) so file-backed listings
+ * remain unlockable after process restart. Without it, a fresh random key is
+ * used per cold start (memory-ephemeral alpha only).
  */
 
 const te = new TextEncoder();
@@ -28,17 +31,58 @@ function asBufferSource(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return copy;
 }
 
-async function gateKey(): Promise<CryptoKey> {
-  const g = globalThis as unknown as { __wetdroolGateKey?: CryptoKey };
-  if (g.__wetdroolGateKey) return g.__wetdroolGateKey;
-  const raw = crypto.getRandomValues(new Uint8Array(32));
-  const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
-  g.__wetdroolGateKey = key;
+export type MarketplaceGateMode = 'env-stable' | 'ephemeral';
+
+export function getMarketplaceGateMode(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): MarketplaceGateMode {
+  const secret = env.WETDROOL_MARKETPLACE_GATE_SECRET?.trim() ?? '';
+  return secret.length >= 16 ? 'env-stable' : 'ephemeral';
+}
+
+async function materializeKeyBytes(
+  env: Readonly<Record<string, string | undefined>>,
+): Promise<Uint8Array> {
+  const secret = env.WETDROOL_MARKETPLACE_GATE_SECRET?.trim() ?? '';
+  if (secret.length >= 16) {
+    const digest = await crypto.subtle.digest('SHA-256', te.encode(`wetdrool.market.gate.v1:${secret}`));
+    return new Uint8Array(digest);
+  }
+  return crypto.getRandomValues(new Uint8Array(32));
+}
+
+async function gateKey(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<CryptoKey> {
+  const g = globalThis as unknown as { __wetdroolGateKey?: CryptoKey; __wetdroolGateMode?: string };
+  const mode = getMarketplaceGateMode(env);
+  if (g.__wetdroolGateKey && g.__wetdroolGateMode === mode && env === process.env) {
+    return g.__wetdroolGateKey;
+  }
+  const raw = await materializeKeyBytes(env);
+  const key = await crypto.subtle.importKey('raw', asBufferSource(raw), 'AES-GCM', false, [
+    'encrypt',
+    'decrypt',
+  ]);
+  if (env === process.env) {
+    g.__wetdroolGateKey = key;
+    g.__wetdroolGateMode = mode;
+  }
   return key;
 }
 
-export async function wrapUnlockSecret(secret: string): Promise<{ ciphertext: string; iv: string }> {
-  const key = await gateKey();
+/** Test helper. */
+export function resetMarketplaceGateCache(): void {
+  const g = globalThis as unknown as { __wetdroolGateKey?: CryptoKey; __wetdroolGateMode?: string };
+  delete g.__wetdroolGateKey;
+  delete g.__wetdroolGateMode;
+}
+
+export async function wrapUnlockSecret(
+  secret: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<{ ciphertext: string; iv: string }> {
+  const key = await gateKey(env);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
@@ -48,8 +92,12 @@ export async function wrapUnlockSecret(secret: string): Promise<{ ciphertext: st
   return { ciphertext: b64(new Uint8Array(ct)), iv: b64(iv) };
 }
 
-export async function unwrapUnlockSecret(ciphertext: string, iv: string): Promise<string> {
-  const key = await gateKey();
+export async function unwrapUnlockSecret(
+  ciphertext: string,
+  iv: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<string> {
+  const key = await gateKey(env);
   const plain = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: asBufferSource(unb64(iv)) },
     key,

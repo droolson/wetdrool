@@ -1,5 +1,12 @@
-import { createListingId, listListings, putListing, publicListing } from '@/lib/marketplace-store';
-import { wrapUnlockSecret } from '@/lib/marketplace-unlock';
+import {
+  createListingId,
+  getMarketplaceStoreKind,
+  listListings,
+  pageListings,
+  putListing,
+  publicListing,
+} from '@/lib/marketplace-store';
+import { getMarketplaceGateMode, wrapUnlockSecret } from '@/lib/marketplace-unlock';
 import type { SealedEnvelope } from '@/lib/e2ee-seal';
 import { SEAL_PROTOCOL } from '@/lib/e2ee-seal';
 import {
@@ -9,19 +16,41 @@ import {
   isValidSolanaAddress,
   lamportsFromSol,
 } from '@/lib/x402';
-import { jsonError, jsonOk } from '@/lib/product-api';
+import { jsonError, jsonOk, parseLimit, parseOffset } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export function GET(): Response {
-  const items = listListings().map(publicListing);
+export function GET(request: Request): Response {
+  const url = new URL(request.url);
+  const limit = parseLimit(url.searchParams.get('limit'), 24, 48);
+  const offset = parseOffset(url.searchParams.get('offset'), 0);
+  const all = listListings();
+  const page = pageListings(all, limit, offset);
+  const items = page.items.map(publicListing);
   const rpcConfigured = getMarketplaceRpcUrl() !== null;
   const network = getDefaultNetwork();
+  const store = getMarketplaceStoreKind();
+  const gate = getMarketplaceGateMode();
+
   return jsonOk({
     ok: true,
     count: items.length,
+    total: page.total,
+    limit,
+    offset,
+    hasMore: page.hasMore,
     listings: items,
+    store: {
+      kind: store,
+      durableAcrossRestart: store === 'file-local',
+      multiReplicaSafe: false,
+      gate: gate,
+      note:
+        store === 'file-local'
+          ? 'File-backed local store. Survives restarts on one node when gate secret is set. Not multi-instance.'
+          : 'In-process memory. Listings vanish on cold start / multi-instance. Set WETDROOL_MARKETPLACE_DATA_PATH for local durability.',
+    },
     note: 'E2EE marketplace. Content unlock requires Solana x402-style payment then client decrypt.',
     paymentVerify: {
       rpcConfigured,
@@ -81,12 +110,21 @@ export async function POST(request: Request): Promise<Response> {
     return jsonError(400, 'invalid_envelope', 'Valid sealed envelope required.');
   }
 
+  const storeKind = getMarketplaceStoreKind();
+  const gateMode = getMarketplaceGateMode();
+  if (storeKind === 'file-local' && gateMode === 'ephemeral') {
+    return jsonError(
+      503,
+      'gate_secret_required',
+      'File-backed market requires WETDROOL_MARKETPLACE_GATE_SECRET (≥16 chars) so unlocks survive restarts.',
+    );
+  }
+
   const id = createListingId();
   const network = getDefaultNetwork();
   const lamports = lamportsFromSol(priceSol);
   const wrapped = await wrapUnlockSecret(unlockSecret);
 
-  // content hash from envelope message id + room for public ref
   const contentHash = envelope.messageId;
 
   const listing = {
@@ -126,6 +164,8 @@ export async function POST(request: Request): Promise<Response> {
       ok: true,
       listing: publicListing(listing),
       accepts: requirements,
+      store: storeKind,
+      gate: gateMode,
     },
     { status: 201 },
   );

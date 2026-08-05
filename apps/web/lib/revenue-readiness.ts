@@ -4,7 +4,8 @@
  */
 
 import { getDefaultNetwork, getMarketplaceRpcUrl } from './x402';
-import { listListings } from './marketplace-store';
+import { getMarketplaceStoreKind, listListings } from './marketplace-store';
+import { getMarketplaceGateMode } from './marketplace-unlock';
 
 export type ReadinessLevel = 'local-only' | 'preview' | 'production-shell' | 'revenue-capable';
 
@@ -28,7 +29,8 @@ export interface RevenueReadinessReport {
   readonly checks: {
     readonly rpcConfigured: boolean;
     readonly marketplaceListings: number;
-    readonly marketplaceStore: 'memory-ephemeral';
+    readonly marketplaceStore: ReturnType<typeof getMarketplaceStoreKind>;
+    readonly marketplaceGate: ReturnType<typeof getMarketplaceGateMode>;
     readonly droolMint: 'does-not-exist';
     readonly founderMediaPath: null;
   };
@@ -41,6 +43,9 @@ export function buildRevenueReadiness(
 ): RevenueReadinessReport {
   const rpc = getMarketplaceRpcUrl(env);
   const network = getDefaultNetwork(env);
+  const storeKind = getMarketplaceStoreKind(env);
+  const gateMode = getMarketplaceGateMode(env);
+  // Listing count uses process store (env override does not rebind process cache).
   const listingCount = listListings().length;
   const blockers: RevenueBlocker[] = [];
 
@@ -53,12 +58,30 @@ export function buildRevenueReadiness(
     });
   }
 
-  blockers.push({
-    id: 'market_store_ephemeral',
-    severity: 'critical',
-    message:
-      'Marketplace listings live in process memory. Multi-instance/cold-start Vercel loses listings and receipts — not production commerce.',
-  });
+  if (storeKind === 'memory-ephemeral') {
+    blockers.push({
+      id: 'market_store_ephemeral',
+      severity: 'critical',
+      message:
+        'Marketplace listings live in process memory. Multi-instance/cold-start loses listings and receipts — not production commerce. Set WETDROOL_MARKETPLACE_DATA_PATH (+ GATE_SECRET) for single-node durability.',
+    });
+  } else {
+    blockers.push({
+      id: 'market_store_not_multi_replica',
+      severity: 'major',
+      message:
+        'Marketplace uses a local file store. Survives restarts on one node only — not multi-instance / serverless-safe commerce.',
+    });
+  }
+
+  if (gateMode === 'ephemeral') {
+    blockers.push({
+      id: 'market_gate_ephemeral',
+      severity: storeKind === 'file-local' ? 'critical' : 'major',
+      message:
+        'Unlock gate key is process-ephemeral. Set WETDROOL_MARKETPLACE_GATE_SECRET (≥16 chars) so paid unlocks survive restarts.',
+    });
+  }
 
   blockers.push({
     id: 'domain_unverified_here',
@@ -79,12 +102,11 @@ export function buildRevenueReadiness(
     id: 'no_auto_earnings',
     severity: 'minor',
     message:
-      'No automated revenue ledger. Do not display fake MRR. Count only verified SOL unlock receipts once durable store exists.',
+      'No automated revenue ledger. Do not display fake MRR. Count only verified SOL unlock receipts once durable multi-replica store exists.',
   });
 
-  const critical = blockers.filter((b) => b.severity === 'critical').length;
-  const revenueReady = false; // fail-closed until durable market + RPC + mainnet ops proven elsewhere
-  void critical;
+  const revenueReady = false; // fail-closed until multi-replica market + RPC + mainnet ops proven elsewhere
+  void revenueReady;
   void rpc;
 
   let level: ReadinessLevel = 'local-only';
@@ -97,13 +119,14 @@ export function buildRevenueReadiness(
     canonicalOrigin: 'https://wetdrool.com',
     checkedAt: new Date().toISOString(),
     level,
-    revenueReady,
+    revenueReady: false,
     earningClaimed: false,
     network,
     checks: {
       rpcConfigured: Boolean(rpc),
       marketplaceListings: listingCount,
-      marketplaceStore: 'memory-ephemeral',
+      marketplaceStore: storeKind,
+      marketplaceGate: gateMode,
       droolMint: 'does-not-exist',
       founderMediaPath: null,
     },
@@ -112,7 +135,8 @@ export function buildRevenueReadiness(
       'Deploy apps/web to Vercel with monorepo install/build (docs/ops/DEPLOY_WEB.md)',
       'Attach wetdrool.com DNS to that project',
       'Set WETDROOL_SOLANA_RPC_URL for payment verification',
-      'Replace marketplace-store Map with durable backend before selling',
+      'For local durability: WETDROOL_MARKETPLACE_DATA_PATH + WETDROOL_MARKETPLACE_GATE_SECRET',
+      'Replace file store with multi-replica backend before selling at scale',
       'Create first paid listing with operator payTo and verify a real unlock',
     ],
   };

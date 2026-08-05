@@ -31,3 +31,10 @@ export function parseLimit(raw: string | null, fallback = 24, max = 48): number 
   if (!Number.isFinite(n) || n < 1) return fallback;
   return Math.min(Math.floor(n), max);
 }
+
+export function parseOffset(raw: string | null, fallback = 0, max = 10_000): number {
+  if (raw === null || raw === '') return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.min(Math.floor(n), max);
+}
