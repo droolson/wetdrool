@@ -376,6 +376,20 @@ export function Marketplace() {
     [activeQuery, activeNetwork, refresh],
   );
 
+  /** q / network narrow the catalog; sort only reorders — all reset together. */
+  const hasActiveFilters = Boolean(activeQuery || activeNetwork || activeSort !== 'newest');
+  /** Only q/network can yield an empty filtered result set. */
+  const hasNarrowingFilters = Boolean(activeQuery || activeNetwork);
+
+  const clearFilters = useCallback(() => {
+    setSearchInput('');
+    setActiveQuery('');
+    setNetworkInput('');
+    setActiveNetwork('');
+    setActiveSort('newest');
+    void refresh('', '', 'newest');
+  }, [refresh]);
+
   const onSortKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (loading || busy) return;
     const ids = MARKET_SORTS.map((s) => s.id);
@@ -390,6 +404,9 @@ export function Marketplace() {
       next = 0;
     } else if (event.key === 'End') {
       next = ids.length - 1;
+    } else if (event.key === ' ' || event.key === 'Enter') {
+      // Buttons already activate on Space/Enter; keep focus on selected chip.
+      return;
     }
     if (next === null) return;
     event.preventDefault();
@@ -895,6 +912,7 @@ export function Marketplace() {
 
             <div
               className="market__network-chips"
+              id="market-sort-chips"
               role="radiogroup"
               aria-labelledby="market-sort-chips-label"
               aria-describedby="market-search-help market-sort-active"
@@ -915,6 +933,7 @@ export function Marketplace() {
                     role="radio"
                     className="button-secondary"
                     aria-checked={selected}
+                    aria-label={`Sort by ${activeMarketSortLabel(chip.id)}`}
                     tabIndex={selected ? 0 : -1}
                     disabled={loading || busy}
                     onClick={() => selectSort(chip.id)}
@@ -933,19 +952,14 @@ export function Marketplace() {
             <button type="submit" disabled={loading || busy}>
               Search
             </button>
-            {activeQuery || activeNetwork ? (
+            {hasActiveFilters ? (
               <button
                 type="button"
                 disabled={loading || busy}
-                onClick={() => {
-                  setSearchInput('');
-                  setActiveQuery('');
-                  setNetworkInput('');
-                  setActiveNetwork('');
-                  void refresh('', '');
-                }}
+                onClick={clearFilters}
+                aria-label="Clear text, network, and sort filters"
               >
-                Clear
+                Clear filters
               </button>
             ) : null}
           </form>
@@ -971,27 +985,67 @@ export function Marketplace() {
             </p>
           ) : null}
           {!loading && listings.length === 0 && !listError ? (
-            <div className="market__empty card-panel" role="status">
-              <p>
-                <strong>
-                  {activeQuery || activeNetwork
-                    ? [
-                        activeQuery ? `No listings match “${activeQuery}”` : 'No listings',
-                        activeNetwork ? `on ${activeNetwork}` : 'on this node',
-                      ].join(' ') + '.'
-                    : 'No sealed drops yet.'}
-                </strong>
-              </p>
-              <p className="field-help">
-                Sort: {activeMarketSortLabel(activeSort)} ({activeSort}). multiReplicaSafe: false —
-                single-node host catalog only.
-              </p>
-              <p className="field-help">
-                {activeQuery || activeNetwork
-                  ? 'Text filter is a local substring; network is an exact match on listing.network. Neither is a global search index. Clear filters or list a drop above.'
-                  : `List a text or media drop above. Buyers will see HTTP 402 terms with your payTo address. Catalog is ${storeMeta?.kind === 'file-local' ? 'file-backed on this node' : 'in-process memory'} — not multi-replica commerce.`}
-              </p>
-            </div>
+            hasNarrowingFilters ? (
+              <div
+                className="market__empty market__empty--filtered card-panel"
+                role="status"
+                aria-live="polite"
+                aria-label="No listings match the current filters"
+              >
+                <p>
+                  <strong>
+                    {[
+                      activeQuery ? `No listings match “${activeQuery}”` : 'No listings match filters',
+                      activeNetwork ? `on ${activeNetwork}` : 'on this node',
+                    ].join(' ')
+                      + '.'}
+                  </strong>
+                </p>
+                <p className="field-help">
+                  Active: text {activeQuery ? `“${activeQuery}”` : '(none)'} · network{' '}
+                  {activeNetwork || 'all'} · sort {activeMarketSortLabel(activeSort)} ({activeSort}).
+                </p>
+                <p className="field-help">
+                  Text filter is a local substring; network is an exact match on listing.network.
+                  Sort only reorders (newest / price). Neither is a global search index.
+                </p>
+                <div className="market__actions" role="group" aria-label="Empty filter actions">
+                  <button
+                    type="button"
+                    disabled={loading || busy}
+                    onClick={clearFilters}
+                    aria-label="Clear text, network, and sort filters"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="market__empty card-panel" role="status">
+                <p>
+                  <strong>No sealed drops yet.</strong>
+                </p>
+                <p className="field-help">
+                  Sort: {activeMarketSortLabel(activeSort)} ({activeSort}). multiReplicaSafe: false —
+                  single-node host catalog only.
+                </p>
+                <p className="field-help">
+                  {`List a text or media drop above. Buyers will see HTTP 402 terms with your payTo address. Catalog is ${storeMeta?.kind === 'file-local' ? 'file-backed on this node' : 'in-process memory'} — not multi-replica commerce.`}
+                </p>
+                {hasActiveFilters ? (
+                  <div className="market__actions" role="group" aria-label="Empty catalog filter actions">
+                    <button
+                      type="button"
+                      disabled={loading || busy}
+                      onClick={clearFilters}
+                      aria-label="Reset sort to newest"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )
           ) : null}
           <ul aria-busy={loading || loadingMore}>
             {listings.map((l) => (
