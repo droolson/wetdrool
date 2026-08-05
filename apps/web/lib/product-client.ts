@@ -403,17 +403,17 @@ export interface EventsApiResponse {
   readonly product?: 'wetdrool';
   readonly path?: string;
   /** Preferred list field from the product API. */
-  readonly items: readonly ProductEventDto[];
+  readonly items?: readonly ProductEventDto[];
   /** Alias for clients that still read `events`. */
-  readonly events: readonly ProductEventDto[];
+  readonly events?: readonly ProductEventDto[];
   readonly count?: number;
   readonly total?: number;
   readonly limit?: number;
   readonly offset?: number;
   readonly hasMore?: boolean;
-  readonly configured: false | boolean;
-  readonly syntheticOnly: true | boolean;
-  readonly globalCalendar?: false | boolean;
+  readonly configured?: false | boolean;
+  readonly syntheticOnly?: boolean;
+  readonly globalCalendar?: boolean;
   readonly inventsLiveAttendance?: false | boolean;
   readonly attendanceProjection?: false | boolean;
   readonly attendanceClaimed?: false | boolean;

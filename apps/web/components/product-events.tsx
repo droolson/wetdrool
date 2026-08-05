@@ -145,7 +145,7 @@ export function ProductEvents() {
       setTotal(typeof data.total === 'number' ? data.total : normalized.length);
       setNote(typeof data.note === 'string' ? data.note : null);
       setSyntheticOnly(data.syntheticOnly !== false);
-      setGlobalCalendar(data.globalCalendar === true);
+      setGlobalCalendar(Boolean(data.globalCalendar));
       setConfigured(data.configured === true);
     } catch {
       setError({ status: 0, message: 'Network error talking to product API.' });
