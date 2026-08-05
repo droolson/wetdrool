@@ -5,6 +5,7 @@
 
 import { DROOL_SYMBOL, getDroolTokenConfig } from './drool-token';
 import { VANITY_MONTHLY_USD } from './points';
+import { SHORT_CLIPS } from './short-feed';
 
 export type OfferingKind = 'subscription' | 'ppv' | 'tip_jar' | 'live_ticket';
 
@@ -108,5 +109,95 @@ export function proModeQuote(): { readonly monthlyUsd: number; readonly points: 
       'name.drool vanity rail when registry is live',
       'Higher live tip visibility',
     ],
+  };
+}
+
+export function normalizeCreatorHandle(raw: string): string | null {
+  const h = raw.trim().replace(/^@/, '').toLowerCase();
+  if (h.length < 1 || h.length > 96) return null;
+  if (!/^[a-z0-9][a-z0-9_-]{0,95}$/.test(h)) return null;
+  return h;
+}
+
+/** Resolve public studio profile (founder fixture or staged placeholder). */
+export function resolveCreatorProfile(handleRaw: string): CreatorStudioProfile | null {
+  const normalized = normalizeCreatorHandle(handleRaw);
+  if (!normalized) return null;
+  const founder = getFounderStudio();
+  if (normalized === founder.handle || normalized === 'kingofqueens6ix') {
+    return founder;
+  }
+  // Prefer display names from short-feed fixtures when known.
+  const clip = SHORT_CLIPS.find((c) => c.creator.replace(/^@/, '').toLowerCase() === normalized);
+  const displayName = clip ? clip.creator.replace(/^@/, '') : normalized;
+  return {
+    handle: displayName.slice(0, 96),
+    displayName: displayName.slice(0, 96),
+    pronouns: 'not set',
+    bio: 'Creator surface awaiting signed profile + offerings.',
+    tags: clip ? [clip.category, clip.mode] : [],
+    e2eeDms: true,
+    jurisdictionNote: founder.jurisdictionNote,
+    offerings: founder.offerings.map((o) => ({ ...o, status: 'staged' as const })),
+  };
+}
+
+export interface CreatorDirectoryEntry {
+  readonly handle: string;
+  readonly displayName: string;
+  readonly tags: readonly string[];
+  readonly source: 'founder' | 'synthetic-catalog';
+  readonly profilePath: string;
+}
+
+/**
+ * Public directory of known fixture creators (not a discovery of real users).
+ * Honest: synthetic until signed portable profiles exist.
+ */
+export function listCreatorDirectory(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): {
+  readonly items: readonly CreatorDirectoryEntry[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+  readonly synthetic: true;
+} {
+  const limit = Math.min(Math.max(1, options?.limit ?? 24), 48);
+  const offset = Math.max(0, options?.offset ?? 0);
+  const founder = getFounderStudio();
+  const byHandle = new Map<string, CreatorDirectoryEntry>();
+
+  byHandle.set(founder.handle, {
+    handle: founder.handle,
+    displayName: founder.displayName,
+    tags: founder.tags,
+    source: 'founder',
+    profilePath: `/creator/${founder.handle}`,
+  });
+
+  for (const clip of SHORT_CLIPS) {
+    const handle = clip.creator.replace(/^@/, '').toLowerCase();
+    if (byHandle.has(handle)) continue;
+    byHandle.set(handle, {
+      handle,
+      displayName: clip.creator.replace(/^@/, ''),
+      tags: [clip.category, clip.mode],
+      source: 'synthetic-catalog',
+      profilePath: `/creator/${handle}`,
+    });
+  }
+
+  const all = [...byHandle.values()].sort((a, b) => a.handle.localeCompare(b.handle));
+  const items = all.slice(offset, offset + limit);
+  return {
+    items,
+    total: all.length,
+    limit,
+    offset,
+    hasMore: offset + items.length < all.length,
+    synthetic: true,
   };
 }
