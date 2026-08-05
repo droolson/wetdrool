@@ -169,3 +169,31 @@ export function fetchMarket(options?: {
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
 }
+
+export interface RoomMessagesApiResponse {
+  readonly ok: true;
+  readonly roomId: string;
+  readonly messages: readonly import('./e2ee-seal').SealedEnvelope[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly hasMore?: boolean;
+  readonly store?: {
+    readonly kind: string;
+    readonly multiReplicaSafe?: boolean;
+    readonly note?: string;
+  };
+  readonly note?: string;
+}
+
+export function fetchRoomMessages(
+  roomId: string,
+  options?: { readonly limit?: number; readonly after?: string },
+): Promise<ProductClientResult<RoomMessagesApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.after) q.set('after', options.after);
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<RoomMessagesApiResponse>(
+    `/api/v1/rooms/${encodeURIComponent(roomId)}/messages${suffix}`,
+  );
+}

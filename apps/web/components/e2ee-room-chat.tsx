@@ -33,6 +33,7 @@ interface Decoded {
 
 const MAX_MEDIA_BYTES = 4_000_000;
 const SESSION_PREFIX = 'wetdrool.room.session.v1:';
+const POLL_MS = 3000;
 
 function mediaKind(contentType: string): 'image' | 'gif' | 'video' | 'text' {
   const c = contentType.toLowerCase();
@@ -40,6 +41,13 @@ function mediaKind(contentType: string): 'image' | 'gif' | 'video' | 'text' {
   if (c.startsWith('video/')) return 'video';
   if (c.startsWith('image/')) return 'image';
   return 'text';
+}
+
+function passphraseHint(password: string): string {
+  if (password.length === 0) return 'Required shared room key';
+  if (password.length < 8) return 'Short key — easy to guess; 12+ recommended';
+  if (password.length < 12) return 'OK for casual rooms; longer is stronger';
+  return 'Stronger room key';
 }
 
 function loadSession(roomId: string): Session | null {
@@ -73,25 +81,66 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [storeNote, setStoreNote] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const objectUrls = useRef<string[]>([]);
+  const lastIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     setSession(loadSession(roomId));
+    lastIdRef.current = null;
+    setEnvelopes([]);
   }, [roomId]);
 
-  const load = useCallback(async () => {
-    const res = await fetch(`/api/v1/rooms/${encodeURIComponent(roomId)}/messages`, {
-      cache: 'no-store',
-    });
-    const body = (await res.json()) as { messages?: SealedEnvelope[] };
-    setEnvelopes(body.messages ?? []);
-  }, [roomId]);
+  const load = useCallback(
+    async (mode: 'full' | 'poll' = 'full') => {
+      if (mode === 'full') setLoading(true);
+      setLoadError(null);
+      try {
+        const { fetchRoomMessages } = await import('@/lib/product-client');
+        const after =
+          mode === 'poll' && lastIdRef.current ? lastIdRef.current : undefined;
+        const result = await fetchRoomMessages(roomId, {
+          limit: 100,
+          ...(after ? { after } : {}),
+        });
+        if (result.kind !== 'ok') {
+          setLoadError(result.message);
+          return;
+        }
+        if (result.data.store?.note) setStoreNote(result.data.store.note);
+        const incoming = result.data.messages ?? [];
+        if (mode === 'poll' && after) {
+          if (incoming.length === 0) return;
+          setEnvelopes((prev) => {
+            const seen = new Set(prev.map((m) => m.messageId));
+            const merged = [...prev];
+            for (const m of incoming) {
+              if (!seen.has(m.messageId)) merged.push(m);
+            }
+            return merged.slice(-200);
+          });
+        } else {
+          setEnvelopes(incoming);
+        }
+        const last = incoming[incoming.length - 1]?.messageId;
+        if (last) lastIdRef.current = last;
+        else if (mode === 'full' && incoming.length === 0) lastIdRef.current = null;
+      } catch {
+        setLoadError('Network error loading messages.');
+      } finally {
+        if (mode === 'full') setLoading(false);
+      }
+    },
+    [roomId],
+  );
 
   useEffect(() => {
     if (!session) return;
-    void load();
-    const t = setInterval(() => void load(), 3000);
+    void load('full');
+    const t = setInterval(() => void load('poll'), POLL_MS);
     return () => clearInterval(t);
   }, [load, session]);
 
@@ -161,6 +210,11 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     [],
   );
 
+  const wrongKeyCount = useMemo(
+    () => decoded.filter((d) => d.kind === 'error').length,
+    [decoded],
+  );
+
   const visible = useMemo(() => {
     if (filter === 'media') {
       return decoded.filter((d) => d.kind === 'image' || d.kind === 'gif' || d.kind === 'video');
@@ -190,6 +244,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     setEnvelopes([]);
     setDecoded([]);
     setDraft('');
+    lastIdRef.current = null;
+    setLoadError(null);
   };
 
   const postEnvelope = async (envelope: SealedEnvelope) => {
@@ -198,8 +254,13 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(envelope),
     });
-    if (!res.ok) throw new Error('post failed');
-    await load();
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      throw new Error(body?.error?.message || `post failed (${res.status})`);
+    }
+    await load('full');
   };
 
   const sendText = async () => {
@@ -211,8 +272,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         await sealText(roomId, session.password, draft.trim(), session.username),
       );
       setDraft('');
-    } catch {
-      setStatus('Send failed.');
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Send failed.');
     } finally {
       setBusy(false);
     }
@@ -243,8 +304,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       );
       setDraft('');
       setStatus('Media sealed & shared.');
-    } catch {
-      setStatus('Media failed.');
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Media failed.');
     } finally {
       setBusy(false);
     }
@@ -262,37 +323,53 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         <p className="anon-gate__lede">
           One-time entry: pick a <strong>username</strong> (public in the room) and a{' '}
           <strong>password</strong> (room key — shared with people you invite). Nothing is
-          registered. Close the tab and the session ends.
+          registered. Close the tab and the session ends. Server stores ciphertext only.
         </p>
-        <form className="anon-gate__form" onSubmit={enter}>
-          <label>
+        <form className="anon-gate__form" onSubmit={enter} aria-labelledby="gate-title">
+          <h2 id="gate-title" className="visually-hidden">
+            Enter room {roomId}
+          </h2>
+          <label htmlFor="room-gate-user">
             Username
             <input
+              id="room-gate-user"
               value={gateUser}
               onChange={(e) => setGateUser(e.target.value)}
               maxLength={32}
               placeholder="anon"
               autoComplete="username"
               required
+              aria-describedby="room-gate-user-help"
             />
           </label>
-          <label>
+          <p id="room-gate-user-help" className="field-help">
+            Display name only — not a login or recovery identity.
+          </p>
+          <label htmlFor="room-gate-pass">
             Password (room key)
             <input
+              id="room-gate-pass"
               type="password"
               value={gatePass}
               onChange={(e) => setGatePass(e.target.value)}
               placeholder="shared secret"
               autoComplete="current-password"
               required
+              aria-describedby="room-gate-pass-help"
             />
           </label>
+          <p id="room-gate-pass-help" className="field-help">
+            {passphraseHint(gatePass)}. Same key for everyone or messages won&apos;t decrypt.
+          </p>
           <button type="submit">Enter chatroom</button>
         </form>
-        {status ? <p className="e2ee-room__status">{status}</p> : null}
+        {status ? (
+          <p className="e2ee-room__status" role="alert">
+            {status}
+          </p>
+        ) : null}
         <p className="field-help">
-          Same password as others in this room or messages won&apos;t decrypt. Host stores
-          ciphertext only.{' '}
+          Host never sees plaintext.{' '}
           <Link href="/chat">Secret entrance</Link> · <Link href="/rooms/lobby">lobby</Link>
         </p>
       </div>
@@ -323,12 +400,34 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           </h1>
         </div>
         <div className="e2ee-room__header-actions">
-          <StatusBadge tone="pending">no account</StatusBadge>
+          <StatusBadge tone="pending">ciphertext store</StatusBadge>
+          <StatusBadge tone="neutral">no account</StatusBadge>
           <button type="button" className="e2ee-room__leave" onClick={leave}>
             Leave
           </button>
         </div>
       </header>
+
+      {storeNote ? <p className="field-help">{storeNote}</p> : null}
+      {wrongKeyCount > 0 ? (
+        <p className="field-help" role="status">
+          {wrongKeyCount} message{wrongKeyCount === 1 ? '' : 's'} failed to decrypt — wrong room
+          key or corrupt payload.
+        </p>
+      ) : null}
+      {loadError ? (
+        <p className="field-help" role="alert">
+          {loadError}{' '}
+          <button type="button" onClick={() => void load('full')}>
+            Retry
+          </button>
+        </p>
+      ) : null}
+      {loading ? (
+        <p className="field-help" role="status">
+          Loading sealed messages…
+        </p>
+      ) : null}
 
       <div className="e2ee-room__filters" role="tablist" aria-label="Feed filter">
         {(
@@ -342,7 +441,9 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
             key={id}
             type="button"
             role="tab"
+            id={`room-filter-${id}`}
             aria-selected={filter === id}
+            aria-controls="room-message-feed"
             className={filter === id ? 'is-active' : undefined}
             onClick={() => setFilter(id)}
           >
@@ -351,8 +452,14 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         ))}
       </div>
 
-      <ul className="e2ee-room__feed" aria-live="polite">
-        {visible.length === 0 ? (
+      <ul
+        id="room-message-feed"
+        className="e2ee-room__feed"
+        aria-live="polite"
+        aria-busy={loading}
+        aria-label={`Messages in ${roomId}`}
+      >
+        {!loading && visible.length === 0 ? (
           <li className="e2ee-room__empty">No messages — say hi or drop a GIF.</li>
         ) : null}
         {visible.map((m) => (
@@ -398,12 +505,17 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           }
         }}
       >
+        <label htmlFor="room-compose-draft" className="visually-hidden">
+          Message
+        </label>
         <textarea
+          id="room-compose-draft"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={2}
           placeholder="Message (E2EE) — paste images OK"
           disabled={busy}
+          aria-keyshortcuts="Enter"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -421,6 +533,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
               type="file"
               accept="image/*,video/*,image/gif,.gif"
               disabled={busy}
+              aria-label="Attach image, GIF, or video"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void sendFile(f, draft);
