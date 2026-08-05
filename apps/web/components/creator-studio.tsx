@@ -1,27 +1,67 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
 import { getFounderStudio, proModeQuote, type CreatorStudioProfile } from '@/lib/creator-economy';
 import { getDroolTokenConfig } from '@/lib/drool-token';
 import { getE2eeCapabilityReport } from '@/lib/e2ee-status';
 
-export function CreatorStudio({ handle }: { readonly handle?: string }) {
+function placeholderProfile(handle: string): CreatorStudioProfile {
   const founder = getFounderStudio();
-  const profile: CreatorStudioProfile =
-    !handle || handle === founder.handle || handle === 'kingofqueens6ix'
-      ? founder
-      : {
-          handle,
-          displayName: handle,
-          pronouns: 'not set',
-          bio: 'Creator surface awaiting signed profile + offerings.',
-          tags: [],
-          e2eeDms: true,
-          jurisdictionNote: founder.jurisdictionNote,
-          offerings: founder.offerings.map((o) => ({ ...o, status: 'staged' as const })),
-        };
+  return {
+    handle,
+    displayName: handle,
+    pronouns: 'not set',
+    bio: 'Creator surface awaiting signed profile + offerings.',
+    tags: [],
+    e2eeDms: true,
+    jurisdictionNote: founder.jurisdictionNote,
+    offerings: founder.offerings.map((o) => ({ ...o, status: 'staged' as const })),
+  };
+}
+
+export function CreatorStudio({ handle }: { readonly handle?: string }) {
+  const founderHandle = getFounderStudio().handle;
+  const initial: CreatorStudioProfile = (() => {
+    const founder = getFounderStudio();
+    if (!handle || handle === founder.handle || handle === 'kingofqueens6ix') return founder;
+    return placeholderProfile(handle);
+  })();
+
+  const [profile, setProfile] = useState<CreatorStudioProfile>(initial);
+  const [source, setSource] = useState<'api' | 'local'>('local');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const resolved = (handle ?? founderHandle).replace(/^@/, '');
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    void (async () => {
+      const { fetchCreator } = await import('@/lib/product-client');
+      const result = await fetchCreator(resolved);
+      if (cancelled) return;
+      if (result.kind === 'ok' && result.data.profile) {
+        setProfile(result.data.profile);
+        setSource('api');
+      } else {
+        setProfile(
+          resolved === founderHandle || resolved === 'kingofqueens6ix'
+            ? getFounderStudio()
+            : placeholderProfile(resolved),
+        );
+        setSource('local');
+        setError(result.kind === 'error' ? result.message : 'Creator API unavailable.');
+      }
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [handle, founderHandle]);
 
   const token = getDroolTokenConfig();
   const e2ee = getE2eeCapabilityReport();
@@ -45,6 +85,9 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
           </ul>
         </div>
         <div className="creator-studio__badges">
+          <StatusBadge tone={source === 'api' ? 'verified' : 'degraded'}>
+            {loading ? 'loading' : source === 'api' ? 'api profile' : 'local profile'}
+          </StatusBadge>
           <StatusBadge tone="pending">E2EE DMs {e2ee.pairwise}</StatusBadge>
           <StatusBadge tone={token.status === 'live' ? 'verified' : 'degraded'}>
             {token.symbol} {token.status}
@@ -52,6 +95,17 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
           <StatusBadge tone="neutral">Swiss foundation planned</StatusBadge>
         </div>
       </header>
+
+      {error ? (
+        <p className="field-help" role="status">
+          {error}
+        </p>
+      ) : null}
+      {loading ? (
+        <p className="field-help" role="status">
+          Loading creator profile…
+        </p>
+      ) : null}
 
       <section aria-labelledby="offerings-title">
         <h2 id="offerings-title">Offerings</h2>
@@ -98,7 +152,7 @@ export function CreatorStudio({ handle }: { readonly handle?: string }) {
       <p className="field-help">{profile.jurisdictionNote}</p>
       <p>
         <Link href="/feeds">← Shorts</Link> · <Link href="/live">Live</Link> ·{' '}
-        <Link href="/token">Token</Link>
+        <Link href="/market">Market</Link> · profile API <code>/api/v1/creators/:handle</code>
       </p>
     </div>
   );

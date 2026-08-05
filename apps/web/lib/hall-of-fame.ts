@@ -165,7 +165,7 @@ export function rankBoardWithSeed(
       lifetimePoints: e.lifetimePoints,
       streakDays: e.streakDays,
       badges: e.badges,
-      source: e.source === 'seed' ? ('seed' as const) : ('seed' as const),
+      source: 'seed' as const,
     }));
   if (local && local.lifetimePoints > 0) {
     entries.push({

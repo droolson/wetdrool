@@ -1,5 +1,5 @@
 import { buildRevenueReadiness } from '@/lib/revenue-readiness';
-import { jsonOk } from '@/lib/product-api';
+import { jsonError, jsonOk } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,11 +13,5 @@ export function GET(): Response {
 }
 
 export function POST(): Response {
-  return new Response(
-    JSON.stringify({
-      ok: false,
-      error: { code: 'method_not_allowed', message: 'Use GET for readiness status.' },
-    }),
-    { status: 405, headers: { 'content-type': 'application/json; charset=utf-8' } },
-  );
+  return jsonError(405, 'method_not_allowed', 'Use GET for readiness status.');
 }

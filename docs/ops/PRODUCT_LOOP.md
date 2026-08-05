@@ -30,6 +30,15 @@
 
 ## Sprint log
 
+### 2026-08-05T16:26Z — wire Live / Fame / Creator UI → product APIs
+
+- **Task:** P2 wire UI ↔ `/api/v1/*` with loading / error / local-fallback states.
+- **BE:** `lib/live-catalog.ts` (shared catalog); `api/v1/live` uses it + optional `nsfw=0` filter + POST 405; status POST uses `jsonError`.
+- **FE:** `live-rooms`, `hall-of-fame-board`, `creator-studio` fetch via `product-client` (`fetchLiveRooms`, `fetchFameBoard`, `fetchCreator`); honest badges for api vs local.
+- **Lib:** `rankBoardWithSeed` for API seed + local grinder merge (drops spoofed local rows).
+- **Verify:** `pnpm --filter @wetdrool/web exec vitest run tests/product-api-helpers.test.ts tests/short-feed.test.ts` → 12 passed.
+- **Next:** Marketplace store abstraction + x402 unlock UX (P3), or harden rooms messages API pagination.
+
 ### 2026-08-05 — loop retargeted
 
 - Scheduler prompt switched from production/revenue mission → **FE/BE platform development**.
