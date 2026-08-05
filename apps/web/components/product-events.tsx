@@ -106,6 +106,11 @@ function statusForHttp(status: number): {
   };
 }
 
+/**
+ * Client events directory backed by GET /api/v1/events.
+ * Loading / error / empty / synthetic badges only — never invents attendance.
+ * HTTP 404 and other non-ok responses fail closed to an empty catalog (no local re-fanout).
+ */
 export function ProductEvents() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ readonly status: number; readonly message: string } | null>(
