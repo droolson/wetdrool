@@ -666,43 +666,37 @@ export function fetchRoomsIndex(): Promise<ProductClientResult<RoomsIndexApiResp
   return getJson<RoomsIndexApiResponse>('/api/v1/rooms');
 }
 
-/** In-app notification row — only fields a future product API is expected to return. */
-export interface NotificationItemDto {
-  readonly id: string;
-  readonly category: string;
-  readonly title: string;
-  readonly body?: string;
-  readonly createdAt?: string;
-  readonly read?: boolean;
-  readonly href?: string;
-  readonly actorHandle?: string;
-}
-
 /**
- * GET /api/v1/notifications — honest inbox envelope.
- * Until the route exists, callers receive kind:error (e.g. 404) and must not invent rows.
+ * GET /api/v1/notifications — honest empty inbox until auth + relay + preferences wire.
+ * Never invents social-graph rows; configured is always false today.
  */
 export interface NotificationsApiResponse {
   readonly ok: true;
-  readonly items: readonly NotificationItemDto[];
-  /** False when delivery/identity is not wired; empty items must still be trusted as empty. */
-  readonly configured?: boolean;
-  readonly unreadCount?: number;
-  readonly note?: string;
-  readonly filter?: string | null;
-  readonly total?: number;
-  readonly limit?: number;
-  readonly offset?: number;
-  readonly hasMore?: boolean;
+  readonly items: readonly never[];
+  readonly count: 0;
+  readonly total: 0;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: false;
+  readonly filter: 'mentions' | 'communities' | 'system' | null;
+  readonly configured: false;
+  readonly delivery: 'none';
+  readonly unread: 0;
+  readonly protocolHistoryReconstructable: true;
+  readonly inventedSignals: false;
+  readonly pushLive?: false;
+  readonly inAppLive?: false;
+  readonly note: string;
 }
 
 export function fetchNotifications(options?: {
-  readonly filter?: string | null;
+  readonly filter?: 'mentions' | 'communities' | 'system' | 'all' | null;
   readonly limit?: number;
   readonly offset?: number;
 }): Promise<ProductClientResult<NotificationsApiResponse>> {
   const q = new URLSearchParams();
-  if (options?.filter) q.set('filter', options.filter);
+  const filter = options?.filter?.trim().toLowerCase();
+  if (filter && filter !== 'all') q.set('filter', filter);
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
   const suffix = q.size > 0 ? `?${q}` : '';
