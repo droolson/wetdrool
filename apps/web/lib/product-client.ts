@@ -120,3 +120,52 @@ export function fetchHealth(): Promise<ProductClientResult<HealthApiResponse>> {
 export function fetchFameBoard(): Promise<ProductClientResult<FameApiResponse>> {
   return getJson<FameApiResponse>('/api/v1/fame');
 }
+
+export interface MarketListingDto {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly seller: string;
+  readonly payTo: string;
+  readonly lamports: string;
+  readonly network: string;
+  readonly contentType: string;
+  readonly contentHash?: string;
+  readonly createdAt: string;
+  readonly e2ee?: boolean;
+  readonly x402?: boolean;
+}
+
+export interface MarketApiResponse {
+  readonly ok: true;
+  readonly listings: readonly MarketListingDto[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly store?: {
+    readonly kind: 'memory-ephemeral' | 'file-local';
+    readonly durableAcrossRestart?: boolean;
+    readonly multiReplicaSafe?: boolean;
+    readonly gate?: 'env-stable' | 'ephemeral';
+    readonly note?: string;
+  };
+  readonly paymentVerify?: {
+    readonly rpcConfigured: boolean;
+    readonly network: string;
+    readonly note?: string;
+  };
+  readonly note?: string;
+}
+
+export function fetchMarket(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<MarketApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
+}

@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T16:56Z — marketplace store abstraction + x402 UX
+
+- **Task:** P3 durable listing store + clearer unlock UX + honest store/gate flags.
+- **BE:** `lib/marketplace-store.ts` (memory | file via `WETDROOL_MARKETPLACE_DATA_PATH`), `lib/marketplace-unlock.ts` (stable gate via `WETDROOL_MARKETPLACE_GATE_SECRET`), market GET pagination + store meta; file mode requires gate secret; `revenue-readiness` reports store/gate.
+- **FE:** marketplace loading/error/retry, store badges, unlock step list, copy payTo, `fetchMarket` client.
+- **Verify:** vitest marketplace-store + revenue-readiness + x402 + product-api-helpers → 21 passed.
+- **Next:** E2EE rooms polish (P4) or multi-replica market backend when needed.
+
 ### 2026-08-05T16:26Z — wire Live / Fame / Creator UI → product APIs
 
 - **Task:** P2 wire UI ↔ `/api/v1/*` with loading / error / local-fallback states.
