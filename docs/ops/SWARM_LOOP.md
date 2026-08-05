@@ -26,6 +26,22 @@
 
 ## Swarm log
 
+### 2026-08-05T21:53Z — 15m scheduled swarm (A–F)
+
+| Slot | Focus | Result / tip |
+|------|--------|----------------|
+| A | Health/status surfaces mesh+search | `8a70b88` |
+| B | Playwright smoke product routes | `9d08a67` |
+| C | Market multi-replica honesty | prior badges + store meta |
+| D | Rooms index totals/export | `16164ff` |
+| E | Mesh page API status panel | `547e77b` |
+| F | Token mint-does-not-exist honesty UI | `810d5d7` / `83e215b` |
+
+- **Verify:** vitest product-api-helpers, marketplace-store, revenue-readiness, room-store, e2ee-status, product-search, feed-service-config → **73 passed** (scoped).
+- **Pushed:** mesh panel + ops log after fire.
+- **Note:** spawn wait IDs still `not_found`; specialists committed on `main` anyway.
+- **Next:** multi-replica market/rooms backends; Playwright run in CI for expanded smoke; feed ranking only with fail-closed labels.
+
 ### 2026-08-05T21:39Z — 15m scheduled swarm (A–F)
 
 | Slot | Focus | Result / tip |

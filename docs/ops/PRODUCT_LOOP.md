@@ -30,6 +30,12 @@
 
 ## Sprint log
 
+### 2026-08-05T21:53Z — 15m product swarm (A–F)
+
+- **Task:** Mesh panel API wire; token mint honesty badges; rooms totals; health surfaces; smoke routes for product pages.
+- **Verify:** vitest 73 passed (scoped suite above).
+- **Next:** multi-replica stores; full e2e run for expanded smoke ROUTES.
+
 ### 2026-08-05T21:39Z — 15m product swarm (A–F)
 
 - **Task:** Mesh status API; feed-service config probe; market a11y/network; rooms e2ee status; synthetic search API/UI; fame `q=` UI.
