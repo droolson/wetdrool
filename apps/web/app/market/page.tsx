@@ -4,7 +4,8 @@ import { Marketplace } from '@/components/marketplace';
 
 export const metadata: Metadata = {
   title: 'Market',
-  description: 'E2EE content marketplace with Solana x402 Payment Required unlocks.',
+  description:
+    'E2EE content marketplace with Solana x402 Payment Required unlocks. multiReplicaSafe: false — single-node host store only; not multi-instance commerce.',
 };
 
 export default function MarketPage() {
