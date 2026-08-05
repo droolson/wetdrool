@@ -222,40 +222,6 @@ export function parseOffset(raw: string | null, fallback = 0, max = 10_000): num
   return Math.min(Math.floor(n), max);
 }
 
-/**
- * Discovery / personalization provider honesty for health + status.
- * Feed-service personalization stays unconfigured until an explicit URL exists.
- * Never invent a for-you ranking backend.
- */
-export function buildDiscoveryProviderFlags(
-  env: Readonly<Record<string, string | undefined>> = process.env,
-) {
-  const feedRaw =
-    env.WETDROOL_FEED_SERVICE_URL?.trim() ||
-    env.NEXT_PUBLIC_FEED_SERVICE_URL?.trim() ||
-    env.FEED_SERVICE_URL?.trim() ||
-    '';
-  const feedConfigured = feedRaw.length > 0;
-  return {
-    shorts: {
-      mode: 'local-synthetic-catalog' as const,
-      ranking: 'droolrank-lite' as const,
-      personalized: false as const,
-    },
-    personalization: {
-      configured: feedConfigured,
-      provider: feedConfigured ? ('feed-service-url' as const) : ('none' as const),
-      note: feedConfigured
-        ? 'Feed-service URL present — still not a claim that personalized ranking is live until the client wires and verifies it.'
-        : 'No feed-service URL. Explore/for-you personalization is unconfigured; catalog ranking is local synthetic only.',
-    },
-    creatorsDirectory: {
-      mode: 'synthetic-catalog' as const,
-      search: true as const,
-    },
-  };
-}
-
 /** Extract message from product API error JSON (client + tests). */
 export function readProductApiErrorMessage(body: unknown, fallback: string): string {
   if (
