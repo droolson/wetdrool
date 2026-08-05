@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T17:26Z — E2EE rooms API pagination + UI polish
+
+- **Task:** P4 rooms message API + anon gate / feed accessibility.
+- **BE:** `lib/room-store.ts` (limit/after, dedupe, meta), `api/v1/rooms/[roomId]/messages` pagination + idempotent POST; `product-client.fetchRoomMessages`.
+- **FE:** `e2ee-room-chat` loading/error/retry, poll-after, wrong-key count, passphrase hint, a11y labels; `custom-room-jump` uses `normalizeRoomId`.
+- **Verify:** vitest `room-store` + `e2ee-seal` → 5 passed.
+- **Next:** P5 feeds/discovery ranking labels, or auth/passkey wiring (P6).
+
 ### 2026-08-05T16:56Z — marketplace store abstraction + x402 UX
 
 - **Task:** P3 durable listing store + clearer unlock UX + honest store/gate flags.
