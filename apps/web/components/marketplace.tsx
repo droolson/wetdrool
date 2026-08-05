@@ -776,7 +776,12 @@ export function Marketplace() {
               <select
                 id="market-search-network"
                 value={networkInput}
-                onChange={(e) => setNetworkInput(e.target.value)}
+                onChange={(e) => {
+                  const nextNetwork = e.target.value;
+                  setNetworkInput(nextNetwork);
+                  setActiveNetwork(nextNetwork);
+                  void refresh(activeQuery, nextNetwork);
+                }}
                 aria-describedby="market-search-help"
               >
                 <option value="">All networks</option>
