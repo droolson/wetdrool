@@ -137,6 +137,20 @@ export function fetchFameBoard(): Promise<ProductClientResult<FameApiResponse>> 
   return getJson<FameApiResponse>('/api/v1/fame');
 }
 
+export interface AuthStatusApiResponse {
+  readonly ok: true;
+  readonly reachability: 'unconfigured' | 'invalid_origin' | 'unreachable' | 'degraded' | 'ready';
+  readonly origin: string | null;
+  readonly healthz: boolean | null;
+  readonly readyz: boolean | null;
+  readonly note: string;
+  readonly protocolIdentityEstablished: false;
+}
+
+export function fetchAuthStatus(): Promise<ProductClientResult<AuthStatusApiResponse>> {
+  return getJson<AuthStatusApiResponse>('/api/v1/auth/status');
+}
+
 export interface MarketListingDto {
   readonly id: string;
   readonly title: string;

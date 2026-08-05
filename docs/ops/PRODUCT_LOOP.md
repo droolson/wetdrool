@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T18:26Z — auth service status API + passkey surface wiring
+
+- **Task:** P6 connect web sign-in/onboarding/devices to honest auth-service readiness.
+- **BE:** `lib/auth/auth-service-config.ts` (URL resolve, legacy host reject, healthz/readyz probe); `GET /api/v1/auth/status`; health lists `auth`.
+- **FE:** `AuthServiceStatus` on sign-in, onboarding, settings/devices; pages use `resolveAuthServiceConfig()`.
+- **Verify:** vitest `auth-service-config` (+ related if run).
+- **Next:** Token/policy API polish or settings/providers auth deep-link.
+
 ### 2026-08-05T17:56Z — feeds & discovery ranking + synthetic labels
 
 - **Task:** P5 shorts/hub discovery ranking, category filters, honest synthetic labels.

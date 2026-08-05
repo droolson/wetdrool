@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { ButtonLink, InfoCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { AuthServiceStatus } from '@/components/auth-service-status';
 import { PasskeyAuthPanel } from '@/components/passkey-auth-panel';
+import { resolveAuthServiceConfig } from '@/lib/auth/auth-service-config';
 
 export const metadata: Metadata = {
   title: 'Onboarding',
@@ -36,10 +38,7 @@ const STEPS = [
 ] as const;
 
 export default function OnboardingPage() {
-  const authServiceUrl =
-    process.env['WETDROOL_AUTH_URL'] ??
-    process.env['NEXT_PUBLIC_AUTH_SERVICE_URL'] ??
-    'http://localhost:4300';
+  const authServiceUrl = resolveAuthServiceConfig().origin;
 
   return (
     <div className="product-page page-shell">
@@ -55,6 +54,8 @@ export default function OnboardingPage() {
           recovery, protocol identity creation, and the onchain name claim are still unavailable.
         </p>
       </AppPageHeader>
+
+      <AuthServiceStatus />
 
       <section className="onboarding-ledger" aria-labelledby="onboarding-ledger-title">
         <div>
