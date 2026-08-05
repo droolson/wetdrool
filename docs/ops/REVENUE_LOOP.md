@@ -1,6 +1,8 @@
-# WetDrool revenue / production loop
+# WetDrool revenue / production notes (archive)
 
-**Loop:** durable scheduler every **30 minutes** (agent session).  
+**Active loop:** FE/BE product development — see **`docs/ops/PRODUCT_LOOP.md`**.  
+The 30m agent is **not** primarily a revenue/deploy loop anymore.
+
 **Canonical product origin:** `https://wetdrool.com`  
 **Do not claim earnings without verified SOL settlement evidence.**
 
