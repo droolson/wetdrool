@@ -214,6 +214,7 @@ describe('product api helpers', () => {
     expect(first.offset).toBe(0);
     expect(first.limit).toBe(1);
     expect(first.hasMore).toBe(first.total > 1);
+    expect(first.q).toBe(null);
 
     const mid = listCreatorDirectory({ limit: 1, offset: 1 });
     expect(mid.items).toHaveLength(1);
@@ -225,6 +226,18 @@ describe('product api helpers', () => {
     expect(pastEnd.hasMore).toBe(false);
     expect(pastEnd.total).toBe(first.total);
     expect(pastEnd.synthetic).toBe(true);
+  });
+
+  it('filters creator directory by q without inventing accounts', () => {
+    const none = listCreatorDirectory({ limit: 10, offset: 0, q: 'definitely_not_a_fixture_zzz' });
+    expect(none.total).toBe(0);
+    expect(none.items).toHaveLength(0);
+    expect(none.q).toBe('definitely_not_a_fixture_zzz');
+    const founderish = listCreatorDirectory({ limit: 48, offset: 0, q: 'king' });
+    expect(founderish.total).toBeGreaterThan(0);
+    expect(founderish.items.every((c) => c.source === 'founder' || c.source === 'synthetic-catalog')).toBe(
+      true,
+    );
   });
 
   it('resolves non-founder profiles with normalized handle not display casing', () => {

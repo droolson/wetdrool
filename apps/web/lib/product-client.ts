@@ -135,6 +135,31 @@ export interface HealthApiResponse {
     readonly token?: string;
     readonly e2ee?: string;
   };
+  /** Discovery provider honesty (catalog mode + feed personalization). */
+  readonly discovery?: {
+    readonly shorts: {
+      readonly catalogMode: 'local-synthetic' | 'external';
+      readonly syntheticFixturesOnly: boolean;
+      readonly ranking: 'local-droolrank-lite' | 'feed-service';
+      readonly note: string;
+    };
+    readonly live: {
+      readonly catalogMode: 'local-synthetic' | 'external';
+      readonly syntheticFixturesOnly: boolean;
+      readonly note: string;
+    };
+    readonly creators: {
+      readonly catalogMode: 'local-synthetic' | 'external';
+      readonly syntheticFixturesOnly: boolean;
+      readonly note: string;
+    };
+    readonly feedService: {
+      readonly configured: boolean;
+      readonly origin: string | null;
+      readonly personalizationActive: false;
+      readonly note: string;
+    };
+  };
   readonly stores?: {
     readonly marketplace: {
       readonly kind: string;
@@ -163,6 +188,8 @@ export interface HealthApiResponse {
     readonly solIsNotDrool: true;
     readonly droolTickerForbidden: true;
     readonly revenueReady: false;
+    readonly feedPersonalizationActive?: false;
+    readonly shortsCatalogExternal?: false;
   };
   readonly droolMint?: 'does-not-exist';
   readonly earningClaimed?: false;
@@ -234,15 +261,21 @@ export interface CreatorsDirectoryApiResponse {
   readonly hasMore?: boolean;
   readonly synthetic?: boolean;
   readonly note?: string;
+  /** Echo of normalized fixture filter, or null when unfiltered. */
+  readonly q?: string | null;
 }
 
 export function fetchCreators(options?: {
   readonly limit?: number;
   readonly offset?: number;
+  /** Fixture directory filter (handle / display / tags). */
+  readonly q?: string | null;
 }): Promise<ProductClientResult<CreatorsDirectoryApiResponse>> {
   const q = new URLSearchParams();
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const query = options?.q?.trim();
+  if (query) q.set('q', query);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<CreatorsDirectoryApiResponse>(`/api/v1/creators${suffix}`);
 }
@@ -351,6 +384,8 @@ export interface MarketApiResponse {
     /** Always false until durable multi-replica proof exists. */
     readonly revenueReady?: false;
     readonly gate?: 'env-stable' | 'ephemeral';
+    /** Short UI badge label (includes replica-unsafe). */
+    readonly label?: string;
     readonly note?: string;
   };
   readonly paymentVerify?: {
@@ -373,6 +408,157 @@ export function fetchMarket(options?: {
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
 }
+
+/** Client-visible unlock attempt (no secrets, no full signatures beyond short ref). */
+export type MarketUnlockAttemptStatus = 'success' | 'fail';
+
+export interface MarketUnlockAttempt {
+  readonly id: string;
+  /** ISO-8601 timestamp */
+  readonly at: string;
+  readonly listingId: string;
+  readonly status: MarketUnlockAttemptStatus;
+  /** Machine reason on fail (e.g. no_rpc) — never secrets or plaintext content. */
+  readonly reason?: string;
+  readonly verification?: MarketUnlockReceiptDto['verification'];
+  /** Short signature prefix for correlation only (not full settlement proof). */
+  readonly signatureHint?: string;
+}
+
+export const MARKET_UNLOCK_ATTEMPT_STORAGE_KEY = 'wetdrool.market.unlockAttempts.v1';
+export const MARKET_UNLOCK_ATTEMPT_MAX = 40;
+
+function makeAttemptId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `att_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Pure: parse stored JSON into a sanitized attempt list (newest first). */
+export function parseUnlockAttemptLog(raw: string | null | undefined): MarketUnlockAttempt[] {
+  if (!raw || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const out: MarketUnlockAttempt[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object') continue;
+      const o = item as Record<string, unknown>;
+      if (typeof o.listingId !== 'string' || !o.listingId) continue;
+      if (o.status !== 'success' && o.status !== 'fail') continue;
+      if (typeof o.at !== 'string' || !o.at) continue;
+      const entry: MarketUnlockAttempt = {
+        id: typeof o.id === 'string' && o.id ? o.id : makeAttemptId(),
+        at: o.at,
+        listingId: o.listingId.slice(0, 64),
+        status: o.status,
+        ...(typeof o.reason === 'string' && o.reason
+          ? { reason: o.reason.slice(0, 80) }
+          : {}),
+        ...(o.verification === 'rpc_verified' ||
+        o.verification === 'prior_purchase' ||
+        o.verification === 'dev_accept'
+          ? { verification: o.verification }
+          : {}),
+        ...(typeof o.signatureHint === 'string' && o.signatureHint
+          ? { signatureHint: o.signatureHint.slice(0, 16) }
+          : {}),
+      };
+      out.push(entry);
+      if (out.length >= MARKET_UNLOCK_ATTEMPT_MAX) break;
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** Pure: prepend attempt and cap length (newest first). */
+export function appendUnlockAttempt(
+  log: readonly MarketUnlockAttempt[],
+  attempt: Omit<MarketUnlockAttempt, 'id' | 'at'> & {
+    readonly id?: string;
+    readonly at?: string;
+  },
+): MarketUnlockAttempt[] {
+  const entry: MarketUnlockAttempt = {
+    id: attempt.id ?? makeAttemptId(),
+    at: attempt.at ?? new Date().toISOString(),
+    listingId: attempt.listingId.slice(0, 64),
+    status: attempt.status,
+    ...(attempt.reason ? { reason: attempt.reason.slice(0, 80) } : {}),
+    ...(attempt.verification ? { verification: attempt.verification } : {}),
+    ...(attempt.signatureHint
+      ? { signatureHint: attempt.signatureHint.slice(0, 16) }
+      : {}),
+  };
+  return [entry, ...log].slice(0, MARKET_UNLOCK_ATTEMPT_MAX);
+}
+
+export function filterUnlockAttemptsForListing(
+  log: readonly MarketUnlockAttempt[],
+  listingId: string | null | undefined,
+): MarketUnlockAttempt[] {
+  if (!listingId) return [...log];
+  return log.filter((a) => a.listingId === listingId);
+}
+
+function resolveStorage(storage?: Storage | null): Storage | null {
+  if (storage !== undefined) return storage;
+  if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+    try {
+      return (globalThis as unknown as { localStorage: Storage }).localStorage;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Read browser (or injected) storage — empty on SSR / unavailable. */
+export function readUnlockAttemptLog(storage?: Storage | null): MarketUnlockAttempt[] {
+  const s = resolveStorage(storage);
+  if (!s) return [];
+  try {
+    return parseUnlockAttemptLog(s.getItem(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY));
+  } catch {
+    return [];
+  }
+}
+
+export function writeUnlockAttemptLog(
+  log: readonly MarketUnlockAttempt[],
+  storage?: Storage | null,
+): void {
+  const s = resolveStorage(storage);
+  if (!s) return;
+  try {
+    s.setItem(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY, JSON.stringify(log.slice(0, MARKET_UNLOCK_ATTEMPT_MAX)));
+  } catch {
+    // Quota / private mode — fail soft; UI still has in-memory state.
+  }
+}
+
+/** Record one attempt and persist (no secrets). Returns updated log newest-first. */
+export function recordUnlockAttempt(
+  attempt: Omit<MarketUnlockAttempt, 'id' | 'at'> & {
+    readonly id?: string;
+    readonly at?: string;
+  },
+  storage?: Storage | null,
+): MarketUnlockAttempt[] {
+  const next = appendUnlockAttempt(readUnlockAttemptLog(storage), attempt);
+  writeUnlockAttemptLog(next, storage);
+  return next;
+}
+
+export function signatureHintFromTx(signature: string): string {
+  const t = signature.trim();
+  if (t.length <= 12) return t;
+  return `${t.slice(0, 4)}…${t.slice(-4)}`;
+}
+
 
 export interface RoomMessagesApiResponse {
   readonly ok: true;

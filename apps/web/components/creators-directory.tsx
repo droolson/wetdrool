@@ -43,7 +43,18 @@ export function CreatorsDirectory() {
   const [offset, setOffset] = useState(0);
   const [synthetic, setSynthetic] = useState(true);
   const [source, setSource] = useState<'api' | 'empty' | 'error'>('empty');
+  /** Controlled input text. */
+  const [queryInput, setQueryInput] = useState('');
+  /** Debounced query sent to the API. */
+  const [activeQuery, setActiveQuery] = useState('');
   const loadGen = useRef(0);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setActiveQuery(queryInput.trim());
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [queryInput]);
 
   const loadInitial = useCallback(async () => {
     const gen = ++loadGen.current;
@@ -52,7 +63,11 @@ export function CreatorsDirectory() {
     setLoadingMore(false);
     try {
       const { fetchCreators } = await import('@/lib/product-client');
-      const result = await fetchCreators({ limit: PAGE_SIZE, offset: 0 });
+      const result = await fetchCreators({
+        limit: PAGE_SIZE,
+        offset: 0,
+        q: activeQuery || null,
+      });
       if (gen !== loadGen.current) return;
       if (result.kind === 'ok') {
         const rows = mapRows(result.data.creators ?? []);
@@ -83,7 +98,7 @@ export function CreatorsDirectory() {
     } finally {
       if (gen === loadGen.current) setLoading(false);
     }
-  }, []);
+  }, [activeQuery]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || loading || source !== 'api') return;
@@ -92,7 +107,11 @@ export function CreatorsDirectory() {
     setError(null);
     try {
       const { fetchCreators } = await import('@/lib/product-client');
-      const result = await fetchCreators({ limit: PAGE_SIZE, offset });
+      const result = await fetchCreators({
+        limit: PAGE_SIZE,
+        offset,
+        q: activeQuery || null,
+      });
       if (gen !== loadGen.current) return;
       if (result.kind === 'ok') {
         const next = mapRows(result.data.creators ?? []);
@@ -126,7 +145,7 @@ export function CreatorsDirectory() {
     } finally {
       if (gen === loadGen.current) setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, loading, source, offset, total, note]);
+  }, [hasMore, loadingMore, loading, source, offset, total, note, activeQuery]);
 
   useEffect(() => {
     void loadInitial();
@@ -136,6 +155,7 @@ export function CreatorsDirectory() {
   }, [loadInitial]);
 
   const emptyOk = !loading && items.length === 0 && !error && source === 'api';
+  const filteredEmpty = emptyOk && activeQuery.length > 0;
   const badgeLabel = loading
     ? 'loading directory'
     : source === 'error'
@@ -157,8 +177,43 @@ export function CreatorsDirectory() {
       </header>
       <p className="field-help">
         Handles below come from founder preview + short-feed fixtures. Checkout remains staged. No
-        earnings claims.
+        earnings claims. Filter is local catalog match only (handle, display name, tags).
       </p>
+      <form
+        className="creators-directory__filter"
+        role="search"
+        aria-label="Filter synthetic creator catalog"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setActiveQuery(queryInput.trim());
+        }}
+      >
+        <label htmlFor="creators-directory-q">
+          Filter fixtures
+          <input
+            id="creators-directory-q"
+            name="q"
+            type="search"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="handle, name, or tag…"
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
+            maxLength={64}
+          />
+        </label>
+        {queryInput.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setQueryInput('');
+              setActiveQuery('');
+            }}
+          >
+            Clear
+          </button>
+        ) : null}
+      </form>
       {note && source === 'api' ? <p className="field-help">{note}</p> : null}
       {loading ? (
         <p className="field-help" role="status">
@@ -177,11 +232,18 @@ export function CreatorsDirectory() {
         <p className="field-help" role="status">
           {items.length}
           {total > 0 ? ` / ${total}` : ''} entries
+          {activeQuery ? ` · filter “${activeQuery}”` : ''}
           {synthetic ? ' · synthetic catalog' : ''}
         </p>
       ) : null}
       <ul className="creators-directory__list" aria-label="Creator directory" aria-busy={loading}>
-        {emptyOk ? (
+        {filteredEmpty ? (
+          <li className="field-help" role="status">
+            No fixture creators match “{activeQuery}”. This is not a live account search — try another
+            handle or tag, or clear the filter.
+          </li>
+        ) : null}
+        {emptyOk && !filteredEmpty ? (
           <li className="field-help" role="status">
             No catalog entries. Directory is empty until fixtures or signed profiles appear.
           </li>
@@ -213,11 +275,18 @@ export function CreatorsDirectory() {
       ) : null}
       {!hasMore && source === 'api' && items.length > 0 && !loading ? (
         <p className="field-help" role="status">
-          End of synthetic catalog.
+          End of synthetic catalog{activeQuery ? ' for this filter' : ''}.
         </p>
       ) : null}
       <p className="field-help">
-        API: <code>/api/v1/creators</code> · profile <code>/api/v1/creators/:handle</code>
+        API: <code>/api/v1/creators</code>
+        {activeQuery ? (
+          <>
+            {' '}
+            · <code>?q={activeQuery}</code>
+          </>
+        ) : null}{' '}
+        · profile <code>/api/v1/creators/:handle</code>
       </p>
     </div>
   );
