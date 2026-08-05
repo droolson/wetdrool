@@ -256,6 +256,23 @@ export function getMarketplaceStoreMeta(
   };
 }
 
+/** JSON-safe store object for market APIs — multiReplicaSafe is always false. */
+export function toMarketplaceStoreApi(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): MarketplaceStoreMeta {
+  const meta = getMarketplaceStoreMeta(env);
+  // Explicit re-pack so clients never receive a partial store blob without honesty flags.
+  return {
+    kind: meta.kind,
+    multiReplicaSafe: false,
+    durableAcrossRestart: meta.durableAcrossRestart,
+    revenueReady: false,
+    gate: meta.gate,
+    label: meta.label,
+    note: meta.note,
+  };
+}
+
 export function createListingId(): string {
   return `lst_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
 }

@@ -11,6 +11,7 @@ import {
   getMarketplaceStore,
   getMarketplaceStoreKind,
   getMarketplaceStoreMeta,
+  toMarketplaceStoreApi,
   pageListings,
   publicListing,
   resetMarketplaceStoreCache,
@@ -175,6 +176,34 @@ describe('marketplace store', () => {
     expect(file.label).toMatch(/single-node/i);
     expect(file.label).toMatch(/replica-unsafe/i);
     expect(file.note).toMatch(/one node only/i);
+  });
+
+
+  it('toMarketplaceStoreApi always packs multiReplicaSafe: false', () => {
+    const mem = toMarketplaceStoreApi({});
+    expect(mem.multiReplicaSafe).toBe(false);
+    expect(mem.revenueReady).toBe(false);
+    expect(mem).toEqual(getMarketplaceStoreMeta({}));
+    expect(Object.keys(mem).sort()).toEqual(
+      [
+        'durableAcrossRestart',
+        'gate',
+        'kind',
+        'label',
+        'multiReplicaSafe',
+        'note',
+        'revenueReady',
+      ].sort(),
+    );
+
+    const file = toMarketplaceStoreApi({
+      WETDROOL_MARKETPLACE_DATA_PATH: '/tmp/wetdrool-market-api-meta.json',
+      WETDROOL_MARKETPLACE_GATE_SECRET: 'stable-gate-secret-ok',
+    });
+    expect(file.kind).toBe('file-local');
+    expect(file.multiReplicaSafe).toBe(false);
+    expect(file.durableAcrossRestart).toBe(true);
+    expect(file.label).toMatch(/single-node/i);
   });
 
   it('file store without gate secret is still replica-unsafe with ephemeral gate', () => {

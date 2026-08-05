@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ProviderCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { MeshStatusPanel } from '@/components/mesh-status-panel';
 import { getProviderSummaries, type ProviderSummary } from '@/lib/provider-config';
 import { buildRevenueReadiness } from '@/lib/revenue-readiness';
 
@@ -38,6 +39,18 @@ export default function StatusPage() {
           revenue or a <code>$DROOL</code> mint.
         </p>
       </AppPageHeader>
+
+      <section className="status-summary" aria-labelledby="mesh-product-readiness-title">
+        <div>
+          <p className="section-kicker">Mesh product readiness</p>
+          <h2 id="mesh-product-readiness-title">Not a live peer mesh</h2>
+          <p className="field-help">
+            Client strip over <code>/api/v1/mesh</code> — configuration honesty only. See{' '}
+            <Link href="/mesh">/mesh</Link> for the full panel.
+          </p>
+          <MeshStatusPanel compact />
+        </div>
+      </section>
 
       <section className="status-summary" aria-labelledby="revenue-readiness-title">
         <div>

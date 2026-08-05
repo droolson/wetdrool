@@ -3,11 +3,11 @@ import {
   filterListingsByNetwork,
   filterListingsByQuery,
   getMarketplaceStoreKind,
-  getMarketplaceStoreMeta,
   listListings,
   pageListings,
   putListing,
   publicListing,
+  toMarketplaceStoreApi,
 } from '@/lib/marketplace-store';
 import { getMarketplaceGateMode, wrapUnlockSecret } from '@/lib/marketplace-unlock';
 import type { SealedEnvelope } from '@/lib/e2ee-seal';
@@ -41,7 +41,7 @@ export function GET(request: Request): Response {
   const items = page.items.map(publicListing);
   const rpcConfigured = getMarketplaceRpcUrl() !== null;
   const network = getDefaultNetwork();
-  const storeMeta = getMarketplaceStoreMeta();
+  const store = toMarketplaceStoreApi();
 
   const nextOffset = page.hasMore ? offset + items.length : null;
   const applied = Boolean(q) || networkFilter !== null;
@@ -78,15 +78,7 @@ export function GET(request: Request): Response {
       note: noteParts.join(' '),
     },
     listings: items,
-    store: {
-      kind: storeMeta.kind,
-      durableAcrossRestart: storeMeta.durableAcrossRestart,
-      multiReplicaSafe: storeMeta.multiReplicaSafe,
-      revenueReady: storeMeta.revenueReady,
-      gate: storeMeta.gate,
-      label: storeMeta.label,
-      note: storeMeta.note,
-    },
+    store,
     note: 'E2EE marketplace. Content unlock requires Solana x402-style payment then client decrypt. Not revenue-ready commerce.',
     paymentVerify: {
       rpcConfigured,
@@ -200,7 +192,7 @@ export async function POST(request: Request): Promise<Response> {
       ok: true,
       listing: publicListing(listing),
       accepts: requirements,
-      store: storeKind,
+      store: toMarketplaceStoreApi(),
       gate: gateMode,
     },
     { status: 201 },

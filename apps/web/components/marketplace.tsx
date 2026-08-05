@@ -28,7 +28,8 @@ const PAGE_SIZE = 12;
 interface StoreMeta {
   readonly kind: 'memory-ephemeral' | 'file-local';
   readonly durableAcrossRestart?: boolean;
-  readonly multiReplicaSafe?: boolean;
+  /** API always sends false; null store still treated as unsafe in UI. */
+  readonly multiReplicaSafe: false;
   readonly revenueReady?: false;
   readonly gate?: 'env-stable' | 'ephemeral';
   readonly label?: string;
@@ -619,9 +620,9 @@ export function Marketplace() {
   const storeLabel =
     storeMeta?.kind === 'file-local'
       ? storeMeta.gate === 'env-stable'
-        ? 'file store · gate stable'
-        : 'file store · gate ephemeral'
-      : 'memory store';
+        ? 'file · single-node · replica-unsafe'
+        : 'file · gate ephemeral · replica-unsafe'
+      : 'memory · ephemeral · replica-unsafe';
 
   const shown = listings.length;
 
@@ -643,25 +644,42 @@ export function Marketplace() {
             <p className="section-kicker">E2EE marketplace · x402 Solana</p>
             <h1>Sell sealed drops. Pay with SOL.</h1>
           </div>
-          <div className="market__badges">
+          <div className="market__badges" role="group" aria-label="Market honesty badges">
             <StatusBadge tone={rpcReady ? 'verified' : 'pending'}>
               {rpcReady ? 'RPC verify on' : 'HTTP 402 · RPC unset'}
             </StatusBadge>
             <StatusBadge tone={storeMeta?.kind === 'file-local' ? 'pending' : 'degraded'}>
               {storeMeta?.label ?? storeLabel}
             </StatusBadge>
-            <StatusBadge tone="degraded">
-              {storeMeta?.multiReplicaSafe === false || storeMeta?.multiReplicaSafe == null
-                ? 'multiReplicaSafe: false'
-                : 'multiReplicaSafe'}
-            </StatusBadge>
-            <StatusBadge tone="degraded">
-              {storeMeta?.revenueReady === false || storeMeta?.revenueReady == null
-                ? 'revenueReady: false'
-                : 'revenue-ready'}
-            </StatusBadge>
+            <StatusBadge tone="degraded">multiReplicaSafe: false</StatusBadge>
+            <StatusBadge tone="degraded">revenueReady: false</StatusBadge>
+            <StatusBadge tone="degraded">single-node store</StatusBadge>
           </div>
         </header>
+        <aside
+          className="card-panel market__honesty"
+          role="note"
+          aria-label="Marketplace multi-replica honesty"
+        >
+          <p>
+            <strong>multiReplicaSafe: false</strong>
+            {' · '}
+            <strong>single-node store only</strong>
+          </p>
+          <p className="field-help">
+            {storeMeta?.note ??
+              'Catalog and host unlock receipts live in this process (memory) or an optional local file path — never a multi-replica commerce backend. Do not scale this market API across instances and expect shared listings or purchases.'}
+          </p>
+          <p className="field-help">
+            Kind: <code>{storeMeta?.kind ?? 'unknown'}</code>
+            {storeMeta?.durableAcrossRestart != null
+              ? ` · durableAcrossRestart: ${String(storeMeta.durableAcrossRestart)}`
+              : null}
+            {storeMeta?.gate ? ` · gate: ${storeMeta.gate}` : null}
+            {' · '}
+            revenueReady: false
+          </p>
+        </aside>
         <p className="market__lede">
           List content sealed client-side (middle-out + AES). Buyers hit{' '}
           <strong>402 Payment Required</strong>, pay your Solana address, then unlock with the tx
@@ -677,7 +695,6 @@ export function Marketplace() {
             </>
           ) : null}
         </p>
-        {storeMeta?.note ? <p className="field-help">{storeMeta.note}</p> : null}
 
         <section className="market__sell card-panel">
           <h2>List a drop</h2>
@@ -771,24 +788,41 @@ export function Marketplace() {
                 aria-describedby="market-search-help"
               />
             </label>
-            <label htmlFor="market-search-network">
-              Network
-              <select
-                id="market-search-network"
-                value={networkInput}
-                onChange={(e) => {
-                  const nextNetwork = e.target.value;
-                  setNetworkInput(nextNetwork);
-                  setActiveNetwork(nextNetwork);
-                  void refresh(activeQuery, nextNetwork);
-                }}
-                aria-describedby="market-search-help"
-              >
-                <option value="">All networks</option>
-                <option value="solana:devnet">solana:devnet</option>
-                <option value="solana:mainnet">solana:mainnet</option>
-              </select>
-            </label>
+            <div
+              className="market__network-chips"
+              role="group"
+              aria-label="Filter by listing network"
+              aria-describedby="market-search-help"
+            >
+              <span className="field-help" id="market-network-chips-label">
+                Network
+              </span>
+              {(
+                [
+                  { value: '', label: 'All networks' },
+                  { value: 'solana:devnet', label: 'solana:devnet' },
+                  { value: 'solana:mainnet', label: 'solana:mainnet' },
+                ] as const
+              ).map((chip) => {
+                const selected = networkInput === chip.value;
+                return (
+                  <button
+                    key={chip.value || 'all'}
+                    type="button"
+                    className="button-secondary"
+                    aria-pressed={selected}
+                    disabled={loading || busy}
+                    onClick={() => {
+                      setNetworkInput(chip.value);
+                      setActiveNetwork(chip.value);
+                      void refresh(activeQuery, chip.value);
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
             <button type="submit" disabled={loading || busy}>
               Search
             </button>
