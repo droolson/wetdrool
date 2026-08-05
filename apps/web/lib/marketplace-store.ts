@@ -319,6 +319,75 @@ export function publicListing(listing: MarketplaceListing) {
   };
 }
 
+export type MarketSortMode = 'newest' | 'price_asc' | 'price_desc';
+/** @deprecated Use MarketSortMode */
+export type MarketplaceListSort = MarketSortMode;
+
+export function parseMarketplaceListSort(raw: string | null | undefined): MarketSortMode {
+  return parseMarketSortMode(raw);
+}
+
+const MARKET_SORT_MODES: readonly MarketSortMode[] = ['newest', 'price_asc', 'price_desc'];
+
+/** Default newest. Invalid / empty → newest. */
+export function parseMarketSortMode(raw: string | null | undefined): MarketSortMode {
+  const v = raw?.trim().toLowerCase() ?? '';
+  if ((MARKET_SORT_MODES as readonly string[]).includes(v)) {
+    return v as MarketSortMode;
+  }
+  return 'newest';
+}
+
+export function marketSortLabel(sort: MarketSortMode): string {
+  switch (sort) {
+    case 'price_asc':
+      return 'Price ↑ (lamports)';
+    case 'price_desc':
+      return 'Price ↓ (lamports)';
+    case 'newest':
+    default:
+      return 'Newest';
+  }
+}
+
+function compareLamports(a: string, b: string): number {
+  try {
+    const aa = BigInt(a);
+    const bb = BigInt(b);
+    if (aa < bb) return -1;
+    if (aa > bb) return 1;
+    return 0;
+  } catch {
+    // Non-numeric lamports: stable string fallback (should not happen for valid listings).
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+}
+
+/**
+ * Sort public catalog page. Lamports are always present on listings (string).
+ * newest = createdAt desc (default list order). Price sorts use BigInt lamports;
+ * ties break by createdAt desc then id.
+ */
+export function sortListings(
+  all: readonly MarketplaceListing[],
+  sort: MarketSortMode = 'newest',
+): readonly MarketplaceListing[] {
+  const items = [...all];
+  items.sort((a, b) => {
+    if (sort === 'price_asc' || sort === 'price_desc') {
+      const cmp = compareLamports(a.lamports, b.lamports);
+      const priceCmp = sort === 'price_asc' ? cmp : -cmp;
+      if (priceCmp !== 0) return priceCmp;
+    }
+    // newest primary, or price tie-break: createdAt desc
+    if (a.createdAt !== b.createdAt) {
+      return a.createdAt < b.createdAt ? 1 : -1;
+    }
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+  return items;
+}
+
 export function pageListings(
   all: readonly MarketplaceListing[],
   limit: number,

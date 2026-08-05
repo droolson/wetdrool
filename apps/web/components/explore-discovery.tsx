@@ -14,8 +14,14 @@ import { StatusBadge } from '@wetdrool/ui';
 import {
   chipKeyNavIndex,
   emptyDiscoveryMessage,
+  isOfflineLocalFallback,
+  localFallbackApiNote,
+  offlineLocalFallbackMessage,
+  offlineLocalFallbackSyntheticBadge,
   personalizationUnconfiguredNote,
+  rankShortsPage,
   shortSortLabel,
+  discoverySortNote,
   type RankedShort,
   type ShortSortMode,
 } from '@/lib/short-feed';
@@ -35,6 +41,7 @@ export function ExploreDiscovery() {
   const sortRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const [items, setItems] = useState<readonly RankedShort[]>([]);
+  const [source, setSource] = useState<'api' | 'local'>('local');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -51,6 +58,20 @@ export function ExploreDiscovery() {
   const [sortLabel, setSortLabel] = useState(shortSortLabel('trending'));
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null);
 
+  const applyLocal = useCallback((nextSort: ShortSortMode) => {
+    const page = rankShortsPage('all', { limit: 12, offset: 0, sort: nextSort });
+    setItems(page.items);
+    setSource('local');
+    setSynthetic(true);
+    setNote(localFallbackApiNote(page.sort));
+    setRankingNote(null);
+    setRankingName('local-droolrank-lite');
+    setSortLabel(shortSortLabel(page.sort));
+    setPersonalizationNote(personalizationUnconfiguredNote());
+    setPersonalizationActive(false);
+    setEmptyMessage(page.total === 0 ? emptyDiscoveryMessage('all', null) : null);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -58,13 +79,13 @@ export function ExploreDiscovery() {
       const { fetchShorts } = await import('@/lib/product-client');
       const result = await fetchShorts('all', 12, { sort });
       if (result.kind !== 'ok') {
+        applyLocal(sort);
         setError(result.message);
-        setItems([]);
-        setEmptyMessage(null);
         return;
       }
       const data = result.data;
       setItems(data.items ?? []);
+      setSource('api');
       setSynthetic(data.synthetic !== false);
       setNote(data.note ?? null);
       setRankingNote(data.ranking?.note ?? null);
@@ -89,13 +110,12 @@ export function ExploreDiscovery() {
           : null,
       );
     } catch {
+      applyLocal(sort);
       setError('Network error loading discovery.');
-      setItems([]);
-      setEmptyMessage(null);
     } finally {
       setLoading(false);
     }
-  }, [sort]);
+  }, [sort, applyLocal]);
 
   useEffect(() => {
     void load();
@@ -121,8 +141,18 @@ export function ExploreDiscovery() {
           <p className="section-kicker">Network discovery</p>
           <h1 id="explore-discovery-title">Find a wider conversation.</h1>
         </div>
-        <StatusBadge tone={synthetic ? 'pending' : 'verified'}>
-          {loading ? 'loading' : synthetic ? 'synthetic catalog' : 'mixed corpus'}
+        <StatusBadge
+          tone={
+            loading ? 'pending' : isOfflineLocalFallback(source, error) ? 'degraded' : synthetic ? 'pending' : 'verified'
+          }
+        >
+          {loading
+            ? 'loading'
+            : isOfflineLocalFallback(source, error)
+              ? offlineLocalFallbackSyntheticBadge()
+              : synthetic
+                ? 'synthetic catalog'
+                : 'mixed corpus'}
         </StatusBadge>
       </header>
       <p className="explore-discovery__lede">
@@ -195,7 +225,32 @@ export function ExploreDiscovery() {
       {rankingNote ? <p className="field-help">Ranking policy: {rankingNote}</p> : null}
       {note ? <p className="field-help">{note}</p> : null}
 
-      {error ? (
+      {isOfflineLocalFallback(source, error) ? (
+        <aside
+          className="connectivity-notice shorts-offline-fallback"
+          role="alert"
+          aria-live="assertive"
+          data-source="local"
+          data-synthetic="true"
+        >
+          <span className="connectivity-notice__signal" aria-hidden="true" />
+          <div>
+            <p>
+              <StatusBadge tone="degraded">{offlineLocalFallbackSyntheticBadge()}</StatusBadge>{' '}
+              <strong>Offline / local fallback</strong>
+            </p>
+            <p className="field-help">{offlineLocalFallbackMessage(error)}</p>
+            <p className="field-help">{discoverySortNote(sort)}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              aria-label="Retry loading discovery sample from the product API"
+            >
+              Retry API
+            </button>
+          </div>
+        </aside>
+      ) : error ? (
         <div className="field-help" role="alert" aria-live="assertive">
           <p>{error}</p>
           <button
@@ -212,13 +267,14 @@ export function ExploreDiscovery() {
           Loading discovery sample…
         </p>
       ) : null}
-      {!loading && !error && items.length === 0 ? (
+      {!loading && items.length === 0 ? (
         <div className="shorts-empty" role="status" aria-live="polite">
           <p className="shorts-empty__title">No discovery items</p>
           <p className="field-help">
             {emptyMessage ??
-              'No discovery items from the product API. There are no synthetic trends invented here.'}
+              emptyDiscoveryMessage('all', null)}
           </p>
+          <p className="field-help">{discoverySortNote(sort)}</p>
           <button
             type="button"
             className="shorts-empty__reset"

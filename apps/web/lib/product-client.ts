@@ -1011,3 +1011,48 @@ export function fetchEvents(options?: {
   return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
 }
 
+
+/**
+ * GET /api/v1/events — synthetic product event fixtures only.
+ * Never invents attendance counts, ticket sales, or a global calendar index.
+ * On HTTP error (including 404), callers must fail closed to empty — no local fixture re-fanout.
+ */
+export interface ProductEventDto {
+  readonly id: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly mode: 'online' | 'hybrid' | 'venue-tbd';
+  readonly tags: readonly string[];
+  readonly attendanceClaimed: false;
+  readonly ticketsLive: false;
+  readonly synthetic: boolean;
+  readonly href: string;
+}
+
+export interface EventsApiResponse {
+  readonly ok: true;
+  readonly events: readonly ProductEventDto[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly syntheticOnly?: boolean;
+  readonly globalCalendar?: false | boolean;
+  readonly attendanceClaimed?: false | boolean;
+  readonly ticketsLive?: false | boolean;
+  readonly note?: string;
+}
+
+export function fetchEvents(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<EventsApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
+}

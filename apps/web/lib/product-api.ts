@@ -14,6 +14,11 @@ import {
 import { buildRevenueReadiness } from './revenue-readiness';
 import { getRoomStoreMeta } from './room-store';
 
+export {
+  buildProductEventsResponse,
+  pageSyntheticProductEvents,
+} from './product-events';
+
 /** Stable product API surface ids (paths under /api/v1). Deduped, honest. */
 export const PRODUCT_API_SURFACES = [
   { id: 'health', path: '/api/v1/health', methods: ['GET'] as const },
@@ -34,6 +39,7 @@ export const PRODUCT_API_SURFACES = [
   { id: 'policy/age', path: '/api/v1/policy/age', methods: ['GET'] as const },
   { id: 'notifications', path: '/api/v1/notifications', methods: ['GET'] as const },
   { id: 'search', path: '/api/v1/search', methods: ['GET'] as const },
+  { id: 'events', path: '/api/v1/events', methods: ['GET'] as const },
   { id: 'ai/chat', path: '/api/v1/ai/chat', methods: ['POST'] as const },
 ] as const;
 
@@ -54,6 +60,7 @@ export const PRODUCT_API_LINKS = {
   mesh: '/api/v1/mesh',
   notifications: '/api/v1/notifications',
   search: '/api/v1/search',
+  events: '/api/v1/events',
 } as const;
 
 /** Explicit honesty flags shared by health/status (no invented mint or earnings). */
@@ -264,6 +271,7 @@ export function buildProductHealthReport(
       mesh: PRODUCT_API_LINKS.mesh,
       notifications: PRODUCT_API_LINKS.notifications,
       search: PRODUCT_API_LINKS.search,
+      events: PRODUCT_API_LINKS.events,
     },
     media: 'synthetic-fixtures' as const,
     mesh: false as const,
@@ -338,6 +346,7 @@ export function buildProductStatusReport(
       mesh: PRODUCT_API_LINKS.mesh,
       search: PRODUCT_API_LINKS.search,
       notifications: PRODUCT_API_LINKS.notifications,
+      events: PRODUCT_API_LINKS.events,
       e2ee: PRODUCT_API_LINKS.e2ee,
       creatorsDirectory: PRODUCT_API_LINKS.creatorsDirectory,
       agePolicy: PRODUCT_API_LINKS.agePolicy,

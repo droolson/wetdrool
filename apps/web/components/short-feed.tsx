@@ -15,7 +15,11 @@ import { StatusBadge } from '@wetdrool/ui';
 import {
   chipKeyNavIndex,
   emptyDiscoveryMessage,
+  isOfflineLocalFallback,
   listShortCategories,
+  localFallbackApiNote,
+  offlineLocalFallbackMessage,
+  offlineLocalFallbackSyntheticBadge,
   type DiscoveryMode,
   rankShortsPage,
   readDiscoveryMode,
@@ -94,7 +98,7 @@ export function ShortFeed() {
       setEmptyMessage(
         page.total === 0 ? emptyDiscoveryMessage(nextMode, nextCategory) : null,
       );
-      setApiNote('Local ranking fallback.');
+      setApiNote(localFallbackApiNote());
       setSource('local');
     },
     [],
@@ -334,7 +338,35 @@ export function ShortFeed() {
         {' · '}
         personalizationActive: false · public catalog, not for-you
       </p>
-      {error ? (
+      {isOfflineLocalFallback(source, error) ? (
+        <aside
+          className="connectivity-notice shorts-offline-fallback"
+          role="alert"
+          aria-live="assertive"
+          data-source="local"
+          data-synthetic="true"
+        >
+          <span className="connectivity-notice__signal" aria-hidden="true" />
+          <div>
+            <p>
+              <StatusBadge tone="degraded">{offlineLocalFallbackSyntheticBadge()}</StatusBadge>{' '}
+              <strong>Offline / local fallback</strong>
+            </p>
+            <p className="field-help">{offlineLocalFallbackMessage(error)}</p>
+            <p className="field-help">
+              Empty sort/category results stay honest — filters apply to the synthetic fixture set
+              only.
+            </p>
+            <button
+              type="button"
+              onClick={() => void load({ append: false, nextOffset: 0 })}
+              aria-label="Retry loading shorts from the product API"
+            >
+              Retry API
+            </button>
+          </div>
+        </aside>
+      ) : error ? (
         <p className="field-help" role="alert">
           {error}{' '}
           <button type="button" onClick={() => void load({ append: false, nextOffset: 0 })}>

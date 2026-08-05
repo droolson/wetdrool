@@ -15,7 +15,11 @@ import {
   chipKeyNavIndex,
   discoverySortNote,
   emptyDiscoveryMessage,
+  isOfflineLocalFallback,
   listShortCategories,
+  localFallbackApiNote,
+  offlineLocalFallbackMessage,
+  offlineLocalFallbackSyntheticBadge,
   rankShortsPage,
   SHORTS_PAGE_SIZE,
   shortSortLabel,
@@ -92,9 +96,7 @@ export function HubCatalog() {
       setEmptyMessage(page.total === 0 ? emptyDiscoveryMessage(nextMode, nextCat) : null);
       setActiveSortLabel(shortSortLabel(page.sort));
       setSource('local');
-      setNote(
-        `Local catalog fallback · ${shortSortLabel(page.sort)}. Public recipe only — not personalized.`,
-      );
+      setNote(localFallbackApiNote(page.sort));
     },
     [],
   );
@@ -239,7 +241,35 @@ export function HubCatalog() {
         {' · '}
         personalizationActive: false · ranking stays local (not for-you)
       </p>
-      {error ? (
+      {isOfflineLocalFallback(source, error) ? (
+        <aside
+          className="connectivity-notice shorts-offline-fallback"
+          role="alert"
+          aria-live="assertive"
+          data-source="local"
+          data-synthetic="true"
+        >
+          <span className="connectivity-notice__signal" aria-hidden="true" />
+          <div>
+            <p>
+              <StatusBadge tone="degraded">{offlineLocalFallbackSyntheticBadge()}</StatusBadge>{' '}
+              <strong>Offline / local fallback</strong>
+            </p>
+            <p className="field-help">{offlineLocalFallbackMessage(error)}</p>
+            <p className="field-help">
+              {discoverySortNote(sort)} Empty category results still mean no fixtures match — not a
+              silent invent of tiles.
+            </p>
+            <button
+              type="button"
+              onClick={() => void load({ append: false, nextOffset: 0 })}
+              aria-label="Retry loading hub catalog from the product API"
+            >
+              Retry API
+            </button>
+          </div>
+        </aside>
+      ) : error ? (
         <p className="field-help" role="alert">
           {error}{' '}
           <button type="button" onClick={() => void load({ append: false, nextOffset: 0 })}>

@@ -17,6 +17,7 @@ import {
 } from '@/lib/x402';
 import type {
   MarketListingDto,
+  MarketSortMode,
   MarketUnlockAttempt,
   MarketUnlockReceiptDto,
 } from '@/lib/product-client';
@@ -24,6 +25,12 @@ import type {
 type PublicListing = MarketListingDto;
 
 const PAGE_SIZE = 12;
+
+const MARKET_SORTS: readonly { id: MarketSortMode; label: string }[] = [
+  { id: 'newest', label: 'Newest' },
+  { id: 'price_asc', label: 'Price ↑' },
+  { id: 'price_desc', label: 'Price ↓' },
+];
 
 interface StoreMeta {
   readonly kind: 'memory-ephemeral' | 'file-local';
@@ -217,6 +224,7 @@ export function Marketplace() {
   /** Empty string = all networks; otherwise solana:devnet | solana:mainnet. */
   const [networkInput, setNetworkInput] = useState('');
   const [activeNetwork, setActiveNetwork] = useState('');
+  const [activeSort, setActiveSort] = useState<MarketSortMode>('newest');
   const [filterNote, setFilterNote] = useState<string | null>(null);
 
   // sell form
@@ -277,12 +285,17 @@ export function Marketplace() {
     [],
   );
 
-  const refresh = useCallback(async (qOverride?: string, networkOverride?: string) => {
+  const refresh = useCallback(async (
+    qOverride?: string,
+    networkOverride?: string,
+    sortOverride?: MarketSortMode,
+  ) => {
     setLoading(true);
     setListError(null);
     const q = (qOverride !== undefined ? qOverride : activeQuery).trim();
     const network =
       networkOverride !== undefined ? networkOverride.trim() : activeNetwork.trim();
+    const sort = sortOverride ?? activeSort;
     try {
       const { fetchMarket } = await import('@/lib/product-client');
       const result = await fetchMarket({
@@ -290,6 +303,7 @@ export function Marketplace() {
         offset: 0,
         q: q || null,
         network: network || null,
+        sort,
       });
       if (result.kind !== 'ok') {
         setListError(result.message);
@@ -307,7 +321,7 @@ export function Marketplace() {
     } finally {
       setLoading(false);
     }
-  }, [activeQuery, activeNetwork, applyPage]);
+  }, [activeQuery, activeNetwork, activeSort, applyPage]);
 
   const loadMore = useCallback(async () => {
     if (nextOffset === null || loadingMore) return;
@@ -320,6 +334,7 @@ export function Marketplace() {
         offset: nextOffset,
         q: activeQuery.trim() || null,
         network: activeNetwork.trim() || null,
+        sort: activeSort,
       });
       if (result.kind !== 'ok') {
         setListError(result.message);
@@ -331,7 +346,7 @@ export function Marketplace() {
     } finally {
       setLoadingMore(false);
     }
-  }, [activeQuery, activeNetwork, applyPage, loadingMore, nextOffset]);
+  }, [activeQuery, activeNetwork, activeSort, applyPage, loadingMore, nextOffset]);
 
   useEffect(() => {
     void refresh();
@@ -823,6 +838,35 @@ export function Marketplace() {
                 );
               })}
             </div>
+
+            <div
+              className="market__network-chips"
+              role="group"
+              aria-label="Sort marketplace listings"
+              aria-describedby="market-search-help"
+            >
+              <span className="field-help" id="market-sort-chips-label">
+                Sort
+              </span>
+              {MARKET_SORTS.map((chip) => {
+                const selected = activeSort === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className="button-secondary"
+                    aria-pressed={selected}
+                    disabled={loading || busy}
+                    onClick={() => {
+                      setActiveSort(chip.id);
+                      void refresh(activeQuery, activeNetwork, chip.id);
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
             <button type="submit" disabled={loading || busy}>
               Search
             </button>
@@ -844,9 +888,10 @@ export function Marketplace() {
           </form>
           <p className="field-help" id="market-search-help">
             Local host catalog only. Network filter matches listing.network exactly (x402
-            solana:devnet / solana:mainnet). Not a global index.
+            solana:devnet / solana:mainnet). Sort uses createdAt (newest) or listing.lamports
+            (price). Not a global index.
           </p>
-          {filterNote && (activeQuery || activeNetwork) ? (
+          {filterNote ? (
             <p className="field-help">{filterNote}</p>
           ) : null}
           {loading ? (

@@ -5,8 +5,10 @@ import {
   getMarketplaceStoreKind,
   listListings,
   pageListings,
+  parseMarketplaceListSort,
   putListing,
   publicListing,
+  sortListings,
   toMarketplaceStoreApi,
 } from '@/lib/marketplace-store';
 import { getMarketplaceGateMode, wrapUnlockSecret } from '@/lib/marketplace-unlock';
@@ -32,11 +34,13 @@ export function GET(request: Request): Response {
   const qRaw = url.searchParams.get('q')?.trim() ?? '';
   const q = qRaw.slice(0, 80);
   const networkFilter = parseX402Network(url.searchParams.get('network'));
+  const sort = parseMarketplaceListSort(url.searchParams.get('sort'));
   // Invalid network query is ignored (no filter) rather than 400 — list stays usable.
-  const all = filterListingsByNetwork(
+  const filtered = filterListingsByNetwork(
     filterListingsByQuery(listListings(), q || null),
     networkFilter,
   );
+  const all = sortListings(filtered, sort);
   const page = pageListings(all, limit, offset);
   const items = page.items.map(publicListing);
   const rpcConfigured = getMarketplaceRpcUrl() !== null;
@@ -70,9 +74,11 @@ export function GET(request: Request): Response {
     nextOffset,
     q: q || null,
     network: networkFilter,
+    sort,
     filter: {
       q: q || null,
       network: networkFilter,
+      sort,
       applied,
       matched: page.total,
       note: noteParts.join(' '),

@@ -492,6 +492,36 @@ export function discoveryHonestyNote(allSynthetic: boolean): string {
   return 'Mixed corpus: synthetic fixtures plus licensed media. Third-party adult media still needs consent + licensing.';
 }
 
+/**
+ * Explicit offline / local-fallback banner when the shorts product API fails.
+ * Never implies the fixture rail is live ranked media.
+ */
+export function offlineLocalFallbackMessage(detail?: string | null): string {
+  const base =
+    'Offline / local fallback active: the shorts API did not respond. Showing the synthetic fixture catalog only — not live ranked media.';
+  const d = detail?.trim();
+  return d ? `${base} Reason: ${d}` : base;
+}
+
+/** Status badge copy for offline local fallback (always synthetic). */
+export function offlineLocalFallbackSyntheticBadge(): string {
+  return 'SYNTHETIC · offline local fallback';
+}
+
+/** apiNote / field-help when ranking is served from in-bundle fixtures after API failure. */
+export function localFallbackApiNote(sort?: ShortSortMode): string {
+  const sortPart = sort ? ` · ${shortSortLabel(sort)}` : '';
+  return `Local ranking fallback${sortPart}. Public recipe only — not personalized. Synthetic fixtures only.`;
+}
+
+/** True when UI is on local fixtures because the API failed (error present). */
+export function isOfflineLocalFallback(
+  source: 'api' | 'local',
+  error: string | null | undefined,
+): boolean {
+  return source === 'local' && Boolean(error?.trim());
+}
+
 export const DISCOVERY_MODE_KEY = 'wetdrool.discovery.mode';
 
 export function readDiscoveryMode(storage: Pick<Storage, 'getItem'> | null): DiscoveryMode {
