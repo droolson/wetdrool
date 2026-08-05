@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T19:26Z — privacy age policy UI + creators directory API
+
+- **Task:** Settings/privacy age policy surface (API-backed) + creators list API/UI.
+- **BE:** `GET /api/v1/creators` directory; handle route uses `resolveCreatorProfile`; catalog helpers in `creator-economy`.
+- **FE:** `AgeAccessPolicyPanel` (region hint + API); `CreatorsDirectory` + `/creators` page; nav to `/creators`.
+- **Verify:** vitest product-api-helpers + age-access-policy → 15 passed.
+- **Next:** fame pagination or providers page auth deep-link.
+
 ### 2026-08-05T18:56Z — token + age policy API honesty and token UI wire-up
 
 - **Task:** P1 product API completeness for `/api/v1/token` + `/api/v1/policy/age`; wire token page.

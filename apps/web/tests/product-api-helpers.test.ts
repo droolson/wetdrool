@@ -12,6 +12,11 @@ import {
   type FameEntry,
 } from '../lib/hall-of-fame';
 import { LIVE_ROOMS, filterLiveRooms } from '../lib/live-catalog';
+import {
+  listCreatorDirectory,
+  normalizeCreatorHandle,
+  resolveCreatorProfile,
+} from '../lib/creator-economy';
 
 describe('product api helpers', () => {
   it('clamps limit', () => {
@@ -74,5 +79,17 @@ describe('product api helpers', () => {
     expect(sfw.every((r) => !r.nsfw)).toBe(true);
     const all = filterLiveRooms(LIVE_ROOMS, { nsfwAllowed: true });
     expect(all.length).toBe(LIVE_ROOMS.length);
+  });
+
+  it('lists synthetic creator directory and resolves handles', () => {
+    const page = listCreatorDirectory({ limit: 10, offset: 0 });
+    expect(page.synthetic).toBe(true);
+    expect(page.total).toBeGreaterThan(0);
+    expect(page.items.some((c) => c.source === 'founder')).toBe(true);
+    expect(normalizeCreatorHandle('@NeonAngel')).toBe('neonangel');
+    expect(normalizeCreatorHandle('')).toBe(null);
+    const founder = resolveCreatorProfile('kingofqueens6ix');
+    expect(founder?.handle).toBe('kingofqueens6ix');
+    expect(resolveCreatorProfile('../evil')).toBe(null);
   });
 });

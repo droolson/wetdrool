@@ -5,7 +5,7 @@ const DOCK_LINKS = [
   { glyph: '▶', href: '/feeds', label: 'Shorts' },
   { glyph: '+', href: '/compose', label: 'Post', primary: true },
   { glyph: '◉', href: '/live', label: 'Live' },
-  { glyph: '◆', href: '/creator/kingofqueens6ix', label: 'Creators' },
+  { glyph: '◆', href: '/creators', label: 'Creators' },
 ] as const;
 
 export function MobileDock() {

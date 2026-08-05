@@ -154,6 +154,33 @@ export function fetchCreator(
   return getJson<CreatorApiResponse>(`/api/v1/creators/${encodeURIComponent(handle)}`);
 }
 
+export interface CreatorsDirectoryApiResponse {
+  readonly ok: true;
+  readonly creators: readonly {
+    readonly handle: string;
+    readonly displayName: string;
+    readonly tags: readonly string[];
+    readonly source: string;
+    readonly profilePath: string;
+  }[];
+  readonly total?: number;
+  readonly count?: number;
+  readonly hasMore?: boolean;
+  readonly synthetic?: boolean;
+  readonly note?: string;
+}
+
+export function fetchCreators(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<CreatorsDirectoryApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<CreatorsDirectoryApiResponse>(`/api/v1/creators${suffix}`);
+}
+
 export function fetchToken(): Promise<ProductClientResult<TokenApiResponse>> {
   return getJson<TokenApiResponse>('/api/v1/token');
 }

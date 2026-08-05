@@ -9,7 +9,7 @@ const PRIMARY_LINKS = [
   { href: '/feeds', label: 'Shorts' },
   { href: '/live', label: 'Live' },
   { href: '/home', label: 'Social' },
-  { href: '/creator/kingofqueens6ix', label: 'Creators' },
+  { href: '/creators', label: 'Creators' },
   { href: '/messages', label: 'Private' },
   { href: '/rooms/lobby', label: 'E2EE' },
   { href: '/market', label: 'Market' },
