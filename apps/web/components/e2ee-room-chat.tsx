@@ -579,7 +579,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           </h1>
         </div>
         <div className="e2ee-room__header-actions">
-          <StatusBadge tone={storeDurable ? 'success' : 'pending'}>
+          <StatusBadge tone={storeDurable ? 'verified' : 'pending'}>
             {storeKind === 'file-local' ? 'file store' : 'memory store'}
           </StatusBadge>
           <StatusBadge tone="neutral">no account</StatusBadge>
