@@ -12,6 +12,7 @@ const SETTINGS_LINKS = [
   { href: '/settings/wallet', label: 'Wallet' },
   { href: '/settings/storage', label: 'Storage' },
   { href: '/settings/providers', label: 'Providers' },
+  { href: '/status', label: 'System status' },
   { href: '/settings/export', label: 'Export' },
   { href: '/settings/migration', label: 'Migration' },
   { href: '/settings/delete', label: 'Delete' },

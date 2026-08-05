@@ -4,6 +4,7 @@ import { ProviderCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { MeshStatusPanel } from '@/components/mesh-status-panel';
+import { ProductStatusPanel } from '@/components/product-status-panel';
 import { getProviderSummaries, type ProviderSummary } from '@/lib/provider-config';
 import { buildRevenueReadiness } from '@/lib/revenue-readiness';
 
@@ -39,6 +40,19 @@ export default function StatusPage() {
           revenue or a <code>$DROOL</code> mint.
         </p>
       </AppPageHeader>
+
+      <section className="status-summary" aria-labelledby="product-readiness-panel-title">
+        <div>
+          <p className="section-kicker">Product readiness</p>
+          <h2 id="product-readiness-panel-title">API honesty, not uptime</h2>
+          <p className="field-help">
+            Client strip over <code>/api/v1/status</code> and <code>/api/v1/health</code> —
+            surfaces, store multi-replica flags, auth configuration, discovery personalization,
+            and revenue readiness. Never invents operational uptime.
+          </p>
+          <ProductStatusPanel />
+        </div>
+      </section>
 
       <section className="status-summary" aria-labelledby="mesh-product-readiness-title">
         <div>

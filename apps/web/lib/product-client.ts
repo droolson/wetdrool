@@ -374,6 +374,47 @@ export function fetchProductStatus(): Promise<ProductClientResult<ProductStatusA
   return getJson<ProductStatusApiResponse>('/api/v1/status');
 }
 
+export interface EventsApiResponse {
+  readonly ok: true;
+  readonly events: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly summary: string;
+    readonly startsAt: string;
+    readonly endsAt: string;
+    readonly mode: string;
+    readonly tags: readonly string[];
+    readonly attendanceClaimed: false;
+    readonly ticketsLive: false;
+    readonly synthetic: true;
+    readonly href: string;
+  }[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly hasMore?: boolean;
+  readonly syntheticOnly?: true;
+  readonly globalCalendar?: false;
+  readonly attendanceClaimed?: false;
+  readonly ticketsLive?: false;
+  readonly note?: string;
+}
+
+export function fetchEvents(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<EventsApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
+}
+
+/** Alias for fetchProductStatus — product readiness client panel. */
+export function fetchStatus(): Promise<ProductClientResult<ProductStatusApiResponse>> {
+  return fetchProductStatus();
+}
+
 export function fetchFameBoard(options?: {
   readonly limit?: number;
   readonly offset?: number;
@@ -410,6 +451,9 @@ export interface AuthStatusApiResponse {
 export function fetchAuthStatus(): Promise<ProductClientResult<AuthStatusApiResponse>> {
   return getJson<AuthStatusApiResponse>('/api/v1/auth/status');
 }
+
+/** Catalog sort — matches server parseMarketSortMode (default newest). */
+export type MarketSortMode = 'newest' | 'price_asc' | 'price_desc';
 
 export interface MarketListingDto {
   readonly id: string;
@@ -453,9 +497,13 @@ export interface MarketApiResponse {
   readonly q?: string | null;
   /** Active x402 network filter when set (solana:devnet | solana:mainnet). */
   readonly network?: string | null;
+  /** Catalog order: newest (default) | price_asc | price_desc. */
+  readonly sort?: MarketSortMode;
+  readonly sortLabel?: string;
   readonly filter?: {
     readonly q: string | null;
     readonly network?: string | null;
+    readonly sort?: MarketSortMode;
     readonly applied: boolean;
     readonly matched?: number;
     readonly note?: string;
@@ -908,5 +956,58 @@ export interface MeshStatusApiResponse {
 
 export function fetchMeshStatus(): Promise<ProductClientResult<MeshStatusApiResponse>> {
   return getJson<MeshStatusApiResponse>('/api/v1/mesh');
+}
+
+/** Synthetic product event row — never invent client-side attendance. */
+export interface ProductEventDto {
+  readonly id: string;
+  readonly title: string;
+  readonly summary?: string;
+  readonly startsAt?: string;
+  readonly endsAt?: string;
+  readonly timezone?: string;
+  readonly href?: string;
+  readonly locationLabel?: string;
+  readonly source: 'synthetic-catalog' | string;
+  readonly synthetic: true | boolean;
+  readonly attendanceClaimed?: false | boolean;
+  readonly liveAttendance?: null;
+  readonly rsvpOpen?: false | boolean;
+}
+
+/**
+ * GET /api/v1/events?limit=&offset=
+ * Honest events calendar: synthetic fixtures only; global calendar unconfigured.
+ * Never invents live attendance.
+ */
+export interface EventsApiResponse {
+  readonly ok: true;
+  readonly product?: 'wetdrool';
+  readonly path?: string;
+  readonly items: readonly ProductEventDto[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly offset?: number;
+  readonly hasMore?: boolean;
+  readonly configured: false | boolean;
+  readonly syntheticOnly: true | boolean;
+  readonly globalCalendar?: false | boolean;
+  readonly inventsLiveAttendance?: false | boolean;
+  readonly attendanceProjection?: false | boolean;
+  readonly rsvpLive?: false | boolean;
+  readonly media?: string;
+  readonly note?: string;
+}
+
+export function fetchEvents(options?: {
+  readonly limit?: number;
+  readonly offset?: number;
+}): Promise<ProductClientResult<EventsApiResponse>> {
+  const q = new URLSearchParams();
+  if (options?.limit !== undefined) q.set('limit', String(options.limit));
+  if (options?.offset !== undefined) q.set('offset', String(options.offset));
+  const suffix = q.size > 0 ? `?${q}` : '';
+  return getJson<EventsApiResponse>(`/api/v1/events${suffix}`);
 }
 
