@@ -177,11 +177,53 @@ export function rankBoardWithSeed(
       source: 'local',
     });
   }
-  return [...entries].sort((a, b) => b.lifetimePoints - a.lifetimePoints);
+  return [...entries].sort(
+    (a, b) => b.lifetimePoints - a.lifetimePoints || a.handle.localeCompare(b.handle),
+  );
 }
 
 export function rankBoard(local: LocalFameProfile | null, todayUtc: string): readonly FameEntry[] {
   return rankBoardWithSeed(FAME_SEED, local, todayUtc);
+}
+
+export interface FameBoardRow extends FameEntry {
+  readonly rank: number;
+  readonly tier: string;
+}
+
+export interface FameSeedPage {
+  readonly board: readonly FameBoardRow[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+  readonly seedOnly: true;
+  readonly globalLedger: false;
+}
+
+/** Server-side seed board page (no local grinder — client merges that). */
+export function pageFameSeed(
+  options: { readonly limit?: number; readonly offset?: number } = {},
+): FameSeedPage {
+  const limit = Math.min(Math.max(1, options.limit ?? 24), 48);
+  const offset = Math.max(0, options.offset ?? 0);
+  const ranked = [...FAME_SEED]
+    .sort((a, b) => b.lifetimePoints - a.lifetimePoints || a.handle.localeCompare(b.handle))
+    .map((e, i) => ({
+      ...e,
+      rank: i + 1,
+      tier: fameTier(e.lifetimePoints),
+    }));
+  const slice = ranked.slice(offset, offset + limit);
+  return {
+    board: slice,
+    total: ranked.length,
+    limit,
+    offset,
+    hasMore: offset + slice.length < ranked.length,
+    seedOnly: true,
+    globalLedger: false,
+  };
 }
 
 export function fameTier(lifetimePoints: number): string {
