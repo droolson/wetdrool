@@ -39,6 +39,23 @@ export const PRODUCT_API_SURFACES = [
 
 export type ProductApiSurfaceId = (typeof PRODUCT_API_SURFACES)[number]['id'];
 
+/**
+ * Stable deep-links for health/status reports (mesh + search included).
+ * Paths only — never invent live readiness from presence of a link.
+ */
+export const PRODUCT_API_LINKS = {
+  authStatus: '/api/v1/auth/status',
+  readiness: '/api/v1/status',
+  health: '/api/v1/health',
+  creatorsDirectory: '/api/v1/creators',
+  agePolicy: '/api/v1/policy/age',
+  token: '/api/v1/token',
+  e2ee: '/api/v1/e2ee',
+  mesh: '/api/v1/mesh',
+  notifications: '/api/v1/notifications',
+  search: '/api/v1/search',
+} as const;
+
 /** Explicit honesty flags shared by health/status (no invented mint or earnings). */
 export const PRODUCT_HONEST_FLAGS = {
   droolMint: 'does-not-exist' as const,
@@ -238,15 +255,15 @@ export function buildProductHealthReport(
       methods: s.methods,
     })),
     links: {
-      authStatus: '/api/v1/auth/status' as const,
-      readiness: '/api/v1/status' as const,
-      creatorsDirectory: '/api/v1/creators' as const,
-      agePolicy: '/api/v1/policy/age' as const,
-      token: '/api/v1/token' as const,
-      e2ee: '/api/v1/e2ee' as const,
-      mesh: '/api/v1/mesh' as const,
-      notifications: '/api/v1/notifications' as const,
-      search: '/api/v1/search' as const,
+      authStatus: PRODUCT_API_LINKS.authStatus,
+      readiness: PRODUCT_API_LINKS.readiness,
+      creatorsDirectory: PRODUCT_API_LINKS.creatorsDirectory,
+      agePolicy: PRODUCT_API_LINKS.agePolicy,
+      token: PRODUCT_API_LINKS.token,
+      e2ee: PRODUCT_API_LINKS.e2ee,
+      mesh: PRODUCT_API_LINKS.mesh,
+      notifications: PRODUCT_API_LINKS.notifications,
+      search: PRODUCT_API_LINKS.search,
     },
     media: 'synthetic-fixtures' as const,
     mesh: false as const,
@@ -271,7 +288,7 @@ export function buildProductHealthReport(
       configured: auth.ok,
       loopback: auth.ok ? auth.config.loopback : false,
       source: auth.ok ? auth.config.source : null,
-      probePath: '/api/v1/auth/status' as const,
+      probePath: PRODUCT_API_LINKS.authStatus,
       protocolIdentityEstablished: false as const,
     },
     marketplace: {
@@ -306,6 +323,26 @@ export function buildProductStatusReport(
 
   return {
     ...revenue,
+    product: 'wetdrool' as const,
+    service: '@wetdrool/web' as const,
+    surfaces: listProductApiSurfaceIds(),
+    surfaceCatalog: PRODUCT_API_SURFACES.map((s) => ({
+      id: s.id,
+      path: s.path,
+      methods: s.methods,
+    })),
+    links: {
+      health: PRODUCT_API_LINKS.health,
+      authStatus: PRODUCT_API_LINKS.authStatus,
+      readiness: PRODUCT_API_LINKS.readiness,
+      mesh: PRODUCT_API_LINKS.mesh,
+      search: PRODUCT_API_LINKS.search,
+      notifications: PRODUCT_API_LINKS.notifications,
+      e2ee: PRODUCT_API_LINKS.e2ee,
+      creatorsDirectory: PRODUCT_API_LINKS.creatorsDirectory,
+      agePolicy: PRODUCT_API_LINKS.agePolicy,
+      token: PRODUCT_API_LINKS.token,
+    },
     discovery,
     stores: {
       marketplace: {
@@ -329,7 +366,7 @@ export function buildProductStatusReport(
       loopback: auth.ok ? auth.config.loopback : false,
       source: auth.ok ? auth.config.source : null,
       origin: auth.ok ? auth.config.origin : null,
-      probePath: '/api/v1/auth/status' as const,
+      probePath: PRODUCT_API_LINKS.authStatus,
       protocolIdentityEstablished: false as const,
     },
     honest: {

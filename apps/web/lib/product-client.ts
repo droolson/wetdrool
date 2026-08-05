@@ -143,10 +143,14 @@ export interface HealthApiResponse {
   readonly links?: {
     readonly authStatus?: string;
     readonly readiness?: string;
+    readonly health?: string;
     readonly creatorsDirectory?: string;
     readonly agePolicy?: string;
     readonly token?: string;
     readonly e2ee?: string;
+    readonly mesh?: string;
+    readonly notifications?: string;
+    readonly search?: string;
   };
   /** Discovery provider honesty (catalog mode + feed personalization). */
   readonly discovery?: {
@@ -320,6 +324,56 @@ export function fetchHealth(): Promise<ProductClientResult<HealthApiResponse>> {
   return getJson<HealthApiResponse>('/api/v1/health');
 }
 
+/**
+ * GET /api/v1/status — revenue readiness + store/auth honesty.
+ * Surfaces include mesh + search links; multiReplicaSafe stays fail-closed.
+ */
+export interface ProductStatusApiResponse {
+  readonly ok: true;
+  readonly product?: 'wetdrool';
+  readonly service?: string;
+  readonly surfaces?: readonly string[];
+  readonly surfaceCatalog?: readonly {
+    readonly id: string;
+    readonly path: string;
+    readonly methods: readonly string[];
+  }[];
+  readonly links?: HealthApiResponse['links'];
+  readonly stores?: {
+    readonly marketplace: {
+      readonly kind: string;
+      readonly gate: string;
+      readonly durableAcrossRestart: boolean;
+      readonly multiReplicaSafe: false;
+      readonly listings?: number;
+    };
+    readonly rooms: {
+      readonly kind: string;
+      readonly durableAcrossRestart: boolean;
+      readonly multiReplicaSafe: boolean;
+      readonly maxMessagesPerRoom?: number;
+    };
+  };
+  readonly auth?: {
+    readonly configured: boolean;
+    readonly loopback: boolean;
+    readonly source: string | null;
+    readonly origin?: string | null;
+    readonly probePath: string;
+    readonly protocolIdentityEstablished: false;
+  };
+  readonly revenueReady?: boolean;
+  readonly earningClaimed?: false;
+  readonly discovery?: HealthApiResponse['discovery'];
+  readonly honest?: HealthApiResponse['honest'] & {
+    readonly founderMediaPath?: string | null | boolean;
+  };
+}
+
+export function fetchProductStatus(): Promise<ProductClientResult<ProductStatusApiResponse>> {
+  return getJson<ProductStatusApiResponse>('/api/v1/status');
+}
+
 export function fetchFameBoard(options?: {
   readonly limit?: number;
   readonly offset?: number;
@@ -408,14 +462,15 @@ export interface MarketApiResponse {
   };
   readonly store?: {
     readonly kind: 'memory-ephemeral' | 'file-local';
-    readonly durableAcrossRestart?: boolean;
-    readonly multiReplicaSafe?: boolean;
+    readonly durableAcrossRestart: boolean;
+    /** Always false — memory/file market stores are single-node only. */
+    readonly multiReplicaSafe: false;
     /** Always false until durable multi-replica proof exists. */
-    readonly revenueReady?: false;
-    readonly gate?: 'env-stable' | 'ephemeral';
+    readonly revenueReady: false;
+    readonly gate: 'env-stable' | 'ephemeral';
     /** Short UI badge label (includes replica-unsafe). */
-    readonly label?: string;
-    readonly note?: string;
+    readonly label: string;
+    readonly note: string;
   };
   readonly paymentVerify?: {
     readonly rpcConfigured: boolean;

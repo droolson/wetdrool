@@ -11,6 +11,7 @@ import {
   methodNotAllowed,
   parseLimit,
   parseOffset,
+  PRODUCT_API_LINKS,
   PRODUCT_API_SURFACES,
   PRODUCT_HONEST_FLAGS,
   readProductApiErrorMessage,
@@ -166,7 +167,41 @@ describe('product api helpers', () => {
 
     const health = buildProductHealthReport({});
     expect(health.surfaces).toContain('mesh');
-    expect(health.links.mesh).toBe('/api/v1/mesh');
+    expect(health.links.mesh).toBe(PRODUCT_API_LINKS.mesh);
+    expect(health.links.search).toBe(PRODUCT_API_LINKS.search);
+
+    const status = buildProductStatusReport({});
+    expect(status.surfaces).toContain('mesh');
+    expect(status.surfaces).toContain('search');
+    expect(status.links.mesh).toBe(PRODUCT_API_LINKS.mesh);
+    expect(status.links.search).toBe(PRODUCT_API_LINKS.search);
+    expect(status.stores.marketplace.multiReplicaSafe).toBe(false);
+    expect(status.stores.rooms.multiReplicaSafe).toBe(false);
+  });
+
+  it('search surface is cataloged and linked from health/status without claiming a global index', () => {
+    const ids = listProductApiSurfaceIds();
+    expect(ids).toContain('search');
+    const searchSurface = PRODUCT_API_SURFACES.find((s) => s.id === 'search');
+    expect(searchSurface?.path).toBe('/api/v1/search');
+    expect(searchSurface?.methods).toEqual(['GET']);
+    expect(PRODUCT_API_LINKS.search).toBe('/api/v1/search');
+
+    const health = buildProductHealthReport({});
+    expect(health.surfaces).toContain('search');
+    expect(health.links.search).toBe('/api/v1/search');
+    expect(health.surfaceCatalog.some((s) => s.id === 'search' && s.path === '/api/v1/search')).toBe(
+      true,
+    );
+
+    const status = buildProductStatusReport({});
+    expect(status.surfaces).toContain('search');
+    expect(status.links.search).toBe('/api/v1/search');
+    expect(status.surfaceCatalog.some((s) => s.id === 'mesh')).toBe(true);
+    expect(status.surfaceCatalog.some((s) => s.id === 'search')).toBe(true);
+    // Store honesty: never multi-replica safe for process/file-local product stores.
+    expect(status.stores.marketplace.multiReplicaSafe).toBe(false);
+    expect(status.stores.rooms.multiReplicaSafe).toBe(false);
   });
 
   it('honest flags never invent $DROOL mint or earnings', () => {
@@ -194,6 +229,10 @@ describe('product api helpers', () => {
     expect(body.stores.rooms.multiReplicaSafe).toBe(false);
     expect(body.auth.protocolIdentityEstablished).toBe(false);
     expect(body.auth.probePath).toBe('/api/v1/auth/status');
+    expect(body.links.mesh).toBe('/api/v1/mesh');
+    expect(body.links.search).toBe('/api/v1/search');
+    expect(body.surfaces).toContain('mesh');
+    expect(body.surfaces).toContain('search');
     expect(body.surfaceCatalog.some((s) => s.id === 'ai/chat' && s.methods.includes('POST'))).toBe(
       true,
     );
@@ -212,6 +251,7 @@ describe('product api helpers', () => {
     expect(body.revenueReady).toBe(false);
     expect(body.checks.droolMint).toBe('does-not-exist');
     expect(body.stores.marketplace.multiReplicaSafe).toBe(false);
+    expect(body.stores.rooms.multiReplicaSafe).toBe(false);
     expect(typeof body.stores.marketplace.listings).toBe('number');
     expect(body.stores.rooms.kind.length).toBeGreaterThan(0);
     expect(body.auth.protocolIdentityEstablished).toBe(false);
@@ -222,6 +262,11 @@ describe('product api helpers', () => {
     expect(body.discovery.shorts.catalogMode).toBe('local-synthetic');
     expect(body.discovery.feedService.configured).toBe(false);
     expect(body.discovery.feedService.personalizationActive).toBe(false);
+    expect(body.surfaces).toContain('mesh');
+    expect(body.surfaces).toContain('search');
+    expect(body.links.mesh).toBe('/api/v1/mesh');
+    expect(body.links.search).toBe('/api/v1/search');
+    expect(body.links.health).toBe('/api/v1/health');
   });
 
   it('feed personalization is unconfigured without URL and never active today', () => {
