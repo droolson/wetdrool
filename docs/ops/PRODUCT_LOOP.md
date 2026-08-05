@@ -30,6 +30,14 @@
 
 ## Sprint log
 
+### 2026-08-05T17:56Z — feeds & discovery ranking + synthetic labels
+
+- **Task:** P5 shorts/hub discovery ranking, category filters, honest synthetic labels.
+- **BE:** `lib/short-feed.ts` (`rankShortsPage`, category/offset, weights, syntheticLabel); `api/v1/shorts` category/pagination/ranking meta; `fetchShorts` options.
+- **FE:** `short-feed` category chips + error/retry + content-warning labels; `hub-catalog` wired to API with mode/category.
+- **Verify:** vitest short-feed + product-api-helpers → 14 passed.
+- **Next:** P6 auth/passkey surfaces, or hub CSS for synth badges if needed.
+
 ### 2026-08-05T17:26Z — E2EE rooms API pagination + UI polish
 
 - **Task:** P4 rooms message API + anon gate / feed accessibility.
