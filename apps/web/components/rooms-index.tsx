@@ -173,10 +173,15 @@ export function RoomsIndexClient() {
       : store?.kind === 'memory-ephemeral'
         ? 'memory · ephemeral · not multi-replica'
         : 'store unknown');
+  const sealedTotal = rooms.reduce((sum, r) => sum + (r.messageCount || 0), 0);
+  const roomCount = rooms.length;
 
   return (
     <div className="rooms-index">
       <div className="rooms-index__meta" aria-live="polite">
+        <StatusBadge tone="neutral">
+          {roomCount} room{roomCount === 1 ? '' : 's'} · {sealedTotal} sealed
+        </StatusBadge>
         <StatusBadge tone={durable ? 'verified' : 'pending'}>
           {durable ? 'durable (single node)' : 'ephemeral'}
         </StatusBadge>

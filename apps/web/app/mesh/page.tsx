@@ -24,24 +24,22 @@ export default function MeshPage() {
             anyproto/any-sync
           </a>{' '}
           (Anytype stack). Contracts live in <code>@wetdrool/mesh</code>. Cloudflare + Vercel only
-          host the HTTP shell — not peer state.
+          host the HTTP shell — not peer state. Live product honesty is loaded from{' '}
+          <code>/api/v1/mesh</code> below — never invented in the client.
         </p>
       </AppPageHeader>
 
       <MeshStatusPanel />
 
       <ul>
-        <li>Local-first E2EE spaces</li>
+        <li>Local-first E2EE spaces (capability claim, not a deployed mesh)</li>
         <li>Fail-closed unconfigured transport</li>
         <li>Solana / DroolNet = identity + settlement, not private media</li>
         <li>18+ and CSAM ban still apply to mesh objects</li>
       </ul>
       <p>
-        <Link href="/hub">Hub</Link> · <Link href="/status">System status</Link> ·{' '}
-        <Link href="/messages">Private E2EE status</Link> · <Link href="/docs">Docs</Link> ·{' '}
-        <Link href="/api/v1/mesh">
-          <code>/api/v1/mesh</code>
-        </Link>
+        <Link href="/hub">Hub</Link> · <Link href="/messages">Private E2EE status</Link> ·{' '}
+        <Link href="/status">System status</Link> · <Link href="/docs">Docs</Link>
       </p>
     </div>
   );

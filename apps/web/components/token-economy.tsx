@@ -71,6 +71,8 @@ export function TokenEconomy() {
       <AppPageHeader
         actions={
           <>
+            <StatusBadge tone="degraded">mintExists: false</StatusBadge>
+            <StatusBadge tone="pending">earningClaimed: false</StatusBadge>
             <StatusBadge tone={token.status === 'live' ? 'verified' : 'degraded'}>
               {token.status}
             </StatusBadge>
@@ -107,16 +109,30 @@ export function TokenEconomy() {
         </p>
       ) : null}
       {note ? <p className="field-help">{note}</p> : null}
-      {honest ? (
-        <ul className="field-help" aria-label="Honest economy flags">
-          <li>mintExists: {String(honest.mintExists)}</li>
-          <li>droolMintInvented: {String(honest.droolMintInvented)}</li>
-          <li>earningClaimed: {String(honest.earningClaimed)}</li>
-          <li>tradeExecutable: {String(honest.tradeExecutable)}</li>
-          <li>pointsAreNotToken: {String(honest.pointsAreNotToken)}</li>
-          <li>solIsNotDrool: {String(honest.solIsNotDrool)}</li>
-        </ul>
-      ) : null}
+      <div className="rooms-index__meta" aria-label="Honest economy flags" role="status">
+        <StatusBadge tone="degraded">
+          mintExists: {String(honest?.mintExists ?? false)}
+        </StatusBadge>
+        <StatusBadge tone="pending">
+          earningClaimed: {String(honest?.earningClaimed ?? false)}
+        </StatusBadge>
+        <StatusBadge tone="pending">
+          droolMintInvented: {String(honest?.droolMintInvented ?? false)}
+        </StatusBadge>
+        <StatusBadge tone="neutral">
+          tradeExecutable: {String(honest?.tradeExecutable ?? false)}
+        </StatusBadge>
+        <StatusBadge tone="verified">
+          pointsAreNotToken: {String(honest?.pointsAreNotToken ?? true)}
+        </StatusBadge>
+        <StatusBadge tone="verified">
+          solIsNotDrool: {String(honest?.solIsNotDrool ?? true)}
+        </StatusBadge>
+      </div>
+      <p className="field-help">
+        <strong>$DROOL does not exist.</strong> SOL/lamports are never labeled as product currency.
+        Mint stays empty until a verified mint address is configured — this UI will not invent one.
+      </p>
 
       <section className="token-grid">
         <article className="token-card">
