@@ -30,6 +30,12 @@
 
 ## Sprint log
 
+### 2026-08-05T22:09Z — 15m product swarm (A–F)
+
+- **Task:** Events API+UI; status readiness panel; rooms chat a11y; shorts offline banner; market sort.
+- **Verify:** vitest 73 passed (scoped).
+- **Next:** multi-replica stores; full e2e smoke run.
+
 ### 2026-08-05T21:53Z — 15m product swarm (A–F)
 
 - **Task:** Mesh panel API wire; token mint honesty badges; rooms totals; health surfaces; smoke routes for product pages.

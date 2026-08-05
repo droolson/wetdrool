@@ -26,6 +26,22 @@
 
 ## Swarm log
 
+### 2026-08-05T22:09Z — 15m scheduled swarm (A–F)
+
+| Slot | Focus | Result / tip |
+|------|--------|----------------|
+| A | Honest product events API | `031a0c7` + `/api/v1/events` |
+| B | Shorts hub offline fallback banner | `2a60444` |
+| C | Market listing sort newest/price | sort helpers in marketplace-store |
+| D | E2EE room chat live region a11y | `3230044` |
+| E | Status page product readiness panel | `d3cd661` |
+| F | Events page honest product UI | wired in `031a0c7` |
+
+- **Verify:** vitest product-events, product-api-helpers, marketplace-store, room-store, short-feed, e2ee-status → **73 passed**.
+- **Pushed:** events API/page + prior specialist commits.
+- **Note:** spawn wait IDs still flaky; hof scoops intermediate stages.
+- **Next:** multi-replica market/rooms; run expanded Playwright smoke; optional companions/messages product API.
+
 ### 2026-08-05T21:53Z — 15m scheduled swarm (A–F)
 
 | Slot | Focus | Result / tip |
