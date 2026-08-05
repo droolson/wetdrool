@@ -12,7 +12,6 @@ import { StatusBadge } from '@wetdrool/ui';
 
 import { AgeGatePanel } from '@/components/age-gate-panel';
 import { sealBytes, sealText, openText, openEnvelope } from '@/lib/e2ee-seal';
-import { marketSortLabel } from '@/lib/marketplace-store';
 import {
   describePaymentFailureReason,
   encodePaymentHeader,
@@ -38,6 +37,19 @@ const MARKET_SORTS: readonly { id: MarketSortMode; label: string }[] = [
   { id: 'price_asc', label: 'Price ↑' },
   { id: 'price_desc', label: 'Price ↓' },
 ];
+
+/** Matches server marketSortLabel without pulling node:fs store into the client. */
+function activeMarketSortLabel(sort: MarketSortMode): string {
+  switch (sort) {
+    case 'price_asc':
+      return 'Price ↑ (lamports)';
+    case 'price_desc':
+      return 'Price ↓ (lamports)';
+    case 'newest':
+    default:
+      return 'Newest';
+  }
+}
 
 interface StoreMeta {
   readonly kind: 'memory-ephemeral' | 'file-local';
@@ -811,7 +823,7 @@ export function Marketplace() {
               Listings {total > 0 ? `(${shown} of ${total})` : ''}
             </h2>
             <div className="market__list-head-meta" role="group" aria-label="Catalog sort and store honesty">
-              <StatusBadge tone="pending">{marketSortLabel(activeSort)}</StatusBadge>
+              <StatusBadge tone="pending">{activeMarketSortLabel(activeSort)}</StatusBadge>
               <StatusBadge tone="degraded">multiReplicaSafe: false</StatusBadge>
               <button type="button" onClick={() => void refresh()} disabled={loading || busy}>
                 Refresh
@@ -914,7 +926,7 @@ export function Marketplace() {
             </div>
             <p className="field-help" id="market-sort-active" role="status">
               Active sort:{' '}
-              <StatusBadge tone="pending">{marketSortLabel(activeSort)}</StatusBadge>
+              <StatusBadge tone="pending">{activeMarketSortLabel(activeSort)}</StatusBadge>
               {' · '}
               <StatusBadge tone="degraded">multiReplicaSafe: false</StatusBadge>
             </p>
