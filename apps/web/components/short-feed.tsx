@@ -66,6 +66,8 @@ export function ShortFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiNote, setApiNote] = useState<string | null>(null);
+  const [feedOrigin, setFeedOrigin] = useState<string | null>(null);
+  const [feedConfigured, setFeedConfigured] = useState(false);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -122,6 +124,14 @@ export function ShortFeed() {
           setHasMore(Boolean(result.data.hasMore));
           setOffset(nextOffset);
           setApiNote(result.data.note ?? result.data.ranking?.note ?? null);
+          setFeedOrigin(
+            result.data.personalization?.origin ?? result.data.feedService?.origin ?? null,
+          );
+          setFeedConfigured(
+            Boolean(
+              result.data.personalization?.configured ?? result.data.feedService?.configured,
+            ),
+          );
           setEmptyMessage(
             result.data.empty
               ? (result.data.emptyMessage ?? emptyDiscoveryMessage(mode, category))
@@ -312,6 +322,18 @@ export function ShortFeed() {
         {hasMore ? ' · more available' : ''}
       </p>
       {apiNote ? <p className="field-help">{apiNote}</p> : null}
+      <p className="field-help" role="status" aria-label="Feed-service personalization">
+        Feed-service:{' '}
+        {feedConfigured && feedOrigin ? (
+          <>
+            origin <code>{feedOrigin}</code>
+          </>
+        ) : (
+          'unconfigured'
+        )}
+        {' · '}
+        personalizationActive: false · public catalog, not for-you
+      </p>
       {error ? (
         <p className="field-help" role="alert">
           {error}{' '}

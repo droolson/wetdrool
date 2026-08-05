@@ -107,13 +107,25 @@ describe('short feed ranking', () => {
     expect(page.licensedCount).toBe(0);
   });
 
-  it('personalization stays explicitly unconfigured', () => {
-    const status = personalizationStatus();
+  it('personalization stays explicitly unconfigured without feed URL', () => {
+    const status = personalizationStatus({});
     expect(status.configured).toBe(false);
     expect(status.mode).toBe('unconfigured');
+    expect(status.personalizationActive).toBe(false);
+    expect(status.origin).toBeNull();
     expect(status.note).toMatch(/unconfigured/i);
     expect(status.note).toMatch(/for-you/i);
     expect(personalizationUnconfiguredNote()).toBe(status.note);
+  });
+
+  it('feed URL configures origin but never activates personalization', () => {
+    const status = personalizationStatus({
+      NEXT_PUBLIC_FEED_SERVICE_URL: 'https://feed.wetdrool.com/v1',
+    });
+    expect(status.configured).toBe(true);
+    expect(status.origin).toBe('https://feed.wetdrool.com');
+    expect(status.personalizationActive).toBe(false);
+    expect(status.mode).toBe('configured-unwired');
   });
 
   it('sort modes: trending by score, recent by recency', () => {

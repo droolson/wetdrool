@@ -397,8 +397,11 @@ export interface MarketApiResponse {
   readonly hasMore?: boolean;
   readonly nextOffset?: number | null;
   readonly q?: string | null;
+  /** Active x402 network filter when set (solana:devnet | solana:mainnet). */
+  readonly network?: string | null;
   readonly filter?: {
     readonly q: string | null;
+    readonly network?: string | null;
     readonly applied: boolean;
     readonly matched?: number;
     readonly note?: string;
@@ -426,11 +429,14 @@ export function fetchMarket(options?: {
   readonly limit?: number;
   readonly offset?: number;
   readonly q?: string | null;
+  /** Exact x402 network id or cluster alias (devnet / mainnet). */
+  readonly network?: string | null;
 }): Promise<ProductClientResult<MarketApiResponse>> {
   const q = new URLSearchParams();
   if (options?.limit !== undefined) q.set('limit', String(options.limit));
   if (options?.offset !== undefined) q.set('offset', String(options.offset));
   if (options?.q) q.set('q', options.q);
+  if (options?.network) q.set('network', options.network);
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<MarketApiResponse>(`/api/v1/market${suffix}`);
 }
@@ -755,3 +761,144 @@ export function fetchNotifications(options?: {
   const suffix = q.size > 0 ? `?${q}` : '';
   return getJson<NotificationsApiResponse>(`/api/v1/notifications${suffix}`);
 }
+
+/** GET /api/v1/mesh — honest mesh/relay readiness (never invents live peers). */
+export interface MeshStatusApiResponse {
+  readonly ok: true;
+  readonly product?: 'wetdrool';
+  readonly mesh?: {
+    readonly foundation?: string;
+    readonly productionMeshDeployed?: false;
+    readonly localFirst?: true;
+    readonly notes?: readonly string[];
+  };
+  readonly relay?: {
+    readonly configured?: boolean;
+    readonly displayEndpoints?: readonly string[];
+    readonly multiReplicaSafe?: false;
+    readonly liveMeshPeersClaimed?: false;
+    readonly livePeerCount?: null;
+    readonly note?: string;
+  };
+  readonly note?: string;
+}
+
+export function fetchMeshStatus(): Promise<ProductClientResult<MeshStatusApiResponse>> {
+  return getJson<MeshStatusApiResponse>('/api/v1/mesh');
+}
+
+/** GET /api/v1/search — synthetic fixture catalog only (not a global index). */
+export interface ProductSearchApiResponse {
+  readonly ok: true;
+  readonly q: string | null;
+  readonly results: readonly {
+    readonly id: string;
+    readonly kind: string;
+    readonly title: string;
+    readonly subtitle: string;
+    readonly href: string;
+    readonly source: 'synthetic-catalog';
+    readonly tags: readonly string[];
+  }[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly configured: false;
+  readonly globalIndex?: false;
+  readonly syntheticOnly?: true;
+  readonly note?: string;
+}
+
+export function fetchProductSearch(options?: {
+  readonly q?: string | null;
+  readonly limit?: number;
+}): Promise<ProductClientResult<ProductSearchApiResponse>> {
+  const params = new URLSearchParams();
+  if (options?.q?.trim()) params.set('q', options.q.trim().slice(0, 64));
+  if (options?.limit !== undefined) params.set('limit', String(options.limit));
+  const suffix = params.size > 0 ? `?${params}` : '';
+  return getJson<ProductSearchApiResponse>(`/api/v1/search${suffix}`);
+}
+
+export type ProductSearchHitDto = {
+  readonly id: string;
+  readonly kind: 'short' | 'creator' | 'live' | 'fame' | string;
+  readonly title: string;
+  readonly subtitle?: string;
+  readonly href: string;
+  readonly source: 'synthetic-catalog' | string;
+  readonly tags?: readonly string[];
+  readonly synthetic?: boolean;
+};
+
+/**
+ * GET /api/v1/search?q= — honest product search.
+ * configured is always false (no global index). Optional hits are synthetic-catalog only.
+ */
+export interface SearchApiResponse {
+  readonly ok: true;
+  readonly q: string | null;
+  readonly results: readonly ProductSearchHitDto[];
+  readonly count?: number;
+  readonly total?: number;
+  readonly limit?: number;
+  readonly configured: boolean;
+  readonly globalIndex?: false | boolean;
+  readonly syntheticOnly?: boolean;
+  readonly note?: string;
+}
+
+export function fetchSearch(options?: {
+  readonly q?: string | null;
+  readonly limit?: number;
+}): Promise<ProductClientResult<SearchApiResponse>> {
+  const params = new URLSearchParams();
+  const q = options?.q?.trim();
+  if (q) params.set('q', q);
+  if (options?.limit !== undefined) params.set('limit', String(options.limit));
+  const suffix = params.size > 0 ? `?${params}` : '';
+  return getJson<SearchApiResponse>(`/api/v1/search${suffix}`);
+}
+
+/**
+ * GET /api/v1/mesh — honest mesh/relay readiness (configuration only).
+ * Never invents live mesh peers; multiReplicaSafe is always false.
+ */
+export interface MeshStatusApiResponse {
+  readonly ok: true;
+  readonly product?: 'wetdrool';
+  readonly service?: string;
+  readonly path?: string;
+  readonly mesh: {
+    readonly foundation: string;
+    readonly productionMeshDeployed: false;
+    readonly localFirst?: boolean;
+    readonly e2eeSpaces?: boolean;
+    readonly transports?: readonly string[];
+    readonly notes?: readonly string[];
+  };
+  readonly relay: {
+    readonly configured: boolean;
+    readonly displayEndpoints: readonly string[];
+    readonly configuredCount?: number;
+    readonly invalidCount?: number;
+    readonly multiReplicaSafe: false;
+    readonly liveMeshPeersClaimed: false;
+    readonly livePeerCount: null;
+    readonly productionMeshDeployed?: false;
+    readonly note?: string;
+  };
+  readonly honest?: {
+    readonly configured: boolean;
+    readonly multiReplicaSafe: false;
+    readonly liveMeshPeersClaimed: false;
+    readonly livePeerCount: null;
+    readonly productionMeshDeployed: false;
+    readonly inventsLivePeers: false;
+  };
+  readonly note?: string;
+}
+
+export function fetchMeshStatus(): Promise<ProductClientResult<MeshStatusApiResponse>> {
+  return getJson<MeshStatusApiResponse>('/api/v1/mesh');
+}
+
