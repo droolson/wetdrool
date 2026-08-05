@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { ProviderCard, StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
 import { getProviderSummaries, type ProviderSummary } from '@/lib/provider-config';
+import { buildRevenueReadiness } from '@/lib/revenue-readiness';
 
 export const metadata: Metadata = {
   title: 'System status',
-  description: 'Configuration visibility without unverified uptime claims.',
+  description: 'Configuration visibility without unverified uptime or revenue claims.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +23,7 @@ const PROVIDER_PURPOSE: Readonly<Record<ProviderSummary['id'], string>> = {
 export default function StatusPage() {
   const providers = getProviderSummaries();
   const configured = providers.filter((provider) => provider.configuredCount > 0).length;
+  const revenue = buildRevenueReadiness();
 
   return (
     <div className="product-page page-shell">
@@ -31,9 +34,35 @@ export default function StatusPage() {
       >
         <p>
           This page reports which provider origins are present in deployment configuration. It does
-          not ping them, infer health from syntax, or publish an operational SLA.
+          not ping them, infer health from syntax, or publish an operational SLA. It never invents
+          revenue or a <code>$DROOL</code> mint.
         </p>
       </AppPageHeader>
+
+      <section className="status-summary" aria-labelledby="revenue-readiness-title">
+        <div>
+          <p className="section-kicker">Revenue readiness · fail-closed</p>
+          <h2 id="revenue-readiness-title">
+            {revenue.revenueReady ? 'Revenue rails ready' : 'Not revenue-ready'}
+          </h2>
+          <p>
+            Level <strong>{revenue.level}</strong> · network <strong>{revenue.network}</strong> ·
+            earning claimed: <strong>false</strong> · store{' '}
+            <strong>{revenue.checks.marketplaceStore}</strong>
+          </p>
+          <ul>
+            {revenue.blockers.slice(0, 4).map((b) => (
+              <li key={b.id}>
+                <strong>{b.severity}</strong>: {b.message}
+              </li>
+            ))}
+          </ul>
+          <p>
+            Machine JSON: <Link href="/api/v1/status">/api/v1/status</Link> · deploy runbook in{' '}
+            <code>docs/ops/DEPLOY_WEB.md</code>
+          </p>
+        </div>
+      </section>
 
       <section className="status-summary" aria-labelledby="status-summary-title">
         <div>

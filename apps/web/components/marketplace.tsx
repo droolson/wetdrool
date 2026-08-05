@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
+import { AgeGatePanel } from '@/components/age-gate-panel';
 import { sealBytes, sealText, openText, openEnvelope } from '@/lib/e2ee-seal';
 import {
   encodePaymentHeader,
@@ -25,10 +26,19 @@ interface PublicListing {
   readonly createdAt: string;
 }
 
+interface MarketMeta {
+  readonly paymentVerify?: {
+    readonly rpcConfigured: boolean;
+    readonly network: string;
+    readonly note?: string;
+  };
+}
+
 export function Marketplace() {
   const [listings, setListings] = useState<readonly PublicListing[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [paymentMeta, setPaymentMeta] = useState<MarketMeta['paymentVerify'] | null>(null);
 
   // sell form
   const [title, setTitle] = useState('');
@@ -50,8 +60,12 @@ export function Marketplace() {
 
   const refresh = useCallback(async () => {
     const res = await fetch('/api/v1/market', { cache: 'no-store' });
-    const body = (await res.json()) as { listings?: PublicListing[] };
+    const body = (await res.json()) as {
+      listings?: PublicListing[];
+      paymentVerify?: MarketMeta['paymentVerify'];
+    };
     setListings(body.listings ?? []);
+    setPaymentMeta(body.paymentVerify ?? null);
   }, []);
 
   useEffect(() => {
@@ -197,18 +211,42 @@ export function Marketplace() {
     }
   };
 
+  const rpcReady = paymentMeta?.rpcConfigured === true;
+
   return (
+    <AgeGatePanel
+      kicker="Marketplace · 18+"
+      title="E2EE market · adults only"
+      confirmLabel="I am 18+ · enter market"
+      help={
+        <p>
+          Paid adult drops use Solana x402 unlocks. No government ID. See{' '}
+          <Link href="/settings/privacy">privacy / age policy</Link>.
+        </p>
+      }
+    >
     <div className="market">
       <header className="market__header">
         <div>
           <p className="section-kicker">E2EE marketplace · x402 Solana</p>
           <h1>Sell sealed drops. Pay with SOL.</h1>
         </div>
-        <StatusBadge tone="pending">HTTP 402 · ciphertext</StatusBadge>
+        <StatusBadge tone={rpcReady ? 'verified' : 'pending'}>
+          {rpcReady ? 'RPC verify on' : 'HTTP 402 · RPC unset'}
+        </StatusBadge>
       </header>
       <p className="market__lede">
         List content sealed client-side (middle-out + AES). Buyers hit <strong>402 Payment Required</strong>,
         pay your Solana address, then unlock with the tx signature. Host never holds plaintext.
+        {!rpcReady ? (
+          <>
+            {' '}
+            <strong>Payment verification is fail-closed</strong> until{' '}
+            <code>WETDROOL_SOLANA_RPC_URL</code> / <code>SOLANA_RPC_URL</code> /{' '}
+            <code>NEXT_PUBLIC_SOLANA_RPC_URL</code> is set on the server — unpaid or unverified
+            signatures will not unlock.
+          </>
+        ) : null}
       </p>
 
       <section className="market__sell card-panel">
