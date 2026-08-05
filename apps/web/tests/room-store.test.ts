@@ -16,6 +16,7 @@ import {
   listRooms,
   newestActivityAt,
   buildRoomShareUrl,
+  exportRoomsIndexJson,
   formatNewMessagesAnnouncement,
   normalizeRoomId,
   resetRoomStoreCache,
@@ -200,6 +201,39 @@ describe('room-store', () => {
         { messageCount: Number.NaN },
       ]),
     ).toEqual({ roomCount: 3, sealedMessageCount: 2 });
+  });
+
+  it('exportRoomsIndexJson emits metadata only (no ciphertext)', () => {
+    const adversarial = [
+      { roomId: 'alpha', messageCount: 1, lastActivityAt: '2026-01-01T00:00:00.000Z' },
+      { roomId: 'beta', messageCount: 2, lastActivityAt: null },
+      {
+        roomId: 'gamma',
+        messageCount: 3,
+        lastActivityAt: '2026-02-01T00:00:00.000Z',
+        ciphertextBase64: 'LEAK',
+        ivBase64: 'LEAK',
+      },
+    ] as readonly RoomIndexEntry[];
+    const body = exportRoomsIndexJson(adversarial);
+    const parsed = JSON.parse(body) as unknown[];
+    expect(parsed).toEqual([
+      { roomId: 'alpha', messageCount: 1, lastActivityAt: '2026-01-01T00:00:00.000Z' },
+      { roomId: 'beta', messageCount: 2, lastActivityAt: null },
+      { roomId: 'gamma', messageCount: 3, lastActivityAt: '2026-02-01T00:00:00.000Z' },
+    ]);
+    expect(body).not.toContain('ciphertext');
+    expect(body).not.toContain('LEAK');
+    expect(body).not.toContain('ivBase64');
+    // Non-finite / empty activity sanitized
+    const dirty = exportRoomsIndexJson([
+      { roomId: 'x', messageCount: Number.NaN, lastActivityAt: '' },
+      { roomId: 'y', messageCount: -3, lastActivityAt: '2026-03-01T00:00:00.000Z' },
+    ]);
+    expect(JSON.parse(dirty)).toEqual([
+      { roomId: 'x', messageCount: 0, lastActivityAt: null },
+      { roomId: 'y', messageCount: 0, lastActivityAt: '2026-03-01T00:00:00.000Z' },
+    ]);
   });
 
   it('file store survives re-open', () => {

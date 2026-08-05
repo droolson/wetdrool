@@ -363,6 +363,31 @@ export function summarizeRoomIndex(
   };
 }
 
+/**
+ * Pure: serialize ciphertext-only room index metadata for client download.
+ * Emits roomId + messageCount + lastActivityAt only — never ciphertext or plaintext.
+ * Unknown / non-finite counts become 0; missing activity is null.
+ */
+export function exportRoomsIndexJson(
+  rooms: readonly Pick<RoomIndexEntry, 'roomId' | 'messageCount' | 'lastActivityAt'>[],
+): string {
+  const rows = rooms.map((room) => {
+    const rawCount = room.messageCount;
+    const messageCount =
+      typeof rawCount === 'number' && Number.isFinite(rawCount) && rawCount > 0
+        ? Math.floor(rawCount)
+        : 0;
+    const at = room.lastActivityAt;
+    const lastActivityAt = typeof at === 'string' && at.length > 0 ? at : null;
+    return {
+      roomId: typeof room.roomId === 'string' ? room.roomId : '',
+      messageCount,
+      lastActivityAt,
+    };
+  });
+  return `${JSON.stringify(rows, null, 2)}\n`;
+}
+
 export function normalizeRoomId(raw: string): string | null {
   const t = raw.trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{1,62}$/.test(t)) return null;

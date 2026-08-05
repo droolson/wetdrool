@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
-import { buildRoomShareUrl, normalizeRoomId, summarizeRoomIndex } from '@/lib/room-store';
+import { buildRoomShareUrl, exportRoomsIndexJson, normalizeRoomId, summarizeRoomIndex } from '@/lib/room-store';
 
 interface RoomRow {
   readonly roomId: string;
@@ -164,6 +164,20 @@ export function RoomsIndexClient() {
     },
     [flashCopied],
   );
+
+  const downloadIndexJson = useCallback(() => {
+    const body = exportRoomsIndexJson(rooms);
+    const blob = new Blob([body], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wetdrool-rooms-index-${new Date().toISOString().slice(0, 10)}.json`;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [rooms]);
 
   const durable = store?.durableAcrossRestart === true;
   const badgeLabel =
@@ -331,6 +345,14 @@ export function RoomsIndexClient() {
                 Name
               </button>
             </div>
+            <button
+              type="button"
+              onClick={downloadIndexJson}
+              disabled={loading || rooms.length === 0}
+              aria-label="Export rooms index metadata as JSON (room id, counts, last activity only)"
+            >
+              Export index JSON
+            </button>
             <button type="button" onClick={() => void load()} disabled={loading}>
               {loading ? 'Refreshing…' : 'Refresh'}
             </button>
