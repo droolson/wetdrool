@@ -26,6 +26,22 @@
 
 ## Swarm log
 
+### 2026-08-05T21:23Z — 15m scheduled swarm (A–F)
+
+| Slot | Focus | Result / tip |
+|------|--------|----------------|
+| A | Notifications product API | `GET /api/v1/notifications` honest empty + surface catalog |
+| B | Hub discovery sort / feeds polish | `f9b452d` hub sort |
+| C | Market unlock clear + a11y | `6497d05` clear/export attempts |
+| D | Rooms load-older / index sort | `eefb24b` |
+| E | Notifications inbox UI + nav | `f9eef44` `/notifications` wired |
+| F | Live tag + fame `q=` | `98fa365` + fame route `q=` |
+
+- **Verify:** vitest 11 files → **100 passed**.
+- **Pushed:** `origin/main` through `f9eef44`.
+- **Note:** `spawn_subagent` wait IDs still `not_found`; specialists still landed commits on `main` via parallel work + orchestrator integrate.
+- **Next:** feed-service client wire (personalization still inactive), e2e for notifications empty + live tags + market clear, multi-replica stores.
+
 ### 2026-08-05T21:09Z — 15m scheduled swarm (A–F)
 
 | Slot | Focus | Result |

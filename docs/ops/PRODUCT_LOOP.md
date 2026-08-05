@@ -30,6 +30,12 @@
 
 ## Sprint log
 
+### 2026-08-05T21:23Z — 15m product swarm (A–F)
+
+- **Task:** Notifications API+UI empty inbox; market attempt clear; hub sort; rooms polish; live tags; fame `q=`.
+- **Verify:** vitest 100 passed (scoped product suites + notifications-inbox).
+- **Next:** feed-service personalization client (fail-closed until verified), e2e for new surfaces.
+
 ### 2026-08-05T21:09Z — 15m product swarm (A–F)
 
 - **Task:** Discovery honesty + explore sort, market unlock attempt log, rooms index page, settings readiness, creators `q=` search.
