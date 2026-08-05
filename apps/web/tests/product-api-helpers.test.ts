@@ -91,6 +91,7 @@ describe('product api helpers', () => {
     expect(ids).toContain('mesh');
     expect(ids).toContain('search');
     expect(ids).toContain('events');
+    expect(ids).toContain('companions');
     expect(ids).not.toContain('social'); // not a real /api/v1 route
     const market = PRODUCT_API_SURFACES.find((s) => s.id === 'market');
     expect(market?.methods).toEqual(['GET', 'POST']);
@@ -234,6 +235,26 @@ describe('product api helpers', () => {
     const status = buildProductStatusReport({});
     expect(status.surfaces).toContain('events');
     expect(status.links.events).toBe('/api/v1/events');
+  });
+
+  it('companions surface is cataloged and never invents chat history or earnings', () => {
+    const ids = listProductApiSurfaceIds();
+    expect(ids).toContain('companions');
+    const companionsSurface = PRODUCT_API_SURFACES.find((s) => s.id === 'companions');
+    expect(companionsSurface?.path).toBe('/api/v1/companions');
+    expect(companionsSurface?.methods).toEqual(['GET']);
+    expect(PRODUCT_API_LINKS.companions).toBe('/api/v1/companions');
+
+    const health = buildProductHealthReport({});
+    expect(health.surfaces).toContain('companions');
+    expect(health.links.companions).toBe('/api/v1/companions');
+    expect(
+      health.surfaceCatalog.some((s) => s.id === 'companions' && s.path === '/api/v1/companions'),
+    ).toBe(true);
+
+    const status = buildProductStatusReport({});
+    expect(status.surfaces).toContain('companions');
+    expect(status.links.companions).toBe('/api/v1/companions');
   });
 
   it('honest flags never invent $DROOL mint or earnings', () => {
