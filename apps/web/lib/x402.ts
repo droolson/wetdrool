@@ -230,3 +230,114 @@ export function getDefaultNetwork(
   const c = (env.NEXT_PUBLIC_SOLANA_CLUSTER || env.SOLANA_CLUSTER || 'devnet').toLowerCase();
   return c === 'mainnet-beta' || c === 'mainnet' ? X402_NETWORK_SOLANA_MAINNET : X402_NETWORK_SOLANA_DEVNET;
 }
+
+/** Machine reasons returned by verifySolanaPayment / market unlock. */
+export type X402PaymentFailureReason =
+  | 'invalid_signature'
+  | 'no_rpc'
+  | 'rpc_http'
+  | 'rpc_error'
+  | 'tx_failed_or_missing'
+  | 'payee_not_in_tx'
+  | 'insufficient_amount'
+  | 'payment_required'
+  | 'payment_unverified'
+  | 'unwrap_failed'
+  | string;
+
+/**
+ * Human-readable, fail-closed copy for unlock UI and API error.message.
+ * Never implies success or revenue readiness.
+ */
+export function describePaymentFailureReason(reason: string): string {
+  switch (reason) {
+    case 'invalid_signature':
+      return 'Transaction signature format is invalid (expected base58 Solana sig).';
+    case 'no_rpc':
+      return 'No Solana RPC configured — payment verification is fail-closed. Set WETDROOL_SOLANA_RPC_URL, SOLANA_RPC_URL, or NEXT_PUBLIC_SOLANA_RPC_URL.';
+    case 'rpc_http':
+      return 'Solana RPC returned a non-OK HTTP status while fetching the transaction.';
+    case 'rpc_error':
+      return 'Solana RPC request failed or timed out. Retry after confirming network access.';
+    case 'tx_failed_or_missing':
+      return 'Transaction not found or failed on-chain. Wait for confirmation, then retry the same signature.';
+    case 'payee_not_in_tx':
+      return 'payTo address is not in this transaction. Pay the exact recipient shown in the 402 terms.';
+    case 'insufficient_amount':
+      return 'Transfer amount to payTo is below the listing price (lamports). Send the full amount in one confirmed tx.';
+    case 'payment_required':
+      return 'HTTP 402 — pay the exact SOL amount to payTo, then submit the transaction signature.';
+    case 'payment_unverified':
+      return 'Payment could not be verified. Unlocks stay sealed until RPC confirms a sufficient transfer.';
+    case 'unwrap_failed':
+      return 'Payment may be ok, but the server could not unwrap the unlock secret (gate key mismatch after restart?).';
+    default:
+      return `Payment not verified (${reason}). Unlock remains fail-closed.`;
+  }
+}
+
+/**
+ * How unlock was granted — never conflate dev accept with RPC-verified settlement.
+ */
+export type UnlockVerificationMode = 'rpc_verified' | 'prior_purchase' | 'dev_accept';
+
+export interface UnlockReceipt {
+  readonly listingId: string;
+  readonly signature: string;
+  readonly network: X402Network;
+  readonly payTo: string;
+  readonly lamports: string;
+  readonly verifiedAt: string;
+  readonly verification: UnlockVerificationMode;
+  /** Present only when RPC verification (or prior purchase that had a slot) recorded one. */
+  readonly slot?: number;
+  readonly payer?: string;
+  /**
+   * Always false here: market store is not multi-replica durable commerce.
+   * Clients must not treat unlock as revenue-ready settlement proof.
+   */
+  readonly settlementAuthoritative: false;
+  readonly note: string;
+}
+
+export function buildUnlockReceipt(input: {
+  readonly listingId: string;
+  readonly signature: string;
+  readonly network: X402Network;
+  readonly payTo: string;
+  readonly lamports: string;
+  readonly verification: UnlockVerificationMode;
+  readonly verifiedAt?: string;
+  readonly slot?: number;
+  readonly payer?: string;
+}): UnlockReceipt {
+  const verifiedAt = input.verifiedAt ?? new Date().toISOString();
+  let note: string;
+  switch (input.verification) {
+    case 'rpc_verified':
+      note =
+        'Unlock after RPC-confirmed SOL transfer to payTo. Receipt is local to this host store — not multi-replica settlement.';
+      break;
+    case 'prior_purchase':
+      note =
+        'Replay of a signature already recorded on this host. Not proof of global commerce state.';
+      break;
+    case 'dev_accept':
+      note =
+        'Dev-only accept (WETDROOL_X402_DEV_ACCEPT=1, non-production, no_rpc). Not real payment verification.';
+      break;
+  }
+  return {
+    listingId: input.listingId,
+    signature: input.signature,
+    network: input.network,
+    payTo: input.payTo,
+    lamports: input.lamports,
+    verifiedAt,
+    verification: input.verification,
+    ...(input.slot !== undefined ? { slot: input.slot } : {}),
+    ...(input.payer !== undefined ? { payer: input.payer } : {}),
+    settlementAuthoritative: false,
+    note,
+  };
+}

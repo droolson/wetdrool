@@ -1,5 +1,6 @@
 import {
   createListingId,
+  filterListingsByQuery,
   getMarketplaceStoreKind,
   listListings,
   pageListings,
@@ -25,7 +26,9 @@ export function GET(request: Request): Response {
   const url = new URL(request.url);
   const limit = parseLimit(url.searchParams.get('limit'), 24, 48);
   const offset = parseOffset(url.searchParams.get('offset'), 0);
-  const all = listListings();
+  const qRaw = url.searchParams.get('q')?.trim() ?? '';
+  const q = qRaw.slice(0, 80);
+  const all = filterListingsByQuery(listListings(), q || null);
   const page = pageListings(all, limit, offset);
   const items = page.items.map(publicListing);
   const rpcConfigured = getMarketplaceRpcUrl() !== null;
@@ -40,6 +43,15 @@ export function GET(request: Request): Response {
     limit,
     offset,
     hasMore: page.hasMore,
+    q: q || null,
+    filter: {
+      q: q || null,
+      applied: Boolean(q),
+      matched: page.total,
+      note: q
+        ? 'Case-insensitive substring over id, title, seller, description, payTo. Host listings only — not a global search index.'
+        : 'No filter; full local store page.',
+    },
     listings: items,
     store: {
       kind: store,

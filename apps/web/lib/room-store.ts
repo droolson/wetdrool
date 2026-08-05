@@ -17,12 +17,20 @@ export interface RoomRecord {
 
 export interface ListMessagesOptions {
   readonly limit?: number;
+  /** Exclusive cursor: return messages after this messageId (newer / poll). */
   readonly after?: string;
+  /** Exclusive cursor: return messages before this messageId (older / history). */
+  readonly before?: string;
 }
 
 export interface ListMessagesResult {
   readonly messages: readonly SealedEnvelope[];
   readonly total: number;
+  /** True when more older history exists than this page (use `before` with first id). */
+  readonly hasMoreOlder: boolean;
+  /** True when more newer messages exist than this page (use `after` with last id). */
+  readonly hasMoreNewer: boolean;
+  /** @deprecated Prefer hasMoreOlder / hasMoreNewer. Kept for existing clients. */
   readonly hasMore: boolean;
   readonly truncated: boolean;
 }
@@ -35,6 +43,8 @@ export interface RoomStoreMeta {
   readonly durableAcrossRestart: boolean;
   readonly maxMessagesPerRoom: number;
   readonly note: string;
+  /** Short badge label for UI (ephemeral vs single-node file). */
+  readonly label: string;
 }
 
 interface RoomsSnapshot {
@@ -181,12 +191,21 @@ export function getRoomStoreMeta(
     multiReplicaSafe: false,
     durableAcrossRestart: durable,
     maxMessagesPerRoom: MAX_MESSAGES_PER_ROOM,
+    label: durable ? 'file · restart-durable · single node' : 'memory · ephemeral · not multi-replica',
     note: durable
-      ? 'File-backed ciphertext store on one node. Survives restarts; not multi-replica. Decrypt client-side.'
-      : 'In-process ciphertext only. Lost on cold start / multi-instance. Set WETDROOL_ROOMS_DATA_PATH for single-node durability. Decrypt client-side.',
+      ? 'File-backed ciphertext on one node. Survives process restarts; not multi-replica safe. Decrypt only in the browser with the room key.'
+      : 'In-process ciphertext only — lost on cold start, deploy, or multi-instance routing. Set WETDROOL_ROOMS_DATA_PATH (absolute path) for single-node file durability. Decrypt only in the browser.',
   };
 }
 
+/**
+ * List sealed envelopes for a room (oldest → newest within the returned page).
+ *
+ * - No cursor: last `limit` messages (tail).
+ * - `after`: messages strictly after that id (poll / live).
+ * - `before`: messages strictly before that id (load older history).
+ * - If both `after` and `before` are set, `after` wins.
+ */
 export function listMessages(
   roomId: string,
   options: ListMessagesOptions = {},
@@ -198,24 +217,51 @@ export function listMessages(
     MAX_MESSAGE_LIMIT,
   );
 
-  let slice = all;
   if (options.after) {
     const idx = all.findIndex((m) => m.messageId === options.after);
-    if (idx >= 0) {
-      slice = all.slice(idx + 1);
-    } else {
-      slice = all;
-    }
+    // Unknown cursor: return empty page (poll clients should full-reload).
+    const newer = idx >= 0 ? all.slice(idx + 1) : [];
+    const messages = newer.slice(0, limit);
+    const hasMoreNewer = newer.length > limit;
+    return {
+      messages,
+      total,
+      hasMoreOlder: false,
+      hasMoreNewer,
+      hasMore: hasMoreNewer,
+      truncated: hasMoreNewer,
+    };
   }
 
-  const truncated = slice.length > limit;
-  const messages =
-    options.after || slice.length <= limit ? slice.slice(0, limit) : slice.slice(-limit);
+  if (options.before) {
+    const idx = all.findIndex((m) => m.messageId === options.before);
+    const older = idx > 0 ? all.slice(0, idx) : idx === 0 ? [] : all;
+    const truncated = older.length > limit;
+    const messages = truncated ? older.slice(-limit) : older;
+    const hasMoreOlder = truncated;
+    const firstId = messages[0]?.messageId;
+    const firstIdx = firstId ? all.findIndex((m) => m.messageId === firstId) : -1;
+    const hasMoreOlderStrict = firstIdx > 0 || truncated;
+    return {
+      messages,
+      total,
+      hasMoreOlder: hasMoreOlderStrict,
+      hasMoreNewer: true,
+      hasMore: hasMoreOlderStrict,
+      truncated,
+    };
+  }
 
+  // Default: newest page (tail).
+  const truncated = all.length > limit;
+  const messages = truncated ? all.slice(-limit) : all;
+  const hasMoreOlder = truncated;
   return {
     messages,
     total,
-    hasMore: options.after ? all.length > 0 && messages.length === limit : truncated,
+    hasMoreOlder,
+    hasMoreNewer: false,
+    hasMore: hasMoreOlder,
     truncated,
   };
 }

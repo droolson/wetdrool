@@ -1,5 +1,5 @@
 import { resolveCreatorProfile } from '@/lib/creator-economy';
-import { jsonError, jsonOk } from '@/lib/product-api';
+import { jsonError, jsonOk, methodNotAllowed } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,5 +27,5 @@ export function GET(
 }
 
 export function POST(): Response {
-  return jsonError(405, 'method_not_allowed', 'Use GET for creator profiles.');
+  return methodNotAllowed('GET', 'Use GET for creator profiles.');
 }

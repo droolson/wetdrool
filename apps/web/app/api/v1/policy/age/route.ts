@@ -3,7 +3,7 @@ import {
   normalizeRegionHint,
   resolveAgeAccessPolicy,
 } from '@/lib/age-access-policy';
-import { jsonError, jsonOk } from '@/lib/product-api';
+import { jsonError, jsonOk, methodNotAllowed } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,5 +41,5 @@ export function GET(request: Request): Response {
 }
 
 export function POST(): Response {
-  return jsonError(405, 'method_not_allowed', 'Use GET for age access policy.');
+  return methodNotAllowed('GET', 'Use GET for age access policy.');
 }

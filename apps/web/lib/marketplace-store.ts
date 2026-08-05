@@ -32,12 +32,16 @@ export interface MarketplaceListing {
   readonly unlockSecretIv: string;
 }
 
+export type PurchaseVerificationMode = 'rpc_verified' | 'prior_purchase' | 'dev_accept';
+
 export interface PurchaseReceipt {
   readonly listingId: string;
   readonly signature: string;
   readonly payer?: string;
   readonly verifiedAt: string;
   readonly slot?: number;
+  /** How payment was accepted when first recorded (honest unlock receipts). */
+  readonly verification?: PurchaseVerificationMode;
 }
 
 interface StoreSnapshot {
@@ -269,4 +273,28 @@ export function pageListings(
   const start = Math.max(0, offset);
   const items = all.slice(start, start + limit);
   return { items, total, hasMore: start + items.length < total };
+}
+
+/**
+ * Case-insensitive substring filter on id, title, seller, or description.
+ * Empty / whitespace query returns the full list.
+ */
+export function filterListingsByQuery(
+  all: readonly MarketplaceListing[],
+  query: string | null | undefined,
+): readonly MarketplaceListing[] {
+  const q = query?.trim().toLowerCase() ?? '';
+  if (!q) return all;
+  return all.filter((listing) => {
+    const hay = [
+      listing.id,
+      listing.title,
+      listing.seller,
+      listing.description,
+      listing.payTo,
+    ]
+      .join('\n')
+      .toLowerCase();
+    return hay.includes(q);
+  });
 }

@@ -11,6 +11,12 @@ describe('revenue readiness', () => {
     expect(report.checks.droolMint).toBe('does-not-exist');
     expect(report.checks.marketplaceStore).toBe('memory-ephemeral');
     expect(report.checks.marketplaceGate).toBe('ephemeral');
+    expect(report.checks.roomsStore).toBe('memory-ephemeral');
+    expect(report.checks.roomsDurableAcrossRestart).toBe(false);
+    expect(report.storeKinds.multiReplicaSafe).toBe(false);
+    expect(report.storeKinds.marketplace).toBe('memory-ephemeral');
+    expect(report.storeKinds.rooms).toBe('memory-ephemeral');
+    expect(report.storeKinds.authStatusPath).toBe('/api/v1/auth/status');
     expect(report.blockers.some((b) => b.id === 'rpc_missing')).toBe(true);
     expect(report.blockers.some((b) => b.id === 'market_store_ephemeral')).toBe(true);
   });
@@ -30,9 +36,15 @@ describe('revenue readiness', () => {
       WETDROOL_SOLANA_RPC_URL: 'https://api.devnet.solana.com',
       WETDROOL_MARKETPLACE_DATA_PATH: '/tmp/wetdrool-market-test.json',
       WETDROOL_MARKETPLACE_GATE_SECRET: 'stable-gate-secret-ok',
+      WETDROOL_ROOMS_DATA_PATH: '/tmp/wetdrool-rooms-test.json',
     });
     expect(report.checks.marketplaceStore).toBe('file-local');
     expect(report.checks.marketplaceGate).toBe('env-stable');
+    expect(report.checks.roomsStore).toBe('file-local');
+    expect(report.checks.roomsDurableAcrossRestart).toBe(true);
+    expect(report.storeKinds.marketplace).toBe('file-local');
+    expect(report.storeKinds.rooms).toBe('file-local');
+    expect(report.storeKinds.multiReplicaSafe).toBe(false);
     expect(report.revenueReady).toBe(false);
     expect(report.blockers.some((b) => b.id === 'market_store_ephemeral')).toBe(false);
     expect(report.blockers.some((b) => b.id === 'market_store_not_multi_replica')).toBe(true);

@@ -1,6 +1,6 @@
 import { getE2eeCapabilityReport } from '@/lib/e2ee-status';
 import { getRoomStoreMeta } from '@/lib/room-store';
-import { jsonError, jsonOk } from '@/lib/product-api';
+import { jsonOk, methodNotAllowed } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,11 +19,15 @@ export function GET(): Response {
       messagesPath: '/api/v1/rooms/:roomId/messages',
       ciphertextOnly: true,
       hostReadsPlaintext: false,
+      durability: store.durableAcrossRestart
+        ? 'file-local single-node (survives restart; not multi-replica)'
+        : 'memory-ephemeral (lost on cold start / multi-instance)',
+      maxMessagesPerRoom: store.maxMessagesPerRoom,
     },
-    note: 'Passphrase never leaves the browser for room content. Server stores sealed envelopes only.',
+    note: 'Room passphrase never leaves the browser. Server stores sealed envelopes only. Pairwise DMs remain unwired.',
   });
 }
 
 export function POST(): Response {
-  return jsonError(405, 'method_not_allowed', 'Use GET for E2EE capability report.');
+  return methodNotAllowed('GET', 'Use GET for E2EE capability report.');
 }

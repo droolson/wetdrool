@@ -1,5 +1,6 @@
 import {
   getListing,
+  getPurchase,
   hasPurchase,
   publicListing,
   recordPurchase,
@@ -7,11 +8,14 @@ import {
 import { unwrapUnlockSecret } from '@/lib/marketplace-unlock';
 import {
   buildPaymentRequirements,
+  buildUnlockReceipt,
+  describePaymentFailureReason,
   encodePaymentHeader,
   getMarketplaceRpcUrl,
   isValidTxSignature,
   parsePaymentHeader,
   verifySolanaPayment,
+  type UnlockReceipt,
   type X402PaymentPayload,
 } from '@/lib/x402';
 import { jsonError, jsonOk } from '@/lib/product-api';
@@ -40,6 +44,20 @@ function paymentFromRequest(request: Request): X402PaymentPayload | null {
   return null;
 }
 
+async function tryUnwrap(
+  listing: NonNullable<ReturnType<typeof getListing>>,
+): Promise<{ ok: true; secret: string } | { ok: false }> {
+  try {
+    const secret = await unwrapUnlockSecret(
+      listing.unlockSecretCiphertext,
+      listing.unlockSecretIv,
+    );
+    return { ok: true, secret };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -65,10 +83,25 @@ export async function GET(
     return new Response(
       JSON.stringify({
         ok: false,
-        error: { code: 'payment_required', message: 'Payment Required' },
+        error: {
+          code: 'payment_required',
+          message: describePaymentFailureReason('payment_required'),
+          reason: 'payment_required',
+        },
         x402Version: 1,
         accepts: [accepts],
         listing: publicListing(listing),
+        unlockHints: {
+          payTo: listing.payTo,
+          lamports: listing.lamports,
+          network: listing.network,
+          copyPayTo: true,
+          steps: [
+            'Copy payTo and send exact lamports on the listed network',
+            'Wait for confirmation',
+            'Paste the transaction signature and verify',
+          ],
+        },
       }),
       {
         status: 402,
@@ -82,19 +115,40 @@ export async function GET(
     );
   }
 
-  // Already recorded?
+  // Already recorded on this host?
   if (hasPurchase(listing.id, payment.payload.signature)) {
-    const unlockSecret = await unwrapUnlockSecret(
-      listing.unlockSecretCiphertext,
-      listing.unlockSecretIv,
-    );
+    const prior = getPurchase(listing.id, payment.payload.signature);
+    const unwrapped = await tryUnwrap(listing);
+    if (!unwrapped.ok) {
+      return jsonError(503, 'unwrap_failed', describePaymentFailureReason('unwrap_failed'), {
+        accepts: [accepts],
+        reason: 'unwrap_failed',
+      });
+    }
+    const receipt: UnlockReceipt = buildUnlockReceipt({
+      listingId: listing.id,
+      signature: payment.payload.signature,
+      network: listing.network,
+      payTo: listing.payTo,
+      lamports: listing.lamports,
+      verification: prior?.verification === 'dev_accept' ? 'dev_accept' : 'prior_purchase',
+      verifiedAt: prior?.verifiedAt,
+      ...(prior?.slot !== undefined ? { slot: prior.slot } : {}),
+      ...(prior?.payer !== undefined
+        ? { payer: prior.payer }
+        : payment.payload.payer
+          ? { payer: payment.payload.payer }
+          : {}),
+    });
     return jsonOk({
       ok: true,
       listing: publicListing(listing),
       envelope: listing.envelope,
-      unlockSecret,
+      unlockSecret: unwrapped.secret,
       paid: true,
       signature: payment.payload.signature,
+      receipt,
+      devAccepted: receipt.verification === 'dev_accept',
     });
   }
 
@@ -115,34 +169,55 @@ export async function GET(
       verified.reason === 'no_rpc';
 
     if (!dev) {
-      return jsonError(402, 'payment_unverified', `Payment not verified: ${verified.reason}`, {
+      return jsonError(402, 'payment_unverified', describePaymentFailureReason(verified.reason), {
         accepts: [accepts],
         reason: verified.reason,
+        reasonDetail: describePaymentFailureReason(verified.reason),
       });
     }
   }
 
+  const verification = verified.ok ? ('rpc_verified' as const) : ('dev_accept' as const);
+  const verifiedAt = new Date().toISOString();
   recordPurchase({
     listingId: listing.id,
     signature: payment.payload.signature,
-    payer: payment.payload.payer,
-    verifiedAt: new Date().toISOString(),
-    slot: verified.ok ? verified.slot : undefined,
+    ...(payment.payload.payer !== undefined ? { payer: payment.payload.payer } : {}),
+    verifiedAt,
+    ...(verified.ok ? { slot: verified.slot } : {}),
+    verification,
   });
 
-  const unlockSecret = await unwrapUnlockSecret(
-    listing.unlockSecretCiphertext,
-    listing.unlockSecretIv,
-  );
+  const unwrapped = await tryUnwrap(listing);
+  if (!unwrapped.ok) {
+    return jsonError(503, 'unwrap_failed', describePaymentFailureReason('unwrap_failed'), {
+      accepts: [accepts],
+      reason: 'unwrap_failed',
+    });
+  }
+
+  const receipt: UnlockReceipt = buildUnlockReceipt({
+    listingId: listing.id,
+    signature: payment.payload.signature,
+    network: listing.network,
+    payTo: listing.payTo,
+    lamports: listing.lamports,
+    verification,
+    verifiedAt,
+    ...(verified.ok ? { slot: verified.slot } : {}),
+    ...(payment.payload.payer !== undefined ? { payer: payment.payload.payer } : {}),
+  });
 
   return jsonOk({
     ok: true,
     listing: publicListing(listing),
     envelope: listing.envelope,
-    unlockSecret,
+    unlockSecret: unwrapped.secret,
     paid: true,
     signature: payment.payload.signature,
-    devAccepted: !verified.ok,
+    receipt,
+    /** @deprecated prefer receipt.verification === 'dev_accept' */
+    devAccepted: verification === 'dev_accept',
   });
 }
 

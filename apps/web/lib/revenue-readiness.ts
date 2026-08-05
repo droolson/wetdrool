@@ -6,6 +6,7 @@
 import { getDefaultNetwork, getMarketplaceRpcUrl } from './x402';
 import { getMarketplaceStoreKind, listListings } from './marketplace-store';
 import { getMarketplaceGateMode } from './marketplace-unlock';
+import { getRoomStoreKind, getRoomStoreMeta } from './room-store';
 
 export type ReadinessLevel = 'local-only' | 'preview' | 'production-shell' | 'revenue-capable';
 
@@ -13,6 +14,15 @@ export interface RevenueBlocker {
   readonly id: string;
   readonly severity: 'critical' | 'major' | 'minor';
   readonly message: string;
+}
+
+/** Aggregate product store kinds — never claims multi-replica safety. */
+export interface ProductStoreKinds {
+  readonly marketplace: ReturnType<typeof getMarketplaceStoreKind>;
+  readonly rooms: ReturnType<typeof getRoomStoreKind>;
+  readonly multiReplicaSafe: false;
+  readonly authStatusPath: '/api/v1/auth/status';
+  readonly note: string;
 }
 
 export interface RevenueReadinessReport {
@@ -31,11 +41,29 @@ export interface RevenueReadinessReport {
     readonly marketplaceListings: number;
     readonly marketplaceStore: ReturnType<typeof getMarketplaceStoreKind>;
     readonly marketplaceGate: ReturnType<typeof getMarketplaceGateMode>;
+    readonly roomsStore: ReturnType<typeof getRoomStoreKind>;
+    readonly roomsDurableAcrossRestart: boolean;
     readonly droolMint: 'does-not-exist';
     readonly founderMediaPath: null;
   };
+  readonly storeKinds: ProductStoreKinds;
   readonly blockers: readonly RevenueBlocker[];
   readonly nextActions: readonly string[];
+}
+
+export function buildProductStoreKinds(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): ProductStoreKinds {
+  const marketplace = getMarketplaceStoreKind(env);
+  const rooms = getRoomStoreKind(env);
+  const roomsMeta = getRoomStoreMeta(env);
+  return {
+    marketplace,
+    rooms,
+    multiReplicaSafe: false,
+    authStatusPath: '/api/v1/auth/status',
+    note: `Market=${marketplace}; rooms=${rooms} (durableAcrossRestart=${roomsMeta.durableAcrossRestart}). Neither store is multi-replica safe.`,
+  };
 }
 
 export function buildRevenueReadiness(
@@ -45,6 +73,9 @@ export function buildRevenueReadiness(
   const network = getDefaultNetwork(env);
   const storeKind = getMarketplaceStoreKind(env);
   const gateMode = getMarketplaceGateMode(env);
+  const roomsStore = getRoomStoreKind(env);
+  const roomsMeta = getRoomStoreMeta(env);
+  const storeKinds = buildProductStoreKinds(env);
   // Listing count uses process store (env override does not rebind process cache).
   const listingCount = listListings().length;
   const blockers: RevenueBlocker[] = [];
@@ -127,9 +158,12 @@ export function buildRevenueReadiness(
       marketplaceListings: listingCount,
       marketplaceStore: storeKind,
       marketplaceGate: gateMode,
+      roomsStore,
+      roomsDurableAcrossRestart: roomsMeta.durableAcrossRestart,
       droolMint: 'does-not-exist',
       founderMediaPath: null,
     },
+    storeKinds,
     blockers,
     nextActions: [
       'Deploy apps/web to Vercel with monorepo install/build (docs/ops/DEPLOY_WEB.md)',

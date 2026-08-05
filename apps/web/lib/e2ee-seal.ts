@@ -131,23 +131,92 @@ export async function sealText(
   );
 }
 
+export type OpenEnvelopeErrorCode =
+  | 'unsupported_protocol'
+  | 'wrong_key'
+  | 'corrupt'
+  | 'invalid_encoding';
+
+export class OpenEnvelopeError extends Error {
+  readonly code: OpenEnvelopeErrorCode;
+
+  constructor(code: OpenEnvelopeErrorCode, message: string) {
+    super(message);
+    this.name = 'OpenEnvelopeError';
+    this.code = code;
+  }
+}
+
+function isCryptoOperationError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const name = (err as { name?: string }).name;
+  // WebCrypto AES-GCM auth failure is OperationError in browsers and Node.
+  return name === 'OperationError' || name === 'DOMException';
+}
+
 export async function openEnvelope(
   passphrase: string,
   envelope: SealedEnvelope,
 ): Promise<{ readonly bytes: Uint8Array; readonly contentType: string }> {
   if (envelope.protocol !== SEAL_PROTOCOL) {
-    throw new Error('unsupported seal protocol');
+    throw new OpenEnvelopeError('unsupported_protocol', 'unsupported seal protocol');
+  }
+  let iv: Uint8Array<ArrayBuffer>;
+  let ct: Uint8Array<ArrayBuffer>;
+  try {
+    iv = asBufferSource(unb64(envelope.ivBase64));
+    ct = asBufferSource(unb64(envelope.ciphertextBase64));
+  } catch {
+    throw new OpenEnvelopeError('invalid_encoding', 'envelope base64 encoding is invalid');
+  }
+  if (iv.byteLength !== 12) {
+    throw new OpenEnvelopeError('corrupt', 'envelope IV length is invalid');
   }
   const key = await deriveRoomKey(envelope.roomId, passphrase);
-  const iv = asBufferSource(unb64(envelope.ivBase64));
-  const ct = asBufferSource(unb64(envelope.ciphertextBase64));
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-  const frame = frameFromBytes(new Uint8Array(plain));
-  const bytes = await decodeMiddleOutLite(frame);
-  return { bytes, contentType: envelope.contentType };
+  let plain: ArrayBuffer;
+  try {
+    plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  } catch (err) {
+    if (isCryptoOperationError(err)) {
+      throw new OpenEnvelopeError(
+        'wrong_key',
+        'decryption failed — wrong room key or tampered ciphertext',
+      );
+    }
+    throw new OpenEnvelopeError('corrupt', 'decryption failed');
+  }
+  try {
+    const frame = frameFromBytes(new Uint8Array(plain));
+    const bytes = await decodeMiddleOutLite(frame);
+    return { bytes, contentType: envelope.contentType };
+  } catch {
+    throw new OpenEnvelopeError('corrupt', 'decompressed frame is corrupt');
+  }
 }
 
 export async function openText(passphrase: string, envelope: SealedEnvelope): Promise<string> {
   const { bytes } = await openEnvelope(passphrase, envelope);
   return td.decode(bytes);
+}
+
+/** Human-readable copy for room UI (wrong key vs corrupt vs other). */
+export function describeOpenError(err: unknown): { readonly code: OpenEnvelopeErrorCode | 'unknown'; readonly message: string } {
+  if (err instanceof OpenEnvelopeError) {
+    switch (err.code) {
+      case 'wrong_key':
+        return {
+          code: err.code,
+          message: 'Wrong room key — this message was sealed with a different passphrase.',
+        };
+      case 'unsupported_protocol':
+        return { code: err.code, message: 'Unsupported seal protocol version.' };
+      case 'invalid_encoding':
+        return { code: err.code, message: 'Message encoding is invalid.' };
+      case 'corrupt':
+        return { code: err.code, message: 'Corrupt or unreadable sealed payload.' };
+      default:
+        return { code: err.code, message: err.message };
+    }
+  }
+  return { code: 'unknown', message: 'Could not open sealed message.' };
 }

@@ -23,9 +23,16 @@ export async function GET(
   const url = new URL(request.url);
   const limit = parseLimit(url.searchParams.get('limit'), 50, 100);
   const afterRaw = url.searchParams.get('after')?.trim() ?? '';
+  const beforeRaw = url.searchParams.get('before')?.trim() ?? '';
   const after = afterRaw && isValidMessageId(afterRaw) ? afterRaw : undefined;
+  const before =
+    !after && beforeRaw && isValidMessageId(beforeRaw) ? beforeRaw : undefined;
 
-  const page = listMessages(roomId, { limit, ...(after !== undefined ? { after } : {}) });
+  const page = listMessages(roomId, {
+    limit,
+    ...(after !== undefined ? { after } : {}),
+    ...(before !== undefined ? { before } : {}),
+  });
   const store = getRoomStoreMeta();
 
   return jsonOk({
@@ -35,9 +42,11 @@ export async function GET(
     total: page.total,
     limit,
     hasMore: page.hasMore,
+    hasMoreOlder: page.hasMoreOlder,
+    hasMoreNewer: page.hasMoreNewer,
     messages: page.messages,
     store,
-    note: 'Ciphertext only. Decrypt client-side with room passphrase + middle-out-lite.',
+    note: 'Ciphertext only. Decrypt client-side with room passphrase + middle-out-lite. Store is not multi-replica.',
   });
 }
 

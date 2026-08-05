@@ -1,5 +1,5 @@
 import { listCreatorDirectory } from '@/lib/creator-economy';
-import { jsonError, jsonOk, parseLimit, parseOffset } from '@/lib/product-api';
+import { jsonOk, methodNotAllowed, parseLimit, parseOffset } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,5 +28,8 @@ export function GET(request: Request): Response {
 }
 
 export function POST(): Response {
-  return jsonError(405, 'method_not_allowed', 'Use GET for creator directory. Profiles are not created via this API.');
+  return methodNotAllowed(
+    'GET',
+    'Use GET for creator directory. Profiles are not created via this API.',
+  );
 }

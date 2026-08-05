@@ -1,5 +1,5 @@
 import { prepareGrokRequest } from '@/lib/grok-chat';
-import { jsonError, jsonOk } from '@/lib/product-api';
+import { jsonError, jsonOk, methodNotAllowed } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -97,4 +97,8 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return jsonError(504, 'upstream_timeout', 'xAI request failed or timed out.');
   }
+}
+
+export function GET(): Response {
+  return methodNotAllowed('POST', 'Use POST for AI chat completions.');
 }

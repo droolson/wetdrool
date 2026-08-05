@@ -40,6 +40,46 @@ export interface AuthServiceStatusReport {
   readonly webAuthnOrigin: 'wetdrool.com' | 'local-dev' | 'unknown';
 }
 
+/**
+ * Human label for status UI. Never maps ready → "online" — health probes are
+ * not a claim that the product network or protocol identity is live.
+ */
+export function reachabilityLabel(reachability: AuthServiceReachability): string {
+  switch (reachability) {
+    case 'ready':
+      return 'Passkey service ready';
+    case 'degraded':
+      return 'Degraded — not ready';
+    case 'unreachable':
+      return 'Unreachable';
+    case 'invalid_origin':
+      return 'Invalid origin';
+    case 'unconfigured':
+      return 'Unconfigured';
+  }
+}
+
+/** Short operator-facing explanation of probe bits. */
+export function reachabilityDetail(report: AuthServiceStatusReport): string {
+  switch (report.reachability) {
+    case 'ready':
+      return 'healthz and readyz both succeeded for the configured origin.';
+    case 'degraded':
+      return 'Process answered healthz, but readyz failed (store, rate-limit, or readiness gate).';
+    case 'unreachable':
+      return 'Neither healthz nor readyz returned a successful response.';
+    case 'invalid_origin':
+      return 'Configured URL failed origin validation (legacy hosts and non-loopback http are rejected).';
+    case 'unconfigured':
+      return 'No authentication service origin is configured.';
+  }
+}
+
+/** Whether passkey registration/sign-in should be presented as available. */
+export function passkeyCeremoniesAllowed(reachability: AuthServiceReachability): boolean {
+  return reachability === 'ready';
+}
+
 function normalizeDnsHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.+$/u, '');
 }
@@ -193,11 +233,11 @@ export async function probeAuthServiceStatus(
 
   const note =
     reachability === 'ready'
-      ? 'Auth service healthz and readyz succeeded. Passkey ceremonies may proceed when the browser origin matches RP config.'
+      ? 'Auth service healthz and readyz succeeded. Passkey ceremonies may proceed when this browser origin matches the relying-party config. This is not a claim that protocol identity or the public network is online.'
       : reachability === 'degraded'
-        ? 'Auth service is up (healthz) but not ready (store/rate-limit). Fail closed for registration until readyz is ok.'
+        ? 'Auth service answered healthz but is not ready (store, migrations, or rate-limit). Fail closed: do not treat registration or sign-in as available until readyz is ok. Retry after the service finishes starting.'
         : reachability === 'unreachable'
-          ? `Cannot reach ${config.origin}. Start auth-service or set WETDROOL_AUTH_URL / NEXT_PUBLIC_AUTH_SERVICE_URL.`
+          ? `Cannot reach ${config.origin}. Start auth-service locally (port 4300) or set WETDROOL_AUTH_URL / NEXT_PUBLIC_AUTH_SERVICE_URL to a valid origin. Status is unreachable — not “offline product,” just an unanswered probe.`
           : 'Auth service status unknown.';
 
   return {

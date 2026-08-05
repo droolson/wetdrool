@@ -211,6 +211,9 @@ export function listShortCategories(): readonly string[] {
   return [...set].sort();
 }
 
+/** Default page size for shorts discovery UI (keeps hasMore honest with the fixture set). */
+export const SHORTS_PAGE_SIZE = 6;
+
 export function contentWarningLabel(warning: ShortContentWarning): string {
   switch (warning) {
     case 'abstract-only':
@@ -224,11 +227,52 @@ export function contentWarningLabel(warning: ShortContentWarning): string {
   }
 }
 
+/**
+ * Badge copy for cards/API. Always distinguish fixtures from licensed media —
+ * never imply real performers for synthetic rows.
+ */
 export function syntheticMediaLabel(item: Pick<ShortClip, 'synthetic' | 'contentWarning'>): string {
   if (item.synthetic || item.contentWarning === 'abstract-only') {
-    return 'SYNTHETIC · no licensed media';
+    return 'SYNTHETIC FIXTURE · abstract only';
   }
-  return 'LICENSED MEDIA';
+  return 'LICENSED MEDIA · consented';
+}
+
+/** Empty-state copy when a mode/category filter yields zero ranked items. */
+export function emptyDiscoveryMessage(
+  mode: DiscoveryMode,
+  category: string | null | undefined,
+): string {
+  const cat = category?.trim().toLowerCase() || null;
+  const catPart = cat && cat !== 'all' ? cat : null;
+  if (catPart && mode !== 'all') {
+    return `No shorts match mode “${mode}” and category “${catPart}”. Catalog is synthetic fixtures only — try All or another filter.`;
+  }
+  if (catPart) {
+    return `No shorts in category “${catPart}”. The synthetic catalog is small; try All.`;
+  }
+  if (mode !== 'all') {
+    return `No shorts for mode “${mode}” in the synthetic fixture set.`;
+  }
+  return 'No shorts available. Catalog is synthetic fixtures only until licensed media ships.';
+}
+
+/**
+ * Arrow/Home/End navigation for chip toolbars and tablists.
+ * Returns the next index, or null if the key is not a navigation key.
+ */
+export function chipKeyNavIndex(
+  key: string,
+  currentIndex: number,
+  length: number,
+): number | null {
+  if (length <= 0) return null;
+  const i = Math.max(0, Math.min(currentIndex, length - 1));
+  if (key === 'ArrowRight' || key === 'ArrowDown') return (i + 1) % length;
+  if (key === 'ArrowLeft' || key === 'ArrowUp') return (i - 1 + length) % length;
+  if (key === 'Home') return 0;
+  if (key === 'End') return length - 1;
+  return null;
 }
 
 /**
@@ -306,6 +350,14 @@ export function rankingPolicyNote(): string {
     `engagement ${SHORT_RANK_WEIGHTS.engagement} (cap ${SHORT_RANK_WEIGHTS.engagementCap}), ` +
     `mode ${SHORT_RANK_WEIGHTS.mode}. Synthetic fixtures until licensed media pipeline.`
   );
+}
+
+/** Public honesty line for discovery surfaces and API notes. */
+export function discoveryHonestyNote(allSynthetic: boolean): string {
+  if (allSynthetic) {
+    return 'Abstract synthetic fixtures only — labeled on purpose. No scraped adult APIs; licensed media requires consent + age records.';
+  }
+  return 'Mixed corpus: synthetic fixtures plus licensed media. Third-party adult media still needs consent + licensing.';
 }
 
 export const DISCOVERY_MODE_KEY = 'wetdrool.discovery.mode';

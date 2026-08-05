@@ -1,5 +1,5 @@
 import { pageFameSeed } from '@/lib/hall-of-fame';
-import { jsonError, jsonOk, parseLimit, parseOffset } from '@/lib/product-api';
+import { jsonOk, methodNotAllowed, parseLimit, parseOffset } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,5 +29,5 @@ export function GET(request: Request): Response {
 }
 
 export function POST(): Response {
-  return jsonError(405, 'method_not_allowed', 'Use GET for fame seed board. Points are not submitted here.');
+  return methodNotAllowed('GET', 'Use GET for fame seed board. Points are not submitted here.');
 }

@@ -1,11 +1,13 @@
 import {
+  discoveryHonestyNote,
+  emptyDiscoveryMessage,
   listShortCategories,
   parseDiscoveryMode,
   rankingPolicyNote,
   rankShortsPage,
   SHORT_RANK_WEIGHTS,
 } from '@/lib/short-feed';
-import { jsonError, jsonOk, parseLimit, parseOffset } from '@/lib/product-api';
+import { jsonError, jsonOk, methodNotAllowed, parseLimit, parseOffset } from '@/lib/product-api';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,7 +27,10 @@ export function GET(request: Request): Response {
   }
 
   const page = rankShortsPage(mode, { limit, offset, category });
-  const allSynthetic = page.items.length === 0 || page.items.every((item) => item.synthetic);
+  const empty = page.total === 0;
+  const allSynthetic =
+    empty || (page.syntheticCount === page.items.length && page.licensedCount === 0);
+  const honesty = discoveryHonestyNote(allSynthetic || empty);
 
   return jsonOk({
     ok: true,
@@ -41,17 +46,17 @@ export function GET(request: Request): Response {
     syntheticCount: page.syntheticCount,
     licensedCount: page.licensedCount,
     categories: known,
+    empty,
+    emptyMessage: empty ? emptyDiscoveryMessage(mode, page.category) : null,
     ranking: {
       name: 'droolrank-lite',
       weights: SHORT_RANK_WEIGHTS,
       note: rankingPolicyNote(),
     },
-    note: allSynthetic
-      ? 'Abstract fixtures until licensed, consented media pipeline is live. Labels are synthetic on purpose.'
-      : 'Mixed corpus: synthetic fixtures plus licensed media. Third-party adult media still needs consent + licensing.',
+    note: empty ? emptyDiscoveryMessage(mode, page.category) : honesty,
   });
 }
 
 export function POST(): Response {
-  return jsonError(405, 'method_not_allowed', 'Use GET for shorts ranking.');
+  return methodNotAllowed('GET', 'Use GET for shorts ranking.');
 }
