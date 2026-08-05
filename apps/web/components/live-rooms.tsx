@@ -1,19 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
 import { readAgeGate, readContentMode } from '@/lib/nsfw-mode';
 import { LIVE_ROOMS, filterLiveRooms, type LiveRoom } from '@/lib/live-catalog';
 
+const PAGE_SIZE = 2;
+
 export function LiveRooms() {
   const [nsfw, setNsfw] = useState(false);
   const [rooms, setRooms] = useState<readonly LiveRoom[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [source, setSource] = useState<'api' | 'local'>('local');
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [synthetic, setSynthetic] = useState(true);
 
   useEffect(() => {
     const age = readAgeGate(window.localStorage).confirmed;
@@ -21,34 +27,67 @@ export function LiveRooms() {
     setNsfw(age && mode === 'nsfw');
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    void (async () => {
-      const { fetchLiveRooms } = await import('@/lib/product-client');
-      const result = await fetchLiveRooms();
-      if (cancelled) return;
-      if (result.kind === 'ok' && Array.isArray(result.data.rooms) && result.data.rooms.length > 0) {
-        setRooms(result.data.rooms);
-        setSource('api');
-        setNote(typeof result.data.note === 'string' ? result.data.note : null);
-      } else {
-        setRooms(LIVE_ROOMS);
-        setSource('local');
-        setError(
-          result.kind === 'error'
-            ? result.message
-            : 'Live catalog empty — showing local fixtures.',
-        );
-        setNote('Offline/local catalog fallback. Join remains disabled.');
+  const loadPage = useCallback(
+    async (nextOffset: number, append: boolean) => {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      setError(null);
+      try {
+        const { fetchLiveRooms } = await import('@/lib/product-client');
+        const result = await fetchLiveRooms({
+          limit: PAGE_SIZE,
+          offset: nextOffset,
+        });
+        if (result.kind === 'ok' && Array.isArray(result.data.rooms)) {
+          setRooms((prev) => (append ? [...prev, ...result.data.rooms] : result.data.rooms));
+          setSource('api');
+          setNote(typeof result.data.note === 'string' ? result.data.note : null);
+          setHasMore(Boolean(result.data.hasMore));
+          setOffset(nextOffset + result.data.rooms.length);
+          setSynthetic(result.data.synthetic !== false);
+          if (!append && result.data.rooms.length === 0) {
+            setRooms(LIVE_ROOMS);
+            setSource('local');
+            setHasMore(false);
+            setError('Live catalog empty — showing local fixtures.');
+            setNote('Offline/local catalog fallback. Join remains disabled.');
+          }
+        } else {
+          if (!append) {
+            setRooms(LIVE_ROOMS);
+            setSource('local');
+            setHasMore(false);
+            setError(
+              result.kind === 'error'
+                ? result.message
+                : 'Live catalog empty — showing local fixtures.',
+            );
+            setNote('Offline/local catalog fallback. Join remains disabled.');
+          } else {
+            setError(result.kind === 'error' ? result.message : 'Load more failed.');
+          }
+        }
+      } catch {
+        if (!append) {
+          setRooms(LIVE_ROOMS);
+          setSource('local');
+          setHasMore(false);
+          setError('Network error loading live catalog.');
+          setNote('Offline/local catalog fallback. Join remains disabled.');
+        } else {
+          setError('Network error loading more rooms.');
+        }
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void loadPage(0, false);
+  }, [loadPage]);
 
   const visible = filterLiveRooms(rooms, { nsfwAllowed: nsfw });
 
@@ -60,7 +99,13 @@ export function LiveRooms() {
           <h1>Rooms with receipts.</h1>
         </div>
         <StatusBadge tone={source === 'api' ? 'pending' : 'degraded'}>
-          {loading ? 'loading' : source === 'api' ? 'api catalog' : 'local fallback'}
+          {loading
+            ? 'loading'
+            : source === 'api'
+              ? synthetic
+                ? 'api · synthetic'
+                : 'api catalog'
+              : 'local fallback'}
         </StatusBadge>
       </header>
       <p className="live-app__lede">
@@ -115,6 +160,17 @@ export function LiveRooms() {
           </li>
         ))}
       </ul>
+      {source === 'api' && hasMore ? (
+        <p>
+          <button
+            type="button"
+            disabled={loadingMore}
+            onClick={() => void loadPage(offset, true)}
+          >
+            {loadingMore ? 'Loading…' : 'Load more rooms'}
+          </button>
+        </p>
+      ) : null}
       <p className="field-help">
         Private gifts and whisper chat target E2EE pairwise messaging when the web adapter is
         wired. Operator seat: Swiss foundation (planned). Catalog:{' '}

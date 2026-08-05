@@ -60,3 +60,33 @@ export function filterLiveRooms(
 ): readonly LiveRoom[] {
   return rooms.filter((r) => (options.nsfwAllowed ? true : !r.nsfw));
 }
+
+export interface LiveRoomsPage {
+  readonly items: readonly LiveRoom[];
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+}
+
+/** Page the live catalog after optional SFW filter. Synthetic fixtures only. */
+export function pageLiveRooms(
+  rooms: readonly LiveRoom[],
+  options: {
+    readonly nsfwAllowed: boolean;
+    readonly limit?: number;
+    readonly offset?: number;
+  },
+): LiveRoomsPage {
+  const filtered = filterLiveRooms(rooms, { nsfwAllowed: options.nsfwAllowed });
+  const limit = Math.min(Math.max(1, options.limit ?? 24), 48);
+  const offset = Math.max(0, options.offset ?? 0);
+  const items = filtered.slice(offset, offset + limit);
+  return {
+    items,
+    total: filtered.length,
+    limit,
+    offset,
+    hasMore: offset + items.length < filtered.length,
+  };
+}

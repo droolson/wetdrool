@@ -44,6 +44,7 @@ export function CustomRoomJumpClient() {
     <div className="anon-entrance__jump-wrap">
       <form
         className="anon-entrance__jump"
+        aria-label="Open a custom E2EE room"
         onSubmit={(e) => {
           e.preventDefault();
           const id = normalizeRoomId(room);
@@ -68,12 +69,16 @@ export function CustomRoomJumpClient() {
             maxLength={64}
             autoComplete="off"
             spellCheck={false}
+            inputMode="text"
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'custom-room-error' : 'custom-room-help'}
+            aria-describedby={
+              error ? 'custom-room-help custom-room-error' : 'custom-room-help'
+            }
           />
         </label>
         <p id="custom-room-help" className="field-help">
-          Ciphertext-only room. Share the id + passphrase out of band.
+          Ciphertext-only room. Share the id + passphrase out of band. Wrong key → messages stay
+          sealed until you update the key in-room.
         </p>
         {error ? (
           <p id="custom-room-error" className="field-help" role="alert">

@@ -12,6 +12,7 @@ import {
   getRoomStoreMeta,
   isValidMessageId,
   listMessages,
+  listRooms,
   normalizeRoomId,
   resetRoomStoreCache,
 } from '../lib/room-store';
@@ -62,17 +63,64 @@ describe('room-store', () => {
       'msg-00002',
       'msg-00003',
     ]);
+    expect(all.hasMoreOlder).toBe(false);
+    expect(all.hasMoreNewer).toBe(false);
 
     const page = listMessages(room, { limit: 2 });
     expect(page.messages).toHaveLength(2);
+    expect(page.messages.map((m) => m.messageId)).toEqual(['msg-00002', 'msg-00003']);
     expect(page.truncated).toBe(true);
+    expect(page.hasMoreOlder).toBe(true);
+    expect(page.hasMore).toBe(true);
 
     const after = listMessages(room, { after: 'msg-00001', limit: 10 });
     expect(after.messages.map((m) => m.messageId)).toEqual(['msg-00002', 'msg-00003']);
+    expect(after.hasMoreNewer).toBe(false);
 
     expect(getRoomStoreMeta().kind).toBe('memory-ephemeral');
     expect(getRoomStoreMeta().durableAcrossRestart).toBe(false);
     expect(getRoomStoreMeta().multiReplicaSafe).toBe(false);
+    expect(getRoomStoreMeta().label).toContain('ephemeral');
+    expect(getRoomStoreMeta().note.toLowerCase()).toContain('cold start');
+  });
+
+  it('paginates older history with before cursor', () => {
+    const room = 'hist-room';
+    for (let i = 1; i <= 5; i++) {
+      appendMessage(env(room, `msg-hist-${String(i).padStart(2, '0')}`));
+    }
+
+    const tail = listMessages(room, { limit: 2 });
+    expect(tail.messages.map((m) => m.messageId)).toEqual(['msg-hist-04', 'msg-hist-05']);
+    expect(tail.hasMoreOlder).toBe(true);
+
+    const older = listMessages(room, { before: 'msg-hist-04', limit: 2 });
+    expect(older.messages.map((m) => m.messageId)).toEqual(['msg-hist-02', 'msg-hist-03']);
+    expect(older.hasMoreOlder).toBe(true);
+    expect(older.hasMoreNewer).toBe(true);
+
+    const oldest = listMessages(room, { before: 'msg-hist-02', limit: 10 });
+    expect(oldest.messages.map((m) => m.messageId)).toEqual(['msg-hist-01']);
+    expect(oldest.hasMoreOlder).toBe(false);
+  });
+
+  it('returns empty page for unknown after cursor (poll miss)', () => {
+    const room = 'miss-room';
+    appendMessage(env(room, 'msg-known1'));
+    const page = listMessages(room, { after: 'msg-missing-xx', limit: 10 });
+    expect(page.messages).toEqual([]);
+    expect(page.total).toBe(1);
+  });
+
+  it('indexes rooms with ciphertext counts only', () => {
+    appendMessage(env('alpha', 'msg-alpha1'));
+    appendMessage(env('beta', 'msg-beta01'));
+    appendMessage(env('beta', 'msg-beta02'));
+    const index = listRooms();
+    expect(index).toEqual([
+      { roomId: 'alpha', messageCount: 1 },
+      { roomId: 'beta', messageCount: 2 },
+    ]);
   });
 
   it('file store survives re-open', () => {
@@ -87,6 +135,7 @@ describe('room-store', () => {
       const b = getRoomBag(envMap, { forceNew: true });
       expect(b.list('lobby').map((m) => m.messageId)).toEqual(['msg-file-01']);
       expect(getRoomStoreMeta(envMap).durableAcrossRestart).toBe(true);
+      expect(getRoomStoreMeta(envMap).label).toContain('file');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

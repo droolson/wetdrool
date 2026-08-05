@@ -174,33 +174,51 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       if (mode !== 'poll') setLoadError(null);
       inFlightRef.current = true;
       try {
-        const { fetchRoomMessages } = await import('@/lib/product-client');
         const after =
           mode === 'poll' && lastIdRef.current ? lastIdRef.current : undefined;
         const before =
           mode === 'older' && oldestIdRef.current ? oldestIdRef.current : undefined;
-        const result = await fetchRoomMessages(roomId, {
-          limit: PAGE_LIMIT,
-          ...(after ? { after } : {}),
-          ...(before ? { before } : {}),
-        });
-        if (result.kind !== 'ok') {
+        const q = new URLSearchParams();
+        q.set('limit', String(PAGE_LIMIT));
+        if (after) q.set('after', after);
+        if (before) q.set('before', before);
+        const res = await fetch(
+          `/api/v1/rooms/${encodeURIComponent(roomId)}/messages?${q}`,
+          { method: 'GET', headers: { Accept: 'application/json' } },
+        );
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as {
+            error?: { message?: string };
+          } | null;
+          const message = body?.error?.message || `Load failed (${res.status})`;
           if (mode === 'poll') {
             pollFailRef.current += 1;
           } else {
-            setLoadError(result.message);
+            setLoadError(message);
           }
           return;
         }
+        const data = (await res.json()) as {
+          messages?: readonly SealedEnvelope[];
+          total?: number;
+          hasMore?: boolean;
+          hasMoreOlder?: boolean;
+          store?: {
+            kind?: string;
+            note?: string;
+            durableAcrossRestart?: boolean;
+            label?: string;
+          };
+        };
         pollFailRef.current = 0;
-        applyStoreMeta(result.data.store);
-        if (typeof result.data.total === 'number') setTotalServer(result.data.total);
+        applyStoreMeta(data.store);
+        if (typeof data.total === 'number') setTotalServer(data.total);
 
-        const incoming = result.data.messages ?? [];
+        const incoming = data.messages ?? [];
         const moreOlder =
-          typeof result.data.hasMoreOlder === 'boolean'
-            ? result.data.hasMoreOlder
-            : Boolean(result.data.hasMore && mode !== 'poll');
+          typeof data.hasMoreOlder === 'boolean'
+            ? data.hasMoreOlder
+            : Boolean(data.hasMore && mode !== 'poll');
 
         if (mode === 'poll' && after) {
           if (incoming.length === 0) return;

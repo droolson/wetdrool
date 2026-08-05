@@ -21,9 +21,10 @@ export function GET(): Response {
       multiReplicaSafe: store.multiReplicaSafe,
       durableAcrossRestart: store.durableAcrossRestart,
       maxMessagesPerRoom: store.maxMessagesPerRoom,
+      label: store.label,
       note: store.note,
     },
-    note: 'Local ciphertext bags only. Empty when no messages landed on this process/file. Decrypt client-side.',
+    note: 'Local ciphertext bags only. Empty when no messages landed on this process/file. Not multi-replica. Decrypt client-side.',
   });
 }
 
