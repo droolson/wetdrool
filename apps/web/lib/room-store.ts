@@ -337,6 +337,32 @@ export function sortRoomsByActivity(
   });
 }
 
+export interface RoomIndexTotals {
+  readonly roomCount: number;
+  /** Sum of sealed envelope counts across rooms (ciphertext metadata only). */
+  readonly sealedMessageCount: number;
+}
+
+/**
+ * Aggregate ciphertext-only index stats for headers and a11y status.
+ * Pure — does not touch the bag; never includes plaintext.
+ */
+export function summarizeRoomIndex(
+  rooms: readonly Pick<RoomIndexEntry, 'messageCount'>[],
+): RoomIndexTotals {
+  let sealedMessageCount = 0;
+  for (const room of rooms) {
+    const n = room.messageCount;
+    if (typeof n === 'number' && Number.isFinite(n) && n > 0) {
+      sealedMessageCount += Math.floor(n);
+    }
+  }
+  return {
+    roomCount: rooms.length,
+    sealedMessageCount,
+  };
+}
+
 export function normalizeRoomId(raw: string): string | null {
   const t = raw.trim().toLowerCase();
   if (!/^[a-z0-9][a-z0-9_-]{1,62}$/.test(t)) return null;

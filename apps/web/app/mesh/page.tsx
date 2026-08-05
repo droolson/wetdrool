@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { StatusBadge } from '@wetdrool/ui';
 
 import { AppPageHeader } from '@/components/app-page-header';
+import { MeshStatusPanel } from '@/components/mesh-status-panel';
 
 export const metadata: Metadata = {
   title: 'Mesh',
@@ -26,6 +27,9 @@ export default function MeshPage() {
           host the HTTP shell — not peer state.
         </p>
       </AppPageHeader>
+
+      <MeshStatusPanel />
+
       <ul>
         <li>Local-first E2EE spaces</li>
         <li>Fail-closed unconfigured transport</li>
@@ -33,8 +37,11 @@ export default function MeshPage() {
         <li>18+ and CSAM ban still apply to mesh objects</li>
       </ul>
       <p>
-        <Link href="/hub">Hub</Link> · <Link href="/messages">Private E2EE status</Link> ·{' '}
-        <Link href="/docs">Docs</Link>
+        <Link href="/hub">Hub</Link> · <Link href="/status">System status</Link> ·{' '}
+        <Link href="/messages">Private E2EE status</Link> · <Link href="/docs">Docs</Link> ·{' '}
+        <Link href="/api/v1/mesh">
+          <code>/api/v1/mesh</code>
+        </Link>
       </p>
     </div>
   );
