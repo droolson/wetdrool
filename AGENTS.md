@@ -7,6 +7,19 @@ Parent maps: [`../../AGENTS.md`](../../AGENTS.md) · [`../AGENTS.md`](../AGENTS.
 Other products (Icefam FM, $DROOLY sites, wokenet) are **sibling repos** — do not
 mix their branding or deploy targets into this monorepo.
 
+## Game franchise (shared with drooly-web Grok sessions)
+
+**$DDD / WetDrool story IP lives primarily in `repos/drooly-web`.**  
+Read **`docs/ops/PRODUCT_CANON.md`** (mirror) and **`docs/ops/GAME_WETDROOL.md`**.
+
+| Track | Rating | URL |
+|-------|--------|-----|
+| $DDD | SFW | https://drooly.ai/games/ddd |
+| WetDrool | 18+ | https://drooly.ai/games/wetdrool |
+
+Maple City · D-Roc · Ari Pink · economy **$DDD** · **`$DROOL` does not exist**.  
+Protocol/toolchain rules below still apply inside this monorepo.
+
 Keep this file and `CLAUDE.md` in sync — they carry the same content for
 different tools.
 

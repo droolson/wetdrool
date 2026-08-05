@@ -4,14 +4,16 @@ You are the **CEO agent**, not the human owner.
 
 ## Product truth (current north star)
 
+**Read in every session:** `repos/drooly-web/docs/PRODUCT_CANON.md` + `games/ddd/LORE.md`.
+
 | Surface | Rating | URL |
 |--------|--------|-----|
 | **$DDD Games** | **SFW** | https://drooly.ai/games/ddd |
 | **WetDrool** | **18+** | https://drooly.ai/games/wetdrool |
-| **wetdrool.com** | 18+ | Redirects to `/games/wetdrool` |
+| **wetdrool.com** | 18+ play | `/play` → games/wetdrool |
 
-WetDrool is the **adult twin** of the $DDD skill arena — same .io loop, age gate, separate boards.  
-Economy token is **$DDD** (pre-mint until official CA on @kingofqueens6ix). **$DROOL does not exist.**
+**$DDD is the franchise:** Maple City (#6ix), leads **D-Roc** + **Ari Pink**, hip-hop rise. Original IP (not Rockstar/GTA).  
+WetDrool = **18+ rating** of that same world. Economy = **$DDD**. **$DROOL does not exist.**
 
 ## Ownership split
 

@@ -1,4 +1,7 @@
-# WetDrool = 18+ $DDD
+# WetDrool = 18+ $DDD (same franchise)
+
+**Shared canon for all Grok sessions:**  
+`repos/drooly-web/docs/PRODUCT_CANON.md` + `repos/drooly-web/games/ddd/LORE.md`
 
 ## Product map
 
@@ -6,22 +9,25 @@
 |---------|--------|-----|
 | $DDD Games | SFW | https://drooly.ai/games/ddd |
 | WetDrool | **18+** | https://drooly.ai/games/wetdrool |
-| wetdrool.com | 18+ | Redirects to drooly.ai/games/wetdrool |
+| wetdrool.com | 18+ play paths | `/play` → games/wetdrool (apex may still be $DOOCHIE) |
+
+## Story (one world)
+
+Maple City (#6ix) · Darius “D-Roc” King · Ari Pink · hip-hop rise.  
+WetDrool is the **adult rating** of that world — not a different IP.
 
 ## Code
 
 | Repo | Path |
 |------|------|
-| drooly-web | `games/wetdrool/` (age gate + .io arena twin) |
-| drooly-web | `games/ddd/` (SFW) |
-| wetdrool-web | `apps/web/app/page.tsx` → external redirect |
+| drooly-web | `games/ddd/` SFW |
+| drooly-web | `games/wetdrool/` 18+ age gate + twin arena |
+| wetdrool-web | Paperclip pack + domain/docs |
 
 ## Economy
 
-- In-game / real crypto narrative: **$DDD** only  
-- No `$DROOL` mint  
-- No invented contract addresses  
+- **$DDD** only · no invented CA · **`$DROOL` does not exist**
 
 ## Paperclip
 
-Company pack: `paperclip/droolhouse/` — all agent effort on build / market / distribute for this game split.
+`paperclip/droolhouse/` — build / market / distribute this dual-track franchise.
