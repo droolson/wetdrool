@@ -191,16 +191,6 @@ export interface FameBoardRow extends FameEntry {
   readonly tier: string;
 }
 
-export interface FameSeedPage {
-  readonly board: readonly FameBoardRow[];
-  readonly total: number;
-  readonly limit: number;
-  readonly offset: number;
-  readonly hasMore: boolean;
-  readonly seedOnly: true;
-  readonly globalLedger: false;
-}
-
 export function normalizeFameSearchQuery(raw: string | null | undefined): string | null {
   if (raw == null) return null;
   const q = raw.trim().toLowerCase().replace(/^@/, '');

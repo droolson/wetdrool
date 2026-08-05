@@ -24,6 +24,7 @@ const MOBILE_LINKS = [
   { href: '/companions', label: 'Companions' },
   { href: '/vanity', label: 'Vanity .drool' },
   { href: '/settings', label: 'Settings' },
+  { href: '/notifications', label: 'Notifications' },
   { href: '/mesh', label: 'Mesh' },
   { href: '/safety', label: 'Safety' },
 ] as const;

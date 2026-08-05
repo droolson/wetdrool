@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 const SETTINGS_LINKS = [
   { href: '/settings', label: 'Overview' },
+  { href: '/notifications', label: 'Notifications' },
   { href: '/settings/privacy', label: 'Privacy' },
   { href: '/settings/safety', label: 'Safety' },
   { href: '/settings/blocks', label: 'Local blocks' },

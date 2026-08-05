@@ -12,13 +12,16 @@ import type {
 
 export type NotificationFilter = 'all' | 'mentions' | 'communities' | 'system';
 
-const FILTERS: readonly { readonly id: NotificationFilter; readonly label: string; readonly href: string }[] =
-  [
-    { id: 'all', label: 'All', href: '/notifications' },
-    { id: 'mentions', label: 'Mentions', href: '/notifications?filter=mentions' },
-    { id: 'communities', label: 'Communities', href: '/notifications?filter=communities' },
-    { id: 'system', label: 'System', href: '/notifications?filter=system' },
-  ];
+const FILTERS: readonly {
+  readonly id: NotificationFilter;
+  readonly label: string;
+  readonly href: string;
+}[] = [
+  { id: 'all', label: 'All', href: '/notifications' },
+  { id: 'mentions', label: 'Mentions', href: '/notifications?filter=mentions' },
+  { id: 'communities', label: 'Communities', href: '/notifications?filter=communities' },
+  { id: 'system', label: 'System', href: '/notifications?filter=system' },
+];
 
 function parseFilter(raw: string | null | undefined): NotificationFilter {
   if (raw === 'mentions' || raw === 'communities' || raw === 'system') return raw;
@@ -325,25 +328,29 @@ export function NotificationsInbox({
 function HonestCommitments() {
   return (
     <section className="product-card-grid" aria-label="Notification design commitments">
-      <InfoCard
-        copy={undefined as never}
-        eyebrow="Signal"
-        footer="No anonymous urgency"
-        title="Know what asked for attention"
-        tone="plum"
-      >
+      <InfoCard eyebrow="Signal" footer="No anonymous urgency" title="Know what asked for attention" tone="plum">
         <p>
           Mentions, replies, follows, community changes, and system notices carry a typed category
           and source.
         </p>
       </InfoCard>
-      <InfoCard eyebrow="Control" footer="Device preferences stay local" title="Attention has boundaries" tone="coral">
+      <InfoCard
+        eyebrow="Control"
+        footer="Device preferences stay local"
+        title="Attention has boundaries"
+        tone="coral"
+      >
         <p>
           Mute categories, quiet hours, community notices, and push delivery independently without
           losing protocol history.
         </p>
       </InfoCard>
-      <InfoCard eyebrow="Resilience" footer="Relay is replaceable" title="An inbox, not a source of truth" tone="sky">
+      <InfoCard
+        eyebrow="Resilience"
+        footer="Relay is replaceable"
+        title="An inbox, not a source of truth"
+        tone="sky"
+      >
         <p>
           Relay delivery is ephemeral convenience; durable public activity can be reconstructed from
           signed state.

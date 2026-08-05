@@ -12,7 +12,8 @@ export function GET(request: Request): Response {
   const url = new URL(request.url);
   const limit = parseLimit(url.searchParams.get('limit'), 24, 48);
   const offset = parseOffset(url.searchParams.get('offset'), 0);
-  const page = pageFameSeed({ limit, offset });
+  const q = url.searchParams.get('q');
+  const page = pageFameSeed({ limit, offset, q });
 
   return jsonOk({
     ok: true,
@@ -22,9 +23,12 @@ export function GET(request: Request): Response {
     limit: page.limit,
     offset: page.offset,
     hasMore: page.hasMore,
+    q: page.q,
     seedOnly: page.seedOnly,
     globalLedger: page.globalLedger,
-    note: 'Seed board only — not a global multiplayer ledger. Local browser grinds merge client-side on /fame. No invented earnings.',
+    note: page.q
+      ? `Seed board filter q=${JSON.stringify(page.q)} (handle/display/badges). Not a global multiplayer ledger. No invented earnings.`
+      : 'Seed board only — not a global multiplayer ledger. Local browser grinds merge client-side on /fame. No invented earnings.',
   });
 }
 
