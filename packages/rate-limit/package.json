@@ -24,10 +24,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "redis": "6.1.0"
+    "redis": "6.2.0"
   },
   "devDependencies": {
-    "@fastify/rate-limit": "11.1.0",
+    "@fastify/rate-limit": "11.2.0",
     "@types/node": "22.20.1",
     "@vitest/coverage-v8": "4.1.10",
     "typescript": "6.0.3",
