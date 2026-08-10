@@ -73,3 +73,9 @@ See [paperclip/droolhouse/README.md](paperclip/droolhouse/README.md).
 ## License
 
 Source-available dual license — see [LICENSE](LICENSE) and [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
+
+## Support the studio
+
+Drooly ships free, open, web-first software from a one-person studio. If you want it to
+keep existing, you can tip at **[drooly.ai/support](https://drooly.ai/support)** — card or
+BTC/ETH/SOL. A tip grants nothing: no perks, no credits, no priority. That is the whole deal.
