@@ -12,8 +12,8 @@
     "tail": "wrangler tail"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "4.20250726.0",
+    "@cloudflare/workers-types": "4.20260702.1",
     "typescript": "6.0.3",
-    "wrangler": "4.28.0"
+    "wrangler": "4.59.1"
   }
 }
