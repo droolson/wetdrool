@@ -7,7 +7,16 @@ import type { DroolTokenConfig } from './drool-token';
 import type { CreatorStudioProfile } from './creator-economy';
 import type { LiveRoom } from './live-catalog';
 import type { FameEntry } from './hall-of-fame';
-import { readProductApiErrorMessage } from './product-api';
+import type { AgeAccessDecision } from './age-access-policy';
+import type { SealedEnvelope } from './e2ee-seal';
+
+function readProductApiErrorMessage(body: unknown, fallback: string): string {
+  if (body === null || typeof body !== 'object') return fallback;
+  const error = Reflect.get(body, 'error');
+  if (error === null || typeof error !== 'object') return fallback;
+  const message = Reflect.get(error, 'message');
+  return typeof message === 'string' && message.trim().length > 0 ? message : fallback;
+}
 
 export type ProductClientResult<T> =
   | { readonly kind: 'ok'; readonly data: T }
@@ -60,9 +69,16 @@ export interface ShortsApiResponse {
   };
   /** Explicit empty personalization — never a silent for-you feed. */
   readonly personalization?: {
-    readonly configured: false;
-    readonly mode: 'unconfigured';
+    readonly configured: boolean;
+    readonly mode: 'unconfigured' | 'configured';
     readonly note: string;
+    readonly origin?: string | null;
+  };
+  readonly feedService?: {
+    readonly configured: boolean;
+    readonly origin: string | null;
+    readonly personalizationActive?: false;
+    readonly note?: string;
   };
   readonly note?: string;
 }
@@ -121,7 +137,7 @@ export interface TokenApiResponse {
 
 export interface AgePolicyApiResponse {
   readonly ok: true;
-  readonly policy: import('./age-access-policy').AgeAccessDecision;
+  readonly policy: AgeAccessDecision;
   readonly policyVersion?: number;
   readonly flags?: {
     readonly collectGovernmentId: false;
@@ -271,9 +287,7 @@ export function fetchLiveRooms(options?: {
   return getJson<LiveApiResponse>(`/api/v1/live${suffix}`);
 }
 
-export function fetchCreator(
-  handle: string,
-): Promise<ProductClientResult<CreatorApiResponse>> {
+export function fetchCreator(handle: string): Promise<ProductClientResult<CreatorApiResponse>> {
   return getJson<CreatorApiResponse>(`/api/v1/creators/${encodeURIComponent(handle)}`);
 }
 
@@ -668,7 +682,6 @@ export function fetchStories(options?: {
   return getJson<StoriesApiResponse>(`/api/v1/stories${suffix}`);
 }
 
-
 /** Alias for fetchProductStatus — product readiness client panel. */
 export function fetchStatus(): Promise<ProductClientResult<ProductStatusApiResponse>> {
   return fetchProductStatus();
@@ -850,9 +863,7 @@ export function parseUnlockAttemptLog(raw: string | null | undefined): MarketUnl
         at: o.at,
         listingId: o.listingId.slice(0, 64),
         status: o.status,
-        ...(typeof o.reason === 'string' && o.reason
-          ? { reason: o.reason.slice(0, 80) }
-          : {}),
+        ...(typeof o.reason === 'string' && o.reason ? { reason: o.reason.slice(0, 80) } : {}),
         ...(o.verification === 'rpc_verified' ||
         o.verification === 'prior_purchase' ||
         o.verification === 'dev_accept'
@@ -886,9 +897,7 @@ export function appendUnlockAttempt(
     status: attempt.status,
     ...(attempt.reason ? { reason: attempt.reason.slice(0, 80) } : {}),
     ...(attempt.verification ? { verification: attempt.verification } : {}),
-    ...(attempt.signatureHint
-      ? { signatureHint: attempt.signatureHint.slice(0, 16) }
-      : {}),
+    ...(attempt.signatureHint ? { signatureHint: attempt.signatureHint.slice(0, 16) } : {}),
   };
   return [entry, ...log].slice(0, MARKET_UNLOCK_ATTEMPT_MAX);
 }
@@ -931,7 +940,10 @@ export function writeUnlockAttemptLog(
   const s = resolveStorage(storage);
   if (!s) return;
   try {
-    s.setItem(MARKET_UNLOCK_ATTEMPT_STORAGE_KEY, JSON.stringify(log.slice(0, MARKET_UNLOCK_ATTEMPT_MAX)));
+    s.setItem(
+      MARKET_UNLOCK_ATTEMPT_STORAGE_KEY,
+      JSON.stringify(log.slice(0, MARKET_UNLOCK_ATTEMPT_MAX)),
+    );
   } catch {
     // Quota / private mode — fail soft; UI still has in-memory state.
   }
@@ -978,11 +990,10 @@ export function signatureHintFromTx(signature: string): string {
   return `${t.slice(0, 4)}…${t.slice(-4)}`;
 }
 
-
 export interface RoomMessagesApiResponse {
   readonly ok: true;
   readonly roomId: string;
-  readonly messages: readonly import('./e2ee-seal').SealedEnvelope[];
+  readonly messages: readonly SealedEnvelope[];
   readonly count?: number;
   readonly total?: number;
   /** @deprecated Prefer hasMoreOlder / hasMoreNewer. */
@@ -1078,7 +1089,6 @@ export function fetchE2eeStatus(): Promise<ProductClientResult<E2eeApiResponse>>
   return getJson<E2eeApiResponse>('/api/v1/e2ee');
 }
 
-
 /** In-app notification row — only fields a product API may return (never invent client-side). */
 export interface NotificationItemDto {
   readonly id: string;
@@ -1129,7 +1139,7 @@ export function fetchNotifications(options?: {
   return getJson<NotificationsApiResponse>(`/api/v1/notifications${suffix}`);
 }
 
-export type ProductSearchHitDto = {
+export interface ProductSearchHitDto {
   readonly id: string;
   readonly kind: 'short' | 'creator' | 'live' | 'fame' | string;
   readonly title: string;
@@ -1138,7 +1148,7 @@ export type ProductSearchHitDto = {
   readonly source: 'synthetic-catalog' | string;
   readonly tags?: readonly string[];
   readonly synthetic?: boolean;
-};
+}
 
 /**
  * GET /api/v1/search?q= — honest product search.

@@ -1,8 +1,8 @@
 export const CANONICAL_ORIGIN = 'https://wetdrool.com';
 
-const LEGACY_HOSTNAMES = new Set(['droolhouse.com', 'www.droolhouse.com']);
+const LEGACY_HOSTNAMES = new Set(['droolhouse.com', 'www.droolhouse.com', 'www.wetdrool.com']);
 const REQUEST_HOST_PATTERN =
-  /^(?<hostname>(?:droolhouse\.com|www\.droolhouse\.com)\.*)(?::(?<port>[0-9]{1,5}))?$/iu;
+  /^(?<hostname>(?:droolhouse\.com|www\.droolhouse\.com|www\.wetdrool\.com)\.*)(?::(?<port>[0-9]{1,5}))?$/iu;
 
 function normalizeDnsHostname(hostname: string): string {
   return hostname.toLowerCase().replace(/\.+$/u, '');

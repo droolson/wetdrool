@@ -9,22 +9,20 @@ describe('canonical web host', () => {
     expect(CANONICAL_ORIGIN).toBe('https://wetdrool.com');
   });
 
-  it.each([
-    'droolhouse.com',
-    'www.droolhouse.com',
-    'SOCIALLYWOKE.COM.',
-    'www.droolhouse.com..',
-  ])('permanently redirects the legacy hostname %s while preserving path and query', (hostname) => {
-    const request = new NextRequest(
-      `http://${hostname}:8080/people/%E2%9C%93?tab=following&empty=`,
-    );
-    const response = proxy(request);
+  it.each(['droolhouse.com', 'www.droolhouse.com', 'www.wetdrool.com', 'www.droolhouse.com..'])(
+    'permanently redirects the legacy hostname %s while preserving path and query',
+    (hostname) => {
+      const request = new NextRequest(
+        `http://${hostname}:8080/people/%E2%9C%93?tab=following&empty=`,
+      );
+      const response = proxy(request);
 
-    expect(response.status).toBe(308);
-    expect(response.headers.get('location')).toBe(
-      'https://wetdrool.com/people/%E2%9C%93?tab=following&empty=',
-    );
-  });
+      expect(response.status).toBe(308);
+      expect(response.headers.get('location')).toBe(
+        'https://wetdrool.com/people/%E2%9C%93?tab=following&empty=',
+      );
+    },
+  );
 
   it('uses the public Host header when the runtime normalizes nextUrl to its bind address', () => {
     const request = new NextRequest('http://127.0.0.1:3000/settings?section=privacy', {

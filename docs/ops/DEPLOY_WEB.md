@@ -7,12 +7,12 @@
 | Package | `@wetdrool/web` → `apps/web` |
 | Framework | Next.js 16 App Router |
 | Canonical host | `wetdrool.com` (never legacy host as WebAuthn/app origin) |
-| **Interim production URL** | **https://wetdrool-web.vercel.app** (project `wetdrool-web`, team mythicagent) |
+| Production URL | **https://wetdrool.com** (project `wetdrool-web`, team mythicagent) |
 | Vercel project id | `prj_XuGVbO9dFScPwXdJaclHcIzKPNkq` |
 | Node | `22.23.1` (see root `engines`) |
 | Package manager | pnpm `11.2.2` via Corepack |
 
-> **Honest:** interim URL is a real production *deployment* of the Next product shell. It is **not** the canonical origin and does **not** imply revenue-ready commerce (`/api/v1/status` → `revenueReady: false`).
+> **Honest:** the canonical origin serves the real production product shell. This does **not** imply revenue-ready commerce (`/api/v1/status` → `revenueReady: false`). See `docs/ops/PRODUCTION_WEB_2026-08-12.md` for the deployment receipt.
 
 ## Vercel project settings
 

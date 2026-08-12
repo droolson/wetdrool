@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: '%s · WetDrool',
   },
   description:
-    '18+ adult social dApp on Solana — livestreams, NSFW/SFW video, AI companions, .drool vanity, and $DROOL.',
+    '18+ creator-owned social platform with portable identity, passkey accounts, livestream discovery, private rooms, AI companions, and fail-closed commerce.',
   openGraph: {
     description:
       'Euphoric 18+ social. Portable identity. AI companions. Points that never outrun ads.',

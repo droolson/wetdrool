@@ -13,7 +13,7 @@ const PRIMARY_LINKS = [
   { href: '/messages', label: 'Private' },
   { href: '/rooms/lobby', label: 'E2EE' },
   { href: '/market', label: 'Market' },
-  { href: '/token', label: '$DROOL' },
+  { href: '/token', label: 'Economy' },
   { href: '/fame', label: 'Fame' },
   { href: '/docs', label: 'Docs' },
 ] as const;
@@ -33,7 +33,7 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link className="site-header__brand" href="/hub" aria-label="WetDrool hub">
+        <Link className="site-header__brand" href="/" aria-label="WetDrool home">
           <BrandMark />
         </Link>
 

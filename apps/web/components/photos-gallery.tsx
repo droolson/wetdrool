@@ -28,7 +28,13 @@ export function PhotosGallery() {
         setItems([]);
         return;
       }
-      setItems(result.data.photos ?? []);
+      setItems(
+        (result.data.photos ?? []).map((photo) => ({
+          ...photo,
+          category: photo.category ?? 'uncategorized',
+          synthetic: photo.synthetic !== false,
+        })),
+      );
       setNote(result.data.note ?? null);
     } catch {
       setError('Network error loading photos.');

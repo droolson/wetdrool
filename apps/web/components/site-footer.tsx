@@ -16,7 +16,7 @@ export function SiteFooter() {
           <Link href="/live">Live</Link>
           <Link href="/home">Social</Link>
           <Link href="/compose">Compose</Link>
-          <Link href="/token">$DROOL</Link>
+          <Link href="/token">Economy</Link>
           <Link href="/docs">Docs</Link>
           <Link href="/safety">Safety</Link>
           <Link href="/settings">Settings</Link>
@@ -24,8 +24,8 @@ export function SiteFooter() {
       </div>
       <div className="site-footer__fine-print">
         <p>
-          Synthetic media fixtures until licensed pipelines land. $DROOL mint-pending. Mesh not
-          production. CSAM banned.
+          Synthetic media fixtures until licensed pipelines land. No WetDrool token exists. Mesh is
+          not production. CSAM banned.
         </p>
         <p>© {new Date().getUTCFullYear()} WetDrool</p>
       </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
-import { normalizeRoomId } from '@/lib/room-store';
+import { normalizeRoomId } from '@/lib/room-client';
 
 export function CustomRoomJumpClient() {
   const router = useRouter();
@@ -82,9 +82,7 @@ export function CustomRoomJumpClient() {
             spellCheck={false}
             inputMode="text"
             aria-invalid={error ? true : undefined}
-            aria-describedby={
-              error ? 'custom-room-help custom-room-error' : 'custom-room-help'
-            }
+            aria-describedby={error ? 'custom-room-help custom-room-error' : 'custom-room-help'}
           />
         </label>
         <p id="custom-room-help" className="field-help">
@@ -102,8 +100,7 @@ export function CustomRoomJumpClient() {
       <div className="anon-entrance__recent" aria-live="polite">
         <p className="field-help">
           Rooms with ciphertext on this node
-          {indexLoading ? ' · loading…' : null}{' '}
-          <Link href="/rooms">Full index</Link>
+          {indexLoading ? ' · loading…' : null} <Link href="/rooms">Full index</Link>
         </p>
         {storeDurable !== null ? (
           <StatusBadge tone={storeDurable ? 'verified' : 'pending'}>

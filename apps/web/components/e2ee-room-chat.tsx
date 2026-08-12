@@ -14,7 +14,7 @@ import {
   type SealedEnvelope,
 } from '@/lib/e2ee-seal';
 
-import { buildRoomShareUrl, formatNewMessagesAnnouncement } from '@/lib/room-store';
+import { buildRoomShareUrl, formatNewMessagesAnnouncement } from '@/lib/room-client';
 
 type FeedFilter = 'all' | 'media' | 'chat';
 
@@ -150,35 +150,42 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     setRekeyOpen(false);
   }, [roomId]);
 
-  const applyStoreMeta = useCallback((store: {
-    kind?: string;
-    note?: string;
-    durableAcrossRestart?: boolean;
-    label?: string;
-    maxMessagesPerRoom?: number;
-  } | undefined) => {
-    if (!store) return;
-    if (store.kind) setStoreKind(store.kind);
-    if (typeof store.durableAcrossRestart === 'boolean') {
-      setStoreDurable(store.durableAcrossRestart);
-    }
-    if (
-      typeof store.maxMessagesPerRoom === 'number' &&
-      Number.isFinite(store.maxMessagesPerRoom) &&
-      store.maxMessagesPerRoom > 0
-    ) {
-      setMaxMessagesPerRoom(Math.floor(store.maxMessagesPerRoom));
-    }
-    if (store.note) {
-      const durable =
-        store.durableAcrossRestart === true
-          ? ' · durable across restart (single node)'
-          : ' · ephemeral (lost on cold start)';
-      setStoreNote(`${store.note}${durable}`);
-    } else if (store.label) {
-      setStoreNote(store.label);
-    }
-  }, []);
+  const applyStoreMeta = useCallback(
+    (
+      store:
+        | {
+            kind?: string;
+            note?: string;
+            durableAcrossRestart?: boolean;
+            label?: string;
+            maxMessagesPerRoom?: number;
+          }
+        | undefined,
+    ) => {
+      if (!store) return;
+      if (store.kind) setStoreKind(store.kind);
+      if (typeof store.durableAcrossRestart === 'boolean') {
+        setStoreDurable(store.durableAcrossRestart);
+      }
+      if (
+        typeof store.maxMessagesPerRoom === 'number' &&
+        Number.isFinite(store.maxMessagesPerRoom) &&
+        store.maxMessagesPerRoom > 0
+      ) {
+        setMaxMessagesPerRoom(Math.floor(store.maxMessagesPerRoom));
+      }
+      if (store.note) {
+        const durable =
+          store.durableAcrossRestart === true
+            ? ' · durable across restart (single node)'
+            : ' · ephemeral (lost on cold start)';
+        setStoreNote(`${store.note}${durable}`);
+      } else if (store.label) {
+        setStoreNote(store.label);
+      }
+    },
+    [],
+  );
 
   const load = useCallback(
     async (mode: 'full' | 'poll' | 'older' = 'full') => {
@@ -189,18 +196,16 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       if (mode !== 'poll') setLoadError(null);
       inFlightRef.current = true;
       try {
-        const after =
-          mode === 'poll' && lastIdRef.current ? lastIdRef.current : undefined;
-        const before =
-          mode === 'older' && oldestIdRef.current ? oldestIdRef.current : undefined;
+        const after = mode === 'poll' && lastIdRef.current ? lastIdRef.current : undefined;
+        const before = mode === 'older' && oldestIdRef.current ? oldestIdRef.current : undefined;
         const q = new URLSearchParams();
         q.set('limit', String(PAGE_LIMIT));
         if (after) q.set('after', after);
         if (before) q.set('before', before);
-        const res = await fetch(
-          `/api/v1/rooms/${encodeURIComponent(roomId)}/messages?${q}`,
-          { method: 'GET', headers: { Accept: 'application/json' } },
-        );
+        const res = await fetch(`/api/v1/rooms/${encodeURIComponent(roomId)}/messages?${q}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        });
         if (!res.ok) {
           const body = (await res.json().catch(() => null)) as {
             error?: { message?: string };
@@ -283,7 +288,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       visibleRef.current = document.visibilityState === 'visible';
       if (visibleRef.current) void load('poll');
     };
-    visibleRef.current = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
+    visibleRef.current =
+      typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
     document.addEventListener('visibilitychange', onVis);
 
     void load('full');
@@ -450,9 +456,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
     setBusy(true);
     setStatus(null);
     try {
-      await postEnvelope(
-        await sealText(roomId, session.password, draft.trim(), session.username),
-      );
+      await postEnvelope(await sealText(roomId, session.password, draft.trim(), session.username));
       setDraft('');
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Send failed.');
@@ -568,9 +572,8 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           </p>
         ) : null}
         <p className="field-help">
-          Host never sees plaintext.{' '}
-          <Link href="/rooms">All rooms</Link> · <Link href="/chat">Secret entrance</Link> ·{' '}
-          <Link href="/rooms/lobby">lobby</Link>
+          Host never sees plaintext. <Link href="/rooms">All rooms</Link> ·{' '}
+          <Link href="/chat">Secret entrance</Link> · <Link href="/rooms/lobby">lobby</Link>
         </p>
       </div>
     );
@@ -588,7 +591,6 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
       setCopiedLink(false);
     }
   }, [roomId]);
-
 
   return (
     <div
@@ -609,8 +611,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
         <div>
           <p className="section-kicker">Anon · E2EE · img/gif/video</p>
           <h1>
-            #{roomId}{' '}
-            <span className="e2ee-room__you">as {session.username}</span>
+            #{roomId} <span className="e2ee-room__you">as {session.username}</span>
           </h1>
         </div>
         <div className="e2ee-room__header-actions">
@@ -620,9 +621,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
           {maxMessagesPerRoom !== null ? (
             <StatusBadge
               tone={
-                totalServer !== null && totalServer >= maxMessagesPerRoom
-                  ? 'pending'
-                  : 'neutral'
+                totalServer !== null && totalServer >= maxMessagesPerRoom ? 'pending' : 'neutral'
               }
             >
               {totalServer !== null
@@ -655,9 +654,7 @@ export function E2eeRoomChat({ roomId }: { readonly roomId: string }) {
             : maxMessagesPerRoom !== null
               ? ` · max ${maxMessagesPerRoom} sealed messages per room.`
               : null}
-          {totalServer !== null &&
-          maxMessagesPerRoom !== null &&
-          totalServer >= maxMessagesPerRoom
+          {totalServer !== null && maxMessagesPerRoom !== null && totalServer >= maxMessagesPerRoom
             ? ' At limit — new sends keep the newest; older ciphertext may already be gone on this node.'
             : null}
         </p>

@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBadge } from '@wetdrool/ui';
 
-import { buildRoomShareUrl, exportRoomsIndexJson, normalizeRoomId, summarizeRoomIndex } from '@/lib/room-store';
+import {
+  buildRoomShareUrl,
+  exportRoomsIndexJson,
+  normalizeRoomId,
+  summarizeRoomIndex,
+} from '@/lib/room-client';
 
 interface RoomRow {
   readonly roomId: string;
@@ -130,7 +135,6 @@ export function RoomsIndexClient() {
 
   const sortedRooms = useMemo(() => sortRooms(rooms, sortMode), [rooms, sortMode]);
   const totals = useMemo(() => summarizeRoomIndex(rooms), [rooms]);
-
 
   const flashCopied = useCallback((key: string) => {
     setCopiedKey(key);

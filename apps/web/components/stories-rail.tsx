@@ -28,7 +28,12 @@ export function StoriesRail() {
         setItems([]);
         return;
       }
-      setItems(result.data.stories ?? []);
+      setItems(
+        (result.data.stories ?? []).map((story) => ({
+          ...story,
+          synthetic: story.synthetic !== false,
+        })),
+      );
       setNote(result.data.note ?? null);
     } catch {
       setError('Network error loading stories.');

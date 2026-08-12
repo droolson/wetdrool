@@ -82,18 +82,18 @@ export function ProductStatusPanel() {
       <div className="rooms-index__meta" aria-live="polite">
         <StatusBadge tone="neutral">surfaces: {surfaces}</StatusBadge>
         <StatusBadge tone="pending">
-          market multiReplicaSafe: {String(marketSafe === true)}
+          market multiReplicaSafe: {String(Boolean(marketSafe))}
         </StatusBadge>
         <StatusBadge tone="pending">
-          rooms multiReplicaSafe: {String(roomsSafe === true)}
+          rooms multiReplicaSafe: {String(Boolean(roomsSafe))}
         </StatusBadge>
         <StatusBadge tone={authConfigured ? 'pending' : 'neutral'}>
           auth configured: {String(Boolean(authConfigured))}
         </StatusBadge>
         <StatusBadge tone="degraded">
-          personalizationActive: {String(personalization === true)}
+          personalizationActive: {String(Boolean(personalization))}
         </StatusBadge>
-        <StatusBadge tone="degraded">revenueReady: {String(revenueReady === true)}</StatusBadge>
+        <StatusBadge tone="degraded">revenueReady: {String(Boolean(revenueReady))}</StatusBadge>
       </div>
       {status?.stores?.marketplace?.kind ? (
         <p className="field-help">

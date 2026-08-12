@@ -1,0 +1,347 @@
+.wetdrool-entry-gate {
+  min-height: calc(100svh - 8rem);
+  max-width: 52rem;
+  padding: clamp(4rem, 12vw, 8rem) 1.5rem;
+}
+
+.wetdrool-landing {
+  --wd-pink: #ff3d7f;
+  --wd-violet: #8b5cf6;
+  --wd-cream: #fff5f8;
+  width: min(100% - 2rem, 78rem);
+  margin: 0 auto;
+  padding: 1rem 0 6rem;
+}
+
+.wetdrool-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(17rem, 0.65fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: center;
+  min-height: min(48rem, calc(100svh - 7rem));
+  padding: clamp(3rem, 8vw, 7rem) 0;
+}
+
+.wetdrool-hero__glow {
+  position: absolute;
+  z-index: -1;
+  inset: 8% auto auto -12%;
+  width: min(38rem, 70vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgb(255 61 127 / 0.24),
+    rgb(139 92 246 / 0.08) 45%,
+    transparent 72%
+  );
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.wetdrool-hero__eyebrow,
+.wetdrool-manifesto > p,
+.wetdrool-surfaces header > p,
+.wetdrool-proof > div > p {
+  margin: 0 0 1rem;
+  color: var(--wd-pink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.wetdrool-hero h1 {
+  max-width: 11ch;
+  margin: 0;
+  font-size: clamp(4rem, 10vw, 8.5rem);
+  font-weight: 700;
+  letter-spacing: -0.075em;
+  line-height: 0.82;
+}
+
+.wetdrool-hero h1 em {
+  color: var(--wd-pink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+
+.wetdrool-hero__lede {
+  max-width: 43rem;
+  margin: 2rem 0 0;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1.55;
+  color: color-mix(in oklab, canvasText 78%, transparent);
+}
+
+.wetdrool-hero__actions,
+.wetdrool-proof__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.wetdrool-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3.15rem;
+  padding: 0.75rem 1.3rem;
+  border: 1px solid color-mix(in oklab, canvasText 20%, transparent);
+  border-radius: 999px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.wetdrool-button--primary {
+  border-color: transparent;
+  color: white;
+  background: linear-gradient(135deg, var(--wd-pink), var(--wd-violet));
+  box-shadow: 0 14px 40px rgb(255 61 127 / 0.24);
+}
+
+.wetdrool-button--secondary {
+  background: color-mix(in oklab, canvas 92%, canvasText);
+}
+
+.wetdrool-hero__status {
+  max-width: 43rem;
+  margin-top: 1.2rem;
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: color-mix(in oklab, canvasText 58%, transparent);
+}
+
+.wetdrool-signal {
+  position: relative;
+  overflow: hidden;
+  padding: 1.25rem;
+  border: 1px solid color-mix(in oklab, canvasText 16%, transparent);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(155deg, rgb(255 61 127 / 0.17), transparent 48%),
+    color-mix(in oklab, canvas 94%, canvasText);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.22);
+}
+
+.wetdrool-signal__live {
+  display: inline-flex;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  color: var(--wd-cream);
+  background: var(--wd-pink);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.wetdrool-signal__mark {
+  margin: 2.5rem 0;
+  color: var(--wd-pink);
+  font-size: clamp(7rem, 18vw, 12rem);
+  font-weight: 850;
+  letter-spacing: -0.1em;
+  line-height: 0.7;
+}
+
+.wetdrool-signal dl {
+  margin: 0;
+  border-top: 1px solid color-mix(in oklab, canvasText 14%, transparent);
+}
+
+.wetdrool-signal dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid color-mix(in oklab, canvasText 10%, transparent);
+}
+
+.wetdrool-signal dt {
+  color: color-mix(in oklab, canvasText 56%, transparent);
+}
+
+.wetdrool-signal dd {
+  margin: 0;
+  font-weight: 750;
+}
+
+.wetdrool-manifesto {
+  display: grid;
+  grid-template-columns: 0.55fr 1.45fr;
+  gap: 2rem;
+  padding: clamp(5rem, 10vw, 9rem) 0;
+  border-top: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+}
+
+.wetdrool-manifesto h2 {
+  max-width: 19ch;
+  margin: 0;
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+}
+
+.wetdrool-pillars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-block: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+}
+
+.wetdrool-pillars article {
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border-right: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+}
+
+.wetdrool-pillars article:last-child {
+  border-right: 0;
+}
+
+.wetdrool-pillars article > span {
+  color: var(--wd-pink);
+  font: 700 0.78rem/1 monospace;
+}
+
+.wetdrool-pillars h2 {
+  margin: 3rem 0 1rem;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.wetdrool-pillars p,
+.wetdrool-surfaces__grid p,
+.wetdrool-proof > p {
+  color: color-mix(in oklab, canvasText 66%, transparent);
+  line-height: 1.65;
+}
+
+.wetdrool-pillars a {
+  display: inline-block;
+  margin-top: 1.25rem;
+  color: inherit;
+  font-weight: 750;
+}
+
+.wetdrool-surfaces {
+  padding: clamp(5rem, 10vw, 9rem) 0;
+}
+
+.wetdrool-surfaces header {
+  display: grid;
+  grid-template-columns: 0.55fr 1.45fr;
+  gap: 2rem;
+  align-items: end;
+  margin-bottom: 3rem;
+}
+
+.wetdrool-surfaces header h2 {
+  max-width: 16ch;
+  margin: 0;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+
+.wetdrool-surfaces__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.wetdrool-surfaces__grid a {
+  position: relative;
+  min-height: 15rem;
+  padding: 1.4rem;
+  border: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+  border-radius: 1rem;
+  color: inherit;
+  text-decoration: none;
+  background: color-mix(in oklab, canvas 96%, canvasText);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease;
+}
+
+.wetdrool-surfaces__grid a:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--wd-pink) 55%, transparent);
+}
+
+.wetdrool-surfaces__grid a > span {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  color: var(--wd-pink);
+}
+
+.wetdrool-surfaces__grid h3 {
+  margin: 6rem 0 0.75rem;
+  font-size: 1.4rem;
+}
+
+.wetdrool-proof {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 2rem 4rem;
+  padding: clamp(2rem, 5vw, 4rem);
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, rgb(255 61 127 / 0.14), rgb(139 92 246 / 0.1));
+}
+
+.wetdrool-proof h2 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.wetdrool-proof__actions {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.wetdrool-proof__actions a {
+  color: inherit;
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .wetdrool-hero,
+  .wetdrool-manifesto,
+  .wetdrool-surfaces header,
+  .wetdrool-proof {
+    grid-template-columns: 1fr;
+  }
+
+  .wetdrool-hero {
+    min-height: auto;
+    padding-top: 4rem;
+  }
+
+  .wetdrool-signal__mark {
+    font-size: 9rem;
+  }
+
+  .wetdrool-pillars,
+  .wetdrool-surfaces__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wetdrool-pillars article {
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in oklab, canvasText 12%, transparent);
+  }
+
+  .wetdrool-pillars article:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wetdrool-surfaces__grid a {
+    transition: none;
+  }
+}
