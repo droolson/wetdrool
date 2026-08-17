@@ -64,15 +64,15 @@
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "9.39.5",
     "eslint-config-prettier": "10.1.8",
-    "globals": "17.8.0",
-    "mocha": "11.7.6",
+    "globals": "17.11.0",
+    "mocha": "11.8.0",
     "prettier": "3.9.6",
     "ts-mocha": "11.1.0",
     "ts-node": "10.9.2",
-    "tsx": "4.23.1",
-    "turbo": "2.10.7",
+    "tsx": "4.23.12",
+    "turbo": "2.10.10",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.65.0",
+    "typescript-eslint": "8.67.0",
     "vitest": "4.1.10"
   }
 }

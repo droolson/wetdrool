@@ -30,7 +30,7 @@
   "devDependencies": {
     "@wetdrool/test-fixtures": "workspace:*",
     "@types/node": "22.20.1",
-    "tsx": "4.23.1",
+    "tsx": "4.23.12",
     "vitest": "4.1.10"
   }
 }

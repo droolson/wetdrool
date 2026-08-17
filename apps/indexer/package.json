@@ -39,7 +39,7 @@
     "@noble/curves": "2.2.0",
     "@types/node": "22.20.1",
     "@wetdrool/test-fixtures": "workspace:*",
-    "tsx": "4.23.1",
+    "tsx": "4.23.12",
     "vitest": "4.1.10"
   }
 }

@@ -31,9 +31,9 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "1.62.1",
     "@types/node": "22.20.1",
-    "tsx": "4.23.1",
+    "tsx": "4.23.12",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
   }
