@@ -22,13 +22,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@solana/kit": "7.0.0",
-    "@solana/rpc-spec-types": "7.0.0",
+    "@solana/kit": "7.1.0",
+    "@solana/rpc-spec-types": "7.1.0",
     "@wetdrool/protocol": "workspace:*",
     "@wetdrool/storage": "workspace:*"
   },
   "devDependencies": {
-    "@noble/curves": "2.2.0",
+    "@noble/curves": "2.3.0",
     "bs58": "6.0.0",
     "vitest": "4.1.10"
   }

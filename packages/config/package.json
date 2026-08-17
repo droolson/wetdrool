@@ -50,7 +50,7 @@
   },
   "dependencies": {
     "@fastify/proxy-addr": "5.1.0",
-    "ipaddr.js": "2.4.0",
+    "ipaddr.js": "2.5.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
