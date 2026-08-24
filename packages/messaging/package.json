@@ -29,8 +29,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@matrix-org/matrix-sdk-crypto-wasm": "18.4.0",
-    "@noble/curves": "2.2.0",
+    "@matrix-org/matrix-sdk-crypto-wasm": "18.5.0",
+    "@noble/curves": "2.3.0",
     "json-canonicalize": "2.0.0"
   },
   "devDependencies": {
