@@ -28,7 +28,7 @@
     "@wetdrool/storage": "workspace:*"
   },
   "devDependencies": {
-    "@noble/curves": "2.2.0",
+    "@noble/curves": "2.4.0",
     "bs58": "6.0.0",
     "vitest": "4.1.10"
   }
